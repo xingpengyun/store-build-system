@@ -102,27 +102,52 @@ window.Store = (function () {
     });
   }
 
+  /* 标记「这套系统已经初始化过」，清空后不会再自动塞演示数据 */
+  function markInitialized() {
+    if (!state) return;
+    state.settings = state.settings || {};
+    state.settings.initialized = true;
+    if (window.Cloud) {
+      window.Cloud.saveSettings(state.settings, state.alertsRead).catch(function () {});
+    }
+  }
+
   /* ================= 加载 ================= */
 
   function load(onProgress) {
     return window.Cloud.pullAll().then(function (data) {
       online = true;
-      var remoteEmpty = !data.stores.length && !data.tasks.length;
+      var remoteEmpty = !data.stores.length && !data.tasks.length && !data.members.length;
 
       if (remoteEmpty) {
-        var local = readLocal();
-        var source = local && local.stores && local.stores.length ? local : null;
-        var importedCount = source ? source.stores.length : 0;
-
-        if (!source) {
-          source = window.Seed();
+        /* 之前用过（主动清空过）→ 就是空系统，不要把本地缓存又搬回来 */
+        if (data.settings && data.settings.initialized) {
+          state = normalized({
+            stores: [], tasks: [], members: [], arrivals: [],
+            settings: data.settings, alertsRead: data.alertsRead
+          });
+          cacheLocal();
+          return { imported: 0, seeded: false, empty: true };
         }
 
-        return window.Cloud.importAll(source, onProgress).then(function () {
-          state = normalized(JSON.parse(JSON.stringify(source)));
-          cacheLocal();
-          return { imported: importedCount, seeded: !importedCount };
-        });
+        var local = readLocal();
+        var hasLocal = !!(local && local.stores && local.stores.length);
+
+        /* 本地有数据 → 首次上云迁移 */
+        if (hasLocal) {
+          return window.Cloud.importAll(local, onProgress).then(function () {
+            state = normalized(JSON.parse(JSON.stringify(local)));
+            markInitialized();
+            cacheLocal();
+            return { imported: local.stores.length, seeded: false };
+          });
+        }
+
+        /* 全新空系统 */
+        state = normalized({ stores: [], tasks: [], members: [], arrivals: [], settings: null });
+        markInitialized();
+        cacheLocal();
+        return { imported: 0, seeded: false, empty: true };
       }
 
       state = normalized(data);

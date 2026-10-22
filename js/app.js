@@ -237,6 +237,10 @@ window.App = (function () {
         window.UI.toast('已把本地 ' + r.imported + ' 家门店同步到云端', 'success');
       }
 
+      if (r && r.empty) {
+        window.UI.toast('还没有数据，去「门店管理」添加第一家门店', 'info');
+      }
+
       if (!location.hash) location.hash = '#/home';
       bindShell();
       render();
