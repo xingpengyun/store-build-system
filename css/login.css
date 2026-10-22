@@ -1,0 +1,166 @@
+/* ==========================================================
+   login.css — 登录页 / 加载遮罩
+   ========================================================== */
+
+.login-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(122, 160, 255, .28), transparent 45%),
+    radial-gradient(circle at 85% 75%, rgba(160, 130, 255, .22), transparent 45%),
+    linear-gradient(135deg, #eef2fb 0%, #e9eefc 50%, #f3f0fd 100%);
+  overflow: auto;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 390px;
+  background: #fff;
+  border-radius: 20px;
+  padding: 34px 30px 26px;
+  box-shadow: 0 26px 70px rgba(19, 28, 49, .13), 0 2px 6px rgba(19, 28, 49, .04);
+  animation: fadeUp .4s cubic-bezier(.22, .8, .3, 1) both;
+}
+
+.login-head {
+  text-align: center;
+  margin-bottom: 26px;
+}
+.login-mark {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 14px;
+  border-radius: 16px;
+  background: linear-gradient(140deg, #4b7bff, #7a5af8);
+  font-size: 26px;
+  box-shadow: 0 10px 24px rgba(75, 123, 255, .3);
+}
+.login-head h1 {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+.login-head p {
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+
+.login-form .field { margin-bottom: 15px; }
+.login-form .input { height: 40px; font-size: 14px; }
+
+.login-code-row {
+  display: flex;
+  gap: 8px;
+}
+.login-code-row .input { flex: 1; min-width: 0; }
+
+.btn-code {
+  flex: 0 0 108px;
+  height: 40px;
+  font-size: 12.5px;
+  color: var(--primary);
+  border-color: #c9d8f8;
+  background: #f7faff;
+}
+.btn-code:hover:not(:disabled) { background: #eef4ff; }
+.btn-code:disabled { color: var(--text-3); border-color: var(--line); background: #fafbfe; }
+
+.login-submit {
+  height: 42px;
+  font-size: 14px;
+  margin-top: 6px;
+  letter-spacing: 2px;
+}
+
+.login-err {
+  min-height: 18px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--red);
+  text-align: center;
+}
+.login-err.ok { color: var(--green); }
+
+.login-tip {
+  margin-top: 18px;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--text-3);
+  text-align: center;
+}
+
+.login-foot {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.login-foot span { cursor: pointer; color: var(--primary); }
+.login-foot span:hover { text-decoration: underline; }
+
+/* ---------- 加载遮罩 ---------- */
+.loading-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  display: grid;
+  place-items: center;
+  background: rgba(242, 245, 250, .92);
+  backdrop-filter: blur(3px);
+}
+.loading-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 26px 34px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(19, 28, 49, .12);
+}
+.loading-box p {
+  font-size: 13px;
+  color: var(--text-2);
+}
+.spinner {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 3px solid #e6ecf7;
+  border-top-color: var(--primary);
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 顶部同步状态条 */
+.sync-tip {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 15px;
+  border-radius: 20px;
+  background: rgba(30, 40, 70, .9);
+  color: #fff;
+  font-size: 12px;
+  box-shadow: 0 8px 24px rgba(19, 28, 49, .25);
+}
+.sync-tip.offline { background: rgba(240, 68, 56, .92); }
+.sync-tip i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4ade80;
+}
+.sync-tip.offline i { background: #fff; }

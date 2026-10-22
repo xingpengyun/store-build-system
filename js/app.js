@@ -1,5 +1,5 @@
 /* ==========================================================
-   app.js — 路由 / 全局交互 / 初始化
+   app.js — 路由 / 全局交互 / 登录门 / 初始化
    ========================================================== */
 window.App = (function () {
   'use strict';
@@ -9,6 +9,8 @@ window.App = (function () {
 
   var ROUTES = ['home', 'stores', 'tasks', 'team', 'alerts', 'reports', 'settings'];
   var params = {};
+  var currentUser = null;
+  var syncTip = null;
 
   /* ---------------- 路由 ---------------- */
   function currentRoute() {
@@ -63,20 +65,34 @@ window.App = (function () {
     var n = S.unreadAlertCount();
     var dot = document.getElementById('bellDot');
     var nb = document.getElementById('navAlertBadge');
-    if (dot) {
-      dot.hidden = n === 0;
-      dot.textContent = n > 99 ? '99+' : n;
-    }
-    if (nb) {
-      nb.hidden = n === 0;
-      nb.textContent = n > 99 ? '99+' : n;
-    }
+    if (dot) { dot.hidden = n === 0; dot.textContent = n > 99 ? '99+' : n; }
+    if (nb) { nb.hidden = n === 0; nb.textContent = n > 99 ? '99+' : n; }
 
     var bytes = S.storageBytes();
     var sizeEl = document.getElementById('storageSize');
     var barEl = document.getElementById('storageBar');
     if (sizeEl) sizeEl.textContent = U.bytes(bytes);
     if (barEl) barEl.style.width = Math.min(100, bytes / (5 * 1024 * 1024) * 100).toFixed(1) + '%';
+
+    var userEl = document.querySelector('.topbar-user .avatar');
+    if (userEl) {
+      var nm = (currentUser && (currentUser.name || currentUser.phone)) || '我';
+      userEl.textContent = String(nm).slice(-2);
+    }
+
+    showSyncTip(!S.isOnline());
+  }
+
+  function showSyncTip(offline) {
+    if (!offline) {
+      if (syncTip) { syncTip.remove(); syncTip = null; }
+      return;
+    }
+    if (syncTip) return;
+    syncTip = document.createElement('div');
+    syncTip.className = 'sync-tip offline';
+    syncTip.innerHTML = '<i></i><span>离线模式：改动先存在本地，联网后自动补传</span>';
+    document.body.appendChild(syncTip);
   }
 
   /* ---------------- 全局搜索 ---------------- */
@@ -97,16 +113,13 @@ window.App = (function () {
       if (out.length >= 8) return;
       if (t.title.toLowerCase().indexOf(lower) >= 0) {
         var st = S.storeById(t.storeId);
-        out.push({
-          kind: 'task', id: t.id, label: t.title,
-          sub: (st ? st.name : '—') + ' · ' + t.dueDate, type: '任务'
-        });
+        out.push({ kind: 'task', id: t.id, label: t.title, sub: (st ? st.name : '—') + ' · ' + t.dueDate, type: '任务' });
       }
     });
 
     s.members.forEach(function (m) {
       if (out.length >= 8) return;
-      if (m.name.toLowerCase().indexOf(lower) >= 0 || m.role.toLowerCase().indexOf(lower) >= 0) {
+      if (m.name.toLowerCase().indexOf(lower) >= 0 || (m.role || '').toLowerCase().indexOf(lower) >= 0) {
         out.push({ kind: 'member', id: m.id, label: m.name, sub: m.role, type: '成员' });
       }
     });
@@ -187,12 +200,11 @@ window.App = (function () {
     });
   }
 
-  /* ---------------- 初始化 ---------------- */
-  function init() {
-    S.load();
-
+  /* ---------------- 骨架事件 ---------------- */
+  function bindShell() {
     document.querySelectorAll('.nav-item').forEach(function (el) {
       el.addEventListener('click', function () {
+        if (!S.getState()) return;
         go(el.getAttribute('data-route'));
       });
     });
@@ -207,12 +219,87 @@ window.App = (function () {
 
     bindSearch();
     window.addEventListener('hashchange', render);
+  }
 
-    if (!location.hash) {
-      location.hash = '#/home';
-    } else {
+  /* ---------------- 启动流程 ---------------- */
+  function startApp() {
+    window.UI.loading('正在从云端加载数据…');
+
+    S.load(function (done, total) {
+      var label = document.querySelector('#loadingLayer p');
+      if (label && total) {
+        label.textContent = '首次同步：正在上传 ' + done + ' / ' + total + ' 条…';
+      }
+    }).then(function (r) {
+      window.UI.hideLoading();
+
+      if (r && r.imported) {
+        window.UI.toast('已把本地 ' + r.imported + ' 家门店同步到云端', 'success');
+      }
+
+      if (!location.hash) location.hash = '#/home';
+      bindShell();
       render();
+
+      if (r && r.offline) {
+        window.UI.toast('云端连接失败，当前使用本地缓存', 'error');
+      }
+
+      S.startAutoSync(45000, function () {
+        render();
+        window.UI.toast('检测到团队其他人的更新，已刷新', 'info');
+      });
+    }).catch(function (e) {
+      window.UI.hideLoading();
+      window.UI.toast('数据加载失败：' + (e.message || e), 'error');
+      var view = document.getElementById('view');
+      if (view) {
+        view.innerHTML = '<div class="card" style="margin-top:40px;text-align:center;padding:50px 20px">' +
+          '<h3 style="margin-bottom:10px">数据加载失败</h3>' +
+          '<p style="color:var(--text-2);font-size:13px;margin-bottom:18px">' + U.esc(e.message || String(e)) + '</p>' +
+          '<button class="btn btn-primary" onclick="location.reload()">重新加载</button></div>';
+      }
+    });
+  }
+
+  function logout() {
+    window.UI.confirm({
+      title: '退出登录',
+      text: '退出后需要重新用手机号验证码登录。',
+      okText: '退出',
+      onOk: function () {
+        S.stopAutoSync();
+        window.Cloud.logout().then(function () {
+          location.hash = '';
+          location.reload();
+        });
+      }
+    });
+  }
+
+  function init() {
+    if (!window.Cloud) {
+      window.UI.toast('云服务组件未加载，请检查 js/vendor/cloud-sdk.js', 'error');
+      return;
     }
+
+    window.Cloud.currentSession().then(function (session) {
+      if (!session) {
+        window.Login.show(function (user) {
+          currentUser = user || {};
+          startApp();
+        });
+        return;
+      }
+      currentUser = session.user || {};
+      startApp();
+    }).catch(function (e) {
+      window.UI.toast('登录检查失败：' + (e.message || e), 'error');
+      window.Login.show(function (user) {
+        currentUser = user || {};
+        startApp();
+      });
+    });
   }
 
   if (document.readyState === 'loading') {
@@ -221,5 +308,12 @@ window.App = (function () {
     init();
   }
 
-  return { go: go, refresh: refresh, render: render, init: init };
+  return {
+    go: go,
+    refresh: refresh,
+    render: render,
+    init: init,
+    logout: logout,
+    get user() { return currentUser; }
+  };
 })();

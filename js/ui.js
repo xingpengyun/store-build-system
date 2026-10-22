@@ -104,6 +104,22 @@ window.UI = (function () {
     }, 2200);
   }
 
+  /* ---------------- 加载遮罩 ---------------- */
+  function loading(text) {
+    hideLoading();
+    var el = document.createElement('div');
+    el.className = 'loading-layer';
+    el.id = 'loadingLayer';
+    el.innerHTML = '<div class="loading-box"><span class="spinner"></span><p>' +
+      U.esc(text || '加载中…') + '</p></div>';
+    document.body.appendChild(el);
+  }
+
+  function hideLoading() {
+    var el = document.getElementById('loadingLayer');
+    if (el) el.remove();
+  }
+
   /* ---------------- 弹窗 ---------------- */
   var openModal = null;
 
@@ -218,6 +234,8 @@ window.UI = (function () {
     progress: progress,
     empty: empty,
     toast: toast,
+    loading: loading,
+    hideLoading: hideLoading,
     modal: modal,
     closeModal: closeModal,
     confirm: confirm,

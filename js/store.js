@@ -1,6 +1,7 @@
 /* ==========================================================
-   store.js — 数据层（localStorage 持久化 + 增删改查 + 统计）
-   想换成后端接口，只需要改 load() / save() 两个函数
+   store.js — 数据层
+   云端为准：启动时从云端拉取，增删改后异步推送
+   本地 localStorage 只作为离线缓存 / 首次导入的来源
    ========================================================== */
 window.Store = (function () {
   'use strict';
@@ -11,48 +12,51 @@ window.Store = (function () {
 
   var state = null;
   var listeners = [];
+  var online = true;
+  var syncTimer = null;
+  var lastError = '';
 
-  /* ---------------- 持久化 ---------------- */
+  /* ================= 本地缓存 ================= */
 
-  function load() {
-    var raw = null;
+  function cacheLocal() {
     try {
-      raw = localStorage.getItem(KEY);
+      localStorage.setItem(KEY, JSON.stringify(state));
     } catch (e) {
-      console.warn('[Store] 无法访问 localStorage', e);
+      console.warn('[Store] 本地缓存写入失败', e);
     }
-
-    if (raw) {
-      try {
-        var parsed = JSON.parse(raw);
-        if (parsed && parsed.stores && parsed.tasks && parsed.members) {
-          state = normalized(parsed);
-          return state;
-        }
-      } catch (e) {
-        console.warn('[Store] 本地数据损坏，将重建', e);
-      }
-    }
-
-    state = window.Seed();
-    save(true);
-    return state;
   }
 
-  /* 兼容旧版本 / 缺字段的数据 */
+  function readLocal() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (!raw) return null;
+      var d = JSON.parse(raw);
+      if (d && d.stores && d.tasks && d.members) return d;
+    } catch (e) { /* ignore */ }
+    return null;
+  }
+
+  function hasLocalData() {
+    var d = readLocal();
+    return !!(d && d.stores && d.stores.length);
+  }
+
+  /* ================= 兼容旧数据 ================= */
+
   function normalized(data) {
+    data = data || {};
     data.settings = data.settings || {};
     data.stores = data.stores || [];
     data.tasks = data.tasks || [];
     data.members = data.members || [];
     data.arrivals = data.arrivals || [];
     data.alertsRead = data.alertsRead || [];
+
     if (!data.settings.brand) data.settings.brand = '门店筹建管理系统';
     if (!data.settings.slogan) data.settings.slogan = '让每一家门店，按时开业！';
     if (data.settings.warnDays == null) data.settings.warnDays = 3;
     if (!data.settings.teamName) data.settings.teamName = '阿蛮团队';
 
-    /* v1 → v2：默认团队称呼由「团队」改为「阿蛮团队」 */
     data.meta = data.meta || {};
     if ((data.meta.version || 1) < 2) {
       if (data.settings.teamName === '团队') data.settings.teamName = '阿蛮团队';
@@ -61,26 +65,121 @@ window.Store = (function () {
     return data;
   }
 
-  function save(silent) {
-    if (!state) return;
-    state.meta = state.meta || {};
-    state.meta.updatedAt = new Date().toISOString();
-    try {
-      localStorage.setItem(KEY, JSON.stringify(state));
-    } catch (e) {
-      console.error('[Store] 保存失败', e);
-      if (!silent && window.UI) UI.toast('保存失败，浏览器存储空间可能已满', 'error');
-    }
-    if (!silent) {
-      listeners.forEach(function (fn) { fn(state); });
-    }
+  /* ================= 云端推送（异步，不阻塞界面） ================= */
+
+  function push(table, obj) {
+    if (!window.Cloud) return;
+    window.Cloud.upsert(table, obj).then(function () {
+      if (!online) {
+        online = true;
+        if (window.UI) UI.toast('已恢复云端连接', 'success');
+      }
+    }).catch(function (e) {
+      online = false;
+      lastError = e.message || String(e);
+      console.error('[cloud] 保存失败', table, e);
+      if (window.UI) UI.toast('云端保存失败：' + lastError, 'error');
+    });
   }
 
-  function onChange(fn) { listeners.push(fn); }
+  function pushMany(table, list) {
+    if (!window.Cloud || !list || !list.length) return;
+    list.forEach(function (item) { push(table, item); });
+  }
 
-  /* ---------------- 查询辅助 ---------------- */
+  function drop(table, id) {
+    if (!window.Cloud) return;
+    window.Cloud.remove(table, id).catch(function (e) {
+      console.error('[cloud] 删除失败', table, id, e);
+      if (window.UI) UI.toast('云端删除失败：' + (e.message || e), 'error');
+    });
+  }
+
+  function pushSettings() {
+    if (!window.Cloud) return;
+    window.Cloud.saveSettings(state.settings, state.alertsRead).catch(function (e) {
+      console.error('[cloud] 设置保存失败', e);
+    });
+  }
+
+  /* ================= 加载 ================= */
+
+  function load(onProgress) {
+    return window.Cloud.pullAll().then(function (data) {
+      online = true;
+      var remoteEmpty = !data.stores.length && !data.tasks.length;
+
+      if (remoteEmpty) {
+        var local = readLocal();
+        var source = local && local.stores && local.stores.length ? local : null;
+        var importedCount = source ? source.stores.length : 0;
+
+        if (!source) {
+          source = window.Seed();
+        }
+
+        return window.Cloud.importAll(source, onProgress).then(function () {
+          state = normalized(JSON.parse(JSON.stringify(source)));
+          cacheLocal();
+          return { imported: importedCount, seeded: !importedCount };
+        });
+      }
+
+      state = normalized(data);
+      cacheLocal();
+      return { imported: 0, seeded: false };
+    }).catch(function (e) {
+      /* 网络失败 → 退回本地缓存，离线可用 */
+      online = false;
+      lastError = e.message || String(e);
+      var local = readLocal();
+      if (local) {
+        state = normalized(local);
+        return { imported: 0, seeded: false, offline: true };
+      }
+      throw e;
+    });
+  }
+
+  /* ================= 自动同步（拉取别人的改动） ================= */
+
+  function startAutoSync(intervalMs, onChange) {
+    stopAutoSync();
+    var lastStamp = stamp();
+    syncTimer = setInterval(function () {
+      if (document.hidden) return;
+      if (document.querySelector('.modal-mask')) return;   /* 有弹窗时别打断 */
+
+      window.Cloud.pullAll().then(function (data) {
+        var next = normalized(data);
+        var nextStamp = stampOf(next);
+        if (nextStamp === lastStamp) return;
+        lastStamp = nextStamp;
+        state = next;
+        cacheLocal();
+        if (onChange) onChange();
+      }).catch(function () { /* 静默失败，下个周期再试 */ });
+    }, intervalMs || 45000);
+  }
+
+  function stopAutoSync() {
+    if (syncTimer) clearInterval(syncTimer);
+    syncTimer = null;
+  }
+
+  function stampOf(s) {
+    return [s.stores.length, s.tasks.length, s.members.length, s.arrivals.length].join('/');
+  }
+
+  function stamp() {
+    return state ? stampOf(state) : '';
+  }
+
+  /* ================= 查询辅助 ================= */
 
   function getState() { return state; }
+  function isOnline() { return online; }
+  function getLastError() { return lastError; }
 
   function storeById(id) {
     for (var i = 0; i < state.stores.length; i++) {
@@ -103,7 +202,6 @@ window.Store = (function () {
     return null;
   }
 
-  /* 任务状态归类：done / doing / pending / overdue / risk */
   function classify(task) {
     var t0 = U.today();
     if (task.status === 'done') return 'done';
@@ -116,20 +214,18 @@ window.Store = (function () {
 
   function isLate(task) { return classify(task) === 'overdue'; }
 
-  /* ---------------- 统计 ---------------- */
+  /* ================= 统计（口径不变） ================= */
 
   function stats() {
     var t0 = U.today();
     var st = state;
 
-    /* 任务状态分布 */
     var taskCounts = { done: 0, doing: 0, pending: 0, overdue: 0, risk: 0, total: st.tasks.length };
     st.tasks.forEach(function (t) {
       var c = classify(t);
       taskCounts[c] = (taskCounts[c] || 0) + 1;
     });
 
-    /* 阶段分布 */
     var stageIdxMap = {};
     var stageCounts = C.STAGES.map(function (s, i) {
       stageIdxMap[s.key] = i;
@@ -146,25 +242,21 @@ window.Store = (function () {
     }).length;
     var attentionStores = st.stores.filter(function (s) { return s.risk === 'attention'; }).length;
 
-    /* 今天到期或已逾期 */
     var todayTasks = st.tasks.filter(function (t) {
       if (t.status === 'done') return false;
       return t.dueDate <= t0;
     }).length;
 
-    /* 本周（7 天内）需处理 */
     var weekTasks = st.tasks.filter(function (t) {
       if (t.status === 'done') return false;
       return U.diffDays(t0, t.dueDate) <= 7;
     }).length;
 
-    /* 7 天内待到货 */
     var arrivals7 = st.arrivals.filter(function (a) {
       var d = U.diffDays(t0, a.etaDate);
       return a.status === 'pending' && d >= 0 && d <= 7;
     }).length;
 
-    /* 团队 */
     var team = st.members.map(function (m) {
       var mine = st.tasks.filter(function (t) { return t.assigneeId === m.id; });
       var done = 0, late = 0;
@@ -174,20 +266,13 @@ window.Store = (function () {
         else if (c === 'overdue') late += 1;
       });
       return {
-        id: m.id,
-        name: m.name,
-        role: m.role,
-        color: m.color,
-        total: mine.length,
-        done: done,
-        todo: mine.length - done,
-        late: late,
+        id: m.id, name: m.name, role: m.role, color: m.color,
+        total: mine.length, done: done, todo: mine.length - done, late: late,
         percent: mine.length ? Math.round(done / mine.length * 100) : 0
       };
     });
     team.sort(function (a, b) { return b.percent - a.percent || b.done - a.done; });
 
-    /* 近 7 天到货趋势 */
     var trend = [];
     for (var i = 6; i >= 0; i--) {
       var d = U.addDays(t0, -i);
@@ -197,18 +282,14 @@ window.Store = (function () {
       trend.push({ date: d, label: U.dateDot(d), count: cnt });
     }
 
-    /* 今日重点关注 */
     var focus = [];
     st.tasks.forEach(function (t) {
       var c = classify(t);
       if (c !== 'overdue' && c !== 'risk') return;
       var s = storeById(t.storeId);
       focus.push({
-        task: t,
-        store: s,
-        late: c === 'overdue',
-        owner: memberById(t.assigneeId),
-        days: U.diffDays(t0, t.dueDate)
+        task: t, store: s, late: c === 'overdue',
+        owner: memberById(t.assigneeId), days: U.diffDays(t0, t.dueDate)
       });
     });
     focus.sort(function (a, b) {
@@ -223,7 +304,6 @@ window.Store = (function () {
       building: st.stores.length - opened,
       riskStores: riskStores,
       attentionStores: attentionStores,
-      progressed: st.stores.length ? Math.round((opened + 0) / st.stores.length * 1000) / 10 : 0,
       taskCounts: taskCounts,
       stageCounts: stageCounts,
       todayTasks: todayTasks,
@@ -235,7 +315,7 @@ window.Store = (function () {
     };
   }
 
-  /* ---------------- 预警（实时推导，不落库） ---------------- */
+  /* ================= 预警 ================= */
 
   function alerts() {
     var t0 = U.today();
@@ -243,7 +323,7 @@ window.Store = (function () {
     var list = [];
     var seen = {};
 
-    function push(a) {
+    function addAlert(a) {
       if (seen[a.id]) return;
       seen[a.id] = true;
       a.read = state.alertsRead.indexOf(a.id) >= 0;
@@ -259,62 +339,45 @@ window.Store = (function () {
       var d = U.diffDays(t0, t.dueDate);
 
       if (c === 'overdue') {
-        push({
-          id: 'late-' + t.id,
-          level: 'high',
-          type: '任务逾期',
+        addAlert({
+          id: 'late-' + t.id, level: 'high', type: '任务逾期',
           title: storeName + ' · ' + t.title,
           desc: '已逾期 ' + Math.abs(d) + ' 天，原定 ' + U.monthDay(t.dueDate) + ' 完成',
-          owner: owner ? owner.name : '未指派',
-          storeId: t.storeId,
-          taskId: t.id
+          owner: owner ? owner.name : '未指派', storeId: t.storeId, taskId: t.id
         });
       } else if (d >= 0 && d <= warnDays) {
-        push({
-          id: 'soon-' + t.id,
-          level: 'warn',
-          type: '即将到期',
+        addAlert({
+          id: 'soon-' + t.id, level: 'warn', type: '即将到期',
           title: storeName + ' · ' + t.title,
           desc: '还有 ' + d + ' 天到期（' + U.monthDay(t.dueDate) + '）',
-          owner: owner ? owner.name : '未指派',
-          storeId: t.storeId,
-          taskId: t.id
+          owner: owner ? owner.name : '未指派', storeId: t.storeId, taskId: t.id
         });
       }
     });
 
     state.stores.forEach(function (s) {
       if (s.risk === 'high' || s.risk === 'overdue') {
-        push({
-          id: 'risk-' + s.id,
-          level: 'high',
-          type: '门店风险',
+        addAlert({
+          id: 'risk-' + s.id, level: 'high', type: '门店风险',
           title: s.name,
           desc: '风险等级：' + C.RISKS[s.risk].label + '，进度 ' + s.progress + '%，开业日 ' + U.monthDay(s.openDate),
-          owner: (memberById(s.ownerId) || {}).name || '未指派',
-          storeId: s.id
+          owner: (memberById(s.ownerId) || {}).name || '未指派', storeId: s.id
         });
       } else if (s.risk === 'attention') {
-        push({
-          id: 'watch-' + s.id,
-          level: 'warn',
-          type: '门店关注',
+        addAlert({
+          id: 'watch-' + s.id, level: 'warn', type: '门店关注',
           title: s.name,
           desc: '进度 ' + s.progress + '%，距离计划开业 ' + U.diffDays(t0, s.openDate) + ' 天',
-          owner: (memberById(s.ownerId) || {}).name || '未指派',
-          storeId: s.id
+          owner: (memberById(s.ownerId) || {}).name || '未指派', storeId: s.id
         });
       }
 
       if (s.stage !== '已开业' && s.openDate < t0) {
-        push({
-          id: 'miss-' + s.id,
-          level: 'danger',
-          type: '开业延期',
+        addAlert({
+          id: 'miss-' + s.id, level: 'danger', type: '开业延期',
           title: s.name,
           desc: '计划开业日已过 ' + U.diffDays(s.openDate, t0) + ' 天，仍未开业',
-          owner: (memberById(s.ownerId) || {}).name || '未指派',
-          storeId: s.id
+          owner: (memberById(s.ownerId) || {}).name || '未指派', storeId: s.id
         });
       }
     });
@@ -333,7 +396,7 @@ window.Store = (function () {
     return n;
   }
 
-  /* ---------------- 门店 CRUD ---------------- */
+  /* ================= 门店 CRUD ================= */
 
   function addStore(data) {
     var t0 = U.today();
@@ -351,13 +414,14 @@ window.Store = (function () {
       createdAt: t0
     };
     state.stores.unshift(store);
+    push('stores', store);
 
-    /* 自动按模板派发标准任务 */
     if (data.autoTasks !== false) {
       var roleToId = {};
       state.members.forEach(function (m) { roleToId[m.role] = m.id; });
+      var created = [];
       C.TASK_TEMPLATES.forEach(function (tpl, i) {
-        state.tasks.push({
+        var t = {
           id: U.uid('task'),
           storeId: store.id,
           title: tpl.title,
@@ -368,11 +432,14 @@ window.Store = (function () {
           priority: 'normal',
           remark: '',
           createdAt: t0
-        });
+        };
+        state.tasks.push(t);
+        created.push(t);
       });
+      pushMany('tasks', created);
     }
 
-    save();
+    cacheLocal();
     return store;
   }
 
@@ -381,18 +448,29 @@ window.Store = (function () {
     if (!s) return null;
     Object.keys(patch).forEach(function (k) { s[k] = patch[k]; });
     if (patch.progress != null) s.progress = U.clamp(Number(patch.progress) || 0, 0, 100);
-    save();
+    push('stores', s);
+    cacheLocal();
     return s;
   }
 
   function removeStore(id) {
+    var taskIds = state.tasks.filter(function (t) { return t.storeId === id; })
+      .map(function (t) { return t.id; });
+    var arrIds = state.arrivals.filter(function (a) { return a.storeId === id; })
+      .map(function (a) { return a.id; });
+
     state.stores = state.stores.filter(function (s) { return s.id !== id; });
     state.tasks = state.tasks.filter(function (t) { return t.storeId !== id; });
     state.arrivals = state.arrivals.filter(function (a) { return a.storeId !== id; });
-    save();
+
+    drop('stores', id);
+    taskIds.forEach(function (tid) { drop('tasks', tid); });
+    arrIds.forEach(function (aid) { drop('arrivals', aid); });
+
+    cacheLocal();
   }
 
-  /* ---------------- 任务 CRUD ---------------- */
+  /* ================= 任务 CRUD ================= */
 
   function addTask(data) {
     var t = {
@@ -408,7 +486,8 @@ window.Store = (function () {
       createdAt: U.today()
     };
     state.tasks.unshift(t);
-    save();
+    push('tasks', t);
+    cacheLocal();
     return t;
   }
 
@@ -417,15 +496,13 @@ window.Store = (function () {
     if (!t) return null;
     Object.keys(patch).forEach(function (k) { t[k] = patch[k]; });
 
-    /* 完成时顺手把门店进度往上推一点 */
-    if (patch.status === 'done') {
-      syncStoreStage(t.storeId);
-    }
-    save();
+    if (patch.status === 'done') syncStoreStage(t.storeId);
+
+    push('tasks', t);
+    cacheLocal();
     return t;
   }
 
-  /* 门店某阶段任务全部完成 → 建议推进阶段（不自动改，只更新进度） */
   function syncStoreStage(storeId) {
     var s = storeById(storeId);
     if (!s) return;
@@ -434,14 +511,16 @@ window.Store = (function () {
     var done = mine.filter(function (t) { return t.status === 'done'; }).length;
     var p = Math.round(done / mine.length * 100);
     s.progress = U.clamp(p, s.progress > p ? s.progress : p, 100);
+    push('stores', s);
   }
 
   function removeTask(id) {
     state.tasks = state.tasks.filter(function (t) { return t.id !== id; });
-    save();
+    drop('tasks', id);
+    cacheLocal();
   }
 
-  /* ---------------- 成员 CRUD ---------------- */
+  /* ================= 成员 CRUD ================= */
 
   function addMember(data) {
     var m = {
@@ -451,7 +530,8 @@ window.Store = (function () {
       color: data.color || '#3f6bf5'
     };
     state.members.push(m);
-    save();
+    push('members', m);
+    cacheLocal();
     return m;
   }
 
@@ -459,20 +539,22 @@ window.Store = (function () {
     var m = memberById(id);
     if (!m) return null;
     Object.keys(patch).forEach(function (k) { m[k] = patch[k]; });
-    save();
+    push('members', m);
+    cacheLocal();
     return m;
   }
 
   function removeMember(id) {
     state.members = state.members.filter(function (m) { return m.id !== id; });
-    save();
+    drop('members', id);
+    cacheLocal();
   }
 
   function memberTaskCount(id) {
     return state.tasks.filter(function (t) { return t.assigneeId === id; }).length;
   }
 
-  /* ---------------- 到货 CRUD ---------------- */
+  /* ================= 到货 CRUD ================= */
 
   function addArrival(data) {
     var a = {
@@ -484,16 +566,19 @@ window.Store = (function () {
       status: data.status || 'pending'
     };
     state.arrivals.push(a);
-    save();
+    push('arrivals', a);
+    cacheLocal();
     return a;
   }
 
   function updateArrival(id, patch) {
     for (var i = 0; i < state.arrivals.length; i++) {
       if (state.arrivals[i].id === id) {
-        Object.keys(patch).forEach(function (k) { state.arrivals[i][k] = patch[k]; });
-        save();
-        return state.arrivals[i];
+        var target = state.arrivals[i];
+        Object.keys(patch).forEach(function (k) { target[k] = patch[k]; });
+        push('arrivals', target);
+        cacheLocal();
+        return target;
       }
     }
     return null;
@@ -501,26 +586,33 @@ window.Store = (function () {
 
   function removeArrival(id) {
     state.arrivals = state.arrivals.filter(function (a) { return a.id !== id; });
-    save();
+    drop('arrivals', id);
+    cacheLocal();
   }
 
-  /* ---------------- 设置 / 导入导出 ---------------- */
+  /* ================= 设置 / 导入导出 ================= */
 
   function setSetting(key, value) {
     state.settings[key] = value;
-    save();
+    pushSettings();
+    cacheLocal();
+  }
+
+  function saveAll() {
+    pushSettings();
+    cacheLocal();
   }
 
   function markAlertRead(id) {
     if (state.alertsRead.indexOf(id) < 0) state.alertsRead.push(id);
-    save(true);
+    pushSettings();
   }
 
   function markAllAlertsRead() {
     alerts().forEach(function (a) {
       if (state.alertsRead.indexOf(a.id) < 0) state.alertsRead.push(a.id);
     });
-    save(true);
+    pushSettings();
   }
 
   function exportJSON() {
@@ -545,30 +637,30 @@ window.Store = (function () {
       throw new Error('文件格式不对，缺少 stores / tasks 字段');
     }
     state = normalized(data);
-    save(true);
-    listeners.forEach(function (fn) { fn(state); });
-    return state;
-  }
-
-  function resetData() {
-    state = window.Seed();
-    save();
+    cacheLocal();
+    return window.Cloud.importAll(state).then(function () {
+      listeners.forEach(function (fn) { fn(state); });
+      return state;
+    });
   }
 
   function storageBytes() {
     try {
-      var raw = localStorage.getItem(KEY) || '';
-      return new Blob([raw]).size;
-    } catch (e) {
-      return 0;
-    }
+      return new Blob([localStorage.getItem(KEY) || '']).size;
+    } catch (e) { return 0; }
   }
+
+  function onChange(fn) { listeners.push(fn); }
 
   return {
     load: load,
-    save: save,
     onChange: onChange,
     getState: getState,
+    isOnline: isOnline,
+    getLastError: getLastError,
+    hasLocalData: hasLocalData,
+    startAutoSync: startAutoSync,
+    stopAutoSync: stopAutoSync,
     storeById: storeById,
     memberById: memberById,
     taskById: taskById,
@@ -591,12 +683,12 @@ window.Store = (function () {
     updateArrival: updateArrival,
     removeArrival: removeArrival,
     setSetting: setSetting,
+    saveAll: saveAll,
     markAlertRead: markAlertRead,
     markAllAlertsRead: markAllAlertsRead,
     exportJSON: exportJSON,
     downloadJSON: downloadJSON,
     importJSON: importJSON,
-    resetData: resetData,
     storageBytes: storageBytes
   };
 })();
