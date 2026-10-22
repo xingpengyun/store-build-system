@@ -2,6 +2,8 @@
 
 一个纯前端的管理系统，零依赖、零构建，双击就能用。数据保存在浏览器本地（localStorage）。
 
+> 想托管到 GitHub、在公司与家里两台电脑之间同步？看 **[DEPLOY.md](DEPLOY.md)**。
+
 ## 怎么打开
 
 **方式一（推荐）**：双击 `start-server.bat`
