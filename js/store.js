@@ -404,7 +404,7 @@ window.Store = (function () {
       id: U.uid('store'),
       name: (data.name || '未命名门店').trim(),
       province: data.province || '',
-      stage: data.stage || '筹备中',
+      stage: data.stage || '未出图',
       risk: data.risk || 'normal',
       progress: U.clamp(Number(data.progress) || 0, 0, 100),
       ownerId: data.ownerId || (state.members[0] || {}).id,
@@ -477,7 +477,7 @@ window.Store = (function () {
       id: U.uid('task'),
       storeId: data.storeId,
       title: (data.title || '未命名任务').trim(),
-      stage: data.stage || '筹备中',
+      stage: data.stage || '未出图',
       assigneeId: data.assigneeId || (state.members[0] || {}).id,
       dueDate: data.dueDate || U.addDays(U.today(), 7),
       status: data.status || 'pending',
@@ -643,11 +643,35 @@ window.Store = (function () {
     setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
   }
 
+  /* 旧字段名 → 新字段名（导入老备份时自动转换） */
+  var STAGE_RENAME = { '筹备中': '未出图' };
+  var ROLE_RENAME = {
+    '门店统筹': '售前',
+    '广告/物料': '售前',
+    '采购/供应商': '售后',
+    '培训/人员': '售后',
+    '建店/系统': '接单',
+    '财务/行政': '接单',
+    '进度审核': '接单'
+  };
+
   function importJSON(text) {
     var data = JSON.parse(text);
     if (!data || !data.stores || !data.tasks) {
       throw new Error('文件格式不对，缺少 stores / tasks 字段');
     }
+
+    /* 兼容旧备份：阶段名、成员模块改名 */
+    (data.stores || []).forEach(function (s) {
+      if (STAGE_RENAME[s.stage]) s.stage = STAGE_RENAME[s.stage];
+    });
+    (data.tasks || []).forEach(function (t) {
+      if (STAGE_RENAME[t.stage]) t.stage = STAGE_RENAME[t.stage];
+    });
+    (data.members || []).forEach(function (m) {
+      if (ROLE_RENAME[m.role]) m.role = ROLE_RENAME[m.role];
+    });
+
     state = normalized(data);
     cacheLocal();
     return window.Cloud.importAll(state).then(function () {

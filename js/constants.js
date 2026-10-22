@@ -8,7 +8,7 @@ window.CONST = {
 
   /* ---- 门店筹建阶段（顺序即推进顺序，不要随意调换） ---- */
   STAGES: [
-    { key: '筹备中',    color: '#98a2b8', soft: '#eef1f6' },
+    { key: '未出图',    color: '#98a2b8', soft: '#eef1f6' },
     { key: '资料/建档', color: '#7a5af8', soft: '#f2effe' },
     { key: '施工/装修', color: '#f79009', soft: '#fef4e6' },
     { key: '物料/到货', color: '#3f6bf5', soft: '#edf2fe' },
@@ -36,7 +36,7 @@ window.CONST = {
   /* ---- 标准任务模板：每开一家店自动派这几件事 ----
      before = 距离开业日期提前多少天到期 */
   TASK_TEMPLATES: [
-    { title: '门店选址与商圈评估确认', stage: '筹备中',    before: 62, role: '售前' },
+    { title: '门店选址与商圈评估确认', stage: '未出图',    before: 62, role: '售前' },
     { title: '工商执照办理与资料建档', stage: '资料/建档', before: 50, role: '接单' },
     { title: '装修施工与消防验收',     stage: '施工/装修', before: 32, role: '接单' },
     { title: '门头招牌与灯箱制作',     stage: '施工/装修', before: 24, role: '售前' },

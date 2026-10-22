@@ -107,7 +107,7 @@ window.Pages.stores = (function () {
       '<div class="field-row">' +
         '<div class="field"><label>当前阶段</label>' +
           '<select class="select" name="stage">' +
-            UI.options(C.STAGES.map(function (x) { return x.key; }), s.stage || '筹备中') +
+            UI.options(C.STAGES.map(function (x) { return x.key; }), s.stage || '未出图') +
           '</select>' +
         '</div>' +
         '<div class="field"><label>风险等级</label>' +

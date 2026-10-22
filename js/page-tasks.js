@@ -127,7 +127,7 @@ window.Pages.tasks = (function () {
           '<select class="select" name="storeId">' + UI.options(stores, t.storeId || '', 'id', 'name') + '</select>' +
         '</div>' +
         '<div class="field"><label>所属阶段</label>' +
-          '<select class="select" name="stage">' + UI.options(C.STAGES.map(function (x) { return x.key; }), t.stage || '筹备中') + '</select>' +
+          '<select class="select" name="stage">' + UI.options(C.STAGES.map(function (x) { return x.key; }), t.stage || '未出图') + '</select>' +
         '</div>' +
       '</div>' +
       '<div class="field-row">' +

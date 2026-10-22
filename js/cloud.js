@@ -89,7 +89,7 @@ window.Cloud = (function () {
           id: s.id,
           name: s.name,
           province: s.province || '',
-          stage: s.stage || '筹备中',
+          stage: s.stage || '未出图',
           risk: s.risk || 'normal',
           progress: Number(s.progress) || 0,
           manager_id: s.ownerId || '',
