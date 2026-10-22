@@ -61,8 +61,9 @@ window.Utils = (function () {
 
   function greeting() {
     var h = new Date().getHours();
-    if (h < 6) return '凌晨好';
-    if (h < 11) return '早上好';
+    if (h < 5) return '凌晨好';
+    if (h < 8) return '早上好';
+    if (h < 11) return '上午好';
     if (h < 13) return '中午好';
     if (h < 18) return '下午好';
     return '晚上好';

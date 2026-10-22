@@ -167,14 +167,14 @@ window.Seed = function () {
   var settings = {
     brand: '门店筹建管理系统',
     slogan: '让每一家门店，按时开业！',
-    teamName: '团队',
+    teamName: '阿蛮团队',
     weatherTemp: 26,
     weatherText: '多云',
     warnDays: 3            /* 距到期 N 天内算「即将到期」 */
   };
 
   return {
-    meta: { version: 1, createdAt: new Date().toISOString() },
+    meta: { version: 2, createdAt: new Date().toISOString() },
     settings: settings,
     members: members,
     stores: stores,

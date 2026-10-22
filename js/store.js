@@ -50,6 +50,14 @@ window.Store = (function () {
     if (!data.settings.brand) data.settings.brand = '门店筹建管理系统';
     if (!data.settings.slogan) data.settings.slogan = '让每一家门店，按时开业！';
     if (data.settings.warnDays == null) data.settings.warnDays = 3;
+    if (!data.settings.teamName) data.settings.teamName = '阿蛮团队';
+
+    /* v1 → v2：默认团队称呼由「团队」改为「阿蛮团队」 */
+    data.meta = data.meta || {};
+    if ((data.meta.version || 1) < 2) {
+      if (data.settings.teamName === '团队') data.settings.teamName = '阿蛮团队';
+      data.meta.version = 2;
+    }
     return data;
   }
 

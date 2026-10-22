@@ -183,7 +183,7 @@ window.Pages.home = (function () {
     '<section class="hero fade-up">' +
       '<div class="hero-icon">🏪</div>' +
       '<div class="hero-main">' +
-        '<h2>' + U.greeting() + '，' + U.esc(set.teamName || '团队') + '！</h2>' +
+        '<h2>' + U.greeting() + '，' + U.esc(set.teamName || '阿蛮团队') + '！</h2>' +
         '<p>今天有 <b>' + st.todayTasks + '</b> 项任务需要处理，' +
            '<b class="warn">' + st.riskStores + '</b> 家门店存在风险，本周共 ' +
            '<b>' + st.weekTasks + '</b> 项待推进。</p>' +
