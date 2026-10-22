@@ -132,7 +132,7 @@ window.Pages.stores = (function () {
       '</div>' +
       (isNew
         ? '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);margin-top:4px">' +
-            '<input type="checkbox" name="autoTasks" checked /> 自动派发 ' + C.TASK_TEMPLATES.length + ' 条标准筹建任务' +
+            '<input type="checkbox" name="autoTasks" /> 顺便自动派发 ' + C.TASK_TEMPLATES.length + ' 条标准筹建任务（不需要就留空，任务自己建）' +
           '</label>'
         : '') +
     '</form>';
