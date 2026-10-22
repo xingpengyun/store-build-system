@@ -36,13 +36,13 @@ window.CONST = {
   /* ---- 标准任务模板：每开一家店自动派这几件事 ----
      before = 距离开业日期提前多少天到期 */
   TASK_TEMPLATES: [
-    { title: '门店选址与商圈评估确认', stage: '筹备中',    before: 62, role: '门店统筹' },
-    { title: '工商执照办理与资料建档', stage: '资料/建档', before: 50, role: '财务/行政' },
-    { title: '装修施工与消防验收',     stage: '施工/装修', before: 32, role: '建店/系统' },
-    { title: '门头招牌与灯箱制作',     stage: '施工/装修', before: 24, role: '广告/物料' },
-    { title: '首批物料到店清点',       stage: '物料/到货', before: 12, role: '采购/供应商' },
-    { title: '开业活动与人员到岗',     stage: '开业准备', before: 4,  role: '培训/人员' },
-    { title: '开业前整体巡检与验收',   stage: '开业准备', before: 2,  role: '进度审核' }
+    { title: '门店选址与商圈评估确认', stage: '筹备中',    before: 62, role: '售前' },
+    { title: '工商执照办理与资料建档', stage: '资料/建档', before: 50, role: '接单' },
+    { title: '装修施工与消防验收',     stage: '施工/装修', before: 32, role: '接单' },
+    { title: '门头招牌与灯箱制作',     stage: '施工/装修', before: 24, role: '售前' },
+    { title: '首批物料到店清点',       stage: '物料/到货', before: 12, role: '售后' },
+    { title: '开业活动与人员到岗',     stage: '开业准备', before: 4,  role: '售后' },
+    { title: '开业前整体巡检与验收',   stage: '开业准备', before: 2,  role: '接单' }
   ],
 
   /* ---- 到货物料清单 ---- */

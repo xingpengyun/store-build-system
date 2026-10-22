@@ -11,7 +11,7 @@ window.Pages.team = (function () {
   var C = window.CONST;
 
   var COLORS = ['#3f6bf5', '#7a5af8', '#f79009', '#17b26a', '#06aed4', '#f04438', '#ef7cab', '#0d9488'];
-  var ROLES = ['门店统筹', '采购/供应商', '广告/物料', '培训/人员', '建店/系统', '财务/行政', '进度审核'];
+  var ROLES = ['售前', '售后', '接单'];
 
   function memberStats() {
     var tasks = S.getState().tasks;
@@ -101,7 +101,7 @@ window.Pages.team = (function () {
             '<div class="field"><label>姓名 <span class="req">*</span></label>' +
               '<input class="input" name="name" value="' + U.esc(m.name || '') + '" placeholder="例如：张三" /></div>' +
             '<div class="field"><label>负责模块</label>' +
-              '<input class="input" name="role" list="roleList" value="' + U.esc(m.role || '') + '" placeholder="例如：采购/供应商" />' +
+              '<input class="input" name="role" list="roleList" value="' + U.esc(m.role || '') + '" placeholder="例如：售前" />' +
               '<datalist id="roleList">' + ROLES.map(function (r) { return '<option value="' + r + '"></option>'; }).join('') + '</datalist>' +
             '</div>' +
           '</div>' +
@@ -131,7 +131,7 @@ window.Pages.team = (function () {
           var checked = rootEl.querySelector('input[name="color"]:checked');
           var payload = {
             name: name,
-            role: UI.formValue(rootEl, 'role') || '门店统筹',
+            role: UI.formValue(rootEl, 'role') || '售前',
             color: checked ? checked.value : COLORS[0]
           };
           if (isNew) {
@@ -162,8 +162,8 @@ window.Pages.team = (function () {
           '<div><div class="mc-name">' + U.esc(m.name) + '</div>' +
             '<div class="mc-role">' + U.esc(m.role) + '</div></div>' +
           '<div class="mc-tools">' +
-            '<span class="tlink" data-act="edit" data-id="' + m.id + '">' + UI.icon('edit') + '</span>' +
-            '<span class="tlink danger" data-act="del" data-id="' + m.id + '">' + UI.icon('trash') + '</span>' +
+            '<span class="tlink" data-act="edit" data-id="' + m.id + '">编辑</span>' +
+            '<span class="tlink danger" data-act="del" data-id="' + m.id + '">删除</span>' +
           '</div>' +
         '</div>' +
         '<div class="mc-stats">' +
@@ -232,9 +232,15 @@ window.Pages.team = (function () {
           danger: true,
           okText: '移除',
           onOk: function () {
-            S.removeMember(id);
-            UI.toast('成员已移除', 'success');
-            App.refresh();
+            UI.loading('正在删除…');
+            S.removeMember(id).then(function () {
+              UI.hideLoading();
+              UI.toast('成员已移除', 'success');
+              App.refresh();
+            }).catch(function (e) {
+              UI.hideLoading();
+              UI.toast('删除失败：' + (e.message || e), 'error');
+            });
           }
         });
         return;

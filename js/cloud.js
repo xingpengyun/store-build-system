@@ -222,8 +222,12 @@ window.Cloud = (function () {
   }
 
   function remove(table, id) {
-    return api().database.from(table).delete().eq('id', id).then(function (r) {
+    return api().database.from(table).delete().eq('id', id).select().then(function (r) {
       if (r.error) throw new Error(r.error.message || '删除失败');
+      var rows = Array.isArray(r.data) ? r.data : [];
+      if (rows.length === 0) {
+        throw new Error('云端没有删除任何记录，可能是权限不足或记录已不存在');
+      }
       return true;
     });
   }

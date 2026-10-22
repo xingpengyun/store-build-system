@@ -544,10 +544,22 @@ window.Store = (function () {
     return m;
   }
 
+  /* 返回 Promise：云端删成功后才从本地移除，避免被自动同步拉回来 */
   function removeMember(id) {
-    state.members = state.members.filter(function (m) { return m.id !== id; });
-    drop('members', id);
-    cacheLocal();
+    return window.Cloud.remove('members', id).then(function () {
+      state.members = state.members.filter(function (m) { return m.id !== id; });
+
+      /* 顺手把该成员名下的任务改成未指派 */
+      state.tasks.forEach(function (t) {
+        if (t.assigneeId === id) {
+          t.assigneeId = '';
+          push('tasks', t);
+        }
+      });
+
+      cacheLocal();
+      return true;
+    });
   }
 
   function memberTaskCount(id) {
