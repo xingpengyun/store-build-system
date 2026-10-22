@@ -1,5 +1,19 @@
 # 门店筹建管理系统 · 项目长期笔记
 
+## ⚠️ 2026-10-22 架构变更：已升级为云端多人协作版
+
+- 数据不再存 localStorage，改为**云端 PostgreSQL**（WorkBuddy 云服务）
+- `applicationId`：`wbapp_JwWrDm3Xy5kxdaiR11r7FM`
+- 线上地址：`https://store-build-system.app.workbuddy.link/?sharecode=ZVHDE3E4G6`
+- 5 张表：`stores` / `tasks` / `members` / `arrivals` / `app_settings`
+- 新增文件：`js/cloud.js`（云端层）、`js/login.js` + `css/login.css`（登录）、`js/vendor/cloud-sdk.js`（本地化的云 SDK，不走 CDN）
+- `js/store.js` 已重写：**云端优先**，localStorage 降级为离线缓存 + 首次迁移来源
+- 登录开关：`js/cloud.js` 顶部 `AUTH_MODE`，`'simple'`（admin/123）或 `'phone'`（短信验证码）
+- 权限模型：5 张表都是「团队共享」，策略 `FOR ALL TO authenticated, anon USING (true)`
+
+> 下方「硬约束」第 3 条（数据只能落 localStorage）**已作废**，其余条目仍然适用。
+> 「数据模型要点」仍然有效，只是存储位置换成了云端表。
+
 ## 定位
 纯前端单页管理工具，仿用户提供的截图（深色侧边栏 + 浅色卡片式仪表盘）。
 用户会持续迭代改，改动要小步、可回滚、保持文件职责清晰。

@@ -1,10 +1,52 @@
 # 门店筹建管理系统
 
+## 当前版本：云端多人协作版
+
+数据存在云端数据库，团队成员共享同一份，换电脑、清缓存都不会丢。
+
+- **在线地址**：https://store-build-system.app.workbuddy.link/?sharecode=ZVHDE3E4G6
+- **登录**：账号 `admin`，密码 `123`（临时方案，见下方「登录方式」）
+
+### 架构
+
+| 层 | 说明 |
+|---|---|
+| 前端 | 纯静态 HTML/CSS/JS，无构建、无 npm 依赖；云 SDK 已本地化到 `js/vendor/cloud-sdk.js` |
+| 后端 | WorkBuddy 云服务，PostgreSQL + 行级权限（RLS） |
+| 数据表 | `stores` / `tasks` / `members` / `arrivals` / `app_settings` |
+| 数据流 | 启动拉全量到内存 → 改动先用乐观更新刷界面，再异步推云端 → 每 45 秒轮询他人改动 |
+
+### 关键文件
+
+- `js/cloud.js` — 云端接入（客户端初始化、登录、增删改、字段映射）。**顶部 `AUTH_MODE` 控制登录方式**
+- `js/login.js` — 登录页（账号密码 / 手机验证码两套）
+- `js/store.js` — 业务数据层（云端优先，localStorage 仅作离线缓存）
+- `js/constants.js` — 阶段、风险、任务模板等业务常量
+
+### 登录方式
+
+`js/cloud.js` 第 12 行附近：
+
+```js
+var AUTH_MODE = 'simple';   // 'simple' = 账号密码 admin/123
+                            // 'phone'  = 手机号 + 短信验证码
+```
+
+改成 `'phone'` 就切回手机验证码登录，两套代码都在。
+
+> ⚠️ `simple` 模式下数据库对匿名访问开放，拿到链接的人无需密码即可读写数据，仅适合内部临时使用。
+
+---
+
+## 早期单机版说明（已不适用，保留备查）
+
+以下内容描述的是数据存 localStorage 的旧版本，迁到云端后已不再是主流程。
+
 一个纯前端的管理系统，零依赖、零构建，双击就能用。数据保存在浏览器本地（localStorage）。
 
 > 想托管到 GitHub、在公司与家里两台电脑之间同步？看 **[DEPLOY.md](DEPLOY.md)**。
 
-## 怎么打开
+## 怎么打开（旧版）
 
 **方式一（推荐）**：双击 `start-server.bat`
 会启动一个小服务器并自动打开 http://127.0.0.1:8765/ 。这种方式数据保存最稳定。
