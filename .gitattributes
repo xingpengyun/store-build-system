@@ -1,0 +1,5 @@
+# 统一换行符，避免两台电脑来回提交产生噪音
+* text=auto eol=lf
+*.bat text eol=crlf
+*.png binary
+*.jpg binary
