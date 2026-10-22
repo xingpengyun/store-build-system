@@ -265,11 +265,12 @@ window.App = (function () {
   function logout() {
     window.UI.confirm({
       title: '退出登录',
-      text: '退出后需要重新用手机号验证码登录。',
+      text: '退出后需要重新输入账号密码。',
       okText: '退出',
       onOk: function () {
         S.stopAutoSync();
-        window.Cloud.logout().then(function () {
+        try { window.Cloud.simpleLogout(); } catch (e) {}
+        window.Cloud.logout().catch(function () {}).then(function () {
           location.hash = '';
           location.reload();
         });
@@ -283,6 +284,21 @@ window.App = (function () {
       return;
     }
 
+    /* ---------- 简单账号密码模式 ---------- */
+    if (window.Cloud.authMode !== 'phone') {
+      if (window.Cloud.isSimpleAuthed()) {
+        currentUser = { name: 'admin' };
+        startApp();
+        return;
+      }
+      window.Login.show(function (user) {
+        currentUser = user || { name: 'admin' };
+        startApp();
+      });
+      return;
+    }
+
+    /* ---------- 手机验证码模式 ---------- */
     window.Cloud.currentSession().then(function (session) {
       if (!session) {
         window.Login.show(function (user) {

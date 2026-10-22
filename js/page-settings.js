@@ -154,18 +154,39 @@ window.Pages.settings = (function () {
         if (!f) return;
         var reader = new FileReader();
         reader.onload = function () {
-          UI.loading('正在导入到云端…');
-          S.importJSON(String(reader.result))
-            .then(function () {
-              UI.hideLoading();
-              UI.toast('导入成功，云端已更新', 'success');
-              setTimeout(function () { location.reload(); }, 600);
-            })
-            .catch(function (err) {
-              UI.hideLoading();
-              UI.toast('导入失败：' + (err.message || err), 'error');
-            });
+          var text = String(reader.result);
           file.value = '';
+
+          var parsed;
+          try {
+            parsed = JSON.parse(text);
+            if (!parsed || !parsed.stores) throw new Error('文件里没有门店数据');
+          } catch (e2) {
+            UI.toast('文件格式不对：' + (e2.message || e2), 'error');
+            return;
+          }
+
+          UI.confirm({
+            title: '导入备份',
+            text: '这个文件里有 <b>' + parsed.stores.length + '</b> 家门店、' +
+                  '<b>' + ((parsed.tasks || []).length) + '</b> 条任务。',
+            warn: '导入会先清空云端现有数据，再用这个文件替换。所有同事看到的内容都会变。',
+            okText: '确认导入',
+            onOk: function () {
+              UI.loading('正在导入到云端…');
+              window.Cloud.wipeAll()
+                .then(function () { return S.importJSON(text); })
+                .then(function () {
+                  UI.hideLoading();
+                  UI.toast('导入成功，云端已更新', 'success');
+                  setTimeout(function () { location.reload(); }, 700);
+                })
+                .catch(function (err) {
+                  UI.hideLoading();
+                  UI.toast('导入失败：' + (err.message || err), 'error');
+                });
+            }
+          });
         };
         reader.readAsText(f, 'utf-8');
       });

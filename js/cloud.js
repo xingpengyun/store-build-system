@@ -14,6 +14,31 @@ window.Cloud = (function () {
 
   var client = null;
 
+  /* ================= 登录模式 =================
+     'simple' = 账号密码（admin / 123），临时过渡用
+     'phone'  = 手机号 + 短信验证码（正式）
+     改这里一行就能切回来 */
+  var AUTH_MODE = 'simple';
+  var SIMPLE_USER = 'admin';
+  var SIMPLE_PASS = '123';
+  var AUTH_KEY = 'sbs.auth';
+
+  function simpleLogin(user, pass) {
+    if (String(user).trim() === SIMPLE_USER && String(pass) === SIMPLE_PASS) {
+      try { localStorage.setItem(AUTH_KEY, '1'); } catch (e) {}
+      return true;
+    }
+    return false;
+  }
+
+  function isSimpleAuthed() {
+    try { return localStorage.getItem(AUTH_KEY) === '1'; } catch (e) { return false; }
+  }
+
+  function simpleLogout() {
+    try { localStorage.removeItem(AUTH_KEY); } catch (e) {}
+  }
+
   function api() {
     if (!client) {
       if (!window.WorkBuddyCloud) throw new Error('云服务 SDK 未加载');
@@ -271,6 +296,10 @@ window.Cloud = (function () {
 
   return {
     config: CFG,
+    authMode: AUTH_MODE,
+    simpleLogin: simpleLogin,
+    isSimpleAuthed: isSimpleAuthed,
+    simpleLogout: simpleLogout,
     currentSession: currentSession,
     sendCode: sendCode,
     verifyCode: verifyCode,
