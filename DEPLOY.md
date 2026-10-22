@@ -56,6 +56,7 @@ https://github.com/你的用户名/shop-build-system.git
 
 | 报错 | 原因 | 解决 |
 |---|---|---|
+| `'git' 不是内部或外部命令` | 电脑没装 Git，或装了但没加进系统 PATH | 装 Git for Windows：https://git-scm.com/download/win 。项目里的 bat 已经内置了自动查找，直接双击即可 |
 | `remote: Repository not found` | 地址错，或没登录 / 没权限 | 检查地址拼写；重新登录 |
 | `failed to push some refs` | 建仓库时勾了 README | 在 GitHub 上删掉仓库重建（别勾任何初始化选项） |
 | 弹窗一闪而过没登录 | 凭据管理器异常 | 打开「凭据管理器 → Windows 凭据」，删掉 git:https://github.com，再跑一次 |
