@@ -1100,17 +1100,49 @@ window.Store = (function () {
     return false;
   }
 
-  /* 参与进度的阶段序列：去掉结束类阶段（全被去掉时退回全部，至少还能算） */
+  /* 进度怎么分格：返回 { flow: 参与进度的筹建阶段, endKeys: 不计入的阶段 }
+     两条规则叠加，改名了也不容易算错：
+       1) 名字命中 CONST.PROGRESS_END_STAGES（已开业 / 闭店 …）
+       2) 排在「开业」那一格后面的阶段 —— 门店已经开始营业了，后面都是收尾记录，
+          不该再挤掉「准备开业」的 100%（否则 6 个筹建 + 已开业 + 闭店 = 6/8 = 75%） */
+  function progressPlan() {
+    var list = (C.STAGES || []).slice();
+    var names = C.PROGRESS_END_STAGES || [];
+
+    function byName(k) {
+      for (var i = 0; i < names.length; i++) if (names[i] === k) return true;
+      return false;
+    }
+
+    /* 「开业」那一格：最后一个名字里带「开业」、且不属于结束名单的阶段（准备开业 / 开业准备） */
+    var openIdx = -1;
+    for (var i = 0; i < list.length; i++) {
+      if (byName(list[i].key)) continue;
+      if (String(list[i].key).indexOf('开业') >= 0) openIdx = i;
+    }
+
+    var flow = [], endKeys = {};
+    for (var j = 0; j < list.length; j++) {
+      var k = list[j].key;
+      if (byName(k) || (openIdx >= 0 && j > openIdx)) endKeys[k] = 1;
+      else flow.push(list[j]);
+    }
+
+    /* 全被排除掉（阶段表只剩已开业 / 闭店）：退回全部，至少还能算 */
+    if (!flow.length) return { flow: list.slice(), endKeys: {} };
+    return { flow: flow, endKeys: endKeys };
+  }
+
+  /* 参与进度的阶段序列 */
   function progressStages() {
-    var list = C.STAGES || [];
-    var flow = list.filter(function (x) { return !isEndStage(x.key); });
-    return flow.length ? flow : list.slice();
+    return progressPlan().flow;
   }
 
   /* { pct, idx, total, at, ended, isEnd, label }
      idx = 停在第几个筹建阶段（从 1 开始），total = 筹建阶段总数 */
   function storeProgress(store) {
-    var flow = progressStages();
+    var plan = progressPlan();
+    var flow = plan.flow;
     var total = flow.length || 1;
     var at = store ? C.stageSplit(store.stage).base : '';
 
@@ -1119,7 +1151,7 @@ window.Store = (function () {
       if (flow[i].key === at) { pos = i; break; }
     }
 
-    var isEnd = !!at && isEndStage(at);
+    var isEnd = !!at && plan.endKeys[at] === 1;
     /* 停在结束类阶段（已开业 / 闭店）：筹建部分已经走完，100% */
     var idx = isEnd ? total : (pos < 0 ? 0 : pos + 1);
     var pct = Math.round(idx / total * 100);
@@ -1450,6 +1482,7 @@ window.Store = (function () {
     setStoreStage: setStoreStage,
     templateStageStat: templateStageStat,
     progressStages: progressStages,
+    progressPlan: progressPlan,
     isEndStage: isEndStage,
     storeProgress: storeProgress,
     progressTip: progressTip,
