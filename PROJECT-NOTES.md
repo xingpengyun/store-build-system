@@ -52,6 +52,17 @@
 - 带二级的阶段值（`已出图 / 未做首批`）按一级阶段算
 - 入口：`js/store.js` → `storeProgress()`（`pct / idx / total / at / ended / isEnd / label`）、`progressTip()`、`progressStages()`、`isEndStage()`
 
+## 2026-10-23 逾期口径：跟着门店开业日走，不手填截止日期
+
+- 每个阶段有「建议提前天数」`CONST.LEAD_DAYS`（如 广告物料 10、发货阶段 12、准备开业 4），没配的按 `LEAD_DAYS_DEFAULT`（30）
+- **建议完成日 = 门店计划开业日 − 提前天数**；**距开业天数 < 提前天数 且没完成 → 逾期**
+  - 例：门店 11-30 开业、广告物料提前 10 天 → 11-20 前要发出去；今天 11-21（剩 9 天）算逾期，今天 11-20 不算
+- 门店开业日一改，这家店所有任务截止日自动重算（`resyncTaskDates`）
+- 任务状态只有两类：未完成 / 已完成（「进行中」废弃，历史值读成未完成）
+- 筹建清单的筛选只剩 全部 / 逾期 / 风险 / 已完成；任务表列名改为「建议完成」，显示「建议日期 + 开业前 N 天 · 距开业 X 天」
+- 门店没填开业日时退回任务自己的 dueDate 判断（兼容老数据）
+- 入口：`js/store.js` → `leadDaysOf / suggestDateOf / daysLeftOf / suggestFor / classify`
+
 ## 数据模型要点
 - 门店 `stage` 只能取 `CONST.STAGES` 的 key；`risk` 只能取 `CONST.RISKS` 的 key
 - 任务 `status` 只有 `pending` / `doing` / `done` 三种

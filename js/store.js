@@ -482,14 +482,68 @@ window.Store = (function () {
     return null;
   }
 
+  /* ---------------- 建议完成日：跟着门店开业日走，不手填 ----------------
+     每个阶段有「建议提前 N 天」（C.LEAD_DAYS）：
+       建议完成日 = 门店计划开业日 - N
+       距开业天数 < N 且任务还没完成 → 逾期
+     例：11-30 开业、广告物料建议提前 10 天 → 11-20 前要发出去；
+         今天 11-21（距开业只剩 9 天）→ 逾期 1 天；今天 11-20 → 还没逾期。
+     门店开业日一改，所有任务的建议完成日自动跟着挪，不用逐条改。
+     ------------------------------------------------------------------ */
+
+  function leadDaysOf(task) {
+    var map = C.LEAD_DAYS || {};
+    var base = C.stageSplit(task && task.stage).base;
+    if (map[base] != null) return Number(map[base]);
+    return Number(C.LEAD_DAYS_DEFAULT || 30);
+  }
+
+  function storeOpenDate(task) {
+    var s = storeById(task && task.storeId);
+    return (s && s.openDate) || '';
+  }
+
+  /* 建议完成日（门店没填开业日时，退回任务自己的日期） */
+  function suggestDateOf(task) {
+    if (!task) return '';
+    var od = storeOpenDate(task);
+    if (!od) return task.dueDate || '';
+    return U.addDays(od, -leadDaysOf(task));
+  }
+
+  /* 距开业天数：正数=还没到，负数=已经过了；门店没开业日返回 null */
+  function daysLeftOf(task) {
+    var od = storeOpenDate(task);
+    if (!od) return null;
+    return U.diffDays(U.today(), od);
+  }
+
+  /* 给新建 / 改阶段的任务算一个默认截止日（仍然存 due_date，方便排序和云同步） */
+  function suggestFor(storeId, stage) {
+    var s = storeById(storeId);
+    if (!s || !s.openDate) return U.addDays(U.today(), 7);
+    return U.addDays(s.openDate, -leadDaysOf({ stage: stage }));
+  }
+
+  /* 任务状态只有两类：done（已完成）/ 其他（未完成）。
+     逾期的唯一口径 = 距开业不足该阶段的建议提前天数且没完成。 */
   function classify(task) {
     var t0 = U.today();
     if (task.status === 'done') return 'done';
-    if (task.dueDate && task.dueDate < t0) return 'overdue';
 
+    var left = daysLeftOf(task);
+    if (left != null) {
+      if (left < leadDaysOf(task)) return 'overdue';
+      var s2 = storeById(task.storeId);
+      if (s2 && (s2.risk === 'high' || s2.risk === 'overdue')) return 'risk';
+      return 'pending';
+    }
+
+    /* 门店没填开业日：退回任务自己的截止日期 */
+    if (task.dueDate && task.dueDate < t0) return 'overdue';
     var s = storeById(task.storeId);
     if (s && (s.risk === 'high' || s.risk === 'overdue')) return 'risk';
-    return task.status === 'doing' ? 'doing' : 'pending';
+    return 'pending';
   }
 
   function isLate(task) { return classify(task) === 'overdue'; }
@@ -524,12 +578,14 @@ window.Store = (function () {
 
     var todayTasks = st.tasks.filter(function (t) {
       if (t.status === 'done') return false;
-      return t.dueDate <= t0;
+      var d = suggestDateOf(t);
+      return !!d && d <= t0;
     }).length;
 
     var weekTasks = st.tasks.filter(function (t) {
       if (t.status === 'done') return false;
-      return U.diffDays(t0, t.dueDate) <= 7;
+      var d = suggestDateOf(t);
+      return !!d && U.diffDays(t0, d) <= 7;
     }).length;
 
     var arrivals7 = st.arrivals.filter(function (a) {
@@ -569,7 +625,11 @@ window.Store = (function () {
       var s = storeById(t.storeId);
       focus.push({
         task: t, store: s, late: c === 'overdue',
-        owner: memberById(t.assigneeId), days: U.diffDays(t0, t.dueDate)
+        owner: memberById(t.assigneeId),
+        due: suggestDateOf(t),        /* 建议完成日 */
+        days: U.diffDays(t0, suggestDateOf(t)),  /* 距建议完成日 */
+        left: daysLeftOf(t),          /* 距开业天数 */
+        lead: leadDaysOf(t)           /* 建议提前天数 */
       });
     });
     focus.sort(function (a, b) {
@@ -616,20 +676,26 @@ window.Store = (function () {
       var storeName = s ? s.name : '未知门店';
       var owner = memberById(t.assigneeId);
       var c = classify(t);
-      var d = U.diffDays(t0, t.dueDate);
+      var due = suggestDateOf(t);
+      var d = U.diffDays(t0, due);
+      var lead = leadDaysOf(t);
+      var left = daysLeftOf(t);
 
       if (c === 'overdue') {
         addAlert({
           id: 'late-' + t.id, level: 'high', type: '任务逾期',
           title: storeName + ' · ' + t.title,
-          desc: '已逾期 ' + Math.abs(d) + ' 天，原定 ' + U.monthDay(t.dueDate) + ' 完成',
+          desc: (left == null
+            ? '已逾期 ' + Math.abs(d) + ' 天（建议 ' + U.monthDay(due) + ' 完成）'
+            : '距开业只剩 ' + left + ' 天，建议提前 ' + lead + ' 天完成，已逾期 ' +
+              Math.abs(d) + ' 天（建议 ' + U.monthDay(due) + ' 前做完）'),
           owner: owner ? owner.name : '未指派', storeId: t.storeId, taskId: t.id
         });
       } else if (d >= 0 && d <= warnDays) {
         addAlert({
           id: 'soon-' + t.id, level: 'warn', type: '即将到期',
           title: storeName + ' · ' + t.title,
-          desc: '还有 ' + d + ' 天到期（' + U.monthDay(t.dueDate) + '）',
+          desc: '还有 ' + d + ' 天就到建议完成日（' + U.monthDay(due) + '，建议提前 ' + lead + ' 天）',
           owner: owner ? owner.name : '未指派', storeId: t.storeId, taskId: t.id
         });
       }
@@ -738,10 +804,14 @@ window.Store = (function () {
   function updateStore(id, patch) {
     var s = storeById(id);
     if (!s) return null;
+    var oldOpen = s.openDate;
     Object.keys(patch).forEach(function (k) { s[k] = patch[k]; });
     if (patch.progress != null) s.progress = U.clamp(Number(patch.progress) || 0, 0, 100);
     push('stores', s);
     cacheLocal();
+
+    /* 开业日变了：这家店的任务建议完成日全部重算 */
+    if (patch.openDate && patch.openDate !== oldOpen) resyncTaskDates(id);
     return s;
   }
 
@@ -779,8 +849,8 @@ window.Store = (function () {
       title: (data.title || '未命名任务').trim(),
       stage: data.stage || ((C.STAGES[0] || {}).key || '未出图'),
       assigneeId: data.assigneeId || (state.members[0] || {}).id,
-      dueDate: data.dueDate || U.addDays(U.today(), 7),
-      status: data.status || 'pending',
+      dueDate: data.dueDate || suggestFor(data.storeId, data.stage),
+      status: data.status === 'doing' ? 'pending' : (data.status || 'pending'),
       priority: data.priority || 'normal',
       remark: data.remark || '',
       createdAt: U.today()
@@ -794,10 +864,37 @@ window.Store = (function () {
   function updateTask(id, patch) {
     var t = taskById(id);
     if (!t) return null;
+
+    /* 「进行中」这套状态取消：一律按未处理算 */
+    if (patch.status === 'doing') patch.status = 'pending';
+
+    var stageChanged = patch.stage != null && patch.stage !== t.stage;
+    var storeChanged = patch.storeId != null && patch.storeId !== t.storeId;
     Object.keys(patch).forEach(function (k) { t[k] = patch[k]; });
+
+    /* 阶段 / 门店变了，截止日重算成「新门店开业日 - 该阶段提前天数」 */
+    if (stageChanged || storeChanged) {
+      t.dueDate = suggestFor(t.storeId, t.stage);
+    }
+
     push('tasks', t);
     cacheLocal();
     return t;
+  }
+
+  /* 门店开业日改了：这家店所有任务的截止日跟着挪（建议完成日 = 开业日 - 提前天数） */
+  function resyncTaskDates(storeId) {
+    var changed = [];
+    state.tasks.forEach(function (t) {
+      if (t.storeId !== storeId) return;
+      var due = suggestFor(storeId, t.stage);
+      if (due && t.dueDate !== due) { t.dueDate = due; changed.push(t); }
+    });
+    if (changed.length) {
+      pushMany('tasks', changed);
+      cacheLocal();
+    }
+    return changed.length;
   }
 
   /* 注：门店进度已改为按「阶段时间线」现算（storeProgress），
@@ -1483,6 +1580,11 @@ window.Store = (function () {
     templateStageStat: templateStageStat,
     progressStages: progressStages,
     progressPlan: progressPlan,
+    leadDaysOf: leadDaysOf,
+    suggestDateOf: suggestDateOf,
+    daysLeftOf: daysLeftOf,
+    suggestFor: suggestFor,
+    resyncTaskDates: resyncTaskDates,
     isEndStage: isEndStage,
     storeProgress: storeProgress,
     progressTip: progressTip,

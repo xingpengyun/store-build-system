@@ -304,7 +304,7 @@ window.Pages.stores = (function () {
         '<td>' + U.esc(t.title) + '</td>' +
         '<td>' + UI.stageBadge(t.stage) + '</td>' +
         '<td class="muted">' + U.esc(m ? m.name : '未指派') + '</td>' +
-        '<td class="mono muted">' + U.monthDay(t.dueDate) + '</td>' +
+        '<td class="mono muted">' + U.monthDay(S.suggestDateOf(t)) + '</td>' +
         '<td>' + UI.statusBadge(cls) + '</td>' +
       '</tr>';
     }).join('');

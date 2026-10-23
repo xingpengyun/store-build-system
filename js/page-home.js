@@ -188,8 +188,9 @@ window.Pages.home = (function () {
           (late ? '#f04438' : '#f79009') + '">' + UI.icon(late ? 'alert' : 'clock') + '</span>' +
         '<div class="focus-body">' +
           '<div class="focus-title">' + U.esc(f.store ? f.store.name : '') + ' · ' + U.esc(f.task.title) + '</div>' +
-          '<div class="focus-desc">预计到 ' + U.monthDay(f.task.dueDate) +
-            (late ? '（已逾期 ' + Math.abs(f.days) + ' 天）' : '（还剩 ' + f.days + ' 天）') + '</div>' +
+          '<div class="focus-desc">建议 ' + U.monthDay(f.due) + ' 前完成' +
+            (late ? '（已逾期 ' + Math.abs(f.days) + ' 天）' : '（还剩 ' + f.days + ' 天）') +
+            (f.left != null ? '　·　距开业 ' + f.left + ' 天，建议提前 ' + f.lead + ' 天' : '') + '</div>' +
         '</div>' +
         '<span class="focus-owner">' + U.esc(f.owner ? f.owner.name : '未指派') + '</span>' +
       '</div>';
@@ -199,8 +200,7 @@ window.Pages.home = (function () {
     var tc = st.taskCounts;
     var donutItems = [
       { name: '已完成', value: tc.done, color: '#17b26a' },
-      { name: '进行中', value: tc.doing, color: '#3f6bf5' },
-      { name: '待处理', value: tc.pending, color: '#98a2b8' },
+      { name: '未完成', value: tc.pending, color: '#98a2b8' },
       { name: '逾期', value: tc.overdue, color: '#f04438' },
       { name: '风险', value: tc.risk, color: '#f79009' }
     ];

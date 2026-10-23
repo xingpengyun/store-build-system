@@ -120,7 +120,7 @@ window.App = (function () {
       if (out.length >= 8) return;
       if (t.title.toLowerCase().indexOf(lower) >= 0) {
         var st = S.storeById(t.storeId);
-        out.push({ kind: 'task', id: t.id, label: t.title, sub: (st ? st.name : '—') + ' · ' + t.dueDate, type: '任务' });
+        out.push({ kind: 'task', id: t.id, label: t.title, sub: (st ? st.name : '—') + ' · 建议 ' + U.monthDay(S.suggestDateOf(t)), type: '任务' });
       }
     });
 

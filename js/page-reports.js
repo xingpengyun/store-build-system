@@ -58,8 +58,7 @@ window.Pages.reports = (function () {
     /* 任务状态环形 */
     var donutItems = [
       { name: '已完成', value: tc.done, color: '#17b26a' },
-      { name: '进行中', value: tc.doing, color: '#3f6bf5' },
-      { name: '待处理', value: tc.pending, color: '#98a2b8' },
+      { name: '未完成', value: tc.pending, color: '#98a2b8' },
       { name: '逾期', value: tc.overdue, color: '#f04438' },
       { name: '风险', value: tc.risk, color: '#f79009' }
     ];

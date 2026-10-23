@@ -44,7 +44,8 @@ window.Pages.team = (function () {
     tasks.sort(function (a, b) {
       var ca = S.classify(a), cb = S.classify(b);
       if ((ca === 'done') !== (cb === 'done')) return ca === 'done' ? 1 : -1;
-      return a.dueDate < b.dueDate ? -1 : 1;
+      var sa = S.suggestDateOf(a), sb = S.suggestDateOf(b);
+      return sa < sb ? -1 : 1;
     });
 
     var rows = tasks.map(function (t) {
@@ -52,7 +53,7 @@ window.Pages.team = (function () {
       return '<tr>' +
         '<td>' + U.esc(t.title) + '</td>' +
         '<td class="muted">' + U.esc(store ? store.name : '—') + '</td>' +
-        '<td class="mono muted">' + U.monthDay(t.dueDate) + '</td>' +
+        '<td class="mono muted">' + U.monthDay(S.suggestDateOf(t)) + '</td>' +
         '<td>' + UI.statusBadge(S.classify(t)) + '</td>' +
       '</tr>';
     }).join('');

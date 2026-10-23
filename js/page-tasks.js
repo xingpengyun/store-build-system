@@ -19,12 +19,11 @@ window.Pages.tasks = (function () {
     page: 1, per: 12, open: {}
   };
 
-  /* 这排是「按门店里任务的状态筛门店」，计数是门店数 */
+  /* 这排是「按门店里任务的状态筛门店」，计数是门店数。
+     流程固定 → 只有「逾期 / 已完成」有意义：待办、进行中不再单独列。 */
   var TABS = [
     { key: 'all', label: '全部' },
-    { key: 'pending', label: '有待办' },
-    { key: 'doing', label: '进行中' },
-    { key: 'overdue', label: '有逾期' },
+    { key: 'overdue', label: '逾期' },
     { key: 'risk', label: '风险' },
     { key: 'done', label: '已完成' }
   ];
@@ -171,8 +170,8 @@ window.Pages.tasks = (function () {
 
       var meta = list.length
         ? (n.open
-            ? '待办 ' + n.open + (n.late ? ' · <b>逾期 ' + n.late + '</b>' : '')
-            : '没有待办任务')
+            ? '未完成 ' + n.open + (n.late ? ' · <b>逾期 ' + n.late + '</b>' : '')
+            : '全部已完成')
         : '暂无门店';
       if (tplBase) meta += '<span class="tl-tpl">清单 ' + tplBase + ' 条</span>';
 
@@ -211,7 +210,7 @@ window.Pages.tasks = (function () {
 
           var bits = [];
           if (subStores) bits.push(subStores + ' 家');
-          if (m.open) bits.push('待办 ' + m.open + (m.late ? ' · <b>逾期' + m.late + '</b>' : ''));
+          if (m.open) bits.push('未完成 ' + m.open + (m.late ? ' · <b>逾期' + m.late + '</b>' : ''));
           else if (tplN) bits.push('<span class="tl-tpl">清单 ' + tplN + ' 条</span>');
           var right = bits.length ? bits.join(' · ') : '—';
 
@@ -457,16 +456,31 @@ window.Pages.tasks = (function () {
       var da = a.status === 'done' ? 1 : 0;
       var db = b.status === 'done' ? 1 : 0;
       if (da !== db) return da - db;
-      return a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : 0;
+      var sa = S.suggestDateOf(a), sb = S.suggestDateOf(b);
+      return sa < sb ? -1 : sa > sb ? 1 : 0;
     });
   }
 
+  /* 建议完成 = 门店开业日 - 该阶段建议提前天数，全是实时算的，不存死日期 */
   function taskTableHtml(list) {
     var body = list.map(function (t) {
       var cls = S.classify(t);
       var late = cls === 'overdue';
-      var days = U.diffDays(U.today(), t.dueDate);
+      var due = S.suggestDateOf(t);
+      var days = U.diffDays(U.today(), due);   /* 距建议完成日 */
+      var lead = S.leadDaysOf(t);
+      var left = S.daysLeftOf(t);              /* 距开业 */
       var mem = S.memberById(t.assigneeId);
+
+      var sub;
+      if (cls === 'done') {
+        sub = '已完成';
+      } else {
+        if (late) sub = '逾期 ' + Math.abs(days) + ' 天';
+        else if (days === 0) sub = '今天到期';
+        else sub = days + ' 天后';
+        if (left != null) sub += ' · 距开业 ' + left + ' 天';
+      }
 
       return '<tr>' +
         '<td><div class="sk-task-title">' + U.esc(t.title) + '</div>' +
@@ -475,9 +489,10 @@ window.Pages.tasks = (function () {
         '<td>' + (mem
           ? '<div class="store-cell">' + UI.avatar(mem.name, mem.color, 'sm') + '<span>' + U.esc(mem.name) + '</span></div>'
           : '<span class="dim">未指派</span>') + '</td>' +
-        '<td class="mono ' + (late ? 'text-red' : 'muted') + ' nowrap">' + t.dueDate +
+        '<td class="nowrap">' +
+          '<span class="mono ' + (late ? 'text-red' : 'muted') + '">' + U.monthDay(due) + '</span>' +
           '<span class="dim" style="font-size:10.5px;margin-left:5px">' +
-          (cls === 'done' ? '' : late ? '逾期' + Math.abs(days) + '天' : days === 0 ? '今天' : days + '天后') +
+            '开业前 ' + lead + ' 天 · ' + sub +
           '</span></td>' +
         '<td>' + UI.statusBadge(cls) + '</td>' +
         '<td class="nowrap" style="text-align:right">' + actionHtml(t) +
@@ -488,8 +503,8 @@ window.Pages.tasks = (function () {
     }).join('');
 
     return '<table class="sk-tbl">' +
-      '<thead><tr><th>任务</th><th style="width:120px">阶段</th><th style="width:110px">负责人</th>' +
-        '<th style="width:140px">截止日期</th><th style="width:84px">状态</th><th style="width:150px;text-align:right">操作</th></tr></thead>' +
+      '<thead><tr><th>任务</th><th style="width:110px">阶段</th><th style="width:100px">负责人</th>' +
+        '<th style="width:190px">建议完成</th><th style="width:84px">状态</th><th style="width:150px;text-align:right">操作</th></tr></thead>' +
       '<tbody>' + body + '</tbody></table>';
   }
 
@@ -512,7 +527,7 @@ window.Pages.tasks = (function () {
       '</div>' +
       '<div class="sk-prog">' + UI.progress(S.storeProgress(st).pct, def.color, S.progressTip(st)) + '</div>' +
       '<div class="sk-tasks">' + (m.total
-        ? '<span class="sk-open">待办 ' + m.open + '</span>' +
+        ? '<span class="sk-open">未完成 ' + m.open + '</span>' +
           (m.late ? '<span class="sk-late">逾期 ' + m.late + '</span>' : '<span class="sk-ok">无逾期</span>')
         : '<span class="sk-none">没有任务</span>') + '</div>' +
       '<div class="sk-date">' + (st.openDate
@@ -582,6 +597,18 @@ window.Pages.tasks = (function () {
     return (C.STAGES[0] || {}).key || '';
   }
 
+  /* 表单里的「建议完成」提示：门店开业日 - 该阶段建议提前天数 */
+  function dueHintHtml(t) {
+    var stage = t.stage || defaultStage();
+    var storeId = t.storeId || ((S.getState().stores[0] || {}).id || '');
+    var lead = S.leadDaysOf({ stage: stage });
+    var due = S.suggestFor(storeId, stage);
+    var st = S.storeById(storeId);
+    return '建议 <b>' + U.monthDay(due) + '</b> 前完成（开业前 ' + lead + ' 天）' +
+      (st && st.openDate ? '　·　' + U.esc(st.name) + ' 计划 ' + U.monthDay(st.openDate) + ' 开业' : '') +
+      '<br /><span style="font-size:11px">距开业不足 ' + lead + ' 天还没做完，就会自动标成逾期；开业日改了这里跟着变。</span>';
+  }
+
   function formHtml(task) {
     var isNew = !task;
     var t = task || {};
@@ -603,15 +630,14 @@ window.Pages.tasks = (function () {
         '<div class="field"><label>负责人</label>' +
           '<select class="select" name="assigneeId">' + UI.options(S.getState().members, t.assigneeId || '', 'id', 'name') + '</select>' +
         '</div>' +
-        '<div class="field"><label>截止日期 <span class="req">*</span></label>' +
-          '<input class="input" type="date" name="dueDate" value="' + (t.dueDate || U.addDays(U.today(), 7)) + '" />' +
+        '<div class="field"><label>建议完成 <span class="dim">（开业日往前推，自动算）</span></label>' +
+          '<div class="push-none-tip" data-due-hint>' + dueHintHtml(t) + '</div>' +
         '</div>' +
       '</div>' +
       '<div class="field-row">' +
         '<div class="field"><label>状态</label>' +
           '<select class="select" name="status">' +
-            '<option value="pending"' + (t.status === 'pending' ? ' selected' : '') + '>待处理</option>' +
-            '<option value="doing"' + (t.status === 'doing' ? ' selected' : '') + '>进行中</option>' +
+            '<option value="pending"' + (t.status === 'done' ? '' : ' selected') + '>未完成</option>' +
             '<option value="done"' + (t.status === 'done' ? ' selected' : '') + '>已完成</option>' +
           '</select>' +
         '</div>' +
@@ -644,6 +670,20 @@ window.Pages.tasks = (function () {
         '<button class="btn btn-primary" data-act="save">保存</button>',
       onMount: function (rootEl, close) {
         rootEl.querySelector('[data-act="cancel"]').onclick = close;
+
+        /* 改门店 / 改阶段，建议完成日即时重算 */
+        var hint = rootEl.querySelector('[data-due-hint]');
+        function repaintHint() {
+          hint.innerHTML = dueHintHtml({
+            stage: UI.formValue(rootEl, 'stage'),
+            storeId: UI.formValue(rootEl, 'storeId')
+          });
+        }
+        ['storeId', 'stage'].forEach(function (name) {
+          var el = rootEl.querySelector('[name="' + name + '"]');
+          if (el) el.addEventListener('change', repaintHint);
+        });
+
         rootEl.querySelector('[data-act="save"]').onclick = function () {
           var title = UI.formValue(rootEl, 'title');
           if (!title) {
@@ -655,7 +695,6 @@ window.Pages.tasks = (function () {
             storeId: UI.formValue(rootEl, 'storeId'),
             stage: UI.formValue(rootEl, 'stage'),
             assigneeId: UI.formValue(rootEl, 'assigneeId'),
-            dueDate: UI.formValue(rootEl, 'dueDate'),
             status: UI.formValue(rootEl, 'status'),
             priority: UI.formValue(rootEl, 'priority'),
             remark: UI.formValue(rootEl, 'remark')
