@@ -231,11 +231,42 @@ window.Pages.stores = (function () {
     });
   }
 
-  /* ---------------- 物料到货（可编辑） ---------------- */
-  /* 门店给出到货时间 → 在这里逐条填；通知发货后点「标记已完成」 */
+  /* ---------------- 物料到货（可编辑） ----------------
+     门店给出到货时间 → 在这里逐条填；通知发货后点「标记已完成」。
+     口径：到货日往前 ARR_WATCH_DAYS 天（默认 7）开始盯 —— 门店说 11-10 到，
+     11-03 就要有人去确认对方发货安排 / 收货人 / 库位。
+     所以这里不是简单按日期排一列，而是把「快到的 / 已经过期的」排到最前面并标色。 */
   function arrList(storeId) {
     return S.getState().arrivals.filter(function (a) { return a.storeId === storeId; })
-      .sort(function (a, b) { return String(a.etaDate || '').localeCompare(String(b.etaDate || '')); });
+      .sort(function (a, b) {
+        /* 1) 未到的排前面，已到的沉底（已到的按最近日期在上） */
+        var da = a.status === 'arrived' ? 1 : 0;
+        var db = b.status === 'arrived' ? 1 : 0;
+        if (da !== db) return da - db;
+
+        /* 2) 没填日期的放最后，别占着第一屏 */
+        if (!a.etaDate !== !b.etaDate) return a.etaDate ? -1 : 1;
+
+        /* 3) 未到货按日期升序（过期 & 7 天内的自然浮上来）；已到货按日期降序 */
+        var cmp = String(a.etaDate || '').localeCompare(String(b.etaDate || ''));
+        return da ? -cmp : cmp;
+      });
+  }
+
+  /* 到货倒计时：正数=还有几天，0=今天，负数=已经过；没填日期 = null */
+  function arrDays(a) {
+    if (!a || !a.etaDate) return null;
+    var d = U.diffDays(U.today(), a.etaDate);
+    return isNaN(d) ? null : d;
+  }
+
+  /* 这条要不要盯着：'late' 已过到货日 / 'soon' 提前天数内 / null 不用管 */
+  function arrWatch(a) {
+    if (!a || a.status === 'arrived') return null;
+    var d = arrDays(a);
+    if (d == null) return null;
+    if (d < 0) return 'late';
+    return d <= Number(C.ARR_WATCH_DAYS || 7) ? 'soon' : null;
   }
 
   /* 清单里还没加进这家门店的物料 */
@@ -249,6 +280,17 @@ window.Pages.stores = (function () {
     var list = arrList(storeId);
     var preset = S.items();
     var missing = arrMissing(storeId);
+    var watchDays = Number(C.ARR_WATCH_DAYS || 7);
+
+    /* 顶部小结：一眼看出有几项要盯 */
+    var late = 0, soon = 0, wait = 0, ok = 0;
+    list.forEach(function (a) {
+      if (a.status === 'arrived') { ok += 1; return; }
+      var w = arrWatch(a);
+      if (w === 'late') late += 1;
+      else if (w === 'soon') soon += 1;
+      else wait += 1;
+    });
 
     var empty = !list.length
       ? '<div class="arr-empty">' +
@@ -264,16 +306,40 @@ window.Pages.stores = (function () {
               '</div>'
             : '') +
         '</div>'
-      : '<div class="table-wrap"><table class="tbl arr-tbl" style="min-width:480px">' +
-          '<thead><tr><th>物料 / 供应商</th><th style="width:64px">数量</th><th style="width:132px">到货日期</th><th style="width:104px">状态</th><th style="width:30px"></th></tr></thead>' +
+      : '<div class="arr-sum">' +
+          '<span class="arr-sum-i">共 <b>' + list.length + '</b> 项</span>' +
+          (late ? '<span class="arr-sum-i late"><i></i>过了到货日 <b>' + late + '</b></span>' : '') +
+          (soon ? '<span class="arr-sum-i soon"><i></i>' + watchDays + ' 天内到 <b>' + soon + '</b></span>' : '') +
+          (wait ? '<span class="arr-sum-i">未到 <b>' + wait + '</b></span>' : '') +
+          (ok ? '<span class="arr-sum-i ok">已到 <b>' + ok + '</b></span>' : '') +
+        '</div>' +
+        '<div class="table-wrap"><table class="tbl arr-tbl" style="min-width:500px">' +
+          '<thead><tr><th>物料 / 供应商</th><th style="width:54px">数量</th>' +
+            '<th style="width:178px">到货日期</th><th style="width:98px">状态</th><th style="width:28px"></th></tr></thead>' +
           '<tbody>' + list.map(function (a) {
             var done = a.status === 'arrived';
-            return '<tr data-arr="' + U.esc(a.id) + '"' + (done ? ' class="is-done"' : '') + '>' +
+            var d = arrDays(a);
+            var w = arrWatch(a);
+
+            /* 日期后面的倒计时：11-10 到货 → 「还有 4 天」；过了就是红的 */
+            var tag = '';
+            if (!done && d != null) {
+              if (d < 0) tag = '<span class="arr-tag late">过 ' + (-d) + ' 天</span>';
+              else if (d === 0) tag = '<span class="arr-tag soon">今天到</span>';
+              else if (w === 'soon') tag = '<span class="arr-tag soon">还有 ' + d + ' 天</span>';
+              else tag = '<span class="arr-tag">' + d + ' 天后</span>';
+            }
+
+            return '<tr data-arr="' + U.esc(a.id) + '" class="' +
+                (done ? 'is-done' : w === 'late' ? 'is-late' : w === 'soon' ? 'is-soon' : '') + '">' +
               '<td><input class="arr-in" list="arrItems" data-arr-field="item" value="' + U.esc(a.item) + '" placeholder="填物料或供应商名字" /></td>' +
               '<td><input class="arr-in mono" type="number" min="0" step="1" data-arr-field="qty" value="' + (a.qty ? a.qty : '') + '" placeholder="—" title="数量可以不填" /></td>' +
-              '<td><input class="arr-in mono" type="date" data-arr-field="etaDate" value="' + U.esc(a.etaDate || '') + '" /></td>' +
+              '<td><div class="arr-eta">' +
+                '<input class="arr-in mono" type="date" data-arr-field="etaDate" value="' + U.esc(a.etaDate || '') + '" />' +
+                tag +
+              '</div></td>' +
               '<td><button type="button" class="arr-btn' + (done ? ' done' : '') + '" data-arr-done>' +
-                (done ? '✓ 已完成' : '标记已完成') + '</button></td>' +
+                (done ? '✓ 已到' : '标记已完成') + '</button></td>' +
               '<td><button type="button" class="arr-del" data-arr-del title="删除这条">' + UI.icon('close') + '</button></td>' +
             '</tr>';
           }).join('') + '</tbody></table></div>';
@@ -375,9 +441,9 @@ window.Pages.stores = (function () {
           if (e.target.closest('[data-arr-bulk]')) {
             var todo = arrMissing(store.id);
             if (!todo.length) { UI.toast('清单里的物料都已经加过了', 'info'); return; }
-            var due = U.addDays(U.today(), 7);
+            /* 日期留空：不给一个假日期，等门店给了具体到货日再填（没日期就不误报倒计时） */
             todo.forEach(function (x) {
-              S.addArrival({ storeId: store.id, item: x, qty: 0, etaDate: due });
+              S.addArrival({ storeId: store.id, item: x, qty: 0, etaDate: '' });
             });
             repaintArr();
             UI.toast('已添加 ' + todo.length + ' 条物料，数量和到货日期按门店给的填', 'success');
@@ -389,7 +455,7 @@ window.Pages.stores = (function () {
               storeId: store.id,
               item: '',
               qty: 0,
-              etaDate: U.addDays(U.today(), 7)
+              etaDate: ''
             });
             repaintArr();
             var inp = arrWrap.querySelector('[data-arr="' + a.id + '"] [data-arr-field="item"]');
@@ -405,7 +471,7 @@ window.Pages.stores = (function () {
             storeId: store.id,
             item: chip.getAttribute('data-arr-quick'),
             qty: 0,
-            etaDate: U.addDays(U.today(), 7)
+            etaDate: ''
           });
           repaintArr();
           var dt = arrWrap.querySelector('[data-arr="' + a.id + '"] [data-arr-field="etaDate"]');

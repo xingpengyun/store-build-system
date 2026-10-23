@@ -1471,19 +1471,49 @@
 .filter-bar .combo .combo-item { font-size: 12px; padding: 6px 8px; }
 
 /* ---------------- 物料到货：门店详情里可直接填写 ---------------- */
-.arr-tbl tbody td { padding: 4px 6px; }
+
+/* 顶部小结：一眼看出有几项要盯 */
+.arr-sum {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 12px;
+  margin: 0 0 7px;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.arr-sum-i { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.arr-sum-i b { font-size: 12px; font-weight: 700; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.arr-sum-i i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; display: inline-block; }
+.arr-sum-i.late { color: var(--red); }
+.arr-sum-i.late b { color: var(--red); }
+.arr-sum-i.soon { color: #c47a06; }
+.arr-sum-i.soon b { color: #c47a06; }
+.arr-sum-i.ok b { color: var(--green); }
+
+/* 紧密：一行压到 30px 上下，一屏能看完整批物料 */
+.arr-tbl thead th { padding: 5px 6px; font-size: 11px; }
+.arr-tbl tbody td { padding: 2px 6px; }
+.arr-tbl tbody tr { transition: background .14s; }
+
 .arr-tbl tbody tr.is-done { background: #f8fdfa; }
 .arr-tbl tbody tr.is-done .arr-in { color: var(--text-2); }
 
+/* 7 天内要到：橙色；过了到货日还没到：红色。左侧色条 + 底色，扫一眼就知道哪几条要盯 */
+.arr-tbl tbody tr.is-soon { background: #fffaf0; }
+.arr-tbl tbody tr.is-soon td:first-child { box-shadow: inset 3px 0 0 var(--orange); }
+.arr-tbl tbody tr.is-late { background: #fff7f6; }
+.arr-tbl tbody tr.is-late td:first-child { box-shadow: inset 3px 0 0 var(--red); }
+
 .arr-in {
   width: 100%;
-  height: 30px;
-  padding: 0 8px;
+  height: 26px;
+  padding: 0 7px;
   border: 1px solid transparent;
-  border-radius: 7px;
+  border-radius: 6px;
   background: transparent;
   font-family: inherit;
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--text);
   outline: 0;
   transition: .14s;
@@ -1496,17 +1526,37 @@
 }
 .arr-in::placeholder { color: #b6c0d2; }
 .arr-in[type="number"] { text-align: center; padding: 0 2px; }
+.arr-in[type="date"] { padding: 0 3px; font-size: 11.5px; }
+
+/* 日期 + 倒计时同一行，倒计时不占额外高度 */
+.arr-eta { display: flex; align-items: center; gap: 5px; }
+.arr-eta .arr-in { flex: 1 1 auto; min-width: 0; }
+.arr-tag {
+  flex: 0 0 auto;
+  padding: 0 5px;
+  height: 17px;
+  line-height: 17px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-3);
+  background: var(--line-2);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.arr-tag.soon { color: #b06f05; background: var(--orange-soft); }
+.arr-tag.late { color: var(--red); background: var(--red-soft); }
 
 .arr-btn {
   width: 100%;
-  height: 27px;
-  padding: 0 8px;
+  height: 24px;
+  padding: 0 6px;
   border: 1px dashed #cdd7e8;
-  border-radius: 7px;
+  border-radius: 6px;
   background: #fff;
   color: var(--text-2);
   font-family: inherit;
-  font-size: 11.5px;
+  font-size: 11px;
   white-space: nowrap;
   cursor: pointer;
   transition: .14s;
@@ -1521,8 +1571,8 @@
 .arr-btn.done:hover { border-color: rgba(23, 178, 106, .32); background: #dcf5e9; }
 
 .arr-del {
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;

@@ -772,7 +772,7 @@ window.Store = (function () {
 
     var arrivals7 = st.arrivals.filter(function (a) {
       var d = U.diffDays(t0, a.etaDate);
-      return a.status === 'pending' && d >= 0 && d <= 7;
+      return a.status === 'pending' && d >= 0 && d <= Number(C.ARR_WATCH_DAYS || 7);
     }).length;
 
     var team = st.members.map(function (m) {
@@ -916,6 +916,40 @@ window.Store = (function () {
           title: s.name,
           desc: '计划开业日已过 ' + U.diffDays(s.openDate, t0) + ' 天，仍未开业',
           owner: (memberById(s.ownerId) || {}).name || '未指派', storeId: s.id
+        });
+      }
+    });
+
+    /* ---------------- 物料到货：提前 7 天就要盯 ----------------
+       门店说 11-10 到货，11-03 就该有人去确认对方发货安排。
+       所以不是等到货当天才提醒，而是「到货日 − ARR_WATCH_DAYS」就开始进提醒；
+       过了到货日还没到 → 升成高危（大概率卡在物流 / 仓库 / 对方没发）。 */
+    var watchDays = Number(C.ARR_WATCH_DAYS || 7);
+    state.arrivals.forEach(function (a) {
+      if (a.status === 'arrived' || !a.etaDate) return;
+      var d = U.diffDays(t0, a.etaDate);
+      if (isNaN(d) || d > watchDays) return;
+
+      var s = storeById(a.storeId);
+      var storeName = s ? s.name : '未知门店';
+      var name = (a.item || '').trim() || '未命名物料';
+      var man = s ? memberById(s.ownerId) : null;
+
+      if (d < 0) {
+        addAlert({
+          id: 'arrlate-' + a.id, level: 'danger', type: '物料未到',
+          title: storeName + ' · ' + name,
+          desc: '说好 ' + U.monthDay(a.etaDate) + ' 到货，已经过了 ' + (-d) +
+            ' 天还没到，先确认是不是卡在物流 / 仓库',
+          owner: man ? man.name : '未指派', storeId: a.storeId, arrivalId: a.id
+        });
+      } else {
+        addAlert({
+          id: 'arrsoon-' + a.id, level: d <= 3 ? 'high' : 'warn', type: '物料即将到货',
+          title: storeName + ' · ' + name,
+          desc: (d === 0 ? '今天就该到货' : '还有 ' + d + ' 天到货（' + U.monthDay(a.etaDate) + '）') +
+            '，提前确认收货人 / 库位 / 安装排期',
+          owner: man ? man.name : '未指派', storeId: a.storeId, arrivalId: a.id
         });
       }
     });

@@ -87,6 +87,23 @@
 - 入口：`js/store.js` → `snoozeMap / snoozeDaysOf / snoozeTask / unsnoozeTask`；`js/page-tasks.js` → `actionHtml`
 
 
+## 2026-10-23 物料到货：提前 7 天就要盯上（不再是等当天才提醒）
+
+- 口径：**到货日 − `CONST.ARR_WATCH_DAYS`（默认 7 天）就要开始关注**
+  - 门店说 11-10 到货 → **11-03** 就该有人去确认对方发货安排、收货人、库位、安装排期
+  - 过了到货日还没到 → 直接升成「物料未到」高危（大概率卡物流 / 仓库 / 对方没发）
+- 「关注」在三个地方同时可见：
+  1. **清单行**：7 天内的行标橙（左侧橙条 + 浅橙底），已过期的标红；日期后面直接跟倒计时「还有 4 天 / 过 2 天 / 今天到」
+  2. **清单顶部小结**：`共 9 项 · 过了到货日 1 · 7 天内到 3 · 未到 3 · 已到 2`（数字随改日期实时变）
+  3. **提醒中心**：`arrsoon-<id>`（7 天内，3 天内升 high）、`arrlate-<id>`（已过期，danger）
+- 排序：未到的在前（按到货日升序，过期和快到的自然浮上来）→ 没填日期的 → 已到的沉底（按最近日期在上）
+- 排版：一行压到 30px（输入框 26px、表头 11px、按钮 24px），一屏能看完整批 9 项；
+  日期 + 倒计时同一行（`.arr-eta` flex），倒计时不额外占高度
+- 新建 / 一键添加的物料 **日期留空**（以前默认 today+7，一加进来全是「7 天内」，橙成一片全是噪音）；
+  没日期的行不显示倒计时、不提醒、排最后
+- 入口：`js/constants.js` → `ARR_WATCH_DAYS`；`js/page-stores.js` → `arrList / arrDays / arrWatch / arrBody`；
+  `js/store.js` → `alerts()` 里的 `arrlate / arrsoon`；`css/components.css` → `.arr-tbl / .arr-tag / .arr-sum`
+
 ## 数据模型要点
 - 门店 `stage` 只能取 `CONST.STAGES` 的 key；`risk` 只能取 `CONST.RISKS` 的 key
 - 任务 `status` 只有 `pending` / `doing` / `done` 三种
