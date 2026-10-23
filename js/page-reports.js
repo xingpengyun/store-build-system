@@ -16,8 +16,9 @@ window.Pages.reports = (function () {
     var tc = st.taskCounts;
 
     var doneRate = tc.total ? Math.round(tc.done / tc.total * 100) : 0;
+    /* 平均进度：每家的百分比都来自「阶段时间线」（完成几个阶段 / 筹建阶段总数） */
     var avgProgress = s.stores.length
-      ? Math.round(U.sum(s.stores, function (x) { return x.progress; }) / s.stores.length)
+      ? Math.round(U.sum(s.stores, function (x) { return S.storeProgress(x).pct; }) / s.stores.length)
       : 0;
 
     /* 阶段分布 */
@@ -93,7 +94,7 @@ window.Pages.reports = (function () {
         '<div class="kpi-foot">已开业 ' + st.opened + ' 家</div></div></div>' +
       '<div class="kpi"><span class="kpi-icon" style="background:#e6f8ef;color:#17b26a">' + UI.icon('target') + '</span>' +
         '<div class="kpi-body"><div class="kpi-label">平均进度</div><div class="kpi-value">' + avgProgress + '%</div>' +
-        '<div class="kpi-foot">全部在筹门店</div></div></div>' +
+        '<div class="kpi-foot">按阶段时间线推进计算</div></div></div>' +
       '<div class="kpi"><span class="kpi-icon" style="background:#f2effe;color:#7a5af8">' + UI.icon('list') + '</span>' +
         '<div class="kpi-body"><div class="kpi-label">任务完成率</div><div class="kpi-value">' + doneRate + '%</div>' +
         '<div class="kpi-foot">' + tc.done + ' / ' + tc.total + '</div></div></div>' +

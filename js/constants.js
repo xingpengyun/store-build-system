@@ -6,15 +6,30 @@ window.CONST = {
 
   STORAGE_KEY: 'shopbuild.v1',
 
-  /* ---- 门店筹建阶段（顺序即推进顺序，不要随意调换） ---- */
+  /* ---- 门店筹建阶段（顺序即推进顺序，不要随意调换） ----
+     这是「出厂默认」，运行时会由 Store 用 settings.stages 覆盖 C.STAGES：
+     用户在「任务管理 → 阶段时间线」里加 / 改名 / 删除 / 排序后，C.STAGES 就是当前生效的那份，
+     原始出厂值留在 STAGE_BUILTIN（下面会拷贝一份），用来兜底和取内置配色。
+     二级（子阶段）在时间线或筹建任务清单里加，存 settings.stageSubs，
+     任务的 stage 存成 "一级 / 二级" */
   STAGES: [
     { key: '未出图',    color: '#98a2b8', soft: '#eef1f6' },
+    { key: '已出图',    color: '#6b7cf0', soft: '#eef1fe' },
     { key: '资料/建档', color: '#7a5af8', soft: '#f2effe' },
     { key: '施工/装修', color: '#f79009', soft: '#fef4e6' },
     { key: '物料/到货', color: '#3f6bf5', soft: '#edf2fe' },
     { key: '开业准备',  color: '#06aed4', soft: '#e4f8fd' },
     { key: '已开业',    color: '#17b26a', soft: '#e6f8ef' }
   ],
+
+  /* 出厂就带好的二级（只有从没保存过二级时才会用它；
+     你在时间线 / 清单里改过之后，一切以 settings.stageSubs 为准） */
+  DEFAULT_STAGE_SUBS: {
+    '已出图': ['已做首批', '未做首批']
+  },
+
+  /* 一级与二级之间的分隔符（阶段名里本身带 /，所以两边留空格来区分） */
+  STAGE_SEP: ' / ',
 
   /* ---- 风险等级 ---- */
   RISKS: {
@@ -51,9 +66,83 @@ window.CONST = {
     '陈列道具', '监控安防', '包装物料', '照明灯具'
   ],
 
+  /* 省级行政区（常用省份靠前，下拉里先看到） */
   PROVINCES: [
     '广东', '浙江', '江苏', '上海', '北京', '天津', '重庆', '四川',
     '湖北', '陕西', '山东', '湖南', '河南', '安徽', '福建', '云南',
-    '广西', '辽宁', '河北'
-  ]
+    '广西', '辽宁', '河北', '山西', '吉林', '黑龙江', '江西', '贵州',
+    '海南', '内蒙古', '新疆', '甘肃', '宁夏', '青海', '西藏',
+    '香港', '澳门', '台湾'
+  ],
+
+  /* 省份拼音，用于下拉里输入拼音首字母也能找（shanxi 山西 / shaanxi 陕西 不会混） */
+  PROVINCE_PINYIN: {
+    '广东': 'guangdong', '浙江': 'zhejiang', '江苏': 'jiangsu', '上海': 'shanghai',
+    '北京': 'beijing', '天津': 'tianjin', '重庆': 'chongqing', '四川': 'sichuan',
+    '湖北': 'hubei', '陕西': 'shaanxi', '山东': 'shandong', '湖南': 'hunan',
+    '河南': 'henan', '安徽': 'anhui', '福建': 'fujian', '云南': 'yunnan',
+    '广西': 'guangxi', '辽宁': 'liaoning', '河北': 'hebei', '山西': 'shanxi',
+    '吉林': 'jilin', '黑龙江': 'heilongjiang', '江西': 'jiangxi', '贵州': 'guizhou',
+    '海南': 'hainan', '内蒙古': 'neimenggu', '新疆': 'xinjiang', '甘肃': 'gansu',
+    '宁夏': 'ningxia', '青海': 'qinghai', '西藏': 'xizang',
+    '香港': 'xianggang', '澳门': 'aomen', '台湾': 'taiwan'
+  }
 };
+
+/* ==========================================================
+   阶段的分级工具：任务/清单里的 stage 可能是
+     "施工/装修"            → 只挂一级
+     "施工/装修 / 水电"     → 挂到二级
+   ========================================================== */
+(function (C) {
+  /* 出厂阶段的副本：C.STAGES 运行时可被替换，这份永远不动，用来兜底 */
+  C.STAGE_BUILTIN = C.STAGES.map(function (x) {
+    return { key: x.key, color: x.color, soft: x.soft };
+  });
+
+  /* 新建一级阶段时按顺序取色（先用没被占的） */
+  C.STAGE_PALETTE = [
+    { color: '#7a5af8', soft: '#f2effe' },
+    { color: '#f79009', soft: '#fef4e6' },
+    { color: '#3f6bf5', soft: '#edf2fe' },
+    { color: '#06aed4', soft: '#e4f8fd' },
+    { color: '#17b26a', soft: '#e6f8ef' },
+    { color: '#ef7cab', soft: '#fdeef4' },
+    { color: '#dba005', soft: '#fdf6e3' },
+    { color: '#0ea5a5', soft: '#e6f7f7' },
+    { color: '#8e5bd0', soft: '#f4eefc' },
+    { color: '#98a2b8', soft: '#eef1f6' }
+  ];
+
+  /* 拆成 { base, sub } */
+  C.stageSplit = function (v) {
+    var s = String(v == null ? '' : v);
+    var i = s.indexOf(C.STAGE_SEP);
+    if (i < 0) return { base: s, sub: '' };
+    return { base: s.slice(0, i), sub: s.slice(i + C.STAGE_SEP.length) };
+  };
+
+  /* 一级 + 二级 → 存库用的字符串 */
+  C.stageValue = function (base, sub) {
+    return sub ? String(base) + C.STAGE_SEP + String(sub) : String(base || '');
+  };
+
+  /* 显示用："施工/装修 · 水电" */
+  C.stageLabel = function (v, sep) {
+    var p = C.stageSplit(v);
+    return p.sub ? p.base + (sep || ' · ') + p.sub : p.base;
+  };
+
+  /* 取一级的配色定义 */
+  C.stageDef = function (v) {
+    var base = C.stageSplit(v).base;
+    var hit = null;
+    C.STAGES.forEach(function (x) { if (x.key === base) hit = x; });
+    return hit;
+  };
+
+  /* 是不是一级阶段名（用于校验） */
+  C.isStage = function (v) {
+    return !!C.stageDef(v);
+  };
+})(window.CONST);

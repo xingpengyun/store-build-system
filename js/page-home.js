@@ -10,6 +10,76 @@ window.Pages.home = (function () {
   var S = window.Store;
   var C = window.CONST;
 
+  /* 当前阶段筛选（空 = 全部）。存在模块里，刷新数据后不会被重置 */
+  var filterStage = '';
+  var ROW_LIMIT = 8;        /* 未筛选时首页只放 8 条 */
+  var ROW_LIMIT_ON = 15;    /* 筛了阶段最多放 15 条 */
+
+  function stageObjOf(key) {
+    for (var i = 0; i < C.STAGES.length; i++) {
+      if (C.STAGES[i].key === key) return C.STAGES[i];
+    }
+    return null;
+  }
+
+  /* 按当前筛选取门店，在筹的在前、已开业的排后面 */
+  function pickedStores(s) {
+    var list = s.stores.filter(function (x) {
+      return !filterStage || x.stage === filterStage;
+    });
+    var active = U.sortBy(list.filter(function (x) { return x.stage !== '已开业'; }),
+      function (a) { return a.openDate; });
+    var opened = list.filter(function (x) { return x.stage === '已开业'; });
+    return active.concat(opened);
+  }
+
+  function limitNow() { return filterStage ? ROW_LIMIT_ON : ROW_LIMIT; }
+
+  function subHtml(s) {
+    if (!filterStage) return '点击上方色块或图例，可直接筛出该阶段的门店';
+    var n = pickedStores(s).length;
+    return '已筛选 <b style="color:var(--primary)">' + U.esc(filterStage) + '</b>' +
+      ' · 共 <b>' + n + '</b> 家' + (n === 0 ? '（该阶段暂无门店）' : '');
+  }
+
+  function footHtml(s) {
+    var rest = pickedStores(s).length - limitNow();
+    if (rest <= 0) return '';
+    return '下面还有 <b>' + rest + '</b> 家未显示' +
+      '<span class="stage-foot-link" data-go="stores">去门店管理查看全部 →</span>';
+  }
+
+  function rowsHtml(s) {
+    var list = pickedStores(s);
+    var shown = list.slice(0, limitNow());
+
+    if (!shown.length) {
+      return '<tr><td colspan="8">' + UI.empty(
+        filterStage ? '「' + filterStage + '」暂无门店' : '还没有门店',
+        filterStage ? '换个阶段看看，或点右上角「清除」' : '去门店管理添加第一家门店'
+      ) + '</td></tr>';
+    }
+
+    return shown.map(function (store) {
+      var owner = S.memberById(store.ownerId);
+      var stageObj = stageObjOf(store.stage);
+      return '<tr data-store="' + store.id + '">' +
+        '<td><div class="store-cell">' +
+          '<i class="store-dot" style="background:' + (stageObj ? stageObj.color : '#98a2b8') + '"></i>' +
+          '<span class="store-name">' + U.esc(store.name) + '</span>' +
+        '</div></td>' +
+        '<td class="muted">' + U.esc(store.province) + '</td>' +
+        '<td class="muted mono">' + store.openDate + '</td>' +
+        '<td>' + UI.progress(S.storeProgress(store).pct, null, S.progressTip(store)) + '</td>' +
+        '<td>' + UI.stageBadge(store.stage) + '</td>' +
+        '<td>' + UI.riskBadge(store.risk) + '</td>' +
+        '<td>' + (owner ? '<div class="store-cell">' + UI.avatar(owner.name, owner.color, 'sm') +
+          '<span>' + U.esc(owner.name) + '</span></div>' : '<span class="dim">未指派</span>') + '</td>' +
+        '<td><span class="tlink" data-store-view="' + store.id + '">查看</span></td>' +
+      '</tr>';
+    }).join('');
+  }
+
   function heroArt() {
     return '<div class="hero-art"><svg viewBox="0 0 148 78" fill="none">' +
       '<ellipse cx="74" cy="71" rx="54" ry="5" fill="#d9e2f5" opacity=".75"/>' +
@@ -74,37 +144,13 @@ window.Pages.home = (function () {
       '</div>';
     }).join('');
 
-    /* ---- 门店表格（首页只放 8 条，在筹的在前，已开业的排后面） ---- */
-    var activeStores = U.sortBy(
-      s.stores.filter(function (x) { return x.stage !== '已开业'; }),
-      function (a) { return a.openDate; }
-    );
-    var openedStores = s.stores.filter(function (x) { return x.stage === '已开业'; });
-    var rows = activeStores.concat(openedStores).slice(0, 8);
-
-    var tableRows = rows.map(function (store) {
-      var owner = S.memberById(store.ownerId);
-      var stageObj = null;
-      C.STAGES.forEach(function (x) { if (x.key === store.stage) stageObj = x; });
-      return '<tr data-store="' + store.id + '">' +
-        '<td><div class="store-cell">' +
-          '<i class="store-dot" style="background:' + (stageObj ? stageObj.color : '#98a2b8') + '"></i>' +
-          '<span class="store-name">' + U.esc(store.name) + '</span>' +
-        '</div></td>' +
-        '<td class="muted">' + U.esc(store.province) + '</td>' +
-        '<td class="muted mono">' + store.openDate + '</td>' +
-        '<td>' + UI.progress(store.progress) + '</td>' +
-        '<td>' + UI.stageBadge(store.stage) + '</td>' +
-        '<td>' + UI.riskBadge(store.risk) + '</td>' +
-        '<td>' + (owner ? '<div class="store-cell">' + UI.avatar(owner.name, owner.color, 'sm') +
-          '<span>' + U.esc(owner.name) + '</span></div>' : '<span class="dim">未指派</span>') + '</td>' +
-        '<td><span class="tlink" data-store-view="' + store.id + '">查看</span></td>' +
-      '</tr>';
-    }).join('');
+    /* ---- 门店表格（受阶段筛选控制） ---- */
+    var tableRows = rowsHtml(s);
 
     /* ---- 阶段图例 ---- */
     var legend = st.stageCounts.map(function (sc) {
-      return '<div class="sl-item" data-stage="' + sc.key + '">' +
+      return '<div class="sl-item' + (filterStage === sc.key ? ' on' : '') + '" data-stage="' + sc.key + '"' +
+        ' title="只看「' + sc.key + '」的门店">' +
         '<i class="sl-dot" style="background:' + sc.color + '"></i>' +
         '<span class="sl-name">' + sc.key + '</span>' +
         '<span class="sl-num" style="color:' + sc.color + '">' + sc.count + '</span>' +
@@ -205,24 +251,26 @@ window.Pages.home = (function () {
       '<div class="card">' +
         '<div class="card-head">' +
           '<h3>门店筹建进度总览</h3>' +
-          '<span class="card-sub">点击门店查看详情，或使用筛选条件快速定位</span>' +
+          '<span class="card-sub" data-role="stageSub">' + subHtml(s) + '</span>' +
           '<div class="card-tools">' +
             '<select class="select" id="homeStageFilter" style="width:auto;height:30px;font-size:12px">' +
               '<option value="">全部阶段</option>' +
-              UI.options(C.STAGES.map(function (x) { return x.key; }), '') +
+              UI.options(C.STAGES.map(function (x) { return x.key; }), filterStage) +
             '</select>' +
+            '<span class="link-more hidden" data-clear>清除</span>' +
             '<span class="link-more" data-go="stores">全部门店 →</span>' +
           '</div>' +
         '</div>' +
-        Charts.stackBar(st.stageCounts) +
+        Charts.stackBar(st.stageCounts, { clickable: true, active: filterStage }) +
         '<div class="stage-legend">' + legend + '</div>' +
         '<div class="table-wrap"><table class="tbl">' +
           '<thead><tr>' +
             '<th>门店名称</th><th>省份</th><th>开业日期</th><th>整体进度</th>' +
             '<th>当前阶段</th><th>风险等级</th><th>负责人</th><th>操作</th>' +
           '</tr></thead>' +
-          '<tbody>' + (tableRows || '<tr><td colspan="8">' + UI.empty('还没有门店') + '</td></tr>') + '</tbody>' +
+          '<tbody data-role="stageBody">' + tableRows + '</tbody>' +
         '</table></div>' +
+        '<div class="stage-foot" data-role="stageFoot">' + footHtml(s) + '</div>' +
       '</div>' +
 
       '<div class="card">' +
@@ -267,47 +315,80 @@ window.Pages.home = (function () {
     '</section>';
   }
 
-  function mount(root) {
-    /* 门店行 / 查看 */
-    root.querySelectorAll('[data-store-view], tr[data-store]').forEach(function (el) {
-      el.addEventListener('click', function (e) {
-        var id = el.getAttribute('data-store-view') || el.getAttribute('data-store');
-        e.stopPropagation();
-        if (window.Pages.stores && window.Pages.stores.openDetail) {
-          window.Pages.stores.openDetail(id);
-        }
-      });
-    });
+  /* 只换表格和文案，不整页重绘（保留滚动位置、不触发入场动画） */
+  function paint(root) {
+    var s = S.getState();
 
-    root.querySelectorAll('[data-go]').forEach(function (el) {
-      el.addEventListener('click', function () {
-        App.go(el.getAttribute('data-go'));
-      });
-    });
+    var sub = root.querySelector('[data-role="stageSub"]');
+    if (sub) sub.innerHTML = subHtml(s);
 
+    var body = root.querySelector('[data-role="stageBody"]');
+    if (body) body.innerHTML = rowsHtml(s);
+
+    var foot = root.querySelector('[data-role="stageFoot"]');
+    if (foot) foot.innerHTML = footHtml(s);
+
+    var sel = root.querySelector('#homeStageFilter');
+    if (sel) sel.value = filterStage;
+
+    var clear = root.querySelector('[data-clear]');
+    if (clear) clear.classList.toggle('hidden', !filterStage);
+
+    /* 图例 + 色条：同一个 data-stage，一起点亮 */
     root.querySelectorAll('[data-stage]').forEach(function (el) {
-      el.addEventListener('click', function () {
-        App.go('stores', { stage: el.getAttribute('data-stage') });
-      });
+      el.classList.toggle('on', !!filterStage && el.getAttribute('data-stage') === filterStage);
     });
-
-    root.querySelectorAll('[data-member]').forEach(function (el) {
-      el.addEventListener('click', function () {
-        App.go('team', { member: el.getAttribute('data-member') });
-      });
+    root.querySelectorAll('.stage-bar i').forEach(function (el) {
+      el.classList.toggle('dim', !!filterStage && el.getAttribute('data-stage') !== filterStage);
     });
+  }
 
-    root.querySelectorAll('[data-task]').forEach(function (el) {
-      el.addEventListener('click', function () {
-        App.go('tasks', { task: el.getAttribute('data-task') });
-      });
+  function setFilter(key, root) {
+    filterStage = (key && key !== filterStage) ? key : '';
+    paint(root);
+  }
+
+  function mount(root) {
+    /* 统一用事件委托：表格行会被重新渲染，直接绑在行上会失效 */
+    root.addEventListener('click', function (e) {
+      var t = e.target;
+
+      var view = t.closest('[data-store-view]');
+      if (view) { openStore(view.getAttribute('data-store-view')); return; }
+
+      var row = t.closest('tr[data-store]');
+      if (row) { openStore(row.getAttribute('data-store')); return; }
+
+      /* 阶段色块 / 图例 → 就地筛选下方门店，不跳页 */
+      var stageEl = t.closest('[data-stage]');
+      if (stageEl) { setFilter(stageEl.getAttribute('data-stage'), root); return; }
+
+      if (t.closest('[data-clear]')) { setFilter('', root); return; }
+
+      var goEl = t.closest('[data-go]');
+      if (goEl) {
+        var route = goEl.getAttribute('data-go');
+        if (route === 'stores' && filterStage) App.go('stores', { stage: filterStage });
+        else App.go(route);
+        return;
+      }
+
+      var memberEl = t.closest('[data-member]');
+      if (memberEl) { App.go('team', { member: memberEl.getAttribute('data-member') }); return; }
+
+      var taskEl = t.closest('[data-task]');
+      if (taskEl) { App.go('tasks', { task: taskEl.getAttribute('data-task') }); }
     });
 
     var sf = root.querySelector('#homeStageFilter');
     if (sf) {
-      sf.addEventListener('change', function () {
-        if (sf.value) App.go('stores', { stage: sf.value });
-      });
+      sf.addEventListener('change', function () { setFilter(sf.value, root); });
+    }
+  }
+
+  function openStore(id) {
+    if (window.Pages.stores && window.Pages.stores.openDetail) {
+      window.Pages.stores.openDetail(id);
     }
   }
 

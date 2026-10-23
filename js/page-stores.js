@@ -56,7 +56,7 @@ window.Pages.stores = (function () {
         '</div></td>' +
         '<td class="muted">' + U.esc(store.province || '—') + '</td>' +
         '<td class="muted mono">' + store.openDate + '</td>' +
-        '<td>' + UI.progress(store.progress) + '</td>' +
+        '<td>' + UI.progress(S.storeProgress(store).pct, null, S.progressTip(store)) + '</td>' +
         '<td>' + UI.stageBadge(store.stage) + '</td>' +
         '<td>' + UI.riskBadge(store.risk) + '</td>' +
         '<td>' + (owner
@@ -95,10 +95,13 @@ window.Pages.stores = (function () {
       '</div>' +
       '<div class="field-row">' +
         '<div class="field"><label>省份</label>' +
-          '<select class="select" name="province">' +
-            '<option value="">未选择</option>' +
-            UI.options(provinceOptions, s.province || '') +
-          '</select>' +
+          UI.comboHtml({
+            name: 'province',
+            value: s.province || '',
+            items: provinceOptions,
+            py: C.PROVINCE_PINYIN,
+            placeholder: '打一个字，如「广」'
+          }) +
         '</div>' +
         '<div class="field"><label>计划开业日期 <span class="req">*</span></label>' +
           '<input class="input" type="date" name="openDate" value="' + (s.openDate || U.addDays(U.today(), 30)) + '" />' +
@@ -107,7 +110,7 @@ window.Pages.stores = (function () {
       '<div class="field-row">' +
         '<div class="field"><label>当前阶段</label>' +
           '<select class="select" name="stage">' +
-            UI.options(C.STAGES.map(function (x) { return x.key; }), s.stage || '未出图') +
+            UI.options(C.STAGES.map(function (x) { return x.key; }), s.stage || (C.STAGES[0] || {}).key) +
           '</select>' +
         '</div>' +
         '<div class="field"><label>风险等级</label>' +
@@ -115,8 +118,8 @@ window.Pages.stores = (function () {
         '</div>' +
       '</div>' +
       '<div class="field-row">' +
-        '<div class="field"><label>整体进度（%）</label>' +
-          '<input class="input" type="number" min="0" max="100" name="progress" value="' + (s.progress == null ? 0 : s.progress) + '" />' +
+        '<div class="field"><label>阶段进度 <span class="dim">（按阶段自动算，不用填）</span></label>' +
+          '<div class="prog-prev" data-prog-preview>' + progPreviewHtml(s.stage || (C.STAGES[0] || {}).key) + '</div>' +
         '</div>' +
         '<div class="field"><label>门店负责人</label>' +
           '<select class="select" name="ownerId">' +
@@ -130,12 +133,22 @@ window.Pages.stores = (function () {
       '<div class="field"><label>备注</label>' +
         '<textarea class="textarea" name="remark" placeholder="选填，比如选址情况、特殊要求">' + U.esc(s.remark || '') + '</textarea>' +
       '</div>' +
-      (isNew
+      (isNew && S.templates().length
         ? '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);margin-top:4px">' +
-            '<input type="checkbox" name="autoTasks" /> 顺便自动派发 ' + C.TASK_TEMPLATES.length + ' 条标准筹建任务（不需要就留空，任务自己建）' +
+            '<input type="checkbox" name="autoTasks" checked /> 建店后自动派发清单里的 ' + S.templates().length + ' 条任务（不需要就取消勾选）' +
           '</label>'
         : '') +
     '</form>';
+  }
+
+  /* 表单里那格「阶段进度」：只读预览，跟着「当前阶段」即时变 */
+  function progPreviewHtml(stage) {
+    var p = S.storeProgress({ stage: stage });
+    return UI.progress(p.pct) +
+      '<span class="prog-prev-tip">' + U.esc(
+        p.ended ? '已开业，走完了全部 ' + p.total + ' 个筹建阶段'
+          : '已完成 ' + p.done + ' / ' + p.total + ' 个筹建阶段，往前推一个阶段进度就加一格'
+      ) + '</span>';
   }
 
   /* 风险下拉需要正确的 value/label，单独生成 */
@@ -147,16 +160,34 @@ window.Pages.stores = (function () {
 
   function openForm(store) {
     var isNew = !store;
+    var tplCount = S.templates().length;
 
     UI.modal({
       title: isNew ? '新增门店' : '编辑门店',
-      sub: isNew ? '保存后会自动派发标准任务' : (store.name || ''),
+      sub: isNew
+        ? (tplCount ? '保存后自动派发 ' + tplCount + ' 条筹建任务' : '筹建任务清单为空，暂不派发任务')
+        : (store.name || ''),
       body: formHtml(store),
       footer:
         '<button class="btn" data-act="cancel">取消</button>' +
         '<button class="btn btn-primary" data-act="save">保存</button>',
       onMount: function (rootEl, close) {
+        UI.initCombos(rootEl);
+        /* 回车不要触发表单提交（会刷新页面） */
+        var frm = rootEl.querySelector('form');
+        if (frm) frm.addEventListener('submit', function (e) { e.preventDefault(); });
+
         rootEl.querySelector('[data-act="cancel"]').onclick = close;
+
+        /* 换「当前阶段」时，旁边的阶段进度实时跟着变 */
+        var stageSel = rootEl.querySelector('[name="stage"]');
+        var prev = rootEl.querySelector('[data-prog-preview]');
+        if (stageSel && prev) {
+          stageSel.addEventListener('change', function () {
+            prev.innerHTML = progPreviewHtml(stageSel.value);
+          });
+        }
+
         rootEl.querySelector('[data-act="save"]').onclick = function () {
           var name = UI.formValue(rootEl, 'name');
           if (!name) {
@@ -170,18 +201,20 @@ window.Pages.stores = (function () {
             province: UI.formValue(rootEl, 'province'),
             stage: UI.formValue(rootEl, 'stage'),
             risk: UI.formValue(rootEl, 'risk'),
-            progress: Number(UI.formValue(rootEl, 'progress')) || 0,
             ownerId: UI.formValue(rootEl, 'ownerId'),
             openDate: UI.formValue(rootEl, 'openDate'),
             address: UI.formValue(rootEl, 'address'),
             remark: UI.formValue(rootEl, 'remark')
           };
+          /* progress 不再手填：显示用的百分比由 Store.storeProgress() 按阶段现算 */
 
           if (isNew) {
             var auto = rootEl.querySelector('[name="autoTasks"]');
             payload.autoTasks = auto ? auto.checked : true;
             S.addStore(payload);
-            UI.toast('门店已创建', 'success');
+            UI.toast(payload.autoTasks && tplCount
+              ? '门店已创建，已按清单派发 ' + tplCount + ' 条任务'
+              : '门店已创建', 'success');
           } else {
             S.updateStore(store.id, payload);
             UI.toast('门店信息已更新', 'success');
@@ -191,6 +224,64 @@ window.Pages.stores = (function () {
         };
       }
     });
+  }
+
+  /* ---------------- 物料到货（可编辑） ---------------- */
+  /* 门店给出到货时间 → 在这里逐条填；通知发货后点「标记已完成」 */
+  function arrList(storeId) {
+    return S.getState().arrivals.filter(function (a) { return a.storeId === storeId; })
+      .sort(function (a, b) { return String(a.etaDate || '').localeCompare(String(b.etaDate || '')); });
+  }
+
+  /* 清单里还没加进这家门店的物料 */
+  function arrMissing(storeId) {
+    var have = {};
+    arrList(storeId).forEach(function (a) { have[String(a.item || '').trim()] = 1; });
+    return S.items().filter(function (x) { return !have[x]; });
+  }
+
+  function arrBody(storeId) {
+    var list = arrList(storeId);
+    var preset = S.items();
+    var missing = arrMissing(storeId);
+
+    var empty = !list.length
+      ? '<div class="arr-empty">' +
+          '<p>门店还没给到货时间</p>' +
+          '<span>' + (preset.length
+            ? '点「一键添加」把清单里的物料一次加进来，再换上门店给的时间；也可以点下面的单个物料'
+            : '拿到时间后点「+ 添加物料」，物料名自己填（常用物料可以在「系统设置」里维护）') + '</span>' +
+          (preset.length
+            ? '<div class="arr-quick">' +
+                preset.map(function (x) {
+                  return '<button type="button" class="arr-chip" data-arr-quick="' + U.esc(x) + '">' + U.esc(x) + '</button>';
+                }).join('') +
+              '</div>'
+            : '') +
+        '</div>'
+      : '<div class="table-wrap"><table class="tbl arr-tbl" style="min-width:480px">' +
+          '<thead><tr><th>物料 / 供应商</th><th style="width:64px">数量</th><th style="width:132px">到货日期</th><th style="width:104px">状态</th><th style="width:30px"></th></tr></thead>' +
+          '<tbody>' + list.map(function (a) {
+            var done = a.status === 'arrived';
+            return '<tr data-arr="' + U.esc(a.id) + '"' + (done ? ' class="is-done"' : '') + '>' +
+              '<td><input class="arr-in" list="arrItems" data-arr-field="item" value="' + U.esc(a.item) + '" placeholder="填物料或供应商名字" /></td>' +
+              '<td><input class="arr-in mono" type="number" min="0" step="1" data-arr-field="qty" value="' + (a.qty ? a.qty : '') + '" placeholder="—" title="数量可以不填" /></td>' +
+              '<td><input class="arr-in mono" type="date" data-arr-field="etaDate" value="' + U.esc(a.etaDate || '') + '" /></td>' +
+              '<td><button type="button" class="arr-btn' + (done ? ' done' : '') + '" data-arr-done>' +
+                (done ? '✓ 已完成' : '标记已完成') + '</button></td>' +
+              '<td><button type="button" class="arr-del" data-arr-del title="删除这条">' + UI.icon('close') + '</button></td>' +
+            '</tr>';
+          }).join('') + '</tbody></table></div>';
+
+    var bulkLabel = list.length ? '补齐剩余 ' + missing.length + ' 项' : '一键添加全部 ' + preset.length + ' 项';
+
+    return empty +
+      '<div class="arr-actions">' +
+        (preset.length && missing.length
+          ? '<button type="button" class="arr-bulk" data-arr-bulk>' + UI.icon('plus') + bulkLabel + '</button>'
+          : '') +
+        '<button type="button" class="arr-add" data-arr-add>' + UI.icon('plus') + '添加物料</button>' +
+      '</div>';
   }
 
   /* ---------------- 详情 ---------------- */
@@ -214,20 +305,10 @@ window.Pages.stores = (function () {
       '</tr>';
     }).join('');
 
-    var arrivalRows = arrivals.slice(0, 6).map(function (a) {
-      return '<tr>' +
-        '<td>' + U.esc(a.item) + '</td>' +
-        '<td class="mono muted">× ' + a.qty + '</td>' +
-        '<td class="mono muted">' + U.monthDay(a.etaDate) + '</td>' +
-        '<td>' + (a.status === 'arrived'
-          ? '<span class="badge" style="color:var(--green);background:var(--green-soft)">已到货</span>'
-          : '<span class="badge" style="color:var(--primary);background:var(--primary-soft)">待到货</span>') + '</td>' +
-      '</tr>';
-    }).join('');
-
     var stageObj = null;
     C.STAGES.forEach(function (x) { if (x.key === store.stage) stageObj = x; });
     var days = U.diffDays(U.today(), store.openDate);
+    var pr = S.storeProgress(store);
 
     var body =
       '<div class="desc-list">' +
@@ -237,7 +318,10 @@ window.Pages.stores = (function () {
         '<div class="d-item"><div class="d-label">负责人</div><div class="d-val">' + U.esc(owner ? owner.name : '未指派') + '</div></div>' +
         '<div class="d-item"><div class="d-label">计划开业</div><div class="d-val mono">' + store.openDate +
           ' <span class="dim" style="font-weight:400">（' + (days >= 0 ? '还剩 ' + days + ' 天' : '已过 ' + (-days) + ' 天') + '）</span></div></div>' +
-        '<div class="d-item"><div class="d-label">整体进度</div><div class="d-val">' + UI.progress(store.progress) + '</div></div>' +
+        '<div class="d-item"><div class="d-label">阶段进度</div><div class="d-val">' +
+          UI.progress(pr.pct, null, S.progressTip(store)) +
+          '<span class="dim" style="font-weight:400;margin-left:8px">已完成 <b>' + pr.done + '</b> / ' +
+            pr.total + ' 个阶段</span></div></div>' +
       '</div>' +
       (store.address || store.remark
         ? '<div class="section-title">补充信息</div><div style="font-size:12.5px;color:var(--text-2);line-height:1.8">' +
@@ -251,12 +335,11 @@ window.Pages.stores = (function () {
             '<thead><tr><th>任务</th><th>阶段</th><th>负责人</th><th>截止</th><th>状态</th></tr></thead>' +
             '<tbody>' + taskRows + '</tbody></table></div>'
         : UI.empty('还没有任务')) +
-      '<div class="section-title">物料到货（' + arrivals.length + '）</div>' +
-      (arrivals.length
-        ? '<div class="table-wrap"><table class="tbl" style="min-width:420px">' +
-            '<thead><tr><th>物料</th><th>数量</th><th>到货日</th><th>状态</th></tr></thead>' +
-            '<tbody>' + arrivalRows + '</tbody></table></div>'
-        : UI.empty('暂无到货记录'));
+      '<div class="section-title">物料到货（<span id="arrCount">' + arrivals.length + '</span>）</div>' +
+      '<div id="arrWrap">' + arrBody(store.id) + '</div>' +
+      '<datalist id="arrItems">' +
+        S.items().map(function (x) { return '<option value="' + U.esc(x) + '"></option>'; }).join('') +
+      '</datalist>';
 
     UI.modal({
       title: store.name,
@@ -265,12 +348,116 @@ window.Pages.stores = (function () {
       body: body,
       footer:
         '<button class="btn" data-act="close">关闭</button>' +
+        (S.templates().length ? '<button class="btn" data-act="dispatch">按清单补派任务</button>' : '') +
         '<button class="btn btn-primary" data-act="edit">编辑门店</button>',
       onMount: function (rootEl, close) {
+        /* ---- 物料到货：增 / 改 / 标记完成 / 删 ---- */
+        var arrWrap = rootEl.querySelector('#arrWrap');
+        function repaintArr() {
+          arrWrap.innerHTML = arrBody(store.id);
+          var c = rootEl.querySelector('#arrCount');
+          if (c) c.textContent = arrList(store.id).length;
+        }
+
+        rootEl.addEventListener('click', function (e) {
+          /* 一键添加：把清单里还没有的物料一次性加进来 */
+          if (e.target.closest('[data-arr-bulk]')) {
+            var todo = arrMissing(store.id);
+            if (!todo.length) { UI.toast('清单里的物料都已经加过了', 'info'); return; }
+            var due = U.addDays(U.today(), 7);
+            todo.forEach(function (x) {
+              S.addArrival({ storeId: store.id, item: x, qty: 0, etaDate: due });
+            });
+            repaintArr();
+            UI.toast('已添加 ' + todo.length + ' 条物料，数量和到货日期按门店给的填', 'success');
+            return;
+          }
+
+          if (e.target.closest('[data-arr-add]')) {
+            var a = S.addArrival({
+              storeId: store.id,
+              item: '',
+              qty: 0,
+              etaDate: U.addDays(U.today(), 7)
+            });
+            repaintArr();
+            var inp = arrWrap.querySelector('[data-arr="' + a.id + '"] [data-arr-field="item"]');
+            if (inp) inp.focus();
+          }
+        });
+
+        /* 空状态里的常用物料：点一下就加一条，光标直接落到日期上 */
+        arrWrap.addEventListener('click', function (e) {
+          var chip = e.target.closest('[data-arr-quick]');
+          if (!chip) return;
+          var a = S.addArrival({
+            storeId: store.id,
+            item: chip.getAttribute('data-arr-quick'),
+            qty: 0,
+            etaDate: U.addDays(U.today(), 7)
+          });
+          repaintArr();
+          var dt = arrWrap.querySelector('[data-arr="' + a.id + '"] [data-arr-field="etaDate"]');
+          if (dt) dt.focus();
+        });
+
+        /* 输入即存（不重绘，避免光标跳走） */
+        arrWrap.addEventListener('input', function (e) {
+          var el = e.target;
+          var field = el.getAttribute('data-arr-field');
+          if (!field) return;
+          var tr = el.closest('tr[data-arr]');
+          if (!tr) return;
+          var aid = tr.getAttribute('data-arr');
+          if (field === 'qty') {
+            /* 数量允许留空：空 = 0（显示为「—」），不是 1 */
+            var digits = String(el.value).replace(/[^\d]/g, '');
+            S.updateArrival(aid, { qty: digits === '' ? 0 : Math.max(1, parseInt(digits, 10)) });
+          }
+          else if (field === 'etaDate') S.updateArrival(aid, { etaDate: el.value });
+          else S.updateArrival(aid, { item: el.value });
+        });
+
+        arrWrap.addEventListener('click', function (e) {
+          var tr = e.target.closest('tr[data-arr]');
+          if (!tr) return;
+          var aid = tr.getAttribute('data-arr');
+          var rec = null;
+          S.getState().arrivals.forEach(function (x) { if (x.id === aid) rec = x; });
+          if (!rec) return;
+
+          if (e.target.closest('[data-arr-done]')) {
+            var next = rec.status === 'arrived' ? 'pending' : 'arrived';
+            S.updateArrival(aid, { status: next });
+            repaintArr();
+            UI.toast(next === 'arrived'
+              ? '已标记完成：' + (rec.item || '该物料') + '（已通知发货）'
+              : '已改回未发货', 'success');
+            return;
+          }
+
+          if (e.target.closest('[data-arr-del]')) {
+            S.removeArrival(aid);
+            repaintArr();
+            UI.toast('已删除「' + (rec.item || '未命名物料') + '」', 'info');
+          }
+        });
+
         rootEl.querySelector('[data-act="close"]').onclick = close;
         rootEl.querySelector('[data-act="edit"]').onclick = function () {
           close();
           openForm(store);
+        };
+        var dp = rootEl.querySelector('[data-act="dispatch"]');
+        if (dp) dp.onclick = function () {
+          var n = S.dispatchTemplates(store.id);
+          if (n) {
+            UI.toast('已补派 ' + n + ' 条任务', 'success');
+            close();
+            openDetail(store.id);
+          } else {
+            UI.toast('没有可补派的任务（清单为空，或清单里的任务都已存在）', 'info');
+          }
         };
       }
     });
@@ -302,9 +489,15 @@ window.Pages.stores = (function () {
         '<label class="mini-search">' + UI.icon('search') +
           '<input id="stSearch" placeholder="搜索门店 / 负责人" value="' + U.esc(state.q) + '" />' +
         '</label>' +
-        '<select class="select" id="stProvince">' +
-          '<option value="">全部省份</option>' + UI.options(provinceOptions, state.province) +
-        '</select>' +
+        UI.comboHtml({
+          id: 'stProvince',
+          value: state.province,
+          items: provinceOptions,
+          py: C.PROVINCE_PINYIN,
+          allLabel: '全部省份',
+          size: 'sm',
+          placeholder: '全部省份'
+        }) +
         '<select class="select" id="stStage">' +
           '<option value="">全部阶段</option>' + UI.options(C.STAGES.map(function (x) { return x.key; }), state.stage) +
         '</select>' +
@@ -339,6 +532,7 @@ window.Pages.stores = (function () {
   }, 240);
 
   function mount(root) {
+    UI.initCombos(root);
     var cnt = root.querySelector('#stCount');
     if (cnt) cnt.textContent = '筛选结果 ' + filtered().length + ' 家';
 

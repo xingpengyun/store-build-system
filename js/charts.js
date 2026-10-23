@@ -71,13 +71,19 @@ window.Charts = (function () {
   }
 
   /* ---------- 阶段堆叠条 ---------- */
-  function stackBar(items) {
+  /* opts.clickable = true 时，每段带 data-stage / data-count，可点击筛选 */
+  function stackBar(items, opts) {
+    opts = opts || {};
     var total = 0;
     items.forEach(function (i) { total += i.count; });
     if (total <= 0) return '<div class="stage-bar"></div>';
 
     var segs = items.filter(function (i) { return i.count > 0; }).map(function (i) {
+      var attr = opts.clickable
+        ? ' class="seg' + (opts.active === i.key ? ' on' : '') + '" data-stage="' + i.key + '"'
+        : '';
       return '<i style="width:' + (i.count / total * 100).toFixed(2) + '%;background:' + i.color + '"' +
+        attr +
         ' title="' + i.key + ' ' + i.count + ' 家"></i>';
     }).join('');
 

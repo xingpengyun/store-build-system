@@ -41,6 +41,241 @@ window.Store = (function () {
     return !!(d && d.stores && d.stores.length);
   }
 
+  /* ================= 一级阶段（可自定义） =================
+     settings.stages = [{ key, color, soft }, ...]，存的是「完整列表」（含出厂那几个）。
+     - 没存过 → 用 CONST.STAGE_BUILTIN（出厂 6 个）
+     - 存过 → 以它为准，顺序也以它为准
+     合并结果直接写回 CONST.STAGES，这样首页 / 门店 / 报表 / 时间线都自动跟同一份，
+     不需要改几十处调用点。原始出厂值在 CONST.STAGE_BUILTIN，不会丢。
+     ========================================================= */
+
+  function resolveStages(settings) {
+    var saved = settings && settings.stages;
+    if (Array.isArray(saved) && saved.length) {
+      var out = [];
+      var seen = {};
+      saved.forEach(function (x) {
+        var key = String((x && x.key) == null ? '' : x.key).trim();
+        if (!key || seen[key]) return;
+        if (key.indexOf('/') >= 0) return;
+        seen[key] = 1;
+        var d = null;
+        C.STAGE_BUILTIN.forEach(function (b) { if (b.key === key) d = b; });
+        out.push({
+          key: key,
+          color: (x && x.color) || (d && d.color) || '#8b95aa',
+          soft: (x && x.soft) || (d && d.soft) || '#f0f2f6'
+        });
+      });
+      if (out.length) return out;
+    }
+    return C.STAGE_BUILTIN.map(function (x) {
+      return { key: x.key, color: x.color, soft: x.soft };
+    });
+  }
+
+  function applyStages(list) {
+    C.STAGES.length = 0;
+    (list || []).forEach(function (x) { C.STAGES.push(x); });
+    return C.STAGES;
+  }
+
+  /* 当前生效的一级阶段（就是 CONST.STAGES，包一层方便页面读） */
+  function stages() {
+    return C.STAGES;
+  }
+
+  function stageUsage(name) {
+    var stores = 0, tasks = 0, tpls = 0;
+    state.stores.forEach(function (s) { if (s.stage === name) stores++; });
+    state.tasks.forEach(function (t) {
+      if (C.stageSplit(t.stage).base === name) tasks++;
+    });
+    templates().forEach(function (t) {
+      if (C.stageSplit(t.stage).base === name) tpls++;
+    });
+    return { stores: stores, tasks: tasks, templates: tpls };
+  }
+
+  function stageByName(name) {
+    var hit = null;
+    C.STAGES.forEach(function (x) { if (x.key === name) hit = x; });
+    return hit;
+  }
+
+  function pickStageColor() {
+    var used = {};
+    C.STAGES.forEach(function (x) { used[x.color] = 1; });
+    var pick = null;
+    C.STAGE_PALETTE.forEach(function (p) { if (!pick && !used[p.color]) pick = p; });
+    return pick || C.STAGE_PALETTE[C.STAGES.length % C.STAGE_PALETTE.length];
+  }
+
+  /* 新增一级阶段，插在 after（某个阶段名）后面；不传就加在末尾。
+     返回值：{ ok, error, stage } —— 页面按 ok 决定提示什么 */
+  function addStage(name, after) {
+    name = String(name == null ? '' : name).trim().replace(/\s+/g, ' ');
+    if (!name) return { ok: false, error: '名字不能为空' };
+    if (name.indexOf('/') >= 0) return { ok: false, error: '阶段名里不要带斜杠（斜杠是「一级 / 二级」的分隔符）' };
+    if (stageByName(name)) return { ok: false, error: '「' + name + '」已经存在' };
+
+    var list = C.STAGES.map(function (x) { return { key: x.key, color: x.color, soft: x.soft }; });
+    var p = pickStageColor();
+    var item = { key: name, color: p.color, soft: p.soft };
+
+    var at = list.length;
+    if (after) {
+      var i = -1;
+      list.forEach(function (x, idx) { if (x.key === after) i = idx; });
+      if (i >= 0) at = i + 1;
+    }
+    list.splice(at, 0, item);
+
+    setSetting('stages', list);
+    applyStages(list);
+    return { ok: true, stage: item };
+  }
+
+  /* 一级阶段改名：门店、任务、二级、筹建任务清单四处一起改 */
+  function renameStage(from, to) {
+    from = String(from == null ? '' : from).trim();
+    to = String(to == null ? '' : to).trim().replace(/\s+/g, ' ');
+    if (!from || !to || from === to) return { ok: false, error: '名字没变' };
+    if (to.indexOf('/') >= 0) return { ok: false, error: '阶段名里不要带斜杠' };
+    if (!stageByName(from)) return { ok: false, error: '找不到阶段「' + from + '」' };
+    if (stageByName(to)) return { ok: false, error: '「' + to + '」已经存在' };
+
+    var hit = 0;
+
+    /* 1) 阶段列表（原地换名，位置不变） */
+    var list = C.STAGES.map(function (x) {
+      return x.key === from
+        ? { key: to, color: x.color, soft: x.soft }
+        : { key: x.key, color: x.color, soft: x.soft };
+    });
+    setSetting('stages', list);
+    applyStages(list);
+
+    /* 2) 二级 map 的 key */
+    var subs = stageSubs();
+    if (subs[from]) {
+      var next = {};
+      Object.keys(subs).forEach(function (k) {
+        next[k === from ? to : k] = subs[k];
+      });
+      saveStageSubs(next);
+    }
+
+    /* 3) 筹建任务清单 */
+    var tpls = templates();
+    var tplDirty = false;
+    tpls.forEach(function (t) {
+      var p = C.stageSplit(t.stage);
+      if (p.base !== from) return;
+      t.stage = C.stageValue(to, p.sub);
+      tplDirty = true;
+      hit++;
+    });
+    if (tplDirty) saveTemplates(tpls);
+
+    /* 4) 门店 + 任务 */
+    var sChanged = [];
+    state.stores.forEach(function (s) {
+      if (s.stage !== from) return;
+      s.stage = to;
+      sChanged.push(s);
+      hit++;
+    });
+    var tChanged = [];
+    state.tasks.forEach(function (t) {
+      var p = C.stageSplit(t.stage);
+      if (p.base !== from) return;
+      t.stage = C.stageValue(to, p.sub);
+      tChanged.push(t);
+      hit++;
+    });
+    if (sChanged.length) pushMany('stores', sChanged);
+    if (tChanged.length) pushMany('tasks', tChanged);
+    if (sChanged.length || tChanged.length) cacheLocal();
+
+    return { ok: true, hit: hit };
+  }
+
+  /* 删除一级阶段：
+     - 还有门店在这个阶段 → 不许删（先让门店换阶段，否则门店会变成「找不到阶段」）
+     - 没有门店 → 挂在上面的任务 / 清单挪到第一个阶段，二级定义一起删掉 */
+  function removeStage(name) {
+    name = String(name == null ? '' : name).trim();
+    var use = stageUsage(name);
+    if (!stageByName(name)) return { ok: false, error: '找不到阶段「' + name + '」' };
+    if (C.STAGES.length <= 1) return { ok: false, error: '至少要留一个阶段' };
+    if (use.stores) {
+      return {
+        ok: false,
+        error: '「' + name + '」下还有 ' + use.stores + ' 家门店，先把它们改到别的阶段再删'
+      };
+    }
+
+    var rest = C.STAGES.filter(function (x) { return x.key !== name; })
+      .map(function (x) { return { key: x.key, color: x.color, soft: x.soft }; });
+    var fallback = rest[0].key;
+
+    setSetting('stages', rest);
+    applyStages(rest);
+
+    /* 二级定义 */
+    var subs = stageSubs();
+    if (subs[name]) {
+      delete subs[name];
+      saveStageSubs(subs);
+    }
+
+    /* 任务 / 清单退回第一个阶段（不是删掉它们） */
+    var tpls = templates();
+    var tplDirty = false;
+    tpls.forEach(function (t) {
+      if (C.stageSplit(t.stage).base !== name) return;
+      t.stage = fallback;
+      tplDirty = true;
+    });
+    if (tplDirty) saveTemplates(tpls);
+
+    var changed = [];
+    state.tasks.forEach(function (t) {
+      if (C.stageSplit(t.stage).base !== name) return;
+      t.stage = fallback;
+      changed.push(t);
+    });
+    if (changed.length) {
+      pushMany('tasks', changed);
+      cacheLocal();
+    }
+
+    return { ok: true, moved: use.tasks + use.templates, to: fallback };
+  }
+
+  /* 拖完顺序：keys 是完整的新顺序（可以只给一部分，剩下的按原顺序接在后面） */
+  function saveStageOrder(keys) {
+    var map = {};
+    C.STAGES.forEach(function (x) { map[x.key] = x; });
+
+    var list = [];
+    var seen = {};
+    (keys || []).forEach(function (k) {
+      if (!map[k] || seen[k]) return;
+      seen[k] = 1;
+      list.push({ key: k, color: map[k].color, soft: map[k].soft });
+    });
+    C.STAGES.forEach(function (x) {
+      if (seen[x.key]) return;
+      list.push({ key: x.key, color: x.color, soft: x.soft });
+    });
+
+    if (list.length !== C.STAGES.length) return C.STAGES;
+    setSetting('stages', list);
+    return applyStages(list);
+  }
+
   /* ================= 兼容旧数据 ================= */
 
   function normalized(data) {
@@ -62,6 +297,26 @@ window.Store = (function () {
       if (data.settings.teamName === '团队') data.settings.teamName = '阿蛮团队';
       data.meta.version = 2;
     }
+
+    /* 一级阶段：有自定义就用自定义的，否则出厂 6 个；
+       结果写回 CONST.STAGES，全站（首页 / 门店 / 报表 / 时间线）自动跟着变 */
+    applyStages(resolveStages(data.settings));
+
+    /* 「已出图」的二级补种一次：
+       之前已经保存过 stageSubs 的老数据，也要能拿到「已做首批 / 未做首批」。
+       打过 stageSeed 标记就不再补，你之后主动删掉它们不会被塞回来。 */
+    if (data.settings.stageSeed !== 1) {
+      var subs = data.settings.stageSubs;
+      if (!subs || typeof subs !== 'object') subs = data.settings.stageSubs = {};
+      var seed = (C.DEFAULT_STAGE_SUBS && C.DEFAULT_STAGE_SUBS['已出图']) || [];
+      if (seed.length) {
+        var cur = Array.isArray(subs['已出图']) ? subs['已出图'].slice() : [];
+        seed.forEach(function (x) { if (cur.indexOf(x) < 0) cur.push(x); });
+        if (cur.length) subs['已出图'] = cur;
+      }
+      data.settings.stageSeed = 1;
+    }
+
     return data;
   }
 
@@ -381,18 +636,21 @@ window.Store = (function () {
     });
 
     state.stores.forEach(function (s) {
+      var pr = storeProgress(s);
+      var pctTxt = '已完成 ' + pr.done + '/' + pr.total + ' 个阶段（' + pr.pct + '%）';
+
       if (s.risk === 'high' || s.risk === 'overdue') {
         addAlert({
           id: 'risk-' + s.id, level: 'high', type: '门店风险',
           title: s.name,
-          desc: '风险等级：' + C.RISKS[s.risk].label + '，进度 ' + s.progress + '%，开业日 ' + U.monthDay(s.openDate),
+          desc: '风险等级：' + C.RISKS[s.risk].label + '，' + pctTxt + '，开业日 ' + U.monthDay(s.openDate),
           owner: (memberById(s.ownerId) || {}).name || '未指派', storeId: s.id
         });
       } else if (s.risk === 'attention') {
         addAlert({
           id: 'watch-' + s.id, level: 'warn', type: '门店关注',
           title: s.name,
-          desc: '进度 ' + s.progress + '%，距离计划开业 ' + U.diffDays(t0, s.openDate) + ' 天',
+          desc: pctTxt + '，距离计划开业 ' + U.diffDays(t0, s.openDate) + ' 天',
           owner: (memberById(s.ownerId) || {}).name || '未指派', storeId: s.id
         });
       }
@@ -429,8 +687,10 @@ window.Store = (function () {
       id: U.uid('store'),
       name: (data.name || '未命名门店').trim(),
       province: data.province || '',
-      stage: data.stage || '未出图',
+      stage: data.stage || ((C.STAGES[0] || {}).key || '未出图'),
       risk: data.risk || 'normal',
+      /* 云端 stores.progress 这一列还在（不做表结构迁移），但界面不再读它：
+         显示用的百分比统一由 storeProgress() 按「阶段时间线」现算 */
       progress: U.clamp(Number(data.progress) || 0, 0, 100),
       ownerId: data.ownerId || (state.members[0] || {}).id,
       openDate: data.openDate || U.addDays(t0, 30),
@@ -441,18 +701,23 @@ window.Store = (function () {
     state.stores.unshift(store);
     push('stores', store);
 
-    if (data.autoTasks !== false) {
+    var tpls = templates();
+    if (data.autoTasks !== false && tpls.length) {
       var roleToId = {};
       state.members.forEach(function (m) { roleToId[m.role] = m.id; });
       var created = [];
-      C.TASK_TEMPLATES.forEach(function (tpl, i) {
+      tpls.forEach(function (tpl, i) {
+        /* 截止日 = 开业日往前推 tpl.before 天；推出去了就顺延到近期 */
+        var due = U.addDays(store.openDate, -(Number(tpl.before) || (i + 1) * 7));
+        if (!due || due < t0) due = U.addDays(t0, 2 + i * 3);
+
         var t = {
           id: U.uid('task'),
           storeId: store.id,
           title: tpl.title,
           stage: tpl.stage,
           assigneeId: roleToId[tpl.role] || store.ownerId,
-          dueDate: U.addDays(t0, 3 + i * 7),
+          dueDate: due,
           status: 'pending',
           priority: 'normal',
           remark: '',
@@ -502,7 +767,7 @@ window.Store = (function () {
       id: U.uid('task'),
       storeId: data.storeId,
       title: (data.title || '未命名任务').trim(),
-      stage: data.stage || '未出图',
+      stage: data.stage || ((C.STAGES[0] || {}).key || '未出图'),
       assigneeId: data.assigneeId || (state.members[0] || {}).id,
       dueDate: data.dueDate || U.addDays(U.today(), 7),
       status: data.status || 'pending',
@@ -520,24 +785,13 @@ window.Store = (function () {
     var t = taskById(id);
     if (!t) return null;
     Object.keys(patch).forEach(function (k) { t[k] = patch[k]; });
-
-    if (patch.status === 'done') syncStoreStage(t.storeId);
-
     push('tasks', t);
     cacheLocal();
     return t;
   }
 
-  function syncStoreStage(storeId) {
-    var s = storeById(storeId);
-    if (!s) return;
-    var mine = state.tasks.filter(function (t) { return t.storeId === storeId; });
-    if (!mine.length) return;
-    var done = mine.filter(function (t) { return t.status === 'done'; }).length;
-    var p = Math.round(done / mine.length * 100);
-    s.progress = U.clamp(p, s.progress > p ? s.progress : p, 100);
-    push('stores', s);
-  }
+  /* 注：门店进度已改为按「阶段时间线」现算（storeProgress），
+     不再由任务完成率回写 stores.progress。云端那一列保留不动，只是不再参与显示。 */
 
   function removeTask(id) {
     state.tasks = state.tasks.filter(function (t) { return t.id !== id; });
@@ -594,11 +848,12 @@ window.Store = (function () {
   /* ================= 到货 CRUD ================= */
 
   function addArrival(data) {
+    var q = data.qty;
     var a = {
       id: U.uid('arr'),
       storeId: data.storeId,
       item: data.item || '物料',
-      qty: Number(data.qty) || 1,
+      qty: (q === '' || q === null || q === undefined) ? 0 : Math.max(0, Number(q) || 0),
       etaDate: data.etaDate || U.addDays(U.today(), 3),
       status: data.status || 'pending'
     };
@@ -633,6 +888,339 @@ window.Store = (function () {
     state.settings[key] = value;
     pushSettings();
     cacheLocal();
+  }
+
+  /* ================= 筹建任务清单（完全自定义） =================
+     一切以你自己编辑的清单为准：
+     - 没有任何内置清单，也不会自动回退到系统默认
+     - 你清空成 0 条，就是 0 条，系统不会偷偷塞回来
+     - 存在 settings 里，跟着云端同步，7 个人看到的是同一份
+     -------------------------------------------------------------- */
+
+  function templates() {
+    var list = state.settings && state.settings.taskTemplates;
+    return Array.isArray(list) ? list : [];
+  }
+
+  function saveTemplates(list) {
+    var clean = (list || []).map(function (t) {
+      return {
+        title: String(t.title || '').trim(),
+        stage: t.stage || '',
+        before: Math.max(0, Number(t.before) || 0),
+        role: t.role || ''
+      };
+    }).filter(function (t) { return !!t.title; });
+
+    /* 空数组也照存：这是"我就是要空清单"的明确意图，不是"没设置过" */
+    setSetting('taskTemplates', clean);
+    return templates();
+  }
+
+  /* ---------------- 到货物料清单（设置里可改） ----------------
+     - 门店详情「物料到货」里的快捷按钮 = 这份清单
+     - 没设置过 → 用 constants 里那一份做初始值（第一次保存后就以你改的为准）
+     - 存成空数组 → 门店里就不显示快捷按钮，只能手动加
+     ---------------------------------------------------------- */
+
+  function items() {
+    var list = state.settings && state.settings.arrivalItems;
+    return Array.isArray(list) ? list : C.ITEMS.slice();
+  }
+
+  function saveItems(list) {
+    var seen = {};
+    var clean = (list || []).map(function (x) {
+      return String(x == null ? '' : x).trim();
+    }).filter(function (x) {
+      if (!x || seen[x]) return false;
+      seen[x] = true;
+      return true;
+    });
+    setSetting('arrivalItems', clean);
+    return items();
+  }
+
+  /* ---------------- 阶段二级（子阶段） ----------------
+     settings.stageSubs = { '施工/装修': ['水电', '木作'], ... }
+     - 只影响任务 / 筹建任务清单的分级，门店仍用 6 个一级阶段
+     - 任务的 stage 存成 "一级 / 二级"，所以云端不用加字段
+     ---------------------------------------------------------- */
+
+  function stageSubs() {
+    var map = state.settings && state.settings.stageSubs;
+    var out = {};
+    /* 从没保存过二级 → 用出厂那几组（已出图 下有「已做首批 / 未做首批」）；
+       保存过（哪怕是空对象）就以你保存的为准，不会把默认值又塞回来 */
+    if (!map || typeof map !== 'object') map = C.DEFAULT_STAGE_SUBS || {};
+    if (!map || typeof map !== 'object') return out;
+    C.STAGES.forEach(function (st) {
+      var list = map[st.key];
+      if (!Array.isArray(list) || !list.length) return;
+      var seen = {};
+      var clean = [];
+      list.forEach(function (x) {
+        var v = String(x == null ? '' : x).trim();
+        if (!v || seen[v]) return;
+        seen[v] = true;
+        clean.push(v);
+      });
+      if (clean.length) out[st.key] = clean;
+    });
+    return out;
+  }
+
+  function saveStageSubs(map) {
+    var clean = {};
+    C.STAGES.forEach(function (st) {
+      var list = (map && map[st.key]) || [];
+      var seen = {};
+      var keep = [];
+      list.forEach(function (x) {
+        var v = String(x == null ? '' : x).trim();
+        if (!v || seen[v]) return;
+        seen[v] = true;
+        keep.push(v);
+      });
+      if (keep.length) clean[st.key] = keep;
+    });
+    setSetting('stageSubs', clean);
+    return stageSubs();
+  }
+
+  /* 时间线 / 阶段下拉统一用的「一级 + 二级」结构，三个来源并集：
+       1) 设置里手填的  → 顺序排最前（你显式定义的优先）
+       2) 筹建任务清单里用到的 → 清单就是标准流程，时间线跟着它走
+       3) 已有任务里用到的  → 二级被删了历史数据也不至于筛不到
+     这样「筹建任务清单」和「阶段时间线」永远是同一套结构：清单里加了二级，
+     时间线立刻出现；清单里删光了，且设置里也没手填、没有历史任务，才会消失。 */
+  function stageSubsWithUsed() {
+    var map = stageSubs();
+
+    function add(v) {
+      var p = C.stageSplit(v);
+      if (!p.sub || !C.isStage(p.base)) return;
+      var list = map[p.base] || (map[p.base] = []);
+      if (list.indexOf(p.sub) < 0) list.push(p.sub);
+    }
+
+    templates().forEach(function (t) { add(t.stage); });
+    state.tasks.forEach(function (t) { add(t.stage); });
+    return map;
+  }
+
+  /* 筹建任务清单按阶段的数量分布，用来和时间线对照：
+       { byStage: { '施工/装修 / 水电': 2 }, byBase: { '施工/装修': 3 }, total: 7 } */
+  function templateStageStat() {
+    var byStage = {};
+    var byBase = {};
+    var total = 0;
+
+    templates().forEach(function (t) {
+      var v = String(t.stage || '');
+      if (!C.isStage(v)) return;
+      total++;
+      byStage[v] = (byStage[v] || 0) + 1;
+      var b = C.stageSplit(v).base;
+      byBase[b] = (byBase[b] || 0) + 1;
+    });
+
+    return { byStage: byStage, byBase: byBase, total: total };
+  }
+
+  /* ---------------- 门店进度：跟着「阶段时间线」走 ----------------
+     走完全部筹建阶段 = 100%。「已开业」不算筹建阶段，它是终点，到了直接 100%。
+     假设时间线是 未出图 / 已出图 / 资料/建档 / 施工/装修 / 物料/到货 / 开业准备 / 已开业，
+     那 6 个筹建阶段各占 1/6 ≈ 16.7%，门店每往后推一个阶段，进度就跳一格：
+       未出图 0%  已出图 17%  资料/建档 33%  ……  开业准备 83%  已开业 100%
+     阶段是用户自己加 / 改名 / 删 / 排序的，所以分母一律按当前 C.STAGES 现算，
+     不写死 6：时间线里多一个阶段，每格就自动变小。
+     ------------------------------------------------------------------ */
+
+  /* 终点阶段（默认「已开业」）和筹建阶段序列 */
+  function stageFlow() {
+    var list = C.STAGES || [];
+    var endKey = '';
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].key === '已开业') { endKey = '已开业'; break; }
+    }
+    /* 「已开业」被改名了：退回最后一个阶段当终点，至少不会算错分母 */
+    if (!endKey && list.length) endKey = list[list.length - 1].key;
+    var flow = list.filter(function (x) { return x.key !== endKey; });
+    return { endKey: endKey, flow: flow };
+  }
+
+  /* { pct, done, total, at, ended }  done = 已完成阶段数，total = 筹建阶段总数 */
+  function storeProgress(store) {
+    var f = stageFlow();
+    var total = f.flow.length || 1;
+    var at = store ? String(store.stage || '') : '';
+
+    if (at && at === f.endKey) {
+      return { pct: 100, done: total, total: total, at: at, ended: true };
+    }
+
+    var done = 0;
+    for (var i = 0; i < f.flow.length; i++) {
+      if (f.flow[i].key === at) { done = i; break; }
+    }
+    /* 阶段被删 / 改名后门店还挂着旧值：按起点算，不让它变成 100% */
+    return { pct: Math.round(done / total * 100), done: done, total: total, at: at, ended: false };
+  }
+
+  /* 鼠标悬停的说明文字，各页面共用，避免同一个数字三种说法 */
+  function progressTip(store) {
+    var p = storeProgress(store);
+    if (p.ended) return '已完成全部 ' + p.total + ' 个筹建阶段，门店已开业';
+    if (!p.at) return '还没设置阶段';
+    return '已完成 ' + p.done + ' / ' + p.total + ' 个阶段（当前：' + p.at + '）';
+  }
+
+  /* ---------------- 二级的改名 / 删除（三处一起同步） ----------------
+     只改 settings.stageSubs 是不够的：清单和已有任务里还挂着旧名，
+     时间线会把旧名当成「历史值」又显示出来，变成新旧两个并存。
+     所以改名 / 删除都同时处理 stageSubs + 筹建任务清单 + 已有任务。
+     页面先用 stageSubUsage() 算影响面，弹确认给用户看清楚再动手。
+     ------------------------------------------------------------------ */
+
+  function stageSubUsage(base, name) {
+    var v = C.stageValue(base, name);
+    var tpl = 0;
+    var task = 0;
+    templates().forEach(function (t) { if (t.stage === v) tpl++; });
+    state.tasks.forEach(function (t) { if (t.stage === v) task++; });
+    return { templates: tpl, tasks: task };
+  }
+
+  function renameStageSub(base, from, to) {
+    from = String(from == null ? '' : from).trim();
+    to = String(to == null ? '' : to).trim().replace(/\s+/g, ' ');
+    if (!from || !to || from === to) return 0;
+
+    var oldV = C.stageValue(base, from);
+    var newV = C.stageValue(base, to);
+    var hit = 0;
+
+    /* 1) 阶段定义：原地替换，二级顺序不变 */
+    var map = stageSubs();
+    var list = (map[base] || []).slice();
+    if (list.indexOf(from) >= 0) {
+      var i = list.indexOf(from);
+      if (list.indexOf(to) >= 0) list.splice(i, 1);   /* 新名字已经存在，去掉旧的 */
+      else list[i] = to;
+    } else if (list.indexOf(to) < 0) {
+      list.push(to);
+    }
+    if (list.length) map[base] = list; else delete map[base];
+    saveStageSubs(map);
+
+    /* 2) 筹建任务清单 */
+    var tpls = templates();
+    var tplDirty = false;
+    tpls.forEach(function (t) {
+      if (t.stage !== oldV) return;
+      t.stage = newV;
+      tplDirty = true;
+      hit++;
+    });
+    if (tplDirty) saveTemplates(tpls);
+
+    /* 3) 已有任务（按门店查的时候还要靠它） */
+    var changed = [];
+    state.tasks.forEach(function (t) {
+      if (t.stage !== oldV) return;
+      t.stage = newV;
+      changed.push(t);
+      hit++;
+    });
+    if (changed.length) {
+      pushMany('tasks', changed);
+      cacheLocal();
+    }
+
+    return hit;
+  }
+
+  function removeStageSub(base, name) {
+    name = String(name == null ? '' : name).trim();
+    if (!name) return 0;
+
+    var oldV = C.stageValue(base, name);
+    var hit = 0;
+
+    var map = stageSubs();
+    if (map[base]) {
+      var list = map[base].filter(function (x) { return x !== name; });
+      if (list.length) map[base] = list; else delete map[base];
+      saveStageSubs(map);
+    }
+
+    /* 挂在它上面的任务退回一级，否则它会因为「还有任务在用」又出现在时间线里 */
+    var tpls = templates();
+    var tplDirty = false;
+    tpls.forEach(function (t) {
+      if (t.stage !== oldV) return;
+      t.stage = base;
+      tplDirty = true;
+      hit++;
+    });
+    if (tplDirty) saveTemplates(tpls);
+
+    var changed = [];
+    state.tasks.forEach(function (t) {
+      if (t.stage !== oldV) return;
+      t.stage = base;
+      changed.push(t);
+      hit++;
+    });
+    if (changed.length) {
+      pushMany('tasks', changed);
+      cacheLocal();
+    }
+
+    return hit;
+  }
+
+  /* 给单个门店补派清单任务（同名的自动跳过，不会重复） */
+  function dispatchTemplates(storeId) {
+    var store = storeById(storeId);
+    if (!store) return 0;
+    var tpls = templates();
+    if (!tpls.length) return 0;
+
+    var t0 = U.today();
+    var exist = {};
+    state.tasks.forEach(function (t) {
+      if (t.storeId === storeId) exist[t.title] = true;
+    });
+
+    var roleToId = {};
+    state.members.forEach(function (m) { roleToId[m.role] = m.id; });
+
+    var created = [];
+    tpls.forEach(function (tpl, i) {
+      if (exist[tpl.title]) return;
+      var due = U.addDays(store.openDate, -(Number(tpl.before) || (i + 1) * 7));
+      if (!due || due < t0) due = U.addDays(t0, 2 + i * 3);
+      created.push({
+        id: U.uid('task'),
+        storeId: storeId,
+        title: tpl.title,
+        stage: tpl.stage,
+        assigneeId: roleToId[tpl.role] || store.ownerId,
+        dueDate: due,
+        status: 'pending',
+        priority: 'normal',
+        remark: '',
+        createdAt: t0
+      });
+    });
+
+    if (!created.length) return 0;
+    created.forEach(function (t) { state.tasks.push(t); });
+    pushMany('tasks', created);
+    cacheLocal();
+    return created.length;
   }
 
   function saveAll() {
@@ -744,6 +1332,28 @@ window.Store = (function () {
     updateArrival: updateArrival,
     removeArrival: removeArrival,
     setSetting: setSetting,
+    templates: templates,
+    saveTemplates: saveTemplates,
+    items: items,
+    saveItems: saveItems,
+    stageSubs: stageSubs,
+    saveStageSubs: saveStageSubs,
+    stages: stages,
+    addStage: addStage,
+    renameStage: renameStage,
+    removeStage: removeStage,
+    saveStageOrder: saveStageOrder,
+    stageUsage: stageUsage,
+    stageByName: stageByName,
+    stageSubsWithUsed: stageSubsWithUsed,
+    templateStageStat: templateStageStat,
+    stageFlow: stageFlow,
+    storeProgress: storeProgress,
+    progressTip: progressTip,
+    stageSubUsage: stageSubUsage,
+    renameStageSub: renameStageSub,
+    removeStageSub: removeStageSub,
+    dispatchTemplates: dispatchTemplates,
     saveAll: saveAll,
     markAlertRead: markAlertRead,
     markAllAlertsRead: markAllAlertsRead,

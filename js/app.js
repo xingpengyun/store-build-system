@@ -31,8 +31,15 @@ window.App = (function () {
   function render() {
     var route = currentRoute();
     var page = window.Pages[route] || window.Pages.home;
-    var view = document.getElementById('view');
-    if (!view) return;
+    var host = document.getElementById('view');
+    if (!host) return;
+
+    /* 用一个新的空容器替换掉旧的 #view：
+       各页面都是在 #view 上挂事件监听的，如果一直复用同一个节点，
+       来回切页面会让监听越挂越多（点一次「新建门店」会连着触发上一次「新增任务」的处理，
+       于是弹出一堆「请先创建门店」）。换节点后旧监听随旧节点一起丢掉。 */
+    var view = host.cloneNode(false);
+    host.parentNode.replaceChild(view, host);
 
     if (page.onEnter) page.onEnter(params);
     params = {};

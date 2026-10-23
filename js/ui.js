@@ -33,7 +33,9 @@ window.UI = (function () {
     inbox: '<path d="M3 11.4l2.2-6.2h9.6l2.2 6.2v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-4z"/><path d="M3 11.4h4l.9 1.8h4.2l.9-1.8h4"/>',
     file: '<path d="M5.2 3h6l3.6 3.6v10.4H5.2z"/><path d="M11 3v4h3.8"/>',
     bell: '<path d="M10 3.2a4.4 4.4 0 0 0-4.4 4.4c0 3.9-1.5 4.9-1.5 4.9h11.8s-1.5-1-1.5-4.9A4.4 4.4 0 0 0 10 3.2z"/><path d="M8.6 15.4a1.7 1.7 0 0 0 2.8 0"/>',
-    refreshDot: '<circle cx="10" cy="10" r="6.6"/><path d="M10 6.6v3.6l2.4 1.4"/>'
+    refreshDot: '<circle cx="10" cy="10" r="6.6"/><path d="M10 6.6v3.6l2.4 1.4"/>',
+    grip: '<circle cx="7.6" cy="5.4" r="1.15"/><circle cx="7.6" cy="10" r="1.15"/><circle cx="7.6" cy="14.6" r="1.15"/>' +
+          '<circle cx="12.4" cy="5.4" r="1.15"/><circle cx="12.4" cy="10" r="1.15"/><circle cx="12.4" cy="14.6" r="1.15"/>'
   };
 
   function icon(name, cls) {
@@ -49,11 +51,14 @@ window.UI = (function () {
       '<i class="bdot"></i>' + r.label + '</span>';
   }
 
+  /* 阶段徽章：支持一级 + 二级（"施工/装修 / 水电" → 施工/装修 · 水电，配色跟一级） */
   function stageBadge(key) {
-    var s = null;
-    C.STAGES.forEach(function (x) { if (x.key === key) s = x; });
-    if (!s) return '<span class="badge">' + U.esc(key) + '</span>';
-    return '<span class="badge" style="color:' + s.color + ';background:' + s.soft + '">' + s.key + '</span>';
+    var p = C.stageSplit(key);
+    var s = C.stageDef(key);
+    var label = C.stageLabel(key);
+    if (!s) return '<span class="badge">' + U.esc(label || key) + '</span>';
+    return '<span class="badge" title="' + U.esc(label) + '" style="color:' + s.color + ';background:' + s.soft + '">' +
+      U.esc(label) + '</span>';
   }
 
   function statusBadge(key) {
@@ -68,11 +73,12 @@ window.UI = (function () {
       U.esc(ch) + '</span>';
   }
 
-  /* ---------------- 进度条 ---------------- */
-  function progress(value, color) {
+  /* ---------------- 进度条 ----------------
+     title 可选：鼠标悬停解释这个百分比是怎么来的（门店进度=阶段推进数） */
+  function progress(value, color, title) {
     var v = U.clamp(Number(value) || 0, 0, 100);
     var col = color || (v >= 100 ? '#17b26a' : v >= 66 ? '#3f6bf5' : v >= 33 ? '#f79009' : '#f04438');
-    return '<div class="mini-progress">' +
+    return '<div class="mini-progress"' + (title ? ' title="' + U.esc(title) + '"' : '') + '>' +
       '<span class="mini-track"><i style="width:' + v + '%;background:' + col + '"></i></span>' +
       '<span class="mini-num">' + v + '%</span>' +
     '</div>';
@@ -225,10 +231,453 @@ window.UI = (function () {
     }).join('');
   }
 
+  /* ---------------- 阶段下拉（一级分组 + 二级选项） ----------------
+     subs = { '施工/装修': ['水电', '木作'], ... }  来自设置
+     有二级的阶段用 <optgroup> 包起来，没有二级的直接一个 option。
+     selected 是个不在清单里的旧值（比如二级被删了）也照样保留，不会悄悄改掉数据。
+  ------------------------------------------------------------------ */
+  function stageOptions(selected, subs, opts) {
+    subs = subs || {};
+    opts = opts || {};
+    var sel = String(selected == null ? '' : selected);
+    var hit = false;
+    var html = '';
+
+    C.STAGES.forEach(function (st) {
+      var list = (subs[st.key] || []).filter(function (x) { return String(x || '').trim(); });
+      if (!list.length) {
+        if (sel === st.key) hit = true;
+        html += '<option value="' + U.esc(st.key) + '"' + (sel === st.key ? ' selected' : '') + '>' +
+          U.esc(st.key) + '</option>';
+        return;
+      }
+      var inner = '<option value="' + U.esc(st.key) + '"' + (sel === st.key ? ' selected' : '') + '>' +
+        U.esc(st.key) + ' · 全部</option>';
+      if (sel === st.key) hit = true;
+      list.forEach(function (sub) {
+        var v = C.stageValue(st.key, sub);
+        if (sel === v) hit = true;
+        inner += '<option value="' + U.esc(v) + '"' + (sel === v ? ' selected' : '') + '>' +
+          '　└ ' + U.esc(sub) + '</option>';
+      });
+      html += '<optgroup label="' + U.esc(st.key) + '">' + inner + '</optgroup>';
+    });
+
+    /* 旧数据兜底：值不在清单里也让它显示出来 */
+    if (sel && !hit) {
+      html += '<option value="' + U.esc(sel) + '" selected>' + U.esc(C.stageLabel(sel)) + '</option>';
+    }
+    if (!sel && opts.placeholder) {
+      html = '<option value="">' + U.esc(opts.placeholder) + '</option>' + html;
+    }
+    return html;
+  }
+
+  /* ---------------- 可搜索下拉（省份这类长列表） ----------------
+     用法：html 里放 UI.comboHtml({ name, id, value, items, allLabel, py, placeholder })
+           插入 DOM 后调用 UI.initCombos(容器)，自动接管输入/键盘/选中
+     items 可以是字符串数组，或 [{ v, l }]；py 是 { 名称: 拼音 } 映射，
+     支持输入拼音首段（如 gd → 广东）
+  ------------------------------------------------------------------ */
+  function comboHtml(opts) {
+    var items = (opts.items || []).map(function (it) {
+      return typeof it === 'string'
+        ? { v: it, l: it, py: (opts.py || {})[it] || '' }
+        : { v: it.v, l: it.l || it.v, py: it.py || (opts.py || {})[it.l || it.v] || '' };
+    });
+
+    var cur = opts.value == null ? '' : String(opts.value);
+    var curLabel = '';
+    items.forEach(function (it) { if (it.v === cur) curLabel = it.l; });
+
+    var lis = '';
+    if (opts.allLabel) lis += '<li class="combo-item" data-v="">' + U.esc(opts.allLabel) + '</li>';
+    items.forEach(function (it) {
+      lis += '<li class="combo-item" data-v="' + U.esc(it.v) + '"' +
+        (it.py ? ' data-py="' + U.esc(it.py) + '"' : '') + '>' + U.esc(it.l) + '</li>';
+    });
+
+    return '<div class="combo' + (opts.size === 'sm' ? ' combo-sm' : '') + '">' +
+      '<input class="input combo-input" type="text" autocomplete="off" spellcheck="false"' +
+        ' placeholder="' + U.esc(opts.placeholder || '输入关键字筛选') + '"' +
+        ' value="' + U.esc(curLabel) + '" data-combo-text />' +
+      '<span class="combo-caret" data-combo-caret>' + icon('arrow') + '</span>' +
+      '<input type="hidden"' + (opts.id ? ' id="' + U.esc(opts.id) + '"' : '') +
+        (opts.name ? ' name="' + U.esc(opts.name) + '"' : '') + ' value="' + U.esc(cur) + '" />' +
+      '<div class="combo-pop" hidden>' +
+        '<ul class="combo-list">' + lis + '</ul>' +
+        '<div class="combo-none" hidden>没有匹配的选项</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function bindCombo(wrap) {
+    var input = wrap.querySelector('[data-combo-text]');
+    var hidden = wrap.querySelector('input[type="hidden"]');
+    var pop = wrap.querySelector('.combo-pop');
+    var list = wrap.querySelector('.combo-list');
+    var none = wrap.querySelector('.combo-none');
+    var caret = wrap.querySelector('[data-combo-caret]');
+    var items = [].slice.call(list.querySelectorAll('.combo-item'));
+    var active = -1;
+
+    function labelOf(v) {
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].getAttribute('data-v') === v) return items[i].textContent.trim();
+      }
+      return '';
+    }
+    function visible() { return items.filter(function (li) { return !li.hidden; }); }
+    function open() { pop.hidden = false; wrap.classList.add('open'); }
+    function close() { pop.hidden = true; wrap.classList.remove('open'); active = -1; paint(); }
+    function paint() {
+      items.forEach(function (li, i) { li.classList.toggle('on', i === active); });
+      var on = items[active];
+      if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest' });
+    }
+    function isSub(key, str) {
+      /* 字母按顺序出现即可：gd → guangdong，gx → guangxi */
+      var i = 0;
+      for (var j = 0; j < str.length && i < key.length; j++) {
+        if (str.charAt(j) === key.charAt(i)) i++;
+      }
+      return i === key.length;
+    }
+    function filter(q) {
+      var key = String(q || '').toLowerCase().replace(/\s+/g, '');
+      var n = 0;
+      items.forEach(function (li) {
+        var t = li.textContent.trim();
+        var py = (li.getAttribute('data-py') || '').toLowerCase();
+        var hit = !key || t.indexOf(key) >= 0 ||
+          (py && (py.indexOf(key) === 0 || (key.length > 1 && isSub(key, py))));
+        li.hidden = !hit;
+        if (hit) n++;
+      });
+      none.hidden = n > 0;
+      var vis = visible();
+      active = vis.length ? items.indexOf(vis[0]) : -1;
+      paint();
+    }
+    function pick(li) {
+      if (!li) return;
+      var v = li.getAttribute('data-v') || '';
+      hidden.value = v;
+      input.value = v ? li.textContent.trim() : '';
+      close();
+      /* 让外面既能监听隐藏域 change，也能直接用 id 取值 */
+      hidden.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    input.addEventListener('focus', function () {
+      open();
+      filter('');
+      input.select();
+    });
+    input.addEventListener('input', function () { open(); filter(input.value); });
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (pop.hidden) { open(); filter(''); return; }
+        var vis = visible();
+        if (!vis.length) return;
+        var cur = vis.indexOf(items[active]);
+        var next;
+        if (cur < 0) next = e.key === 'ArrowDown' ? 0 : vis.length - 1;
+        else next = e.key === 'ArrowDown' ? Math.min(vis.length - 1, cur + 1) : Math.max(0, cur - 1);
+        active = items.indexOf(vis[next]);
+        paint();
+      } else if (e.key === 'Enter') {
+        if (!pop.hidden) { e.preventDefault(); pick(items[active]); }
+      } else if (e.key === 'Escape') {
+        /* 只收起下拉，不要顺手把弹窗关掉 */
+        if (!pop.hidden) { e.preventDefault(); e.stopPropagation(); close(); }
+      } else if (e.key === 'Tab') {
+        close();
+      }
+    });
+    input.addEventListener('blur', function () {
+      setTimeout(function () {
+        if (wrap.contains(document.activeElement)) return;
+        close();
+        input.value = hidden.value ? labelOf(hidden.value) : '';
+      }, 130);
+    });
+
+    list.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    list.addEventListener('mousemove', function (e) {
+      var li = e.target.closest('.combo-item');
+      if (!li || li.hidden) return;
+      active = items.indexOf(li);
+      paint();
+    });
+    list.addEventListener('click', function (e) {
+      var li = e.target.closest('.combo-item');
+      if (!li) return;
+      pick(li);
+      input.blur();
+    });
+    caret.addEventListener('mousedown', function (e) {
+      e.preventDefault();
+      if (pop.hidden) { input.focus(); open(); filter(''); }
+      else { close(); }
+    });
+    caret.addEventListener('click', function (e) { e.preventDefault(); });
+  }
+
+  function initCombos(rootEl) {
+    if (!rootEl) return;
+    [].slice.call(rootEl.querySelectorAll('.combo')).forEach(function (w) {
+      if (w.getAttribute('data-ready')) return;
+      w.setAttribute('data-ready', '1');
+      bindCombo(w);
+    });
+  }
+
+  /* ---------------- 阶段菜单（浮层） ----------------
+     在一个按钮下面弹出「一级 + 二级」的菜单，挂到 body 上（不会被弹窗滚动裁掉）。
+       canEdit = true  → 每个阶段右边有 ＋（新建二级），每个二级有 ✎ 改名 / ✕ 删除
+       onlySubs = true → 不列「整个阶段」，只让你挑一个二级
+
+     组件只管界面，数据由调用方改（写 settings、改清单草稿），改完调 UI.refreshStageMenu()。
+     opts = {
+       anchor, canEdit, onlySubs,
+       emptyTip, footTip,          （onlySubs 时的空态 / 脚注文案，可省略）
+       getValue() → 当前值, getSubs() → { '施工/装修': ['水电'] },
+       onPick(v), onAdd(base, name), onRename(base, from, to), onRemove(base, name)
+     }
+     回调返回 false 表示没改动（菜单不重绘）。
+  ------------------------------------------------------------------ */
+  var stageMenu = null;   /* { el, opts } */
+
+  function closeStageMenu() {
+    if (!stageMenu) return;
+    stageMenu.el.remove();
+    stageMenu = null;
+    document.removeEventListener('mousedown', stageDocDown, true);
+    document.removeEventListener('keydown', stageDocKey, true);
+    window.removeEventListener('scroll', stageDocScroll, true);
+    window.removeEventListener('resize', closeStageMenu);
+  }
+
+  /* 页面 / 弹窗滚动 → 收起来；但**菜单自己内部滚动不算**，
+     否则滚轮一动菜单就消失了（2026-10-23 用户反馈「上下滚动有问题」就是这个） */
+  function stageDocScroll(e) {
+    if (!stageMenu) return;
+    var t = e.target;
+    if (t && t.nodeType === 1 && stageMenu.el.contains(t)) return;
+    closeStageMenu();
+  }
+
+  function stageDocDown(e) {
+    if (!stageMenu) return;
+    if (stageMenu.el.contains(e.target)) return;
+    var a = stageMenu.opts.anchor;
+    if (a && a.contains(e.target)) return;
+    closeStageMenu();
+  }
+
+  function stageDocKey(e) {
+    if (e.key !== 'Escape') return;
+    /* 菜单里正在输入（新建 / 改名）→ 交给输入框自己处理，别把菜单关了 */
+    if (stageMenu && stageMenu.el.contains(document.activeElement) &&
+        document.activeElement.tagName === 'INPUT') return;
+    if (!stageMenu) return;
+    e.preventDefault();
+    e.stopPropagation();      /* 别顺手把外面的弹窗也关掉 */
+    closeStageMenu();
+  }
+
+  function stageMenuBody(o) {
+    var cur = String(o.getValue() || '');
+    var subs = o.getSubs() || {};
+    var total = 0;
+    var html = '<div class="sp-groups">';
+
+    C.STAGES.forEach(function (st) {
+      var list = subs[st.key] || [];
+      total += list.length;
+
+      /* 只挑二级、又不能在里面新建时：没有二级的阶段整组不出现，免得一排空组头 */
+      if (o.onlySubs && !o.canEdit && !list.length) return;
+
+      html += '<div class="sp-group" data-base="' + U.esc(st.key) + '">' +
+        '<div class="sp-ghead">' +
+          '<i class="sp-gdot" style="background:' + st.color + '"></i>' +
+          '<span>' + U.esc(st.key) + '</span>' +
+          (o.canEdit
+            ? '<button type="button" class="sp-gadd" data-sp-add="' + U.esc(st.key) + '"' +
+              ' title="在「' + U.esc(st.key) + '」下面新建一个二级">' + icon('plus') + '</button>'
+            : '') +
+        '</div>';
+
+      if (!o.onlySubs) {
+        html += '<div class="sp-item sp-item-all' + (cur === st.key ? ' on' : '') + '"' +
+            ' data-sp-pick="' + U.esc(st.key) + '">' +
+          '<span class="sp-t">整个阶段</span>' +
+          (cur === st.key ? '<i class="sp-ok">' + icon('check') + '</i>' : '') +
+        '</div>';
+      }
+
+      list.forEach(function (sub) {
+        var v = C.stageValue(st.key, sub);
+        var on = cur === v;
+        html += '<div class="sp-item' + (on ? ' on' : '') + '" data-sp-pick="' + U.esc(v) + '"' +
+            ' data-sp-base="' + U.esc(st.key) + '" data-sp-sub="' + U.esc(sub) + '">' +
+          '<span class="sp-t">' + U.esc(sub) + '</span>' +
+          (on ? '<i class="sp-ok">' + icon('check') + '</i>' : '') +
+          (o.canEdit
+            ? '<i class="sp-i" data-sp-rn="' + U.esc(sub) + '" title="改名">' + icon('edit') + '</i>' +
+              '<i class="sp-i danger" data-sp-rm="' + U.esc(sub) + '" title="删除">' + icon('close') + '</i>'
+            : '') +
+        '</div>';
+      });
+
+      html += '</div>';
+    });
+
+    html += '</div>';
+
+    if (o.onlySubs && !total) {
+      html = '<div class="sp-groups"><p class="sp-empty">' +
+        (o.emptyTip || '阶段时间线上还没有二级。<br />在「所属阶段」里点阶段右边的 ＋ 加一个。') +
+        '</p></div>';
+    } else if (o.canEdit) {
+      html += '<div class="sp-foot">二级的增删改，会同步到「阶段时间线」</div>';
+    } else {
+      html += '<div class="sp-foot">' + (o.footTip || '选一个二级，任务名和所属阶段一起填好') + '</div>';
+    }
+
+    return html;
+  }
+
+  /* 重新摆一下位置（内容高度变了要重新夹进视口） */
+  function placeStageMenu(el, anchor) {
+    var r = anchor.getBoundingClientRect();
+    var w = el.offsetWidth;
+    var h = el.offsetHeight;
+    var left = Math.min(Math.max(8, r.left), Math.max(8, window.innerWidth - w - 8));
+    var top = r.bottom + 5;
+    if (top + h > window.innerHeight - 8) top = Math.max(8, r.top - h - 5);
+    el.style.left = left + 'px';
+    el.style.top = top + 'px';
+  }
+
+  function refreshStageMenu() {
+    if (!stageMenu) return;
+    var scrollEl = stageMenu.el.querySelector('.sp-groups');
+    var keep = scrollEl ? scrollEl.scrollTop : 0;
+    stageMenu.el.innerHTML = stageMenuBody(stageMenu.opts);
+    var again = stageMenu.el.querySelector('.sp-groups');
+    if (again) again.scrollTop = keep;
+    placeStageMenu(stageMenu.el, stageMenu.opts.anchor);
+  }
+
+  /* 行内输入框（新建 / 改名公用），返回 input */
+  function spInput(value, placeholder, onDone) {
+    var box = document.createElement('div');
+    box.className = 'sp-edit';
+    box.innerHTML = '<input class="sp-input" type="text" autocomplete="off" spellcheck="false"' +
+      ' value="' + U.esc(value || '') + '" placeholder="' + U.esc(placeholder || '') + '" />';
+    var inp = box.querySelector('input');
+
+    inp.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        onDone(String(inp.value || '').trim().replace(/\s+/g, ' '));
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (box.parentNode) box.parentNode.removeChild(box);
+      }
+    });
+
+    return box;
+  }
+
+  function openStageMenu(opts) {
+    closeStageMenu();
+
+    var el = document.createElement('div');
+    el.className = 'sp-pop';
+    el.innerHTML = stageMenuBody(opts);
+    el.style.visibility = 'hidden';
+    document.body.appendChild(el);
+    stageMenu = { el: el, opts: opts };
+    placeStageMenu(el, opts.anchor);
+    el.style.visibility = '';
+
+    /* 当前值可能在滚动区外，滚到看得见的位置 */
+    var onItem = el.querySelector('.sp-item.on');
+    if (onItem && onItem.scrollIntoView) onItem.scrollIntoView({ block: 'nearest' });
+
+    document.addEventListener('mousedown', stageDocDown, true);
+    document.addEventListener('keydown', stageDocKey, true);
+    window.addEventListener('scroll', stageDocScroll, true);
+    window.addEventListener('resize', closeStageMenu);
+
+    el.addEventListener('click', function (e) {
+      var o = stageMenu ? stageMenu.opts : opts;
+
+      /* 新建二级：在该阶段头部下面插一个输入框 */
+      var add = e.target.closest('[data-sp-add]');
+      if (add) {
+        var group = add.closest('.sp-group');
+        var base = group.getAttribute('data-base');
+        if (group.querySelector('.sp-edit')) { group.querySelector('.sp-edit input').focus(); return; }
+        var box = spInput('', '新二级名称，回车确认', function (name) {
+          if (!name) return;
+          if (name.indexOf('/') >= 0) { toast('二级名称里不要带斜杠（斜杠是阶段名专用）', 'error'); return; }
+          if (o.onAdd && o.onAdd(base, name) !== false) refreshStageMenu();
+        });
+        group.appendChild(box);
+        var inp = box.querySelector('input');
+        inp.focus();
+        placeStageMenu(el, o.anchor);
+        return;
+      }
+
+      /* 改名 */
+      var rn = e.target.closest('[data-sp-rn]');
+      if (rn) {
+        var item = rn.closest('.sp-item');
+        var rBase = item.getAttribute('data-sp-base');
+        var from = item.getAttribute('data-sp-sub');
+        var ebox = spInput(from, '新的二级名称', function (to) {
+          if (!to || to === from) { refreshStageMenu(); return; }
+          if (to.indexOf('/') >= 0) { toast('二级名称里不要带斜杠', 'error'); return; }
+          if (o.onRename && o.onRename(rBase, from, to) !== false) refreshStageMenu();
+        });
+        item.parentNode.replaceChild(ebox, item);
+        var einp = ebox.querySelector('input');
+        einp.focus();
+        einp.select();
+        return;
+      }
+
+      /* 删除 */
+      var rm = e.target.closest('[data-sp-rm]');
+      if (rm) {
+        var it2 = rm.closest('.sp-item');
+        if (o.onRemove) o.onRemove(it2.getAttribute('data-sp-base'), it2.getAttribute('data-sp-sub'));
+        return;
+      }
+
+      /* 选中 */
+      var pick = e.target.closest('[data-sp-pick]');
+      if (!pick) return;
+      var v = pick.getAttribute('data-sp-pick');
+      if (o.onPick) o.onPick(v);
+      closeStageMenu();
+    });
+  }
+
   return {
     icon: icon,
     riskBadge: riskBadge,
     stageBadge: stageBadge,
+    stageOptions: stageOptions,
     statusBadge: statusBadge,
     avatar: avatar,
     progress: progress,
@@ -241,6 +690,11 @@ window.UI = (function () {
     confirm: confirm,
     pager: pager,
     formValue: formValue,
-    options: options
+    options: options,
+    comboHtml: comboHtml,
+    initCombos: initCombos,
+    openStageMenu: openStageMenu,
+    closeStageMenu: closeStageMenu,
+    refreshStageMenu: refreshStageMenu
   };
 })();

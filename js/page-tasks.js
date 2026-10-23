@@ -10,47 +10,264 @@ window.Pages.tasks = (function () {
   var S = window.Store;
   var C = window.CONST;
 
-  var state = { tab: 'all', q: '', owner: '', store: '', page: 1, per: 12 };
+  /* stage = 左侧时间线选中的「门店当前阶段」；sub = 再细一层的二级阶段
+     open = 右侧哪几家门店展开了任务明细（以门店为主，任务展开看） */
+  var state = {
+    tab: 'all', q: '', owner: '', stage: '', sub: '',
+    editing: '',          /* 正在给哪个一级阶段加二级（存阶段名） */
+    editingStage: false,  /* 正在加一级阶段 */
+    page: 1, per: 12, open: {}
+  };
 
+  /* 这排是「按门店里任务的状态筛门店」，计数是门店数 */
   var TABS = [
     { key: 'all', label: '全部' },
-    { key: 'pending', label: '待处理' },
+    { key: 'pending', label: '有待办' },
     { key: 'doing', label: '进行中' },
-    { key: 'overdue', label: '已逾期' },
+    { key: 'overdue', label: '有逾期' },
     { key: 'risk', label: '风险' },
     { key: 'done', label: '已完成' }
   ];
 
-  function tabCount(key) {
-    var tasks = S.getState().tasks;
-    if (key === 'all') return tasks.length;
-    return tasks.filter(function (t) { return S.classify(t) === key; }).length;
+  /* ---------------- 门店 / 任务 基础数据 ---------------- */
+
+  function tasksOf(storeId) {
+    return S.getState().tasks.filter(function (t) { return t.storeId === storeId; });
   }
 
-  function filtered() {
-    var q = state.q.toLowerCase();
-    var rows = S.getState().tasks.filter(function (t) {
-      var cls = S.classify(t);
-      if (state.tab !== 'all' && cls !== state.tab) return false;
-      if (state.owner && t.assigneeId !== state.owner) return false;
-      if (state.store && t.storeId !== state.store) return false;
+  function statOfTasks(list) {
+    var open = 0, late = 0, done = 0;
+    list.forEach(function (t) {
+      if (t.status === 'done') { done++; return; }
+      open++;
+      if (S.classify(t) === 'overdue') late++;
+    });
+    return { open: open, late: late, done: done, total: list.length };
+  }
+
+  /* 门店是否命中某个状态筛选项（按它自己的任务算） */
+  function storeHitTab(store, key) {
+    if (!key || key === 'all') return true;
+    var list = tasksOf(store.id);
+    if (key === 'done') {
+      return list.length > 0 && list.every(function (t) { return t.status === 'done'; });
+    }
+    return list.some(function (t) { return S.classify(t) === key; });
+  }
+
+  /* 只受「搜索 / 负责人」影响的门店集合（不含状态筛选），用来算各状态的数字 */
+  function baseStores() {
+    var q = String(state.q || '').toLowerCase();
+    return S.getState().stores.filter(function (st) {
+      if (state.stage && st.stage !== state.stage) return false;
+      if (state.sub) {
+        var hitSub = tasksOf(st.id).some(function (t) { return C.stageSplit(t.stage).sub === state.sub; });
+        if (!hitSub) return false;
+      }
+      if (state.owner) {
+        var hitOwner = tasksOf(st.id).some(function (t) { return t.assigneeId === state.owner; });
+        if (!hitOwner) return false;
+      }
       if (q) {
-        var store = S.storeById(t.storeId);
-        var m = S.memberById(t.assigneeId);
-        var hay = (t.title + ' ' + (store ? store.name : '') + ' ' + (m ? m.name : '')).toLowerCase();
+        var hay = (st.name + ' ' + (st.province || '') + ' ' + (st.stage || '')).toLowerCase();
         if (hay.indexOf(q) < 0) return false;
       }
       return true;
     });
+  }
 
-    rows.sort(function (a, b) {
-      var ca = S.classify(a), cb = S.classify(b);
-      var da = ca === 'done' ? 1 : 0;
-      var db = cb === 'done' ? 1 : 0;
-      if (da !== db) return da - db;
-      return a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : 0;
+  /* 排序：先按阶段顺序，再「越急的越靠上」（逾期多、待办多） */
+  function sortedStores(list) {
+    var order = {};
+    C.STAGES.forEach(function (s, i) { order[s.key] = i; });
+
+    return list.slice().sort(function (a, b) {
+      var oa = order[a.stage] == null ? 99 : order[a.stage];
+      var ob = order[b.stage] == null ? 99 : order[b.stage];
+      if (oa !== ob) return oa - ob;
+
+      var ma = statOfTasks(tasksOf(a.id));
+      var mb = statOfTasks(tasksOf(b.id));
+      if (ma.late !== mb.late) return mb.late - ma.late;
+      if (ma.open !== mb.open) return mb.open - ma.open;
+      return String(a.name).localeCompare(String(b.name), 'zh');
     });
-    return rows;
+  }
+
+  function storeList() {
+    return sortedStores(baseStores().filter(function (st) { return storeHitTab(st, state.tab); }));
+  }
+
+  function tabCount(key) {
+    return baseStores().filter(function (st) { return storeHitTab(st, key); }).length;
+  }
+
+  /* ---------------- 左侧：阶段时间线 ---------------- */
+
+  function idsOf(list) {
+    var ids = {};
+    list.forEach(function (x) { ids[x.id] = 1; });
+    return ids;
+  }
+
+  /* 一组门店的未完成任务数 / 逾期数 */
+  function statOfIds(ids) {
+    var open = 0, late = 0;
+    S.getState().tasks.forEach(function (t) {
+      if (!ids[t.storeId] || t.status === 'done') return;
+      open++;
+      if (S.classify(t) === 'overdue') late++;
+    });
+    return { open: open, late: late };
+  }
+
+  /* 某个二级阶段（在这些门店范围内）的任务情况 */
+  function statOfSub(ids, base, sub) {
+    var open = 0, late = 0;
+    S.getState().tasks.forEach(function (t) {
+      if (!ids[t.storeId] || t.status === 'done') return;
+      var p = C.stageSplit(t.stage);
+      if (p.base !== base || p.sub !== sub) return;
+      open++;
+      if (S.classify(t) === 'overdue') late++;
+    });
+    return { open: open, late: late };
+  }
+
+  /* 时间线里就地新建二级的输入行（只在一级阶段展开 + 正在新建时出现） */
+  function subAddRowHtml(base) {
+    return '<div class="tl-sub-add">' +
+      '<input class="tl-sub-inp" type="text" maxlength="20" autocomplete="off"' +
+        ' data-sub-inp="' + U.esc(base) + '" placeholder="二级名称，回车确定" />' +
+      '<button class="tl-sub-ok" type="button" data-sub-ok="' + U.esc(base) + '">添加</button>' +
+    '</div>';
+  }
+
+  /* 「全部阶段」下面新建一级阶段的输入行 */
+  function stageAddRowHtml() {
+    return '<div class="tl-top-add">' +
+      '<input class="tl-sub-inp" type="text" maxlength="20" autocomplete="off"' +
+        ' data-stage-inp placeholder="新阶段名称，回车确定" />' +
+      '<button class="tl-sub-ok" type="button" data-stage-ok>添加</button>' +
+    '</div>';
+  }
+
+  function railHtml() {
+    var stores = S.getState().stores;
+    var subs = S.stageSubsWithUsed();
+    /* 清单按阶段的分组：时间线跟筹建任务清单共用同一套结构 */
+    var tpl = S.templateStageStat();
+
+    var nodes = C.STAGES.map(function (st) {
+      var list = stores.filter(function (x) { return x.stage === st.key; });
+      var ids = idsOf(list);
+      var n = statOfIds(ids);
+      var on = state.stage === st.key;
+      var subList = subs[st.key] || [];
+      var tplBase = tpl.byBase[st.key] || 0;
+
+      var meta = list.length
+        ? (n.open
+            ? '待办 ' + n.open + (n.late ? ' · <b>逾期 ' + n.late + '</b>' : '')
+            : '没有待办任务')
+        : '暂无门店';
+      if (tplBase) meta += '<span class="tl-tpl">清单 ' + tplBase + ' 条</span>';
+
+      var editing = state.editing === st.key;
+
+      var html = '<div class="tl-node' + (on ? ' on' : '') + (list.length ? '' : ' is-empty') +
+          '" data-stage="' + U.esc(st.key) + '" title="只看「' + U.esc(st.key) + '」阶段的门店">' +
+          '<i class="tl-dot" style="background:' + st.color + '"></i>' +
+          '<div class="tl-body">' +
+            '<div class="tl-line">' +
+              '<span class="tl-name">' + U.esc(st.key) + '</span>' +
+              (subList.length ? '<span class="tl-caret' + (on ? ' open' : '') + '"></span>' : '') +
+              '<span class="tl-num">' + list.length + ' 家</span>' +
+            '</div>' +
+            '<div class="tl-meta">' + meta + '</div>' +
+          '</div>' +
+          /* 操作条单独绝对定位，不去挤名字和「N 家」，也就不会和别的按钮叠在一起 */
+          '<span class="tl-tools">' +
+            '<i data-stage-edit="' + U.esc(st.key) + '" title="给「' + U.esc(st.key) + '」改名">' + UI.icon('edit') + '</i>' +
+            '<i data-stage-del="' + U.esc(st.key) + '" title="删除「' + U.esc(st.key) + '」">' + UI.icon('close') + '</i>' +
+            '<button class="tl-add" type="button" data-sub-add="' + U.esc(st.key) + '"' +
+              ' title="给「' + U.esc(st.key) + '」加一个二级">' + UI.icon('plus') + '</button>' +
+          '</span>' +
+        '</div>';
+
+      if (!on) return html;
+
+      /* 展开：只列二级阶段（门店已经在右边列表里了） */
+      if (subList.length || editing) {
+        html += '<div class="tl-subs">' + subList.map(function (sub) {
+          var m = statOfSub(ids, st.key, sub);
+          var subOn = state.sub === sub;
+          var tplN = tpl.byStage[C.stageValue(st.key, sub)] || 0;
+
+          var right;
+          if (m.open) {
+            right = '待办 ' + m.open + (m.late ? ' · <b>逾期' + m.late + '</b>' : '');
+          } else if (tplN) {
+            right = '<span class="tl-tpl">清单 ' + tplN + ' 条</span>';
+          } else {
+            right = '—';
+          }
+
+          return '<div class="tl-sub' + (subOn ? ' on' : '') + '" data-sub="' + U.esc(sub) +
+              '" data-base="' + U.esc(st.key) + '"' +
+              ' title="只看「' + U.esc(st.key) + ' · ' + U.esc(sub) + '」的门店与任务">' +
+            '<i class="tl-sub-dot" style="background:' + st.color + '"></i>' +
+            '<span class="tl-sub-name">' + U.esc(sub) + '</span>' +
+            '<span class="tl-num">' + right + '</span>' +
+            '<span class="tl-op">' +
+              '<i data-sub-edit="' + U.esc(sub) + '" title="给「' + U.esc(sub) + '」改名">' + UI.icon('edit') + '</i>' +
+              '<i data-sub-del="' + U.esc(sub) + '" title="删除「' + U.esc(sub) + '」">' + UI.icon('close') + '</i>' +
+            '</span>' +
+          '</div>';
+        }).join('') +
+        (editing ? subAddRowHtml(st.key) : '') +
+        '</div>';
+      }
+
+      return html;
+    }).join('');
+
+    return '<div class="card-head">' +
+        '<h3>阶段时间线</h3>' +
+      '</div>' +
+      '<div class="tl-all' + (!state.stage ? ' on' : '') + '" data-stage-all>' +
+        '<span>全部阶段</span><span class="tl-num">' + stores.length + ' 家</span>' +
+        '<button class="tl-add tl-add-top" type="button" data-stage-add' +
+          ' title="新增一个一级阶段">' + UI.icon('plus') + '</button>' +
+      '</div>' +
+      (state.editingStage ? stageAddRowHtml() : '') +
+      '<div class="tl-nodes">' + nodes + '</div>' +
+      '<p class="tl-hint">点阶段 → 右边是这些门店，点门店展开它的筹建任务。' +
+        '<br />阶段和二级都能自己加：鼠标移到阶段上出现 <b>✎</b>（改名）、<b>✕</b>（删除）、' +
+        '<b>＋</b>（加二级）；「全部阶段」右边 <b>＋</b> 是加一级阶段。' +
+        '<b>按住阶段上下拖</b>可以调顺序。</p>';
+  }
+
+  /* ---------------- 当前筛选条件条 ---------------- */
+  function filterBarHtml() {
+    if (!state.stage && !state.sub && !state.owner && !state.q) return '';
+    var mem = state.owner ? S.memberById(state.owner) : null;
+
+    return '<div class="tk-filters">' +
+      (state.stage
+        ? '<span class="tk-chip">阶段：<b>' + U.esc(state.stage) + '</b><i data-clear="stage" title="取消阶段筛选">✕</i></span>'
+        : '') +
+      (state.sub
+        ? '<span class="tk-chip">二级：<b>' + U.esc(state.sub) + '</b><i data-clear="sub" title="取消二级筛选">✕</i></span>'
+        : '') +
+      (mem
+        ? '<span class="tk-chip">负责人：<b>' + U.esc(mem.name) + '</b><i data-clear="owner" title="取消负责人筛选">✕</i></span>'
+        : '') +
+      (state.q
+        ? '<span class="tk-chip">搜索：<b>' + U.esc(state.q) + '</b><i data-clear="q" title="清空搜索">✕</i></span>'
+        : '') +
+      '<span class="tk-clear" data-clear="all">清除全部</span>' +
+    '</div>';
   }
 
   function actionHtml(t) {
@@ -63,54 +280,139 @@ window.Pages.tasks = (function () {
     return '<span class="tlink" data-act="finish" data-id="' + t.id + '">完成</span>';
   }
 
-  function listHtml() {
-    var all = filtered();
-    var totalPages = Math.max(1, Math.ceil(all.length / state.per));
-    if (state.page > totalPages) state.page = totalPages;
-    var start = (state.page - 1) * state.per;
-    var rows = all.slice(start, start + state.per);
+  /* ---------------- 右侧：门店列表（点开看任务） ---------------- */
 
-    if (!rows.length) {
-      return UI.empty('这个条件下没有任务', '换个筛选条件，或者新建一条任务');
-    }
+  /* 这家店要展开的任务：受二级 / 负责人筛选影响，未完成的排前面 */
+  function tasksForRow(storeId) {
+    return tasksOf(storeId).filter(function (t) {
+      if (state.sub && C.stageSplit(t.stage).sub !== state.sub) return false;
+      if (state.owner && t.assigneeId !== state.owner) return false;
+      return true;
+    }).sort(function (a, b) {
+      var da = a.status === 'done' ? 1 : 0;
+      var db = b.status === 'done' ? 1 : 0;
+      if (da !== db) return da - db;
+      return a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : 0;
+    });
+  }
 
-    var body = rows.map(function (t) {
-      var store = S.storeById(t.storeId);
-      var m = S.memberById(t.assigneeId);
+  function taskTableHtml(list) {
+    var body = list.map(function (t) {
       var cls = S.classify(t);
       var late = cls === 'overdue';
       var days = U.diffDays(U.today(), t.dueDate);
+      var mem = S.memberById(t.assigneeId);
 
       return '<tr>' +
-        '<td>' +
-          '<div class="store-name" style="cursor:default">' + U.esc(t.title) + '</div>' +
-          (t.priority === 'high'
-            ? '<div style="font-size:10.5px;color:var(--red);margin-top:2px">高优先级</div>'
-            : '') +
-        '</td>' +
-        '<td class="muted">' + U.esc(store ? store.name : '—') + '</td>' +
+        '<td><div class="sk-task-title">' + U.esc(t.title) + '</div>' +
+          (t.priority === 'high' ? '<div class="sk-prio">高优先级</div>' : '') + '</td>' +
         '<td>' + UI.stageBadge(t.stage) + '</td>' +
-        '<td>' + (m
-          ? '<div class="store-cell">' + UI.avatar(m.name, m.color, 'sm') + '<span>' + U.esc(m.name) + '</span></div>'
+        '<td>' + (mem
+          ? '<div class="store-cell">' + UI.avatar(mem.name, mem.color, 'sm') + '<span>' + U.esc(mem.name) + '</span></div>'
           : '<span class="dim">未指派</span>') + '</td>' +
         '<td class="mono ' + (late ? 'text-red' : 'muted') + ' nowrap">' + t.dueDate +
           '<span class="dim" style="font-size:10.5px;margin-left:5px">' +
           (cls === 'done' ? '' : late ? '逾期' + Math.abs(days) + '天' : days === 0 ? '今天' : days + '天后') +
           '</span></td>' +
         '<td>' + UI.statusBadge(cls) + '</td>' +
-        '<td class="nowrap">' + actionHtml(t) +
+        '<td class="nowrap" style="text-align:right">' + actionHtml(t) +
           '<span class="tlink" data-act="edit" data-id="' + t.id + '">编辑</span>' +
           '<span class="tlink danger" data-act="del" data-id="' + t.id + '">删除</span>' +
         '</td>' +
       '</tr>';
     }).join('');
 
-    return '<div class="table-wrap"><table class="tbl">' +
-      '<thead><tr>' +
-        '<th>任务</th><th>所属门店</th><th>阶段</th><th>负责人</th>' +
-        '<th>截止日期</th><th>状态</th><th>操作</th>' +
-      '</tr></thead><tbody>' + body + '</tbody></table></div>' +
-      UI.pager(state.page, totalPages, all.length);
+    return '<table class="sk-tbl">' +
+      '<thead><tr><th>任务</th><th style="width:120px">阶段</th><th style="width:110px">负责人</th>' +
+        '<th style="width:140px">截止日期</th><th style="width:84px">状态</th><th style="width:150px;text-align:right">操作</th></tr></thead>' +
+      '<tbody>' + body + '</tbody></table>';
+  }
+
+  function storeRowHtml(st) {
+    var m = statOfTasks(tasksOf(st.id));
+    var def = C.stageDef(st.stage) || {};
+    var owner = S.memberById(st.ownerId);
+    var open = !!state.open[st.id];
+    var days = st.openDate ? U.diffDays(U.today(), st.openDate) : null;
+
+    var head = '<div class="sk-head" data-srow="' + st.id + '" title="' + (open ? '收起' : '展开') + '这家门店的任务">' +
+      '<div class="sk-store">' +
+        '<i class="sk-dot" style="background:' + (def.color || '#98a2b8') + '"></i>' +
+        '<div class="sk-name-box">' +
+          '<div class="sk-name">' + U.esc(st.name) + '</div>' +
+          '<div class="sk-meta">' + U.esc(st.province || '—') + ' · ' + U.esc(st.stage || '—') + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="sk-prog">' + UI.progress(S.storeProgress(st).pct, def.color, S.progressTip(st)) + '</div>' +
+      '<div class="sk-tasks">' + (m.total
+        ? '<span class="sk-open">待办 ' + m.open + '</span>' +
+          (m.late ? '<span class="sk-late">逾期 ' + m.late + '</span>' : '<span class="sk-ok">无逾期</span>')
+        : '<span class="sk-none">没有任务</span>') + '</div>' +
+      '<div class="sk-date">' + (st.openDate
+        ? '<span class="mono">' + U.monthDay(st.openDate) + '</span>' +
+          '<span class="sk-days' + (st.stage === '已开业' ? '' : days != null && days < 0 ? ' late' : '') + '">' +
+            (st.stage === '已开业' ? '已开业'
+              : days == null ? '' : days < 0 ? '已超 ' + Math.abs(days) + ' 天' : days + ' 天后') + '</span>'
+        : '<span class="dim">未定</span>') + '</div>' +
+      '<div class="sk-owner">' + (owner
+        ? UI.avatar(owner.name, owner.color, 'sm') + '<span>' + U.esc(owner.name) + '</span>'
+        : '<span class="dim">—</span>') + '</div>' +
+      '<span class="sk-arrow">' + UI.icon('arrow') + '</span>' +
+    '</div>';
+
+    if (!open) return '<div class="sk-row">' + head + '</div>';
+
+    var list = tasksForRow(st.id);
+    var body = list.length
+      ? taskTableHtml(list)
+      : '<div class="sk-body-empty">这家门店在「' + U.esc(state.sub || state.stage || '当前条件') + '」下没有任务，' +
+        '点右上「新增任务」给它添一条。</div>';
+
+    return '<div class="sk-row open">' + head + '<div class="sk-body">' + body + '</div></div>';
+  }
+
+  function pagerHtml(total, pages) {
+    if (pages <= 1) {
+      return '<div class="pager"><span class="pg-info">共 ' + total + ' 家门店</span></div>';
+    }
+    var h = '<div class="pager"><span class="pg-info">共 ' + total + ' 家门店 · 第 ' + state.page + ' / ' + pages + ' 页</span>';
+    h += '<button data-page="' + (state.page - 1) + '"' + (state.page <= 1 ? ' disabled' : '') + '>上一页</button>';
+
+    var start = Math.max(1, state.page - 2);
+    var end = Math.min(pages, start + 4);
+    if (end - start < 4) start = Math.max(1, end - 4);
+    for (var i = start; i <= end; i++) {
+      h += '<button data-page="' + i + '" class="' + (i === state.page ? ' active' : '') + '">' + i + '</button>';
+    }
+    h += '<button data-page="' + (state.page + 1) + '"' + (state.page >= pages ? ' disabled' : '') + '>下一页</button>';
+    return h + '</div>';
+  }
+
+  function storeRowsHtml() {
+    var all = storeList();
+    var totalPages = Math.max(1, Math.ceil(all.length / state.per));
+    if (state.page > totalPages) state.page = totalPages;
+    var start = (state.page - 1) * state.per;
+    var rows = all.slice(start, start + state.per);
+
+    if (!rows.length) {
+      if (state.stage) {
+        return UI.empty('「' + state.stage + '」这个阶段没有门店', '点左上「全部阶段」看全部门店，或者换一个阶段');
+      }
+      if (state.q || state.owner) {
+        return UI.empty('没有符合条件的门店', '清掉搜索或负责人筛选再看');
+      }
+      return UI.empty('还没有门店', '去「门店管理」建好门店，这里会自动出现');
+    }
+
+    return '<div class="sk-list">' + rows.map(storeRowHtml).join('') + '</div>' +
+      pagerHtml(all.length, totalPages);
+  }
+
+  /* 新建任务 / 新增清单行时默认用左侧选中的阶段（含二级） */
+  function defaultStage() {
+    if (state.stage) return C.stageValue(state.stage, state.sub);
+    return (C.STAGES[0] || {}).key || '';
   }
 
   function formHtml(task) {
@@ -127,7 +429,7 @@ window.Pages.tasks = (function () {
           '<select class="select" name="storeId">' + UI.options(stores, t.storeId || '', 'id', 'name') + '</select>' +
         '</div>' +
         '<div class="field"><label>所属阶段</label>' +
-          '<select class="select" name="stage">' + UI.options(C.STAGES.map(function (x) { return x.key; }), t.stage || '未出图') + '</select>' +
+          '<select class="select" name="stage">' + UI.stageOptions(t.stage || defaultStage(), S.stageSubsWithUsed()) + '</select>' +
         '</div>' +
       '</div>' +
       '<div class="field-row">' +
@@ -205,50 +507,359 @@ window.Pages.tasks = (function () {
     });
   }
 
+  /* ================= 筹建任务清单（模板库） ================= */
+
+  var TPL_ROLES = ['售前', '售后', '接单'];
+
+  /* 当前「一级 + 二级」的全量快照，用来对比保存前后时间线多了哪些二级 */
+  function subsSnapshot() {
+    var m = S.stageSubsWithUsed();
+    var flat = [];
+    Object.keys(m).forEach(function (base) {
+      m[base].forEach(function (sub) { flat.push(C.stageValue(base, sub)); });
+    });
+    return flat;
+  }
+
+  function tplRowHtml(t) {
+    t = t || {};
+    var stage = t.stage || defaultStage();
+    var role = t.role || TPL_ROLES[0];
+
+    return '<div class="tpl-row">' +
+      '<span class="tpl-grip" title="按住上下拖动，调整任务顺序">' + UI.icon('grip') + '</span>' +
+      '<div class="tpl-name">' +
+        '<input class="input" data-k="title" value="' + U.esc(t.title || '') + '" placeholder="例如：办理营业执照" />' +
+        '<button type="button" class="tpl-from" data-title-pick' +
+          ' title="列出当前「所属阶段」下面的二级，挑一个当任务名，所属阶段会一起换成它">' +
+          UI.icon('list') + '</button>' +
+      '</div>' +
+      '<button type="button" class="sp-trigger" data-stage-pick data-v="' + U.esc(stage) + '"' +
+        ' title="选阶段；二级可以在这里直接新建 / 改名 / 删除，改完同步到左侧时间线">' +
+        '<span class="sp-tl">' + U.esc(C.stageLabel(stage, ' · ')) + '</span>' + UI.icon('arrow') +
+      '</button>' +
+      '<input class="input" type="number" min="0" max="365" data-k="before" value="' +
+        (t.before == null ? 20 : t.before) + '" />' +
+      '<select class="select" data-k="role">' + UI.options(TPL_ROLES, role) + '</select>' +
+      '<button class="tpl-del" type="button" title="删掉这条">' + UI.icon('close') + '</button>' +
+    '</div>';
+  }
+
+  function openTemplates() {
+    var list = S.templates();
+
+    UI.modal({
+      title: '筹建任务清单',
+      sub: list.length ? '共 ' + list.length + ' 条任务' : '还没有任务',
+      size: 'lg',
+      body:
+        '<p class="tpl-tip">这份清单<b>完全由你自己维护</b>，系统不带任何内置任务。' +
+          '新建门店时如果勾选「一并派发筹建任务」，就按这里生成；截止日期 = 门店开业日往前推你填的天数。' +
+          '<b>按住左侧 ⠿ 可以上下拖动调整顺序</b>（派任务时按这个顺序生成）。' +
+          '<b>改动只影响之后新建的门店，已有门店的任务不会被改。</b><br />' +
+          '<b>「所属阶段」用的就是左侧那条阶段时间线</b>：点开只能选一级或二级，' +
+          '二级要加 / 改名 / 删除，请去左侧「阶段时间线」里做，那边改完这里立刻同步。<br />' +
+          '<b>「任务名称」右边的小按钮只列当前所属阶段的二级</b>：所属阶段是「未出图」，就只给' +
+          '「已做首批 / 未做首批」这类选项，挑一个，任务名和所属阶段一起填好。' +
+          (state.stage
+            ? '<b>当前时间线选的是「' + U.esc(C.stageLabel(C.stageValue(state.stage, state.sub))) +
+              '」，点「新增一条」会自动带上它。</b>'
+            : '') +
+        '</p>' +
+        '<div class="tpl-head" id="tplHead"' + (list.length ? '' : ' hidden') + '>' +
+          '<span></span><span>任务名称</span><span>所属阶段</span><span>开业前(天)</span><span>默认模块</span><span></span>' +
+        '</div>' +
+        '<div class="tpl-rows" id="tplRows">' + list.map(tplRowHtml).join('') + '</div>' +
+        '<div class="tpl-empty" id="tplEmpty"' + (list.length ? ' hidden' : '') + '>' +
+          '清单还是空的，点下面「新增一条」自己写；<br />' +
+          '也可以点「载入常用任务」先填一份草稿，改完再保存。' +
+        '</div>' +
+        '<div class="tpl-foot">' +
+          '<button class="btn btn-sm" type="button" data-tpl="add">' + UI.icon('plus') + '新增一条</button>' +
+          '<span class="link-more" data-tpl="fill">载入常用任务</span>' +
+        '</div>',
+      footer:
+        '<button class="btn" data-tpl="cancel">取消</button>' +
+        '<button class="btn btn-primary" data-tpl="save">保存清单</button>',
+      onMount: function (rootEl, close) {
+        var rowsBox = rootEl.querySelector('#tplRows');
+        var emptyBox = rootEl.querySelector('#tplEmpty');
+        var headBox = rootEl.querySelector('#tplHead');
+        var subBox = rootEl.querySelector('.modal-sub') || document.querySelector('.modal-sub');
+        var savedLen = list.length;
+
+        /* 行数变化时同步：空态、列头、标题条数 */
+        function syncEmpty() {
+          var n = rowsBox.querySelectorAll('.tpl-row').length;
+          if (emptyBox) emptyBox.hidden = n > 0;
+          if (headBox) headBox.hidden = n === 0;
+          if (subBox) {
+            subBox.textContent = n === 0
+              ? '还没有任务'
+              : n + ' 条任务' + (n === savedLen ? '' : '（未保存）');
+          }
+        }
+
+        function readRows() {
+          var out = [];
+          rowsBox.querySelectorAll('.tpl-row').forEach(function (r) {
+            out.push({
+              title: r.querySelector('[data-k="title"]').value,
+              stage: r.querySelector('[data-stage-pick]').getAttribute('data-v'),
+              before: r.querySelector('[data-k="before"]').value,
+              role: r.querySelector('[data-k="role"]').value
+            });
+          });
+          return out.filter(function (x) { return String(x.title || '').trim(); });
+        }
+
+        /* ---- 所属阶段：只负责选，二级的增删改统一在左侧「阶段时间线」里做 ---- */
+        function paintStageBtn(btn) {
+          var t = btn.querySelector('.sp-tl');
+          if (t) t.textContent = C.stageLabel(btn.getAttribute('data-v'), ' · ');
+        }
+
+        function openStagePick(btn) {
+          UI.openStageMenu({
+            anchor: btn,
+            canEdit: false,
+            footTip: '二级在左侧「阶段时间线」里加 / 改名 / 删除，这里只负责选',
+            getValue: function () { return btn.getAttribute('data-v'); },
+            getSubs: function () { return S.stageSubsWithUsed(); },
+            onPick: function (v) {
+              btn.setAttribute('data-v', v);
+              paintStageBtn(btn);
+            }
+          });
+        }
+
+        /* ---- 任务名称：只挑当前所属阶段下面的二级（「未出图」→ 已做首批 / 未做首批） ---- */
+        function openNamePick(btn) {
+          var row = btn.closest('.tpl-row');
+          var stageBtn = row.querySelector('[data-stage-pick]');
+          var titleInp = row.querySelector('[data-k="title"]');
+          var base = C.stageSplit(stageBtn.getAttribute('data-v')).base;
+          if (!C.isStage(base)) base = C.stageSplit(defaultStage()).base;
+
+          UI.openStageMenu({
+            anchor: btn,
+            canEdit: false,
+            onlySubs: true,
+            getValue: function () { return stageBtn.getAttribute('data-v'); },
+            /* 只给这个阶段自己的二级，别的阶段的不混进来 */
+            getSubs: function () {
+              var all = S.stageSubsWithUsed();
+              var one = {};
+              if (all[base] && all[base].length) one[base] = all[base];
+              return one;
+            },
+            emptyTip: '「' + U.esc(base) + '」下面还没有二级。<br />' +
+              '点这行的「所属阶段」，在该阶段右边点 ＋ 新建一个（比如「已做首批」），' +
+              '回来这里就能选了。',
+            footTip: '只列「' + U.esc(base) + '」下面的二级',
+            onPick: function (v) {
+              var p = C.stageSplit(v);
+              if (!p.sub) return;
+              titleInp.value = p.sub;
+              stageBtn.setAttribute('data-v', v);
+              paintStageBtn(stageBtn);
+              UI.toast('已用二级「' + p.sub + '」当任务名，所属阶段一起定到「' + C.stageLabel(v) + '」',
+                'success', 2800);
+              titleInp.focus();
+            }
+          });
+        }
+
+        /* ---- 按住左侧 ⠿ 上下拖动排序（只认手柄，不影响输入框选文字） ---- */
+        var dragRow = null;
+
+        function endDrag() {
+          document.removeEventListener('pointerup', endDrag, true);
+          document.removeEventListener('pointercancel', endDrag, true);
+          document.body.classList.remove('tpl-drag');
+          if (!dragRow) return;
+          dragRow.classList.remove('dragging');
+          dragRow = null;
+        }
+
+        rowsBox.addEventListener('pointerdown', function (e) {
+          var grip = e.target.closest('.tpl-grip');
+          if (!grip) return;
+          var row = grip.closest('.tpl-row');
+          if (!row) return;
+          e.preventDefault();
+          dragRow = row;
+          row.classList.add('dragging');
+          document.body.classList.add('tpl-drag');
+          /* 松手可能发生在弹窗外面，所以挂在 document 上（capture，保证一定收到） */
+          document.addEventListener('pointerup', endDrag, true);
+          document.addEventListener('pointercancel', endDrag, true);
+          try { grip.setPointerCapture(e.pointerId); } catch (err) {}
+        });
+
+        rowsBox.addEventListener('pointermove', function (e) {
+          if (!dragRow) return;
+          e.preventDefault();
+          var rows = [].slice.call(rowsBox.querySelectorAll('.tpl-row'));
+          var target = null;
+          for (var i = 0; i < rows.length; i++) {
+            if (rows[i] === dragRow) continue;
+            var box = rows[i].getBoundingClientRect();
+            if (e.clientY < box.top + box.height / 2) { target = rows[i]; break; }
+          }
+          if (target) rowsBox.insertBefore(dragRow, target);
+          else rowsBox.appendChild(dragRow);
+        });
+
+        rootEl.addEventListener('click', function (e) {
+          /* 所属阶段：弹出可增删改二级的菜单 */
+          var stageBtn = e.target.closest('[data-stage-pick]');
+          if (stageBtn) { openStagePick(stageBtn); return; }
+
+          /* 任务名称：从时间线的二级里挑 */
+          var nameBtn = e.target.closest('[data-title-pick]');
+          if (nameBtn) { openNamePick(nameBtn); return; }
+
+          /* 新增一条 */
+          if (e.target.closest('[data-tpl="add"]')) {
+            rowsBox.insertAdjacentHTML('beforeend', tplRowHtml({}));
+            syncEmpty();
+            var last = rowsBox.lastElementChild;
+            var inp = last && last.querySelector('input');
+            if (inp) inp.focus();
+            return;
+          }
+
+          /* 载入常用任务：只是把草稿填进表格，不点保存就不会生效 */
+          if (e.target.closest('[data-tpl="fill"]')) {
+            rowsBox.innerHTML = C.TASK_TEMPLATES.map(tplRowHtml).join('');
+            syncEmpty();
+            UI.toast('已填入 ' + C.TASK_TEMPLATES.length + ' 条草稿，改完点「保存清单」', 'info', 2400);
+            return;
+          }
+
+          /* 删掉一条 */
+          if (e.target.closest('.tpl-del')) {
+            var row = e.target.closest('.tpl-row');
+            if (row) row.remove();
+            syncEmpty();
+            return;
+          }
+
+          if (e.target.closest('[data-tpl="cancel"]')) { close(); return; }
+
+          if (e.target.closest('[data-tpl="save"]')) {
+            var clean = readRows();
+            var before = subsSnapshot();
+
+            /* 存盘 + 提示时间线同步情况（新增了哪些二级，让人确认两边真的连上了） */
+            var commit = function (list, tip) {
+              S.saveTemplates(list);
+              var added = subsSnapshot().filter(function (v) { return before.indexOf(v) < 0; });
+              close();
+              App.refresh();
+              UI.toast(tip, 'success');
+              if (added.length) {
+                UI.toast('阶段时间线已同步，新增二级：' +
+                  added.map(function (v) { return '「' + C.stageLabel(v) + '」'; }).join('、'),
+                  'info', 3600);
+              }
+            };
+
+            if (!clean.length) {
+              UI.confirm({
+                title: '保存空清单？',
+                text: '保存后这份清单就是 0 条，新建门店不会再自动派发筹建任务。',
+                okText: '保存空清单',
+                onOk: function () {
+                  commit([], '清单已清空，新建门店不再自动派任务');
+                }
+              });
+              return;
+            }
+
+            commit(clean, '筹建任务清单已保存（' + clean.length + ' 条）');
+          }
+        });
+      }
+    });
+  }
+
   function render() {
     var tabs = TABS.map(function (tb) {
-      return '<div class="tab' + (state.tab === tb.key ? ' active' : '') + '" data-tab="' + tb.key + '">' +
+      return '<div class="tab' + (state.tab === tb.key ? ' active' : '') + '" data-tab="' + tb.key + '" ' +
+        'title="按门店里任务的状态筛选门店">' +
         tb.label + '<span class="cnt">' + tabCount(tb.key) + '</span></div>';
     }).join('');
 
     var st = S.stats();
+    var stores = S.getState().stores;
+    var lateStores = stores.filter(function (x) { return statOfTasks(tasksOf(x.id)).late > 0; }).length;
 
     return '' +
     '<div class="page-head fade-up">' +
       '<div>' +
         '<h1>任务管理</h1>' +
-        '<p>共 ' + st.taskCounts.total + ' 条任务，其中 ' + st.taskCounts.overdue + ' 条已逾期</p>' +
+        '<p>共 ' + stores.length + ' 家门店 · ' + st.taskCounts.total + ' 条筹建任务，其中 ' +
+          st.taskCounts.overdue + ' 条已逾期' +
+          (lateStores ? '（' + lateStores + ' 家门店有逾期）' : '') + '</p>' +
       '</div>' +
-      '<button class="btn btn-primary" data-act="add">' + UI.icon('plus') + '新增任务</button>' +
+      '<div style="display:flex;align-items:center;gap:8px">' +
+        '<button class="btn" data-act="tpl">' + UI.icon('list') + '筹建任务清单</button>' +
+        '<button class="btn btn-primary" data-act="add">' + UI.icon('plus') + '新增任务</button>' +
+      '</div>' +
     '</div>' +
 
-    '<div class="card fade-up" style="animation-delay:.05s">' +
-      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">' +
-        '<div class="tabs" id="taskTabs">' + tabs + '</div>' +
-        '<span class="spacer" style="margin-left:auto"></span>' +
-        '<label class="mini-search">' + UI.icon('search') +
-          '<input id="tkSearch" placeholder="搜索任务 / 门店 / 负责人" value="' + U.esc(state.q) + '" />' +
-        '</label>' +
-        '<select class="select" id="tkOwner" style="width:auto;height:31px;font-size:12px">' +
-          '<option value="">全部负责人</option>' + UI.options(S.getState().members, state.owner, 'id', 'name') +
-        '</select>' +
-        '<select class="select" id="tkStore" style="width:auto;height:31px;font-size:12px;max-width:160px">' +
-          '<option value="">全部门店</option>' + UI.options(S.getState().stores, state.store, 'id', 'name') +
-        '</select>' +
-      '</div>' +
-      '<div id="taskListWrap">' + listHtml() + '</div>' +
+    '<div class="tk-layout fade-up" style="animation-delay:.05s">' +
+      '<aside class="card tk-rail fade-up" id="tkRail">' + railHtml() + '</aside>' +
+
+      '<section class="card tk-main">' +
+        '<div class="tk-toolbar">' +
+          '<div class="tabs tabs-sm" id="taskTabs">' + tabs + '</div>' +
+          '<span class="spacer" style="margin-left:auto"></span>' +
+          '<label class="mini-search">' + UI.icon('search') +
+            '<input id="tkSearch" placeholder="搜索门店 / 省份" value="' + U.esc(state.q) + '" />' +
+          '</label>' +
+          '<select class="select" id="tkOwner" style="width:auto;height:31px;font-size:12px">' +
+            '<option value="">全部负责人</option>' + UI.options(S.getState().members, state.owner, 'id', 'name') +
+          '</select>' +
+        '</div>' +
+        '<div id="tkFilterBar">' + filterBarHtml() + '</div>' +
+        '<div id="storeListWrap">' + storeRowsHtml() + '</div>' +
+      '</section>' +
     '</div>';
   }
 
   function updateList(root) {
-    var wrap = root.querySelector('#taskListWrap');
-    if (wrap) wrap.innerHTML = listHtml();
+    var rail = root.querySelector('#tkRail');
+    if (rail) rail.innerHTML = railHtml();
+
+    /* 刚点了「＋」：把新建二级的输入框聚焦上，直接打字 */
+    if (rail && state.editing) {
+      var inp = rail.querySelector('[data-sub-inp]');
+      if (inp) inp.focus();
+    }
+    /* 正在加一级阶段 */
+    if (rail && state.editingStage) {
+      var sinp = rail.querySelector('[data-stage-inp]');
+      if (sinp) sinp.focus();
+    }
+
+    var bar = root.querySelector('#tkFilterBar');
+    if (bar) bar.innerHTML = filterBarHtml();
+
+    var wrap = root.querySelector('#storeListWrap');
+    if (wrap) wrap.innerHTML = storeRowsHtml();
+
     root.querySelectorAll('#taskTabs .tab').forEach(function (el) {
       var key = el.getAttribute('data-tab');
       el.classList.toggle('active', key === state.tab);
       var cnt = el.querySelector('.cnt');
       if (cnt) cnt.textContent = tabCount(key);
     });
+
+    var ow = root.querySelector('#tkOwner');
+    if (ow) ow.value = state.owner;
   }
 
   var debouncedSearch = U.debounce(function (root, val) {
@@ -257,8 +868,454 @@ window.Pages.tasks = (function () {
     updateList(root);
   }, 240);
 
+  /* ---------------- 时间线里管理一级阶段（新建 / 改名 / 删除） ---------------- */
+
+  function commitStage(root) {
+    var inp = root.querySelector('[data-stage-inp]');
+    if (!inp) return false;
+
+    var v = String(inp.value || '').trim().replace(/\s+/g, ' ');
+    if (!v) { state.editingStage = false; updateList(root); return false; }
+
+    /* 插在当前选中的阶段后面；没选阶段就加在最后 */
+    var r = S.addStage(v, state.stage || '');
+    if (!r.ok) {
+      UI.toast(r.error, 'error');
+      inp.focus();
+      inp.select();
+      return false;
+    }
+
+    state.editingStage = false;
+    state.stage = r.stage.key;
+    state.sub = '';
+    state.page = 1;
+    updateList(root);
+    UI.toast('已添加一级阶段「' + v + '」', 'success', 2400);
+    return true;
+  }
+
+  function renameStageDlg(root, from) {
+    var use = S.stageUsage(from);
+
+    UI.modal({
+      title: '给阶段改名',
+      sub: from,
+      body:
+        '<div class="form-row">' +
+          '<label class="form-label">新名称</label>' +
+          '<input class="input" id="tlStageNew" maxlength="20" autocomplete="off" value="' + U.esc(from) + '" />' +
+        '</div>' +
+        '<p class="item-hint">' +
+          (use.stores || use.tasks || use.templates
+            ? '会同时改掉 <b>' + use.stores + '</b> 家门店、<b>' + use.tasks + '</b> 条任务、' +
+              '<b>' + use.templates + '</b> 条筹建清单里的这个阶段。'
+            : '目前还没有门店 / 任务用这个阶段。') +
+          '阶段下的二级保持不变。</p>',
+      footer:
+        '<button class="btn" type="button" data-x="cancel">取消</button>' +
+        '<button class="btn btn-primary" type="button" data-x="ok">保存</button>',
+      onMount: function (m, close) {
+        var inp = m.querySelector('#tlStageNew');
+        if (inp) { inp.focus(); inp.select(); }
+
+        function doSave() {
+          var v = String(inp.value || '').trim().replace(/\s+/g, ' ');
+          if (!v) { inp.focus(); return; }
+
+          var r = S.renameStage(from, v);
+          if (!r.ok) { UI.toast(r.error, 'error'); inp.focus(); return; }
+
+          close();
+          if (state.stage === from) state.stage = v;
+          if (state.editing === from) state.editing = v;
+          updateList(root);
+          UI.toast('「' + from + '」已改名为「' + v + '」' +
+            (r.hit ? '，同步了 ' + r.hit + ' 条数据' : ''), 'success', 2600);
+        }
+
+        m.addEventListener('click', function (e) {
+          if (e.target.closest('[data-x="ok"]')) doSave();
+          if (e.target.closest('[data-x="cancel"]')) close();
+        });
+        if (inp) {
+          inp.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); doSave(); }
+          });
+        }
+      }
+    });
+  }
+
+  function removeStageDlg(root, name) {
+    var use = S.stageUsage(name);
+
+    /* 还有门店在这个阶段 → 不能删，否则门店会变成「找不到阶段」 */
+    if (use.stores) {
+      UI.confirm({
+        title: '先别删「' + name + '」',
+        text: '还有 <b>' + use.stores + '</b> 家门店停在这个阶段。',
+        warn: '把它们改到别的阶段之后再删。删除阶段不会删门店，但门店必须有阶段。',
+        okText: '知道了',
+        onOk: function () {}
+      });
+      return;
+    }
+
+    var doRemove = function () {
+      var r = S.removeStage(name);
+      if (!r.ok) { UI.toast(r.error, 'error'); return; }
+      if (state.stage === name) { state.stage = ''; state.sub = ''; }
+      if (state.editing === name) state.editing = '';
+      state.page = 1;
+      updateList(root);
+      UI.toast('已删除阶段「' + name + '」' +
+        (r.moved ? '，' + r.moved + ' 条任务挪到「' + r.to + '」' : ''), 'info', 2800);
+    };
+
+    if (use.tasks || use.templates) {
+      UI.confirm({
+        title: '删除阶段「' + name + '」',
+        text: '这个阶段下没有门店，但还有 <b>' + use.tasks + '</b> 条任务、' +
+          '<b>' + use.templates + '</b> 条筹建清单挂着。',
+        warn: '它们会被挪到「' + (S.stages()[0] || {}).key + '」，不会被删掉。阶段下面的二级定义一起消失。',
+        danger: true,
+        okText: '确认删除',
+        onOk: doRemove
+      });
+      return;
+    }
+
+    UI.confirm({
+      title: '删除阶段「' + name + '」',
+      text: '这个阶段下没有门店，也没有任务。',
+      danger: true,
+      okText: '确认删除',
+      onOk: doRemove
+    });
+  }
+
+  /* ---------------- 时间线里就地管理二级（新建 / 改名 / 删除） ---------------- */
+
+  /* 把输入框里的名字存成二级；返回 true 表示成功 */
+  function commitSub(root, base) {
+    var inp = root.querySelector('[data-sub-inp]');
+    if (!inp) return false;
+
+    var v = String(inp.value || '').trim().replace(/\s+/g, ' ');
+    if (!v) { state.editing = ''; updateList(root); return false; }
+
+    if (v.indexOf('/') >= 0) {
+      UI.toast('二级名称里不要带斜杠（斜杠是阶段名专用）', 'error');
+      inp.focus();
+      return false;
+    }
+
+    if ((S.stageSubsWithUsed()[base] || []).indexOf(v) >= 0) {
+      UI.toast('「' + base + ' · ' + v + '」已经有了', 'info');
+      inp.focus();
+      inp.select();
+      return false;
+    }
+
+    var map = S.stageSubs();
+    var list = (map[base] || []).slice();
+    list.push(v);
+    map[base] = list;
+    S.saveStageSubs(map);
+
+    state.editing = '';
+    state.stage = base;
+    state.page = 1;
+    updateList(root);
+    UI.toast('已添加二级「' + base + ' · ' + v + '」', 'success', 2400);
+    return true;
+  }
+
+  function renameSub(root, base, name) {
+    UI.modal({
+      title: '给二级改名',
+      sub: base + ' · ' + name,
+      body:
+        '<div class="form-row">' +
+          '<label class="form-label">新名称</label>' +
+          '<input class="input" id="tlSubNew" maxlength="20" autocomplete="off" value="' + U.esc(name) + '" />' +
+        '</div>' +
+        '<p class="item-hint">改名会同时改掉<b>筹建任务清单</b>和<b>已派到门店的任务</b>里的这个二级，' +
+          '阶段时间线立刻同步，不会新旧两个名字并存。</p>',
+      footer:
+        '<button class="btn" type="button" data-x="cancel">取消</button>' +
+        '<button class="btn btn-primary" type="button" data-x="ok">保存</button>',
+      onMount: function (m, close) {
+        var inp = m.querySelector('#tlSubNew');
+        if (inp) { inp.focus(); inp.select(); }
+
+        function doSave() {
+          var v = String(inp.value || '').trim().replace(/\s+/g, ' ');
+          if (!v) { inp.focus(); return; }
+          if (v === name) { close(); return; }
+          if (v.indexOf('/') >= 0) { UI.toast('二级名称里不要带斜杠', 'error'); return; }
+
+          var hit = S.renameStageSub(base, name, v);
+          close();
+          if (state.sub === name) state.sub = v;
+          updateList(root);
+          UI.toast('「' + name + '」已改名为「' + v + '」' + (hit ? '，同步了 ' + hit + ' 条任务' : ''), 'success', 2600);
+        }
+
+        m.addEventListener('click', function (e) {
+          if (e.target.closest('[data-x="ok"]')) doSave();
+          if (e.target.closest('[data-x="cancel"]')) close();
+        });
+        if (inp) {
+          inp.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); doSave(); }
+          });
+        }
+      }
+    });
+  }
+
+  function removeSub(root, base, name) {
+    var use = S.stageSubUsage(base, name);
+
+    var doRemove = function () {
+      S.removeStageSub(base, name);
+      if (state.sub === name) state.sub = '';
+      updateList(root);
+      UI.toast('已删除「' + base + ' · ' + name + '」' +
+        (use.templates + use.tasks ? '，' + (use.templates + use.tasks) + ' 条任务退回一级' : ''),
+        'info', 2600);
+    };
+
+    if (use.templates || use.tasks) {
+      UI.confirm({
+        title: '删除二级「' + name + '」',
+        text: (use.templates ? '筹建任务清单里有 <b>' + use.templates + '</b> 条、' : '') +
+          (use.tasks ? '门店任务里有 <b>' + use.tasks + '</b> 条' : '') +
+          '挂在「' + base + ' · ' + name + '」上。',
+        warn: '它们的阶段会退回一级「' + base + '」，任务本身不删。改动立刻同步到阶段时间线。',
+        danger: true,
+        okText: '确认删除',
+        onOk: doRemove
+      });
+      return;
+    }
+
+    doRemove();
+  }
+
+  /* 拖动排序结束后要吃掉随后那次 click，否则会被当成「切换阶段筛选」 */
+  var suppressClick = false;
+
+  /* 按住一级阶段上下拖 → 调顺序（拖完写 settings.stages） */
+  function bindStageDrag(root) {
+    var drag = null;
+
+    function pairOf(node) {
+      var sib = node.nextElementSibling;
+      return (sib && sib.classList && sib.classList.contains('tl-subs')) ? sib : null;
+    }
+
+    root.addEventListener('pointerdown', function (e) {
+      if (e.button !== 0) return;
+      var node = e.target.closest('.tl-node');
+      if (!node || !root.contains(node)) return;
+      if (e.target.closest('button, .tl-op, input')) return;
+
+      drag = {
+        node: node,
+        key: node.getAttribute('data-stage'),
+        startY: e.clientY,
+        moved: false
+      };
+    });
+
+    document.addEventListener('pointermove', function (e) {
+      if (!drag) return;
+
+      if (!drag.moved) {
+        if (Math.abs(e.clientY - drag.startY) < 6) return;
+        drag.moved = true;
+        drag.node.classList.add('tl-dragging');
+        document.body.classList.add('tl-sorting');
+      }
+
+      var box = root.querySelector('.tl-nodes');
+      if (!box) return;
+
+      var list = [].slice.call(box.querySelectorAll('.tl-node'));
+      var before = null;
+      for (var i = 0; i < list.length; i++) {
+        var n = list[i];
+        if (n === drag.node) continue;
+        var r = n.getBoundingClientRect();
+        if (e.clientY < r.top + r.height / 2) { before = n; break; }
+      }
+
+      if (before === drag.node) return;
+
+      var pair = pairOf(drag.node);
+
+      if (before) {
+        if (drag.node.nextElementSibling === before) return;   /* 已经在这个位置 */
+        box.insertBefore(drag.node, before);
+        if (pair) box.insertBefore(pair, drag.node.nextSibling);
+        return;
+      }
+
+      /* 光标在所有节点下面 → 挪到最后 */
+      var last = list[list.length - 1];
+      if (last === drag.node) return;
+      box.appendChild(drag.node);
+      if (pair) box.appendChild(pair);
+    });
+
+    document.addEventListener('pointerup', function () {
+      if (!drag) return;
+      var d = drag;
+      drag = null;
+
+      d.node.classList.remove('tl-dragging');
+      document.body.classList.remove('tl-sorting');
+
+      if (!d.moved) return;
+
+      suppressClick = true;
+      setTimeout(function () { suppressClick = false; }, 320);
+
+      var box = root.querySelector('.tl-nodes');
+      if (!box) return;
+
+      var keys = [].slice.call(box.querySelectorAll('.tl-node')).map(function (n) {
+        return n.getAttribute('data-stage');
+      });
+
+      S.saveStageOrder(keys);
+      updateList(root);
+      UI.toast('阶段顺序已保存', 'success', 1600);
+    });
+  }
+
   function mount(root) {
     root.addEventListener('click', function (e) {
+      if (suppressClick) { suppressClick = false; return; }
+
+      /* ---- 「全部阶段」右边 ＋：新建一级阶段 ---- */
+      if (e.target.closest('[data-stage-add]')) {
+        state.editingStage = true;
+        updateList(root);
+        return;
+      }
+
+      if (e.target.closest('[data-stage-ok]')) {
+        commitStage(root);
+        return;
+      }
+
+      /* 一级阶段行上的操作按钮：也要排在 [data-stage] 前面，否则会被当成「筛选这个阶段」 */
+      var sEditEl = e.target.closest('[data-stage-edit]');
+      if (sEditEl && root.contains(sEditEl)) {
+        renameStageDlg(root, sEditEl.getAttribute('data-stage-edit'));
+        return;
+      }
+
+      var sDelEl = e.target.closest('[data-stage-del]');
+      if (sDelEl && root.contains(sDelEl)) {
+        removeStageDlg(root, sDelEl.getAttribute('data-stage-del'));
+        return;
+      }
+
+      /* ---- 左侧时间线：给一级阶段新建二级 ---- */
+      var addEl = e.target.closest('[data-sub-add]');
+      if (addEl && root.contains(addEl)) {
+        var baseKey = addEl.getAttribute('data-sub-add');
+        state.stage = baseKey;
+        state.sub = '';
+        state.editing = baseKey;
+        state.page = 1;
+        updateList(root);
+        return;
+      }
+
+      var okEl = e.target.closest('[data-sub-ok]');
+      if (okEl && root.contains(okEl)) {
+        commitSub(root, okEl.getAttribute('data-sub-ok'));
+        return;
+      }
+
+      /* 先判操作按钮：它们也在 .tl-sub 里面，晚判会被当成「筛选这个二级」 */
+      var editEl = e.target.closest('[data-sub-edit]');
+      if (editEl && root.contains(editEl)) {
+        var editRow = editEl.closest('.tl-sub');
+        renameSub(root, editRow.getAttribute('data-base'), editEl.getAttribute('data-sub-edit'));
+        return;
+      }
+
+      var delEl = e.target.closest('[data-sub-del]');
+      if (delEl && root.contains(delEl)) {
+        var delRow = delEl.closest('.tl-sub');
+        removeSub(root, delRow.getAttribute('data-base'), delEl.getAttribute('data-sub-del'));
+        return;
+      }
+
+      /* ---- 左侧时间线：二级阶段 / 阶段 ---- */
+      var subEl = e.target.closest('[data-sub]');
+      if (subEl && root.contains(subEl)) {
+        var subName = subEl.getAttribute('data-sub');
+        state.sub = (state.sub === subName) ? '' : subName;
+        state.page = 1;
+        updateList(root);
+        return;
+      }
+
+      var stageEl = e.target.closest('[data-stage]');
+      if (stageEl && root.contains(stageEl)) {
+        if (e.target.closest('.tl-sub-add')) return;   /* 正在打二级名，别把输入框刷掉 */
+        var skey = stageEl.getAttribute('data-stage');
+        state.stage = (state.stage === skey) ? '' : skey;   /* 再点一次 = 取消 */
+        state.sub = '';
+        state.editing = '';
+        state.page = 1;
+        updateList(root);
+        return;
+      }
+
+      if (e.target.closest('[data-stage-all]')) {
+        state.stage = '';
+        state.sub = '';
+        state.editing = '';
+        state.page = 1;
+        updateList(root);
+        return;
+      }
+
+      /* ---- 右侧门店行：点一下展开 / 收起这家店的任务 ---- */
+      var rowEl = e.target.closest('[data-srow]');
+      if (rowEl && root.contains(rowEl)) {
+        var sid = rowEl.getAttribute('data-srow');
+        if (state.open[sid]) delete state.open[sid];
+        else state.open[sid] = true;
+        updateList(root);
+        return;
+      }
+
+      var clearEl = e.target.closest('[data-clear]');
+      if (clearEl) {
+        var what = clearEl.getAttribute('data-clear');
+        if (what === 'stage' || what === 'all') state.stage = '';
+        if (what === 'sub' || what === 'all') state.sub = '';
+        if (what === 'owner' || what === 'all') state.owner = '';
+        if (what === 'q' || what === 'all') {
+          state.q = '';
+          var si = root.querySelector('#tkSearch');
+          if (si) si.value = '';
+        }
+        state.page = 1;
+        updateList(root);
+        return;
+      }
+
       var tab = e.target.closest('[data-tab]');
       if (tab && root.contains(tab)) {
         state.tab = tab.getAttribute('data-tab');
@@ -281,6 +1338,7 @@ window.Pages.tasks = (function () {
       var task = id ? S.taskById(id) : null;
 
       if (act === 'add') openForm(null);
+      else if (act === 'tpl') openTemplates();
       else if (act === 'edit' && task) openForm(task);
       else if (act === 'start' && task) {
         S.updateTask(task.id, { status: 'doing' });
@@ -318,20 +1376,82 @@ window.Pages.tasks = (function () {
         state.owner = e.target.value;
         state.page = 1;
         updateList(root);
-      } else if (e.target.id === 'tkStore') {
-        state.store = e.target.value;
-        state.page = 1;
-        updateList(root);
       }
     });
+
+    /* 时间线新建二级 / 一级阶段：回车存、Esc 收起、点别处（有内容）自动存 */
+    root.addEventListener('keydown', function (e) {
+      var t = e.target;
+      if (!t.getAttribute) return;
+
+      if (t.hasAttribute('data-sub-inp')) {
+        var base = t.getAttribute('data-sub-inp');
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          commitSub(root, base);
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          state.editing = '';
+          updateList(root);
+        }
+        return;
+      }
+
+      if (t.hasAttribute('data-stage-inp')) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          commitStage(root);
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          state.editingStage = false;
+          updateList(root);
+        }
+      }
+    });
+
+    root.addEventListener('focusout', function (e) {
+      var t = e.target;
+      if (!t.getAttribute) return;
+
+      var isSub = t.hasAttribute('data-sub-inp');
+      var isStage = t.hasAttribute('data-stage-inp');
+      if (!isSub && !isStage) return;
+
+      var base = isSub ? t.getAttribute('data-sub-inp') : '';
+
+      /* 等一下：如果是点了「添加」按钮，click 会先把这件事做完 */
+      setTimeout(function () {
+        if (isSub) {
+          if (state.editing !== base) return;
+          var cur = root.querySelector('[data-sub-inp]');
+          if (cur && String(cur.value || '').trim()) commitSub(root, base);
+          else { state.editing = ''; updateList(root); }
+        } else {
+          if (!state.editingStage) return;
+          var cur2 = root.querySelector('[data-stage-inp]');
+          if (cur2 && String(cur2.value || '').trim()) commitStage(root);
+          else { state.editingStage = false; updateList(root); }
+        }
+      }, 170);
+    });
+
+    bindStageDrag(root);
   }
 
   function onEnter(params) {
+    state.editing = '';
     if (params && params.task) {
       var t = S.taskById(params.task);
       if (t) {
         state.tab = 'all';
         state.page = 1;
+        /* 从搜索点进来的任务：切到它所属门店的阶段并展开这家店，一眼能看到 */
+        var owner = S.storeById(t.storeId);
+        if (owner) {
+          state.stage = owner.stage;
+          state.sub = '';
+          state.open[owner.id] = true;
+        }
         setTimeout(function () { openForm(t); }, 60);
       }
     }
@@ -339,7 +1459,13 @@ window.Pages.tasks = (function () {
       state.owner = params.member;
     }
     if (params && params.store) {
-      state.store = params.store;
+      var st = S.storeById(params.store);
+      if (st) {
+        state.stage = st.stage;
+        state.sub = '';
+        state.open[st.id] = true;
+        state.page = 1;
+      }
     }
   }
 

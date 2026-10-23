@@ -76,6 +76,18 @@ window.Pages.settings = (function () {
       '</div>' +
     '</section>' +
 
+    '<div class="card fade-up" style="animation-delay:.08s">' +
+      '<div class="card-head"><h3>到货物料清单</h3>' +
+        '<span class="card-sub">门店详情里「物料到货」的快捷按钮，共 <b id="arrItemsCount">' + S.items().length + '</b> 个</span></div>' +
+      '<div class="item-chips" id="arrItemsBox">' + itemChips(S.items()) + '</div>' +
+      '<div class="item-add">' +
+        '<input class="input" id="itemAddInput" autocomplete="off" ' +
+          'placeholder="输入物料名，比如：冰箱贴，回车添加" />' +
+        '<button class="btn btn-primary" type="button" data-act="addItem">添加</button>' +
+      '</div>' +
+      '<p class="item-hint">长按物料约 1 秒，会变成红色「删除？」，再点一下才真正删掉；点别处可取消。改动即时保存。</p>' +
+    '</div>' +
+
     '<div class="card fade-up" style="animation-delay:.1s">' +
       '<div class="card-head"><h3>云端说明</h3><span class="card-sub">改代码时的参考</span></div>' +
       '<div class="desc-list">' +
@@ -89,7 +101,97 @@ window.Pages.settings = (function () {
     '</div>';
   }
 
+  /* 物料按钮：长按变成「删除？」，再点一下才删（防误触） */
+  function itemChips(list) {
+    if (!list.length) {
+      return '<p class="item-none">还没有物料，在下面输入名字添加</p>';
+    }
+    return list.map(function (x) {
+      return '<button type="button" class="arr-chip" data-item="' + U.esc(x) + '" title="长按可删除">' +
+        U.esc(x) + '</button>';
+    }).join('');
+  }
+
   function mount(root) {
+    var box = root.querySelector('#arrItemsBox');
+    var input = root.querySelector('#itemAddInput');
+    var pressTimer = null;
+    var askAt = 0;
+
+    function paint() {
+      box.innerHTML = itemChips(S.items());
+      var c = root.querySelector('#arrItemsCount');
+      if (c) c.textContent = S.items().length;
+    }
+
+    function clearAsk() {
+      [].slice.call(box.querySelectorAll('.arr-chip.ask')).forEach(function (c) {
+        c.classList.remove('ask');
+        c.textContent = c.getAttribute('data-item');
+      });
+      askAt = 0;
+    }
+
+    function addItem() {
+      var v = String(input.value || '').trim();
+      if (!v) { input.focus(); return; }
+      var list = S.items().slice();
+      if (list.indexOf(v) >= 0) {
+        UI.toast('「' + v + '」已经在清单里了', 'info');
+        input.select();
+        return;
+      }
+      list.push(v);
+      S.saveItems(list);
+      paint();
+      input.value = '';
+      input.focus();
+      UI.toast('已添加「' + v + '」', 'success');
+    }
+
+    function removeItem(name) {
+      S.saveItems(S.items().filter(function (x) { return x !== name; }));
+      paint();
+      UI.toast('已删除「' + name + '」', 'info');
+    }
+
+    /* ---------------- 到货物料：长按删除 ---------------- */
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); addItem(); }
+    });
+
+    /* 长按 550ms → 进入待确认状态 */
+    box.addEventListener('pointerdown', function (e) {
+      var chip = e.target.closest('.arr-chip');
+      if (!chip || chip.classList.contains('ask')) return;
+      clearAsk();
+      pressTimer = setTimeout(function () {
+        chip.classList.add('ask');
+        chip.textContent = '删除？';
+        askAt = Date.now();
+      }, 550);
+      var cancel = function () {
+        clearTimeout(pressTimer);
+        chip.removeEventListener('pointerup', cancel);
+        chip.removeEventListener('pointerleave', cancel);
+      };
+      chip.addEventListener('pointerup', cancel);
+      chip.addEventListener('pointerleave', cancel);
+    });
+
+    box.addEventListener('click', function (e) {
+      var chip = e.target.closest('.arr-chip');
+      if (!chip) { clearAsk(); return; }
+      if (!chip.classList.contains('ask')) { clearAsk(); return; }
+      if (Date.now() - askAt < 220) return;   /* 长按松手那一下不算确认 */
+      removeItem(chip.getAttribute('data-item'));
+    });
+
+    /* 点空白处取消待确认状态 */
+    root.addEventListener('pointerdown', function (e) {
+      if (!e.target.closest('.arr-chip')) clearAsk();
+    });
+
     root.addEventListener('click', function (e) {
       var el = e.target.closest('[data-act]');
       if (!el) return;
@@ -97,6 +199,10 @@ window.Pages.settings = (function () {
 
       if (act === 'logout') {
         App.logout();
+      }
+
+      else if (act === 'addItem') {
+        addItem();
       }
 
       else if (act === 'saveSetting') {
