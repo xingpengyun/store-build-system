@@ -196,6 +196,19 @@
 - 入口：`js/store.js` → `shipRows().mats / sentAgo`；`js/page-ship.js` → `matsHtml / nextText / nextTip / leftText`；
   `css/components.css` → `.ship-mats / .sm-chip / .th-legend / .ship-sent-date / .ship-next / .ship-banner.is-done`
 
+## 2026-10-24 任务管理页：门店行默认收起，点一家自动收起别家
+
+> 用户反馈：门店卡片一进来就展开，两家一开页面被撑得很长，几十家翻不动。
+
+- 门店明细改成**手风琴（一次只开一家）**：`Pages.tasks` 的 `state.open` 从「对象表」改成**单个门店 id**（`''` = 全收起）
+  - `state.open = st.id` 对齐 `storeRowHtml()` 里的 `open` 判断
+  - 点行首 → `toggleStoreRow(root, sid)`：同一家 → 收起；别家 → 换它展开
+  - 每次 `onEnter()` 都重置成 `''`，从别的页面跳进来也是全部收起；带 `{store}` / `{task}` 参数除外（只开那一家）
+- 换开会带走滚动位置：收起的那家如果在上面，列表整体缩上去、刚点的行会「跳」。
+  `toggleStoreRow()` 先记下被点这行的 `getBoundingClientRect().top`，重绘后再按差值 `window.scrollBy(0, delta)` 补回来，点哪儿就停在哪儿
+- 回到列表页顶不用找：展开的那家整行会有 `.sk-row.open` 的边框 + 阴影，箭头随之翻转
+- 入口：`js/page-tasks.js` → `state.open / toggleStoreRow() / storeRowHtml() / onEnter()`
+
 ## 数据模型要点
 - 门店 `stage` 只能取 `CONST.STAGES` 的 key；`risk` 只能取 `CONST.RISKS` 的 key
 - 任务 `status` 只有 `pending` / `doing` / `done` 三种
