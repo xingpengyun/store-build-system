@@ -90,11 +90,16 @@ https://你的用户名.github.io/shop-build-system/
 
 ```bash
 cd C:\Users\你的用户名\WorkBuddy
-git clone https://github.com/你的用户名/shop-build-system.git
-cd shop-build-system
+git clone https://github.com/xingpengyun/store-build-system.git
+cd store-build-system
 ```
 
-然后双击 `start-server.bat` 就能打开系统。
+然后双击 `start-server.bat` 就能打开系统（会起 http://127.0.0.1:8765/ 并自动开浏览器）。
+
+打开后按 **Ctrl + F5** 强刷一次，确保加载的是最新脚本（`index.html` 里脚本都带 `?v=` 版本号，正常情况下不会吃缓存）。
+
+> **数据不用搬。** 现在数据在云端，用同一个账号登录就能看到公司那台电脑录入的门店和任务。
+> 首次进系统如果停在登录页，用 `admin` / `123` 登录即可。
 
 > **首次在家里提交前，先设置一下身份**（只需一次，把名字邮箱换成你自己的）：
 > ```bash
@@ -131,9 +136,12 @@ git pull
 可以，但不要同时改同一行。顺序应该是：一台改完 push → 另一台先 pull 再改 → 改完 push。
 
 **Q：数据（门店、任务）会跟着代码一起同步吗？**
-不会。数据存在浏览器 localStorage 里，和代码是两回事。
-需要搬迁数据时，用系统里的「系统设置 → 导出备份」，把 JSON 文件带到另一台机器导入。
-**别把导出的 JSON 提交到公开仓库**，里面有真实业务数据。
+不会，但**也不需要手动搬**。现在数据存在云端数据库（WorkBuddy Cloud），代码只是一个壳：
+在家里 clone 下来、打开系统、用同一个账号登录，看到的就是公司那份门店和任务，不用导备份。
+
+- 云端拉不下来时才会退回浏览器 localStorage 缓存（离线可看，**改不动**）
+- 想留一份本地快照：系统设置 → 导出备份，得到一个 JSON
+- **别把导出的 JSON 提交到公开仓库**，里面有真实业务数据
 
 **Q：.gitignore 里忽略了什么？**
 只忽略了 `.workbuddy/`（AI 工作笔记）和系统临时文件。所有代码、样式、README 都会提交。
