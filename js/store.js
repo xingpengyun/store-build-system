@@ -1075,14 +1075,28 @@ window.Store = (function () {
     return s;
   }
 
-  /* ---------------- 门店进度：跟着「阶段时间线」走 ----------------
-     走完全部筹建阶段 = 100%。「已开业」不算筹建阶段，它是终点，到了直接 100%。
-     假设时间线是 未出图 / 已出图 / 资料/建档 / 施工/装修 / 物料/到货 / 开业准备 / 已开业，
-     那 6 个筹建阶段各占 1/6 ≈ 16.7%，门店每往后推一个阶段，进度就跳一格：
-       未出图 0%  已出图 17%  资料/建档 33%  ……  开业准备 83%  已开业 100%
-     阶段是用户自己加 / 改名 / 删 / 排序的，所以分母一律按当前 C.STAGES 现算，
-     不写死 6：时间线里多一个阶段，每格就自动变小。
+  /* ---------------- 门店进度：六个筹建阶段共享一条进度条 ----------------
+     口径：进度 = 六个阶段各自的「清单任务完成率」加起来 ÷ 阶段数。
+     每个阶段占一份（6 个阶段就是各 1/6 ≈ 16.7%），阶段里的清单做完了这一格才满；
+     六个阶段全部做满才是 100% —— 也就是「万无一失、真能开业」的意思。
+     只把阶段指针往前推、清单还挂着待办的话，进度不会跳上去。
+     没配清单的阶段：门店已经走过它（或已开业）就算完成，没走到就是 0。
+     「已开业」是终点，不参与分母：到了但前面还有没做完的清单，就如实显示 80 多。
+     阶段是用户自己加 / 改名 / 删 / 排序的，分母一律按当前 C.STAGES 现算。
      ------------------------------------------------------------------ */
+
+  /* 某个门店在某个一级阶段下的清单任务情况 */
+  function stageTaskStat(storeId, stageKey) {
+    var total = 0, done = 0;
+    if (!storeId) return { total: 0, done: 0 };
+    state.tasks.forEach(function (t) {
+      if (t.storeId !== storeId) return;
+      if (C.stageSplit(t.stage).base !== stageKey) return;
+      total++;
+      if (t.status === 'done') done++;
+    });
+    return { total: total, done: done };
+  }
 
   /* 终点阶段（默认「已开业」）和筹建阶段序列 */
   function stageFlow() {
@@ -1097,30 +1111,58 @@ window.Store = (function () {
     return { endKey: endKey, flow: flow };
   }
 
-  /* { pct, done, total, at, ended }  done = 已完成阶段数，total = 筹建阶段总数 */
+  /* { pct, done, total, at, ended, tasksDone, tasksTotal }
+     done = 清单全做完的阶段数，total = 筹建阶段总数；
+     tasksDone / tasksTotal = 这些阶段下的清单任务完成情况 */
   function storeProgress(store) {
     var f = stageFlow();
-    var total = f.flow.length || 1;
-    var at = store ? String(store.stage || '') : '';
+    var flow = f.flow;
+    var total = flow.length || 1;
+    var at = store ? C.stageSplit(store.stage).base : '';
+    var ended = !!(at && at === f.endKey);
 
-    if (at && at === f.endKey) {
-      return { pct: 100, done: total, total: total, at: at, ended: true };
+    /* 门店当前停在第几个阶段（用来判断「没配清单的阶段」有没有走过去） */
+    var atIdx = -1;
+    for (var i = 0; i < flow.length; i++) {
+      if (flow[i].key === at) { atIdx = i; break; }
     }
 
-    var done = 0;
-    for (var i = 0; i < f.flow.length; i++) {
-      if (f.flow[i].key === at) { done = i; break; }
+    var acc = 0, doneStages = 0, tasksTotal = 0, tasksDone = 0;
+    for (var j = 0; j < flow.length; j++) {
+      var st = stageTaskStat(store ? store.id : '', flow[j].key);
+      var r;
+      if (!st.total) {
+        r = (ended || (atIdx >= 0 && j < atIdx)) ? 1 : 0;
+      } else {
+        r = st.done / st.total;
+        tasksTotal += st.total;
+        tasksDone += st.done;
+      }
+      if (r >= 1) doneStages++;
+      acc += r;
     }
-    /* 阶段被删 / 改名后门店还挂着旧值：按起点算，不让它变成 100% */
-    return { pct: Math.round(done / total * 100), done: done, total: total, at: at, ended: false };
+
+    var pct = Math.round(acc / total * 100);
+    /* 反过来：阶段指针走到最后了，但清单没做完，也不能算 100% */
+    if (!ended && pct > 99 && doneStages < total) pct = 99;
+
+    return {
+      pct: Math.max(0, Math.min(100, pct)),
+      done: doneStages, total: total,
+      at: at, ended: ended,
+      tasksDone: tasksDone, tasksTotal: tasksTotal
+    };
   }
 
   /* 鼠标悬停的说明文字，各页面共用，避免同一个数字三种说法 */
   function progressTip(store) {
     var p = storeProgress(store);
-    if (p.ended) return '已完成全部 ' + p.total + ' 个筹建阶段，门店已开业';
-    if (!p.at) return '还没设置阶段';
-    return '已完成 ' + p.done + ' / ' + p.total + ' 个阶段（当前：' + p.at + '）';
+    if (!p.at && !p.tasksTotal) return '还没设置阶段';
+    var base = '六个阶段共享这条进度：' + p.done + ' / ' + p.total + ' 个阶段清单已做完';
+    if (p.tasksTotal) base += '（任务 ' + p.tasksDone + ' / ' + p.tasksTotal + '）';
+    if (p.pct >= 100) return '全部阶段清单已完成，可以开业了';
+    if (p.ended) return base + '；已开业，但还有清单没做完';
+    return base + (p.at ? '（当前：' + p.at + '）' : '');
   }
 
   /* ---------------- 二级的改名 / 删除（三处一起同步） ----------------

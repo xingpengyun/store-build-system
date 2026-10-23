@@ -118,8 +118,8 @@ window.Pages.stores = (function () {
         '</div>' +
       '</div>' +
       '<div class="field-row">' +
-        '<div class="field"><label>阶段进度 <span class="dim">（按阶段自动算，不用填）</span></label>' +
-          '<div class="prog-prev" data-prog-preview>' + progPreviewHtml(s.stage || (C.STAGES[0] || {}).key) + '</div>' +
+        '<div class="field"><label>阶段进度 <span class="dim">（按清单完成度自动算，不用填）</span></label>' +
+          '<div class="prog-prev" data-prog-preview>' + progPreviewHtml(s.stage || (C.STAGES[0] || {}).key, s.id) + '</div>' +
         '</div>' +
         '<div class="field"><label>门店负责人</label>' +
           '<select class="select" name="ownerId">' +
@@ -141,14 +141,16 @@ window.Pages.stores = (function () {
     '</form>';
   }
 
-  /* 表单里那格「阶段进度」：只读预览，跟着「当前阶段」即时变 */
-  function progPreviewHtml(stage) {
-    var p = S.storeProgress({ stage: stage });
+  /* 表单里那格「阶段进度」：只读预览，跟着「当前阶段」即时变。
+     进度按六个阶段的清单完成度共享累计，所以这里带上 store.id 才能算出真实值。 */
+  function progPreviewHtml(stage, storeId) {
+    var p = S.storeProgress({ id: storeId, stage: stage });
+    var tip = p.pct >= 100
+      ? '六个阶段的清单全做完了，可以开业了'
+      : '六个阶段共享这条进度：' + p.done + ' / ' + p.total + ' 个阶段的清单已做完' +
+        (p.tasksTotal ? '（任务 ' + p.tasksDone + ' / ' + p.tasksTotal + '）' : '');
     return UI.progress(p.pct) +
-      '<span class="prog-prev-tip">' + U.esc(
-        p.ended ? '已开业，走完了全部 ' + p.total + ' 个筹建阶段'
-          : '已完成 ' + p.done + ' / ' + p.total + ' 个筹建阶段，往前推一个阶段进度就加一格'
-      ) + '</span>';
+      '<span class="prog-prev-tip">' + U.esc(tip) + '</span>';
   }
 
   /* 风险下拉需要正确的 value/label，单独生成 */
@@ -184,7 +186,7 @@ window.Pages.stores = (function () {
         var prev = rootEl.querySelector('[data-prog-preview]');
         if (stageSel && prev) {
           stageSel.addEventListener('change', function () {
-            prev.innerHTML = progPreviewHtml(stageSel.value);
+            prev.innerHTML = progPreviewHtml(stageSel.value, s.id);
           });
         }
 
@@ -320,8 +322,9 @@ window.Pages.stores = (function () {
           ' <span class="dim" style="font-weight:400">（' + (days >= 0 ? '还剩 ' + days + ' 天' : '已过 ' + (-days) + ' 天') + '）</span></div></div>' +
         '<div class="d-item"><div class="d-label">阶段进度</div><div class="d-val">' +
           UI.progress(pr.pct, null, S.progressTip(store)) +
-          '<span class="dim" style="font-weight:400;margin-left:8px">已完成 <b>' + pr.done + '</b> / ' +
-            pr.total + ' 个阶段</span></div></div>' +
+          '<span class="dim" style="font-weight:400;margin-left:8px">清单已完成 <b>' + pr.done + '</b> / ' +
+            pr.total + ' 个阶段' + (pr.tasksTotal ? '（任务 ' + pr.tasksDone + ' / ' + pr.tasksTotal + '）' : '') +
+            '</span></div></div>' +
       '</div>' +
       (store.address || store.remark
         ? '<div class="section-title">补充信息</div><div style="font-size:12.5px;color:var(--text-2);line-height:1.8">' +
