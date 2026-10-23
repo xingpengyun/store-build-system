@@ -589,6 +589,64 @@ window.Store = (function () {
     return leadDaysOf(task);
   }
 
+  /* ---------------- 逾期「往后放 3 天」 ----------------
+
+     逾期只有两种处理：
+       是我们的原因 → 点「推送」把它做掉；
+       不是我们的 / 老板不着急 → 点「+3天」，整条往后挪 3 天，3 天后再提醒。
+
+     实现上不删日期、不改开业前天数，只记「这条任务已经往后挪了几天」，
+     建议完成日 = 开业日 − 开业前天数 + 已挪天数。挪完还没到期就不算逾期，
+     过了新的日期又自动变回逾期（也就是 3 天后再提醒一次）。
+     记在 settings.taskSnooze = { 任务id: 累计天数 }，不占 tasks 表的新列。 */
+
+  function snoozeMap() {
+    return (state && state.settings && state.settings.taskSnooze) || {};
+  }
+
+  function snoozeDaysOf(task) {
+    if (!task || !task.id) return 0;
+    var n = Number(snoozeMap()[task.id]);
+    return (!n || isNaN(n) || n <= 0) ? 0 : Math.round(n);
+  }
+
+  /* 往后挪 N 天（默认 3），可重复点累加；返回累计天数 */
+  function snoozeTask(taskId, days) {
+    var t = taskById(taskId);
+    if (!t) return 0;
+    var step = Math.round(Number(days));
+    if (isNaN(step) || step <= 0) step = 3;
+
+    state.settings = state.settings || {};
+    var map = snoozeMap();
+    map[taskId] = snoozeDaysOf(t) + step;
+    state.settings.taskSnooze = map;
+    pushSettings();
+
+    /* 建议完成日跟着挪，due_date 同步一份（排序、云同步都靠它） */
+    var due = suggestDateOf(t);
+    if (due !== t.dueDate) { t.dueDate = due; push('tasks', t); }
+    cacheLocal();
+    return map[taskId];
+  }
+
+  /* 撤销延后，回到原定日期 */
+  function unsnoozeTask(taskId) {
+    var t = taskById(taskId);
+    var map = snoozeMap();
+    if (!t || map[taskId] == null) return 0;
+
+    delete map[taskId];
+    state.settings = state.settings || {};
+    state.settings.taskSnooze = map;
+    pushSettings();
+
+    var due = suggestDateOf(t);
+    if (due !== t.dueDate) { t.dueDate = due; push('tasks', t); }
+    cacheLocal();
+    return 0;
+  }
+
   /* 设置里改阶段默认天数：存进 settings.leadDays，并把没单独设过的任务
      建议完成日按新口径重算一遍。支持一次改多个阶段。 */
   function saveLeadDays(map) {
@@ -622,12 +680,13 @@ window.Store = (function () {
     return (s && s.openDate) || '';
   }
 
-  /* 建议完成日 = 门店开业日 − 任务的开业前 N 天；门店没填开业日 → ''（不猜） */
+  /* 建议完成日 = 门店开业日 − 任务的开业前 N 天 + 已延后天数
+     门店没填开业日 → ''（不猜） */
   function suggestDateOf(task) {
     if (!task) return '';
     var od = storeOpenDate(task);
     if (!od) return '';
-    return U.addDays(od, -taskBeforeOf(task));
+    return U.addDays(od, -taskBeforeOf(task) + snoozeDaysOf(task));
   }
 
   /* 距开业天数：正数=还没到，负数=已经过了；门店没开业日返回 null */
@@ -649,14 +708,15 @@ window.Store = (function () {
   }
 
   /* 任务状态只有两类：done（已完成）/ 其他（未完成）。
-     逾期 = 今天已过「开业日 − 开业前 N 天」且没完成。
+     逾期 = 今天已过「开业日 − 开业前 N 天 + 已延后天数」且没完成。
      门店没填开业日 → 无从倒推，一律按未完成算，不硬判逾期。 */
   function classify(task) {
     if (task.status === 'done') return 'done';
 
-    var left = daysLeftOf(task);
-    if (left != null) {
-      if (left < taskBeforeOf(task)) return 'overdue';
+    var due = suggestDateOf(task);
+    if (due) {
+      /* 今天已经过了建议完成日（含「+3天」挪过的）→ 逾期 */
+      if (U.diffDays(U.today(), due) < 0) return 'overdue';
       var s2 = storeById(task.storeId);
       if (s2 && (s2.risk === 'high' || s2.risk === 'overdue')) return 'risk';
       return 'pending';
@@ -751,7 +811,8 @@ window.Store = (function () {
         due: suggestDateOf(t),        /* 建议完成日（没开业日时为空） */
         days: U.diffDays(t0, suggestDateOf(t)),  /* 距建议完成日 */
         left: daysLeftOf(t),          /* 距开业天数 */
-        lead: taskBeforeOf(t)         /* 这条任务的开业前天数 */
+        lead: taskBeforeOf(t),        /* 这条任务的开业前天数 */
+        snooze: snoozeDaysOf(t)       /* 已往后放了几天（没放 = 0） */
       });
     });
     focus.sort(function (a, b) {
@@ -801,6 +862,7 @@ window.Store = (function () {
       var due = suggestDateOf(t);
       var lead = taskBeforeOf(t);
       var left = daysLeftOf(t);
+      var sn = snoozeDaysOf(t);      /* 已经点过几次「+3天」 */
 
       /* 没有建议完成日（门店没填开业日）就不发到期提醒，别编日期吓人 */
       if (!due) return;
@@ -810,7 +872,8 @@ window.Store = (function () {
         addAlert({
           id: 'late-' + t.id, level: 'high', type: '任务逾期',
           title: storeName + ' · ' + t.title,
-          desc: '距开业只剩 ' + left + ' 天，建议开业前 ' + lead + ' 天做完，已逾期 ' +
+          desc: '距开业只剩 ' + left + ' 天，建议开业前 ' + lead + ' 天做完' +
+            (sn ? '（已延后 ' + sn + ' 天）' : '') + '，已逾期 ' +
             Math.abs(d) + ' 天（建议 ' + U.monthDay(due) + ' 前做完）',
           owner: owner ? owner.name : '未指派', storeId: t.storeId, taskId: t.id
         });
@@ -818,7 +881,8 @@ window.Store = (function () {
         addAlert({
           id: 'soon-' + t.id, level: 'warn', type: '即将到期',
           title: storeName + ' · ' + t.title,
-          desc: '还有 ' + d + ' 天就到建议完成日（' + U.monthDay(due) + '，开业前 ' + lead + ' 天）',
+          desc: '还有 ' + d + ' 天就到建议完成日（' + U.monthDay(due) + '，开业前 ' + lead + ' 天' +
+            (sn ? '，已延后 ' + sn + ' 天' : '') + '）',
           owner: owner ? owner.name : '未指派', storeId: t.storeId, taskId: t.id
         });
       }
@@ -1027,9 +1091,9 @@ window.Store = (function () {
     Object.keys(rest).forEach(function (k) { t[k] = rest[k]; });
     if (patch.before != null) setTaskBefore(t.id, nextBefore);
 
-    /* 阶段 / 门店 / 开业前天数变了，截止日按新口径重算 */
+    /* 阶段 / 门店 / 开业前天数变了，截止日按新口径重算（延后过的天数一并保留） */
     if (stageChanged || storeChanged || beforeChanged) {
-      t.dueDate = suggestFor(t.storeId, t.stage, nextBefore);
+      t.dueDate = suggestDateOf(t);
     }
 
     push('tasks', t);
@@ -1043,7 +1107,8 @@ window.Store = (function () {
     var changed = [];
     state.tasks.forEach(function (t) {
       if (storeId && t.storeId !== storeId) return;
-      var due = suggestFor(t.storeId, t.stage, taskBeforeOf(t));
+      /* 用 suggestDateOf：把「已延后 N 天」也算进去，不然一改开业日延后就丢了 */
+      var due = suggestDateOf(t);
       if (t.dueDate !== due) { t.dueDate = due; changed.push(t); }
     });
     if (changed.length) {
@@ -1058,6 +1123,16 @@ window.Store = (function () {
 
   function removeTask(id) {
     state.tasks = state.tasks.filter(function (t) { return t.id !== id; });
+
+    /* 顺手清掉这条任务在设置里留下的「开业前天数 / 延后天数」，
+       不然任务删了、设置里的键还留着，越积越多 */
+    var s = state.settings || {};
+    var touched = false;
+    ['taskBefore', 'taskSnooze'].forEach(function (key) {
+      if (s[key] && s[key][id] != null) { delete s[key][id]; touched = true; }
+    });
+    if (touched) pushSettings();
+
     drop('tasks', id);
     cacheLocal();
   }
@@ -1748,6 +1823,10 @@ window.Store = (function () {
     saveLeadDays: saveLeadDays,
     suggestDateOf: suggestDateOf,
     daysLeftOf: daysLeftOf,
+    snoozeDaysOf: snoozeDaysOf,
+    snoozeTask: snoozeTask,
+    unsnoozeTask: unsnoozeTask,
+    snoozeMap: snoozeMap,
     suggestFor: suggestFor,
     resyncTaskDates: resyncTaskDates,
     isEndStage: isEndStage,

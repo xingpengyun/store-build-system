@@ -192,7 +192,8 @@ window.Pages.home = (function () {
             ? '建议 ' + U.monthDay(f.due) + ' 前完成' +
               (late ? '（已逾期 ' + Math.abs(f.days) + ' 天）' : '（还剩 ' + f.days + ' 天）')
             : '未设开业日期 · 开业前 ' + f.lead + ' 天') +
-            (f.left != null ? '　·　距开业 ' + f.left + ' 天，开业前 ' + f.lead + ' 天' : '') + '</div>' +
+            (f.left != null ? '　·　距开业 ' + f.left + ' 天，开业前 ' + f.lead + ' 天' : '') +
+            (f.snooze ? '　·　已延后 ' + f.snooze + ' 天' : '') + '</div>' +
         '</div>' +
         '<span class="focus-owner">' + U.esc(f.owner ? f.owner.name : '未指派') + '</span>' +
       '</div>';

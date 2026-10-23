@@ -74,10 +74,23 @@
 - 筹建清单的筛选只剩 全部 / 逾期 / 风险 / 已完成；任务表列名改为「建议完成」，显示「建议日期 + 开业前 N 天 · 距开业 X 天」
 - 入口：`js/store.js` → `taskBeforeOf / suggestDateOf / daysLeftOf / suggestFor / classify / setTaskBefore / saveLeadDays`
 
+### 逾期后怎么办：「+3天」（往后放，3 天后再提醒）
+
+- 逾期只有两种处理：是我们的原因 → 点「推送」做掉；**不是我们的原因 / 老板不着急 → 点「+3天」**
+- 实现：`settings.taskSnooze = { 任务id: 已延后天数 }`，**不删日期、不改开业前天数**
+  - `建议完成日 = 开业日 − 开业前 N 天 + 已延后天数`，逾期判断改看日期：`今天 > 建议完成日`
+  - 点一次 +3 天，可重复点累加；挪完还没到期就不再算逾期（逾期 tab、统计、首页重点都同步消失）
+  - 过了新日期又自动变回逾期 —— 这就是「3 天后再提醒」
+- 按钮：`actionHtml()` 里**只有逾期行**出现橙色「+3天」；已延后且还没到期的行显示灰色「延后 N 天」，点一下撤销
+- 撤销（`unsnoozeTask`）回到原定日期；删除任务时顺手清掉 `taskSnooze / taskBefore` 里的残留
+- 改开业日 / 改开业前天数时延后天数不会被抹掉（`resyncTaskDates` 用 `suggestDateOf`，不是 `suggestFor`）
+- 入口：`js/store.js` → `snoozeMap / snoozeDaysOf / snoozeTask / unsnoozeTask`；`js/page-tasks.js` → `actionHtml`
+
+
 ## 数据模型要点
 - 门店 `stage` 只能取 `CONST.STAGES` 的 key；`risk` 只能取 `CONST.RISKS` 的 key
 - 任务 `status` 只有 `pending` / `doing` / `done` 三种
-- **「已逾期」是派生状态**（门店有开业日时：`今天 > 开业日 − 任务的开业前 N 天`；没开业日不判逾期），不落库，由 `Store.classify()` 算
+- **「已逾期」是派生状态**（门店有开业日时：`今天 > 开业日 − 任务的开业前 N 天 + 已延后天数`；没开业日不判逾期），不落库，由 `Store.classify()` 算
 - `classify()` 返回五种：`done` / `doing` / `pending` / `overdue` / `risk`
 - 「风险」= 所属门店 risk 为 high/overdue，且任务未完成
 

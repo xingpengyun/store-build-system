@@ -275,7 +275,22 @@ window.Pages.tasks = (function () {
     if (t.status === 'done') {
       return '<span class="tlink" data-act="reopen" data-id="' + t.id + '">重开</span>';
     }
-    return '<span class="tlink tlink-push" data-act="push" data-id="' + t.id + '">推送</span>';
+    var push = '<span class="tlink tlink-push" data-act="push" data-id="' + t.id + '">推送</span>';
+    var sn = S.snoozeDaysOf(t);
+
+    /* 逾期才给「+3天」：不是我们的原因 / 老板不着急，
+       先往后放 3 天，3 天后再提醒（可以重复点，一次加 3 天） */
+    if (S.classify(t) === 'overdue') {
+      return '<span class="tlink tlink-snooze" data-act="snooze" data-id="' + t.id + '"' +
+        ' title="不是我们的原因 / 老板不着急：往后放 3 天，3 天后再提醒">+3天</span>' + push;
+    }
+
+    /* 延后过、现在还没到期：留个撤销口子，别一按就找不回来 */
+    if (sn > 0) {
+      return '<span class="tlink tlink-snoozed" data-act="unsnooze" data-id="' + t.id + '"' +
+        ' title="已往后放 ' + sn + ' 天，点一下撤销">延后 ' + sn + ' 天</span>' + push;
+    }
+    return push;
   }
 
   /* ================= 推送：这条做完了 + 门店往前推一步 =================
@@ -474,8 +489,10 @@ window.Pages.tasks = (function () {
       var left = S.daysLeftOf(t);              /* 距开业 */
       var mem = S.memberById(t.assigneeId);
       var stt = S.storeById(t.storeId);
+      var sn = S.snoozeDaysOf(t);              /* 已往后放了几天 */
       var dueTip = (stt && stt.openDate)
-        ? '倒推：开业 ' + U.monthDay(stt.openDate) + ' − 开业前 ' + lead + ' 天 = ' + U.monthDay(due) + ' 前完成'
+        ? '倒推：开业 ' + U.monthDay(stt.openDate) + ' − 开业前 ' + lead + ' 天' +
+          (sn ? ' + 已延后 ' + sn + ' 天' : '') + ' = ' + U.monthDay(due) + ' 前完成'
         : '这家门店还没填开业日期，填了才会自动倒推';
 
       var sub;
@@ -487,6 +504,7 @@ window.Pages.tasks = (function () {
         if (late) sub = '逾期 ' + Math.abs(days) + ' 天';
         else if (days === 0) sub = '今天到期';
         else sub = days + ' 天后';
+        if (sn) sub += '（延后 ' + sn + ' 天）';
         if (left != null) sub += ' · 距开业 ' + left + ' 天';
       }
 
@@ -516,7 +534,7 @@ window.Pages.tasks = (function () {
 
     return '<table class="sk-tbl">' +
       '<thead><tr><th>任务</th><th style="width:110px">阶段</th><th style="width:100px">负责人</th>' +
-        '<th style="width:190px">建议完成</th><th style="width:84px">状态</th><th style="width:150px;text-align:right">操作</th></tr></thead>' +
+        '<th style="width:190px">建议完成</th><th style="width:84px">状态</th><th style="width:182px;text-align:right">操作</th></tr></thead>' +
       '<tbody>' + body + '</tbody></table>';
   }
 
@@ -618,6 +636,8 @@ window.Pages.tasks = (function () {
       ? Number(t.before)
       : (S.beforeFromTemplates(t.title) != null ? S.beforeFromTemplates(t.title) : S.leadDaysOf({ stage: stage }));
     var due = S.suggestFor(storeId, stage, before);
+    var sn = (t.id && S.snoozeDaysOf(t)) || 0;      /* 逾期时点过「+3天」要算进去 */
+    if (due && sn) due = U.addDays(due, sn);
     var st = S.storeById(storeId);
 
     if (!st || !st.openDate) {
@@ -625,7 +645,8 @@ window.Pages.tasks = (function () {
         '<br /><span style="font-size:11px">去门店资料里把开业日期填上，这里立刻按日期倒推。</span>';
     }
     return '倒推：<b>' + U.esc(st.name) + '</b> 计划 <b>' + U.monthDay(st.openDate) + '</b> 开业' +
-      ' − 开业前 <b>' + before + '</b> 天 = 建议 <b>' + U.monthDay(due) + '</b> 前完成' +
+      ' − 开业前 <b>' + before + '</b> 天' + (sn ? ' + 已延后 <b>' + sn + '</b> 天' : '') +
+      ' = 建议 <b>' + U.monthDay(due) + '</b> 前完成' +
       '<br /><span style="font-size:11px">过了 ' + U.monthDay(due) + ' 还没做完就自动标逾期；' +
       '开业日或这个天数一改，这里跟着变。</span>';
   }
@@ -704,6 +725,7 @@ window.Pages.tasks = (function () {
         function repaintHint() {
           var bv = UI.formValue(rootEl, 'before');
           hint.innerHTML = dueHintHtml({
+            id: task ? task.id : '',
             stage: UI.formValue(rootEl, 'stage'),
             storeId: UI.formValue(rootEl, 'storeId'),
             title: UI.formValue(rootEl, 'title'),
@@ -1583,6 +1605,16 @@ window.Pages.tasks = (function () {
       else if (act === 'edit' && task) openForm(task);
       else if (act === 'push' && task) {
         openPush(task);
+      } else if (act === 'snooze' && task) {
+        var snDays = S.snoozeTask(task.id, 3);
+        var snDue = S.suggestDateOf(task);
+        UI.toast('已往后放 3 天（累计 ' + snDays + ' 天）' +
+          (snDue ? '，' + U.monthDay(snDue) + ' 再提醒' : ''), 'success');
+        App.refresh();
+      } else if (act === 'unsnooze' && task) {
+        S.unsnoozeTask(task.id);
+        UI.toast('已撤销延后，回到原定日期', 'info');
+        App.refresh();
       } else if (act === 'reopen' && task) {
         S.updateTask(task.id, { status: 'pending' });
         UI.toast('任务已重新打开', 'info');

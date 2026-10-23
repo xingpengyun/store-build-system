@@ -400,6 +400,27 @@
 .tlink.danger { color: var(--red); }
 .tlink.danger:hover { background: var(--red-soft); }
 
+/* 逾期行多出来的「+3天」：不是我们的原因 / 老板不着急，往后放 3 天再提醒 */
+.tlink-snooze {
+  color: var(--orange);
+  font-weight: 600;
+  border: 1px solid var(--orange-soft);
+  background: var(--orange-soft);
+  padding: 1px 6px;
+  margin-right: 4px;
+}
+.tlink-snooze:hover { background: var(--orange); color: #fff; border-color: var(--orange); }
+
+/* 已经延后过的：小灰标，点一下撤销 */
+.tlink-snoozed {
+  color: var(--text-3);
+  background: var(--line-2);
+  padding: 1px 6px;
+  margin-right: 4px;
+  font-size: 11.5px;
+}
+.tlink-snoozed:hover { color: var(--text); background: var(--line); }
+
 /* ---------------- 表单 ---------------- */
 .field { margin-bottom: 13px; }
 .field:last-child { margin-bottom: 0; }
