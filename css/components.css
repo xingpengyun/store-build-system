@@ -1652,7 +1652,7 @@
 /* ---------------- 任务管理：左时间线 + 右任务 ---------------- */
 .tk-layout {
   display: grid;
-  grid-template-columns: 238px minmax(0, 1fr);
+  grid-template-columns: 252px minmax(0, 1fr);
   gap: 14px;
   align-items: start;
 }
@@ -1663,12 +1663,12 @@
 }
 .tk-rail .card-head { margin-bottom: 9px; padding: 0 2px; }
 .tl-hint {
-  margin: 10px 2px 0;
-  padding-top: 9px;
+  margin: 12px 3px 0;
+  padding-top: 10px;
   border-top: 1px dashed var(--line-2);
-  font-size: 10.8px;
-  line-height: 1.65;
-  color: var(--text-3);
+  font-size: 11.2px;
+  line-height: 1.75;
+  color: #8894a8;
 }
 .tk-main { padding: 14px 16px 16px; min-width: 0; }
 .tk-toolbar {
@@ -1684,12 +1684,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 9px;
-  margin-bottom: 6px;
+  padding: 9px 10px;
+  margin-bottom: 12px;
   border-radius: 8px;
   border: 1px solid transparent;
   background: var(--card-2);
-  font-size: 12px;
+  font-size: 12.8px;
   color: var(--text-2);
   cursor: pointer;
   transition: .14s;
@@ -1707,30 +1707,32 @@
   content: '';
   position: absolute;
   left: 8px;
-  top: 10px;
-  bottom: 12px;
+  top: 18px;
+  bottom: 20px;
   width: 2px;
   border-radius: 2px;
-  background: #e8edf6;
+  background: #dae3f1;
 }
 
+/* 每个阶段之间留出明显间隔，一眼能分清有几级 */
 .tl-node {
   position: relative;
   display: grid;
   grid-template-columns: 14px minmax(0, 1fr);
-  gap: 9px;
-  padding: 6px 8px 6px 1px;
-  border-radius: 8px;
+  gap: 10px;
+  padding: 10px 9px 11px 1px;
+  border-radius: 9px;
   cursor: pointer;
   transition: background .14s;
 }
+.tl-node + .tl-node { margin-top: 6px; }
 .tl-node:hover { background: #f5f8fd; }
 .tl-node.on { background: var(--primary-soft); }
 .tl-node.on .tl-name { color: var(--primary); font-weight: 650; }
 
 .tl-dot {
-  width: 11px;
-  height: 11px;
+  width: 12px;
+  height: 12px;
   margin-top: 4px;
   justify-self: center;
   border-radius: 50%;
@@ -1742,7 +1744,9 @@
 
 .tl-line { display: flex; align-items: baseline; gap: 6px; }
 .tl-name {
-  font-size: 12.5px;
+  font-size: 13.6px;
+  font-weight: 500;
+  letter-spacing: .1px;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
@@ -1750,29 +1754,29 @@
 }
 .tl-num {
   margin-left: auto;
-  font-size: 11px;
-  color: var(--text-2);
+  font-size: 12px;
+  color: #5d6b83;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .tl-meta {
-  margin-top: 1px;
-  font-size: 10.5px;
-  color: var(--text-3);
-  line-height: 1.5;
+  margin-top: 4px;
+  font-size: 11.6px;
+  color: #6d7a90;
+  line-height: 1.55;
 }
 .tl-meta b { color: var(--red); font-weight: 600; }
 
 /* 时间线里的「清单 N 条」：告诉人这个阶段 / 二级在筹建任务清单里有几条任务 */
 .tl-tpl {
   display: inline-block;
-  margin-left: 5px;
-  padding: 0 4px;
+  margin-left: 6px;
+  padding: 0 5px;
   border-radius: 3px;
   background: #e4eaf3;
-  color: #6f7d93;
-  font-size: 9.5px;
-  line-height: 15px;
+  color: #63728b;
+  font-size: 10.2px;
+  line-height: 16px;
   white-space: nowrap;
   vertical-align: 1px;
 }
@@ -1978,20 +1982,20 @@ body.tpl-drag * { cursor: grabbing !important; user-select: none !important; }
 .tl-node:hover .tl-caret { border-left-color: var(--primary); }
 
 .tl-subs {
-  margin: 0 0 3px 9px;
-  padding: 1px 0 1px 11px;
+  margin: 2px 0 8px 9px;
+  padding: 4px 0 4px 11px;
   border-left: 1px dashed #dde5f1;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 3px;
 }
 .tl-sub {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 7px;
+  gap: 7px;
+  padding: 6px 8px;
   border-radius: 6px;
-  font-size: 11.6px;
+  font-size: 12.2px;
   color: var(--text-2);
   cursor: pointer;
   transition: .14s;
