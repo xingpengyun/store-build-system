@@ -1656,12 +1656,27 @@
   gap: 14px;
   align-items: start;
 }
+/* 左栏跟着视口高度走：阶段多也不会把卡片撑爆，底部提示始终贴住底边 */
 .tk-rail {
   position: sticky;
   top: 74px;
-  padding: 14px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 13px 13px;
+  height: calc(100vh - 92px);
+  min-height: 420px;
 }
-.tk-rail .card-head { margin-bottom: 9px; padding: 0 2px; }
+.tk-rail .card-head { margin-bottom: 10px; padding: 0 2px; flex: none; }
+.tk-rail .tl-all { flex: none; }
+.tk-rail .tl-nodes {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 2px 1px 2px 0;
+  scrollbar-width: thin;
+}
+.tk-rail .tl-hint { flex: none; margin-top: auto; }
 .tl-hint {
   margin: 12px 3px 0;
   padding-top: 10px;
@@ -1720,12 +1735,12 @@
   display: grid;
   grid-template-columns: 14px minmax(0, 1fr);
   gap: 10px;
-  padding: 10px 9px 11px 1px;
+  padding: 12px 9px 13px 1px;
   border-radius: 9px;
   cursor: pointer;
   transition: background .14s;
 }
-.tl-node + .tl-node { margin-top: 6px; }
+.tl-node + .tl-node { margin-top: 9px; }
 .tl-node:hover { background: #f5f8fd; }
 .tl-node.on { background: var(--primary-soft); }
 .tl-node.on .tl-name { color: var(--primary); font-weight: 650; }
@@ -1739,6 +1754,7 @@
   position: relative;
   z-index: 1;
   box-shadow: 0 0 0 3px var(--card);
+  transition: transform .2s cubic-bezier(.2, .8, .3, 1), opacity .18s;
 }
 .tl-node.is-empty .tl-dot { opacity: .42; }
 
@@ -1751,13 +1767,20 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transform-origin: left center;
+  transition: transform .2s cubic-bezier(.2, .8, .3, 1), color .18s;
 }
+/* 鼠标移到某一级：名字放大一点点，圆点跟着亮一下，点下去更有反馈 */
+.tl-node:hover .tl-name { transform: scale(1.09); }
+.tl-node:hover .tl-dot { transform: scale(1.16); }
+.tl-node:hover .tl-num { color: var(--text); }
 .tl-num {
   margin-left: auto;
   font-size: 12px;
   color: #5d6b83;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  transition: color .18s;
 }
 .tl-meta {
   margin-top: 4px;
@@ -1935,8 +1958,14 @@
 
 @media (max-width: 1180px) {
   .tk-layout { grid-template-columns: minmax(0, 1fr); }
-  .tk-rail { position: static; }
+  .tk-rail { position: static; height: auto; min-height: 0; }
+  .tk-rail .tl-nodes { overflow: visible; }
   .tl-nodes::before { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tl-name, .tl-num, .tl-dot, .tl-sub-name, .tl-sub-dot { transition: none; }
+  .tl-node:hover .tl-name, .tl-node:hover .tl-dot,
+  .tl-sub:hover .tl-sub-name, .tl-sub:hover .tl-sub-dot { transform: none; }
 }
 
 /* ---------------- 筹建任务清单：拖动排序手柄 ---------------- */
@@ -2013,6 +2042,7 @@ body.tpl-drag * { cursor: grabbing !important; user-select: none !important; }
   height: 6px;
   border-radius: 50%;
   opacity: .55;
+  transition: transform .2s cubic-bezier(.2, .8, .3, 1), opacity .18s;
 }
 .tl-sub.on .tl-sub-dot { opacity: 1; }
 .tl-sub-name {
@@ -2021,7 +2051,11 @@ body.tpl-drag * { cursor: grabbing !important; user-select: none !important; }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transform-origin: left center;
+  transition: transform .2s cubic-bezier(.2, .8, .3, 1), color .18s;
 }
+.tl-sub:hover .tl-sub-name { transform: scale(1.06); }
+.tl-sub:hover .tl-sub-dot { transform: scale(1.35); }
 .tl-sub .tl-num { margin-left: auto; }
 .tl-sub .tl-num b { color: var(--red); font-weight: 600; }
 
