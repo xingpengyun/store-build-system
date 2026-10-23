@@ -142,12 +142,15 @@ window.Pages.stores = (function () {
   }
 
   /* 表单里那格「阶段进度」：只读预览，跟着「当前阶段」即时变。
-     进度 = 门店停在第几个阶段（所有阶段平分 100%，最后一个阶段就是 100%）。 */
+     进度 = 门店停在第几个筹建阶段（每格 16.7%，准备开业 = 100%，收尾阶段不计入）。 */
   function progPreviewHtml(stage) {
     var p = S.storeProgress({ stage: stage });
-    var tip = p.ended
-      ? '已经是最后一个阶段，进度 100%'
-      : p.label + '，' + p.total + ' 个阶段平分 100%，推到最后一个阶段就是 100%';
+    var per = Math.round(100 / p.total * 10) / 10;
+    var tip = p.isEnd
+      ? '收尾阶段不占进度，筹建部分已走完 → 100%'
+      : p.ended
+        ? '已经是最后一个筹建阶段，进度 100%'
+        : p.label + '，' + p.total + ' 个筹建阶段各占 ' + per + '%，推到最后一个就是 100%';
     return UI.progress(p.pct) +
       '<span class="prog-prev-tip">' + U.esc(tip) + '</span>';
   }
@@ -321,8 +324,9 @@ window.Pages.stores = (function () {
           ' <span class="dim" style="font-weight:400">（' + (days >= 0 ? '还剩 ' + days + ' 天' : '已过 ' + (-days) + ' 天') + '）</span></div></div>' +
         '<div class="d-item"><div class="d-label">阶段进度</div><div class="d-val">' +
           UI.progress(pr.pct, null, S.progressTip(store)) +
-          '<span class="dim" style="font-weight:400;margin-left:8px">当前<b>第 ' + pr.idx + ' / ' + pr.total +
-            '</b> 个阶段</span></div></div>' +
+          '<span class="dim" style="font-weight:400;margin-left:8px">' +
+            (pr.idx ? '当前<b>第 ' + pr.idx + ' / ' + pr.total + '</b> 个筹建阶段' : '阶段未设置') +
+          '</span></div></div>' +
       '</div>' +
       (store.address || store.remark
         ? '<div class="section-title">补充信息</div><div style="font-size:12.5px;color:var(--text-2);line-height:1.8">' +

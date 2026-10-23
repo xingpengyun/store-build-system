@@ -637,7 +637,9 @@ window.Store = (function () {
 
     state.stores.forEach(function (s) {
       var pr = storeProgress(s);
-      var pctTxt = '已完成 ' + pr.done + '/' + pr.total + ' 个阶段（' + pr.pct + '%）';
+      var pctTxt = pr.idx
+        ? '进度 ' + pr.pct + '%（第 ' + pr.idx + '/' + pr.total + ' 个筹建阶段）'
+        : '进度 ' + pr.pct + '%';
 
       if (s.risk === 'high' || s.risk === 'overdue') {
         addAlert({
@@ -1075,51 +1077,62 @@ window.Store = (function () {
     return s;
   }
 
-  /* ---------------- 门店进度：六个阶段共享一条 100% 的进度条 ----------------
-     口径：只看门店「现在停在哪个阶段」，不看清单做了几条。
-     时间线上所有阶段平分 100%（6 个阶段就是各 16.7%）：
-       设计阶段 17%  已出图 33%  建档资料 50% … 准备开业 100%
-     停在最后一个阶段 = 100% —— 走到这一步就代表这家店可以开业了。
-     （哪怕是从设计阶段一路点上去的，只要指针在最后一个阶段就是 100%，这是有意的）
+  /* ---------------- 门店进度：一个阶段一格，最后一格就是 100% ----------------
+     口径：只看门店「现在停在哪个阶段」，不看清单做了几条，也不管二级。
+     进度 = 停在第几个筹建阶段 ÷ 筹建阶段总数：
+       6 个筹建阶段 → 每个 16.7%，最后一个（准备开业）就是 100%
+       设计阶段 16.7%  已出图 33.3%  建档资料 50%  发货阶段 66.7%
+       广告物料 83.3%  准备开业 100%
+     结束类阶段（已开业 / 闭店 …，见 CONST.PROGRESS_END_STAGES）不进分母，
+     否则「准备开业」会被摊成 6/8 = 75%，看不出已经可以开业了。
+     新店不用做前面的事：直接推到「广告物料」就是 5/6 ≈ 83.3%。
      阶段是用户自己加 / 改名 / 删 / 排序的，分母一律按当前 C.STAGES 现算。
      阶段被删 / 改名后门店还挂着旧值：找不到就按 0% 算，不会错乱成 100%。
      ------------------------------------------------------------------ */
 
-  /* 终点阶段（默认「已开业」，改名 / 删掉时退回最后一个阶段）和筹建阶段序列 */
-  function stageFlow() {
-    var list = C.STAGES || [];
-    var endKey = '';
-    for (var i = 0; i < list.length; i++) {
-      if (list[i].key === '已开业') { endKey = '已开业'; break; }
+  /* 结束类阶段？（按一级阶段名精确匹配，二级不影响） */
+  function isEndStage(key) {
+    var names = C.PROGRESS_END_STAGES || [];
+    var base = C.stageSplit(key).base;
+    for (var i = 0; i < names.length; i++) {
+      if (names[i] === base) return true;
     }
-    /* 「已开业」被改名了：退回最后一个阶段当终点，至少不会算错分母 */
-    if (!endKey && list.length) endKey = list[list.length - 1].key;
-    var flow = list.filter(function (x) { return x.key !== endKey; });
-    return { endKey: endKey, flow: flow };
+    return false;
   }
 
-  /* { pct, idx, at, total, ended, label }
-     idx = 门店停在第几个阶段（从 1 开始），total = 阶段总数 */
-  function storeProgress(store) {
+  /* 参与进度的阶段序列：去掉结束类阶段（全被去掉时退回全部，至少还能算） */
+  function progressStages() {
     var list = C.STAGES || [];
-    var total = list.length || 1;
+    var flow = list.filter(function (x) { return !isEndStage(x.key); });
+    return flow.length ? flow : list.slice();
+  }
+
+  /* { pct, idx, total, at, ended, isEnd, label }
+     idx = 停在第几个筹建阶段（从 1 开始），total = 筹建阶段总数 */
+  function storeProgress(store) {
+    var flow = progressStages();
+    var total = flow.length || 1;
     var at = store ? C.stageSplit(store.stage).base : '';
 
     var pos = -1;
-    for (var i = 0; i < list.length; i++) {
-      if (list[i].key === at) { pos = i; break; }
+    for (var i = 0; i < flow.length; i++) {
+      if (flow[i].key === at) { pos = i; break; }
     }
 
-    /* 停在最后一个阶段 = 100% */
-    var idx = pos < 0 ? 0 : pos + 1;
+    var isEnd = !!at && isEndStage(at);
+    /* 停在结束类阶段（已开业 / 闭店）：筹建部分已经走完，100% */
+    var idx = isEnd ? total : (pos < 0 ? 0 : pos + 1);
     var pct = Math.round(idx / total * 100);
 
     return {
       pct: Math.max(0, Math.min(100, pct)),
       idx: idx, total: total,
       at: at,
-      ended: pos >= 0 && pos === list.length - 1,
-      label: pos < 0 ? '阶段未设置' : '第 ' + idx + ' / ' + total + ' 个阶段'
+      ended: isEnd || (pos >= 0 && pos === flow.length - 1),
+      isEnd: isEnd,
+      label: pos < 0
+        ? (isEnd ? at : '阶段未设置')
+        : '第 ' + idx + ' / ' + total + ' 个筹建阶段'
     };
   }
 
@@ -1127,8 +1140,13 @@ window.Store = (function () {
   function progressTip(store) {
     var p = storeProgress(store);
     if (!p.at) return '还没设置阶段';
-    if (p.ended) return p.at + '（第 ' + p.idx + ' / ' + p.total + ' 个阶段）· 走到这一步就代表可以开业了';
-    return '当前停在「' + p.at + '」，' + p.label + '，六个阶段共享这条进度；推到最后一个阶段就是 100%';
+
+    var per = Math.round(100 / p.total * 10) / 10;
+    var tail = '（' + p.total + ' 个筹建阶段各占 ' + per + '%，推到最后一个就是 100%）';
+
+    if (p.isEnd) return '门店在「' + p.at + '」，' + p.total + ' 个筹建阶段已全部走完，进度 100%';
+    if (p.ended) return '门店在「' + p.at + '」，' + p.label + '，进度 100% —— 走到这一步就代表可以开业了';
+    return '门店在「' + p.at + '」，' + p.label + '，进度 ' + p.pct + '%' + tail;
   }
 
   /* ---------------- 二级的改名 / 删除（三处一起同步） ----------------
@@ -1431,7 +1449,8 @@ window.Store = (function () {
     storeSub: storeSub,
     setStoreStage: setStoreStage,
     templateStageStat: templateStageStat,
-    stageFlow: stageFlow,
+    progressStages: progressStages,
+    isEndStage: isEndStage,
     storeProgress: storeProgress,
     progressTip: progressTip,
     stageSubUsage: stageSubUsage,
