@@ -2411,3 +2411,349 @@ body.tl-sorting * { cursor: grabbing !important; user-select: none !important; }
   color: var(--purple);
   font-weight: 500;
 }
+
+/* ==========================================================
+   发货看板（page-ship.js）
+   几十家门店待发货：一行一家，谁逾期、谁今天发、谁先发，一眼看完
+   ========================================================== */
+
+/* ---------------- 顶部横幅：今天有没有该发没发的 ---------------- */
+.ship-banner {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  animation: fadeUp .3s ease both;
+}
+.ship-banner.is-alert {
+  background: linear-gradient(180deg, #fff7f6, #fef1ef);
+  border: 1px solid #fbd6d2;
+}
+.ship-banner.is-ok {
+  background: linear-gradient(180deg, #f6fdf9, #eefaf3);
+  border: 1px solid #cdeedd;
+}
+.sb-ico {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+}
+.ship-banner.is-alert .sb-ico { background: #feeceb; color: var(--red); }
+.ship-banner.is-ok .sb-ico { background: var(--green-soft); color: var(--green); }
+.sb-ico svg { width: 16px; height: 16px; }
+.sb-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.sb-body b { font-size: 13px; color: var(--text); font-weight: 600; }
+.ship-banner.is-alert .sb-body b { color: #b42318; }
+.sb-body span { font-size: 11.5px; color: var(--text-2); }
+
+/* ---------------- KPI：点一下只看这一类 ---------------- */
+.ship-kpi { cursor: pointer; transition: box-shadow .16s, transform .16s, border-color .16s; }
+.ship-kpi:hover { box-shadow: 0 6px 18px rgba(31, 53, 102, .07); transform: translateY(-1px); }
+.ship-kpi.is-on {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(63, 107, 245, .12);
+}
+
+/* ---------------- 工具条 ---------------- */
+.ship-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.ship-tools { display: flex; align-items: center; gap: 8px; }
+
+/* ---------------- 表 ---------------- */
+.ship-tbl { min-width: 900px; }
+/* 几十家店要能一屏看更多行：表头钉住，表体自己滚 */
+.ship-card .table-wrap {
+  max-height: calc(100vh - 356px);
+  overflow: auto;
+}
+.ship-tbl thead th {
+  padding: 6px 8px;
+  font-size: 11px;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--card-2);
+  box-shadow: 0 1px 0 var(--line-2);
+}
+.ship-tbl tbody td {
+  padding: 5px 8px;
+  height: 45px;
+}
+
+/* 行状态：逾期红条 / 今天橙条 / 已到店淡化 / 先发浅橙底 */
+.ship-tbl tbody tr.is-late td:first-child { box-shadow: inset 3px 0 0 var(--red); }
+.ship-tbl tbody tr.is-today td:first-child { box-shadow: inset 3px 0 0 var(--orange); }
+.ship-tbl tbody tr.is-pin td:first-child { box-shadow: inset 3px 0 0 var(--orange); }
+.ship-tbl tbody tr.is-late { background: #fffafa; }
+.ship-tbl tbody tr.is-late:hover { background: #fff5f4; }
+.ship-tbl tbody tr.is-done { opacity: .62; }
+.ship-tbl tbody tr.is-done:hover { opacity: 1; }
+
+/* 序号 + 先发星标 */
+.ship-idx-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 12px !important;
+}
+.ship-idx {
+  font-size: 11px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+  min-width: 14px;
+}
+.ship-flag {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #cfd8e6;
+  cursor: pointer;
+  padding: 0;
+  transition: .14s;
+}
+.ship-flag-ico { font-size: 13px; line-height: 1; }
+.ship-flag:hover { background: var(--orange-soft); color: var(--orange); }
+.ship-flag.is-on { color: var(--orange); background: var(--orange-soft); }
+.ship-flag.is-on .ship-flag-ico { transform: scale(1.1); }
+
+/* 门店名 + 小字 */
+.ship-store { min-width: 150px; }
+.ship-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: color .14s;
+  white-space: nowrap;
+}
+.ship-name:hover { color: var(--primary); }
+.ship-pin-tag {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--orange);
+  background: var(--orange-soft);
+  border-radius: 5px;
+  padding: 1px 5px;
+  flex: 0 0 auto;
+}
+.ship-meta {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 230px;
+}
+
+/* 计划发货日 */
+.ship-plan { min-width: 118px; }
+.ship-plan-row { display: flex; }
+.ship-date {
+  width: 100%;
+  height: 26px;
+  padding: 0 4px;
+  border: 1px dashed transparent;
+  border-radius: 7px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text);
+  outline: 0;
+  transition: .14s;
+}
+.ship-date:hover { border-color: #dfe7f4; background: #fff; }
+.ship-date.is-empty { color: #c2cbdb; font-size: 11.5px; }
+.ship-date:focus {
+  border-color: #a9c1f9;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(63, 107, 245, .09);
+}
+.ship-left {
+  margin-top: 1px;
+  font-size: 10.5px;
+  color: var(--text-3);
+  padding-left: 5px;
+}
+.ship-left.is-late { color: var(--red); font-weight: 600; }
+.ship-left.is-today { color: var(--orange); font-weight: 600; }
+
+/* 物料 */
+.ship-mat-main { font-size: 12px; color: var(--text-2); }
+.ship-mat-sub { font-size: 10.5px; color: var(--text-3); margin-top: 2px; }
+
+/* 状态胶囊 */
+.ship-st {
+  height: 25px;
+  padding: 0 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 20px;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: .14s;
+  white-space: nowrap;
+}
+.ship-st i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex: 0 0 5px;
+}
+.ship-st:hover { filter: brightness(.96); box-shadow: 0 2px 8px rgba(31, 53, 102, .1); }
+
+/* 备注 */
+.ship-note {
+  width: 100%;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px dashed transparent;
+  border-radius: 7px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 11.5px;
+  color: var(--text-2);
+  outline: 0;
+  transition: .14s;
+}
+.ship-note:hover { border-color: #dfe7f4; background: #fff; }
+.ship-note:focus { border-color: #a9c1f9; background: #fff; box-shadow: 0 0 0 3px rgba(63, 107, 245, .09); }
+.ship-note::placeholder { color: #c2cbdb; }
+
+/* ↑↓ 手动顺序 */
+.ship-move { white-space: nowrap; text-align: right; }
+.ship-mv {
+  width: 22px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  padding: 0;
+  transition: .14s;
+}
+.ship-mv svg { width: 12px; height: 12px; transform: rotate(-90deg); }
+.ship-mv-dn svg { transform: rotate(90deg); }
+.ship-mv:hover { background: var(--primary-soft); color: var(--primary); border-color: #dbe6fd; }
+
+/* 说明脚注 */
+.ship-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line-2);
+  font-size: 11px;
+  color: var(--text-3);
+  flex-wrap: wrap;
+}
+
+/* 状态切换浮层 */
+.ship-menu {
+  position: fixed;
+  z-index: 999;
+  width: 132px;
+  padding: 5px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  box-shadow: 0 12px 32px rgba(24, 44, 90, .16);
+  animation: fadeUp .14s ease both;
+}
+.ship-menu-i {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--text-2);
+  cursor: pointer;
+  text-align: left;
+  transition: .12s;
+}
+.ship-menu-i i { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 6px; }
+.ship-menu-i em { margin-left: auto; color: var(--green); font-style: normal; font-weight: 700; }
+.ship-menu-i:hover { background: var(--card-2); color: var(--text); }
+.ship-menu-i.is-on { color: var(--text); font-weight: 600; background: var(--primary-soft); }
+
+/* ---------------- 首页顶部「今日发货」条 ---------------- */
+.home-ship {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.home-ship.is-alert { border-color: #fbd6d2; background: linear-gradient(180deg, #fff9f8, #fff); }
+.home-ship.is-warn { border-color: #fbe3bd; background: linear-gradient(180deg, #fffcf5, #fff); }
+.hs-ico {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.home-ship.is-alert .hs-ico { background: var(--red-soft); color: var(--red); }
+.home-ship.is-warn .hs-ico { background: var(--orange-soft); color: var(--orange); }
+.hs-ico svg { width: 16px; height: 16px; }
+.hs-body { flex: 1; min-width: 0; }
+.hs-title { font-size: 12.8px; color: var(--text-2); }
+.hs-title b { font-size: 14px; color: var(--text); }
+.hs-chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.hs-chip {
+  font-size: 11px;
+  color: var(--text-2);
+  background: var(--card-2);
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  padding: 1px 7px;
+}
+.hs-chip b { color: var(--text); font-weight: 600; }
+.hs-chip.late { color: #b42318; background: var(--red-soft); border-color: #fbd6d2; }
+.hs-chip.late b { color: var(--red); }
+.hs-chip.today { color: #b25c00; background: var(--orange-soft); border-color: #fbe3bd; }
+.hs-chip.today b { color: var(--orange); }
+.hs-chip.ok b { color: var(--green); }

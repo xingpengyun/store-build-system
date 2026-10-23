@@ -954,6 +954,47 @@ window.Store = (function () {
       }
     });
 
+    /* ---------------- 发货：按计划发货日盯着 ----------------
+       计划今天发 → 提醒；已经过了还没发出 → 高危；
+       3 天内要发 → 提醒；快开业了还没排发货日 → 也提醒（这种最容易漏）。 */
+    var shipWatch = Number(C.SHIP_WATCH_DAYS || 3);
+    shipRows().forEach(function (r) {
+      if (r.status === 'done') return;
+      var man = r.owner || '未指派';
+
+      if (r.late) {
+        addAlert({
+          id: 'shiplate-' + r.id, level: 'danger', type: '发货逾期',
+          title: r.name + ' · 计划 ' + U.monthDay(r.date) + ' 发货',
+          desc: '已经过了 ' + Math.abs(r.left) + ' 天还没发出，' +
+            (r.pending ? '还有 ' + r.pending + ' 项物料没到，' : '') + '先确认仓库备货和车辆',
+          owner: man, storeId: r.id
+        });
+      } else if (r.dueToday) {
+        addAlert({
+          id: 'shiptoday-' + r.id, level: 'high', type: '今天该发货',
+          title: r.name + ' · 计划今天发出',
+          desc: '发完记得在「发货看板」点一下「已发出」，不然明天就变逾期',
+          owner: man, storeId: r.id
+        });
+      } else if (r.left != null && r.left > 0 && r.left <= shipWatch) {
+        addAlert({
+          id: 'shipsoon-' + r.id, level: 'warn', type: '即将发货',
+          title: r.name + ' · 还有 ' + r.left + ' 天到发货日',
+          desc: '计划 ' + U.monthDay(r.date) + ' 发出，先备好货、定好车' +
+            (r.pending ? '（还有 ' + r.pending + ' 项物料没到）' : ''),
+          owner: man, storeId: r.id
+        });
+      } else if (r.noPlan && r.openLeft != null && r.openLeft >= 0 && r.openLeft <= 21) {
+        addAlert({
+          id: 'shipnone-' + r.id, level: 'warn', type: '还没排发货',
+          title: r.name + ' · 距开业 ' + r.openLeft + ' 天',
+          desc: '这家店还没填计划发货日，去「发货看板」补一下，不然容易漏',
+          owner: man, storeId: r.id
+        });
+      }
+    });
+
     var order = { danger: 0, high: 1, warn: 2 };
     list.sort(function (a, b) {
       if (a.read !== b.read) return a.read ? 1 : -1;
@@ -1059,6 +1100,14 @@ window.Store = (function () {
     if (Object.prototype.hasOwnProperty.call(subs, id)) {
       delete subs[id];
       state.settings.storeSubs = subs;
+      pushSettings();
+    }
+
+    /* 发货记录也一起清掉（不然看板里会留着已删门店的空行） */
+    var ship = shipMap();
+    if (Object.prototype.hasOwnProperty.call(ship, id)) {
+      delete ship[id];
+      state.settings.ship = ship;
       pushSettings();
     }
 
@@ -1251,6 +1300,177 @@ window.Store = (function () {
   function removeArrival(id) {
     state.arrivals = state.arrivals.filter(function (a) { return a.id !== id; });
     drop('arrivals', id);
+    cacheLocal();
+  }
+
+  /* ================= 发货看板 =================
+     一家店一条发货记录：计划发货日 + 进度状态 + 「先发」标记 + 备注。
+     存 settings.ship = { 门店id: {status, date, pin, seq, note} }，
+     跟着 app_settings 整包上云，几十家门店共用一份 —— 同事打开看到的是同一屏。
+     不写进 stores 表，是为了不改数据库结构。
+     --------------------------------------------------------- */
+
+  function shipMap() {
+    var m = state && state.settings && state.settings.ship;
+    return (m && typeof m === 'object') ? m : {};
+  }
+
+  /* 单家店的发货设置（没设过就给一份默认值，别返回 null） */
+  function shipOf(storeId) {
+    var raw = shipMap()[storeId] || {};
+    return {
+      status: raw.status || 'todo',
+      date: raw.date || '',
+      pin: !!raw.pin,
+      seq: (raw.seq == null || raw.seq === '') ? null : Number(raw.seq),
+      note: raw.note || '',
+      sentAt: raw.sentAt || ''      /* 点「已发出」的时间，用来算在途几天 */
+    };
+  }
+
+  function setShip(storeId, patch) {
+    if (!storeId) return null;
+    state.settings = state.settings || {};
+    var map = shipMap();
+    var cur = map[storeId] || {};
+    Object.keys(patch || {}).forEach(function (k) { cur[k] = patch[k]; });
+
+    /* 切到「已发出」记一笔日期，切回来就清掉 */
+    if (patch && patch.status === 'sent') cur.sentAt = U.today();
+    if (patch && patch.status && patch.status !== 'sent') cur.sentAt = '';
+
+    map[storeId] = cur;
+    state.settings.ship = map;
+    pushSettings();
+    cacheLocal();
+    return shipOf(storeId);
+  }
+
+  /* 把一串门店 id 按顺序写成 seq（手动排序后一次性落库，只存一次） */
+  function writeShipSeq(ids) {
+    state.settings = state.settings || {};
+    var map = shipMap();
+    ids.forEach(function (id, i) {
+      var row = map[id] || {};
+      row.seq = i + 1;
+      map[id] = row;
+    });
+    state.settings.ship = map;
+    pushSettings();
+    cacheLocal();
+  }
+
+  /* 看板的一行：门店 + 发货进度 + 物料到货情况，全是实时算的 */
+  function shipRows() {
+    var t0 = U.today();
+
+    var rows = state.stores.map(function (s) {
+      var info = shipOf(s.id);
+      var list = state.arrivals.filter(function (a) { return a.storeId === s.id; });
+      var pend = list.filter(function (a) { return a.status !== 'arrived'; });
+
+      /* 还没到的物料里最早的那个到货日 —— 门店给的时间，不改它、只用来提示 */
+      var etas = pend.map(function (a) { return a.etaDate; }).filter(Boolean).sort();
+      var earliest = etas[0] || '';
+      var lateArr = pend.filter(function (a) {
+        return a.etaDate && a.etaDate < t0;
+      }).length;
+
+      var owner = memberById(s.ownerId);
+      var left = info.date ? U.diffDays(t0, info.date) : null;   /* 距计划发货日 */
+      var openLeft = s.openDate ? U.diffDays(t0, s.openDate) : null;
+      var shipped = info.status === 'sent' || info.status === 'done';
+
+      return {
+        id: s.id,
+        name: s.name,
+        province: s.province || '',
+        owner: owner ? owner.name : '',
+        status: info.status,
+        date: info.date,
+        pin: info.pin,
+        seq: info.seq,
+        note: info.note,
+        sentAt: info.sentAt,
+        total: list.length,
+        arrived: list.length - pend.length,
+        pending: pend.length,
+        eta: earliest,
+        lateArr: lateArr,
+        left: left,
+        openLeft: openLeft,
+        openDate: s.openDate || '',
+        /* 三个状态：逾期未发 / 今天必须发 / 还没排期 */
+        late: !shipped && left != null && left < 0,
+        dueToday: !shipped && left === 0,
+        noPlan: !shipped && !info.date
+      };
+    });
+
+    /* 排序：先发置顶 → 已到店沉底 → 手动顺序 → 计划发货日 → 名字 */
+    rows.sort(function (a, b) {
+      if (a.pin !== b.pin) return a.pin ? -1 : 1;
+      var ad = a.status === 'done', bd = b.status === 'done';
+      if (ad !== bd) return ad ? 1 : -1;
+      if (a.seq != null && b.seq != null && a.seq !== b.seq) return a.seq - b.seq;
+      if ((a.seq != null) !== (b.seq != null)) return a.seq != null ? -1 : 1;
+      if (a.date && b.date && a.date !== b.date) return a.date < b.date ? -1 : 1;
+      if (!!a.date !== !!b.date) return a.date ? -1 : 1;
+      return String(a.name).localeCompare(String(b.name), 'zh');
+    });
+
+    return rows;
+  }
+
+  function shipStats(rows) {
+    rows = rows || shipRows();
+    var s = { all: rows.length, late: 0, today: 0, soon: 0, sent: 0, done: 0, todo: 0, noPlan: 0 };
+    rows.forEach(function (r) {
+      if (r.status === 'done') { s.done += 1; return; }
+      if (r.status === 'sent') s.sent += 1;
+      else s.todo += 1;
+      if (r.late) s.late += 1;
+      else if (r.dueToday) s.today += 1;
+      else if (r.left != null && r.left > 0 && r.left <= (C.SHIP_WATCH_DAYS || 3)) s.soon += 1;
+      if (r.noPlan) s.noPlan += 1;
+    });
+    /* 「要跟的」= 还没发出去（不含已到店） */
+    s.active = s.all - s.done;
+    return s;
+  }
+
+  /* 上移 / 下移一位：把当前看到的顺序整体固化成 seq，之后就一直按这个顺序 */
+  function moveShip(storeId, dir) {
+    var rows = shipRows();
+    var i = -1;
+    for (var k = 0; k < rows.length; k++) if (rows[k].id === storeId) { i = k; break; }
+    if (i < 0) return false;
+    var j = i + (dir < 0 ? -1 : 1);
+    if (j < 0 || j >= rows.length) return false;
+
+    var tmp = rows[i];
+    rows[i] = rows[j];
+    rows[j] = tmp;
+    writeShipSeq(rows.map(function (r) { return r.id; }));
+    return true;
+  }
+
+  /* 「先发」标记：点了永远排最前面 */
+  function toggleShipPin(storeId) {
+    var cur = shipOf(storeId);
+    setShip(storeId, { pin: !cur.pin });
+    return !cur.pin;
+  }
+
+  /* 清掉手动顺序，回到「按计划发货日自动排」 */
+  function clearShipSeq() {
+    state.settings = state.settings || {};
+    var map = shipMap();
+    Object.keys(map).forEach(function (k) {
+      if (map[k] && typeof map[k] === 'object') delete map[k].seq;
+    });
+    state.settings.ship = map;
+    pushSettings();
     cacheLocal();
   }
 
@@ -1827,6 +2047,13 @@ window.Store = (function () {
     addArrival: addArrival,
     updateArrival: updateArrival,
     removeArrival: removeArrival,
+    shipOf: shipOf,
+    setShip: setShip,
+    shipRows: shipRows,
+    shipStats: shipStats,
+    moveShip: moveShip,
+    toggleShipPin: toggleShipPin,
+    clearShipSeq: clearShipSeq,
     setSetting: setSetting,
     templates: templates,
     saveTemplates: saveTemplates,

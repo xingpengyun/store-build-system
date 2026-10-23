@@ -104,6 +104,36 @@
 - 入口：`js/constants.js` → `ARR_WATCH_DAYS`；`js/page-stores.js` → `arrList / arrDays / arrWatch / arrBody`；
   `js/store.js` → `alerts()` 里的 `arrlate / arrsoon`；`css/components.css` → `.arr-tbl / .arr-tag / .arr-sum`
 
+## 2026-10-23 发货看板：几十家店谁先发、谁漏了，一屏看完
+
+> 背景：门店一多（几十家待发货），「谁今天该发、谁已经逾期、这批先发哪家」靠人记必然漏。
+> 每天早上只要打开「发货看板」这一页，顺序就是当天该干的顺序。
+
+- **状态四态**（`CONST.SHIP_STATUS`，存 `settings.ship[门店id].status`）：
+  `todo 待备货 → ready 待发货 → sent 已发出 → done 已到店`
+  点状态胶囊弹小菜单改，切到「已发出」时自动记 `sentAt`
+- **计划发货日是唯一时间口径**（`settings.ship[门店id].date`）：
+  - `逾期未发` = 有计划发货日，且**今天 > 发货日**，状态还不是 sent/done
+  - `今天该发` = 发货日 = 今天
+  - 3 天内（`CONST.SHIP_WATCH_DAYS`）进「即将发货」
+  - **没填发货日 → 一律不判逾期**，只标「没排期」（不编日期吓人，和开业日同一条原则）
+- **排序 = 先发标记 → 手动顺序 → 计划发货日 → 名字**，已到店永远沉底
+  - ★ `pin`：点一下永远排最前（「这几家必须今早先发」）
+  - ↑↓：交换相邻两位，然后把当前整表顺序固化成 `seq`（`writeShipSeq`）
+  - 「按发货日重排」= `clearShipSeq()` 清掉 seq，回到自动排
+- **防漏四层**：
+  1. 行的左侧色条（红=逾期、橙=今天）+ 日期下方「逾期 2 天 / 今天必须发」
+  2. 顶部横幅「N 家已经过了计划发货日还没发 · 最急：xxx」+「只看这几家」
+  3. 提醒中心 `shiplate-`（danger）/ `shiptoday-`（high）/ `shipsoon-`（warn）/
+     `shipnone-`（距开业 ≤21 天还没排发货日，warn）
+  4. 首页 hero 下面那条「发货：…」+ 四个 chip，一点进看板
+- 排版：一行 45px、表头 sticky、表体 `max-height: calc(100vh - 356px)` 自己滚，
+  1440×900 一屏 10 家店不用滚页面
+- 数据放 `settings.ship`（走 app_settings 整包上云），**不改 stores 表结构**，同事打开看到同一份
+- 入口：`js/constants.js` → `SHIP_STATUS / SHIP_WATCH_DAYS`；`js/store.js` → `shipOf / setShip / shipRows / shipStats / moveShip / toggleShipPin / clearShipSeq`；
+  `js/page-ship.js`（整页）；`js/page-home.js` → `shipBarHtml()`；`css/components.css` → `.ship-* / .home-ship`
+- 路由：`js/app.js` 的 `ROUTES` 必须包含 `'ship'`，否则 `App.go('ship')` 会掉回首页
+
 ## 数据模型要点
 - 门店 `stage` 只能取 `CONST.STAGES` 的 key；`risk` 只能取 `CONST.RISKS` 的 key
 - 任务 `status` 只有 `pending` / `doing` / `done` 三种
