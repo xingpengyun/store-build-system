@@ -757,6 +757,14 @@ window.Store = (function () {
     taskIds.forEach(function (tid) { drop('tasks', tid); });
     arrIds.forEach(function (aid) { drop('arrivals', aid); });
 
+    /* 门店自己的二级跟着一起清掉，不然 settings 会越积越脏 */
+    var subs = storeSubs();
+    if (Object.prototype.hasOwnProperty.call(subs, id)) {
+      delete subs[id];
+      state.settings.storeSubs = subs;
+      pushSettings();
+    }
+
     cacheLocal();
   }
 
@@ -1026,6 +1034,45 @@ window.Store = (function () {
     });
 
     return { byStage: byStage, byBase: byBase, total: total };
+  }
+
+  /* ---------------- 门店自己的二级（当前阶段的细分） ----------------
+     settings.storeSubs = { storeId: '已做首批' }
+     - stores 表没有这一列，所以落在 settings 里，跟着云端一起同步，不用改表结构
+     - 只在门店阶段本身带二级时才有意义（就是「推送」时选的那一支）
+     ------------------------------------------------------------------ */
+
+  function storeSubs() {
+    var map = state.settings && state.settings.storeSubs;
+    if (!map || typeof map !== 'object' || Array.isArray(map)) return {};
+    return map;
+  }
+
+  function storeSub(store) {
+    if (!store) return '';
+    var v = storeSubs()[store.id];
+    return typeof v === 'string' ? v : '';
+  }
+
+  /* 推送用：门店阶段 + 二级一起改（sub 传空就清掉旧的那一支） */
+  function setStoreStage(id, base, sub) {
+    var s = storeById(id);
+    if (!s) return null;
+
+    var map = storeSubs();
+    var name = String(sub == null ? '' : sub).trim();
+
+    if (base && s.stage !== base) {
+      updateStore(id, { stage: base });   /* 里头上云 + 写本地缓存 */
+    }
+
+    if (name) map[id] = name; else delete map[id];
+    state.settings = state.settings || {};
+    state.settings.storeSubs = map;
+    pushSettings();
+    cacheLocal();
+
+    return s;
   }
 
   /* ---------------- 门店进度：跟着「阶段时间线」走 ----------------
@@ -1346,6 +1393,9 @@ window.Store = (function () {
     stageUsage: stageUsage,
     stageByName: stageByName,
     stageSubsWithUsed: stageSubsWithUsed,
+    storeSubs: storeSubs,
+    storeSub: storeSub,
+    setStoreStage: setStoreStage,
     templateStageStat: templateStageStat,
     stageFlow: stageFlow,
     storeProgress: storeProgress,

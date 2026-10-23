@@ -270,14 +270,175 @@ window.Pages.tasks = (function () {
     '</div>';
   }
 
+  /* 一行只有一个动作：没做完 → 推送（= 这件事做完了，门店往前推一步）；
+     做完了 → 重开。「开始 / 进行中」这套状态流转取消，点推送就是完成。 */
   function actionHtml(t) {
     if (t.status === 'done') {
       return '<span class="tlink" data-act="reopen" data-id="' + t.id + '">重开</span>';
     }
-    if (t.status === 'pending') {
-      return '<span class="tlink" data-act="start" data-id="' + t.id + '">开始</span>';
+    return '<span class="tlink tlink-push" data-act="push" data-id="' + t.id + '">推送</span>';
+  }
+
+  /* ================= 推送：这条做完了 + 门店往前推一步 =================
+
+     一线口径：筹建清单每行只剩一个「推送」。
+       点它 = 这条任务标记完成，门店阶段进入下一步；
+       下一步带二级（比如「已出图」下的 已做首批 / 未做首批）时，
+       必须顺手把这层也选掉，否则不知道这家店属于哪一支。
+
+     为什么目标阶段是「可选的」而不是写死下一个：
+       现实里顺序经常跳 —— 门店先给了建档资料、图纸还没设计好。
+       所以弹窗把门店当前阶段之后的阶段全列出来，默认停在下一個，想跳就跳。
+       门店阶段只代表「最新进展到哪儿」；图纸没出这种事实靠清单里那条任务
+       继续挂待办 / 逾期来提醒，不会因为跳了阶段就被抹掉。
+
+     「只标记完成，阶段不动」给同一阶段有好几条清单时用：
+       做掉一条不代表这家店整段都结束了。
+     ================================================================== */
+
+  function stageIndex(key) {
+    var idx = -1;
+    C.STAGES.forEach(function (st, i) { if (st.key === key) idx = i; });
+    return idx;
+  }
+
+  function openPush(task) {
+    var store = S.storeById(task.storeId);
+    if (!store) { UI.toast('这家门店已经不在了', 'error'); return; }
+
+    var curBase = C.stageSplit(store.stage).base;
+    var curIdx = stageIndex(curBase);
+    var subs = S.stageSubsWithUsed();
+    var curSub = S.storeSub(store);
+
+    /* 目标 = 门店当前阶段之后的全部阶段（允许跳着选） */
+    var targets = C.STAGES.filter(function (st, i) { return i > curIdx; });
+    var pick = { stage: targets.length ? targets[0].key : '', sub: '' };
+
+    function subsOf(key) {
+      var list = subs[key];
+      return Array.isArray(list) ? list : [];
     }
-    return '<span class="tlink" data-act="finish" data-id="' + t.id + '">完成</span>';
+
+    function optHtml(st, i) {
+      var sl = subsOf(st.key);
+      return '<label class="push-opt' + (st.key === pick.stage ? ' on' : '') + '" data-opt="' + U.esc(st.key) + '">' +
+        '<input type="radio" name="pushStage" value="' + U.esc(st.key) + '"' +
+          (st.key === pick.stage ? ' checked' : '') + ' />' +
+        '<i class="push-dot" style="background:' + st.color + '"></i>' +
+        '<span class="push-opt-main">' +
+          '<span class="push-opt-name">' + U.esc(st.key) +
+            (i === 0 ? '<em class="push-tag">下一步</em>' : '') +
+            (sl.length ? '<em class="push-tag push-tag-sub">有二级</em>' : '') +
+          '</span>' +
+          '<span class="push-opt-desc">' +
+            (sl.length
+              ? '还要选：' + sl.map(function (x) { return U.esc(x); }).join(' / ')
+              : '门店阶段变成「' + U.esc(st.key) + '」') +
+          '</span>' +
+        '</span>' +
+      '</label>';
+    }
+
+    var body =
+      '<div class="push-top">' +
+        '<div class="push-top-l">' +
+          '<i class="push-dot" style="background:' + ((C.stageDef(store.stage) || {}).color || '#98a2b8') + '"></i>' +
+          '<b>' + U.esc(store.name) + '</b>' +
+          '<span class="push-cur">当前：' +
+            U.esc(C.stageLabel(store.stage) + (curSub ? ' · ' + curSub : '')) + '</span>' +
+        '</div>' +
+        '<div class="push-task">这条：<b>' + U.esc(task.title) + '</b></div>' +
+      '</div>' +
+      '<div class="push-sec">推送到哪一步</div>' +
+      '<div class="push-list">' +
+        (targets.length
+          ? targets.map(optHtml).join('')
+          : '<div class="push-none-tip">已经是最后一个阶段「' + U.esc(store.stage) +
+            '」了，这里只能把这条标记完成。</div>') +
+        '<label class="push-opt push-opt-none" data-opt="__none">' +
+          '<input type="radio" name="pushStage" value="__none"' + (pick.stage ? '' : ' checked') + ' />' +
+          '<i class="push-dot push-dot-none"></i>' +
+          '<span class="push-opt-main">' +
+            '<span class="push-opt-name">只标记完成，阶段不动</span>' +
+            '<span class="push-opt-desc">同一阶段还有别的清单没做完时用它</span>' +
+          '</span>' +
+        '</label>' +
+      '</div>' +
+      '<div class="push-sub-wrap" data-subwrap></div>' +
+      '<p class="push-hint">可以跳着选：门店阶段只表示「最新进展到哪儿」。' +
+        '比如门店先给了建档资料、图纸还没设计好，直接选「资料/建档」就行；' +
+        '图纸那条任务没完成，会继续挂在清单里显示待办和逾期，不会丢。</p>';
+
+    UI.modal({
+      title: '推送这条清单',
+      sub: '完成 + 把门店往前推一步',
+      body: body,
+      footer:
+        '<button class="btn" data-push-cancel>取消</button>' +
+        '<button class="btn btn-primary" data-push-ok>推送</button>',
+      onMount: function (rootEl, close) {
+        var subWrap = rootEl.querySelector('[data-subwrap]');
+
+        function paintOpts() {
+          rootEl.querySelectorAll('.push-opt').forEach(function (el) {
+            var v = el.getAttribute('data-opt');
+            el.classList.toggle('on', v === '__none' ? !pick.stage : v === pick.stage);
+          });
+        }
+
+        function paintSubs() {
+          var list = pick.stage ? subsOf(pick.stage) : [];
+          if (!list.length) {
+            subWrap.innerHTML = '';
+            subWrap.classList.remove('is-on');
+            return;
+          }
+          subWrap.classList.add('is-on');
+          subWrap.innerHTML =
+            '<div class="push-sec">「' + U.esc(pick.stage) + '」现在是哪一支</div>' +
+            '<div class="push-chips">' + list.map(function (s) {
+              return '<button type="button" class="push-chip' + (pick.sub === s ? ' on' : '') +
+                '" data-sub="' + U.esc(s) + '">' + U.esc(s) + '</button>';
+            }).join('') + '</div>';
+        }
+
+        rootEl.addEventListener('click', function (e) {
+          var chip = e.target && e.target.closest ? e.target.closest('.push-chip') : null;
+          if (!chip) return;
+          pick.sub = chip.getAttribute('data-sub');
+          paintSubs();
+        });
+
+        rootEl.addEventListener('change', function (e) {
+          if (!e.target || e.target.name !== 'pushStage') return;
+          var v = e.target.value;
+          pick.stage = (v === '__none') ? '' : v;
+          pick.sub = '';
+          paintOpts();
+          paintSubs();
+        });
+
+        paintOpts();
+        paintSubs();
+
+        rootEl.querySelector('[data-push-cancel]').onclick = close;
+        rootEl.querySelector('[data-push-ok]').onclick = function () {
+          var list = pick.stage ? subsOf(pick.stage) : [];
+          if (list.length && !pick.sub) {
+            UI.toast('先选一下「' + pick.stage + '」下面的状态', 'info');
+            return;
+          }
+          close();
+          S.updateTask(task.id, { status: 'done' });
+          if (pick.stage) S.setStoreStage(store.id, pick.stage, pick.sub);
+          UI.toast(pick.stage
+            ? '已推送：' + store.name + ' → ' + C.stageLabel(C.stageValue(pick.stage, pick.sub))
+            : '「' + task.title + '」已标记完成', 'success');
+          App.refresh();
+        };
+      }
+    });
   }
 
   /* ---------------- 右侧：门店列表（点开看任务） ---------------- */
@@ -334,13 +495,15 @@ window.Pages.tasks = (function () {
     var owner = S.memberById(st.ownerId);
     var open = !!state.open[st.id];
     var days = st.openDate ? U.diffDays(U.today(), st.openDate) : null;
+    var sub = S.storeSub(st);
+    var stageTxt = U.esc(st.stage || '—') + (sub ? ' · ' + U.esc(sub) : '');
 
     var head = '<div class="sk-head" data-srow="' + st.id + '" title="' + (open ? '收起' : '展开') + '这家门店的任务">' +
       '<div class="sk-store">' +
         '<i class="sk-dot" style="background:' + (def.color || '#98a2b8') + '"></i>' +
         '<div class="sk-name-box">' +
           '<div class="sk-name">' + U.esc(st.name) + '</div>' +
-          '<div class="sk-meta">' + U.esc(st.province || '—') + ' · ' + U.esc(st.stage || '—') + '</div>' +
+          '<div class="sk-meta">' + U.esc(st.province || '—') + ' · ' + stageTxt + '</div>' +
         '</div>' +
       '</div>' +
       '<div class="sk-prog">' + UI.progress(S.storeProgress(st).pct, def.color, S.progressTip(st)) + '</div>' +
@@ -1340,14 +1503,8 @@ window.Pages.tasks = (function () {
       if (act === 'add') openForm(null);
       else if (act === 'tpl') openTemplates();
       else if (act === 'edit' && task) openForm(task);
-      else if (act === 'start' && task) {
-        S.updateTask(task.id, { status: 'doing' });
-        UI.toast('任务已开始', 'success');
-        App.refresh();
-      } else if (act === 'finish' && task) {
-        S.updateTask(task.id, { status: 'done' });
-        UI.toast('任务已完成', 'success');
-        App.refresh();
+      else if (act === 'push' && task) {
+        openPush(task);
       } else if (act === 'reopen' && task) {
         S.updateTask(task.id, { status: 'pending' });
         UI.toast('任务已重新打开', 'info');

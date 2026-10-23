@@ -26,6 +26,20 @@
 4. **页面模块统一接口**：`{ title, render(), mount(root), onEnter(params) }`，注册到 `window.Pages.<路由名>`，路由名必须同时出现在 `js/app.js` 的 `ROUTES` 数组里。
 5. 脚本加载顺序写在 `index.html` 底部：utils → constants → seed → store → charts → ui → page-* → app。顺序不能乱。
 
+## 2026-10-23 交互变更：清单动作从「开始 / 完成」改成「推送」
+
+- 筹建清单每行只剩一个动作：未完成 → **推送**，已完成 → **重开**（「开始 / 进行中」那套流转取消，点推送就等于完成）
+- 点推送 = 这条任务置 `done` + 把门店阶段往前推，弹窗里选目标阶段：
+  - 目标阶段列出**门店当前阶段之后的全部阶段**（默认选中下一个），允许**跳阶段**
+    —— 现实里常见「门店先给了建档资料、图纸还没设计好」
+  - 目标阶段带二级时（如 已出图 → 已做首批 / 未做首批）**必须再选一支**，没选不允许提交
+  - 还有一项「只标记完成，阶段不动」，给同一阶段挂了好几条清单时用
+- 门店自己的二级存 `settings.storeSubs = { storeId: '已做首批' }`。
+  `stores` 表没有这一列，放 settings 里就能跟着云端同步，不用改表结构
+- 入口函数：`js/page-tasks.js` → `actionHtml()` / `openPush()`；`js/store.js` → `storeSub()` / `setStoreStage()`
+- **口径**：门店阶段只表示「最新进展到哪儿」，不代表前面每件事都做完了；
+  没做完的事仍然靠那条任务继续挂待办 / 逾期，不会因为跳阶段被抹掉
+
 ## 数据模型要点
 - 门店 `stage` 只能取 `CONST.STAGES` 的 key；`risk` 只能取 `CONST.RISKS` 的 key
 - 任务 `status` 只有 `pending` / `doing` / `done` 三种
