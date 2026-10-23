@@ -1939,10 +1939,27 @@
   transition: border-color .14s, box-shadow .14s;
 }
 .sk-row:hover { border-color: #d5e1f8; }
+/* 展开的这家：抬头整条压深一档蓝底 + 左边一道主色条，一眼看得出点的是哪家 */
+.sk-row { position: relative; }
 .sk-row.open {
-  border-color: #cfdcfa;
-  box-shadow: 0 6px 18px rgba(23, 43, 77, .06);
+  border-color: #c2d4f9;
+  background: #fafcff;
+  box-shadow: 0 8px 22px rgba(23, 43, 77, .07);
 }
+.sk-row.open::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--primary);
+  border-radius: 10px 0 0 10px;
+  z-index: 1;
+}
+.sk-row.open .sk-head {
+  background: #dfe9fd;
+  border-radius: 9px 9px 0 0;
+}
+.sk-row.open:hover { border-color: #b5c9f8; }
 
 .sk-head {
   display: grid;
@@ -1950,8 +1967,11 @@
   gap: 10px;
   align-items: center;
   padding: 10px 12px;
+  border-radius: 9px;
   cursor: pointer;
+  transition: background .14s;
 }
+.sk-row:not(.open) .sk-head:hover { background: #f7faff; }
 .sk-row.open .sk-head { padding-bottom: 9px; }
 
 .sk-store { display: flex; align-items: center; gap: 9px; min-width: 0; }

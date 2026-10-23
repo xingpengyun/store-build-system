@@ -207,7 +207,12 @@
 - 换开会带走滚动位置：收起的那家如果在上面，列表整体缩上去、刚点的行会「跳」。
   `toggleStoreRow()` 先记下被点这行的 `getBoundingClientRect().top`，重绘后再按差值 `window.scrollBy(0, delta)` 补回来，点哪儿就停在哪儿
 - 回到列表页顶不用找：展开的那家整行会有 `.sk-row.open` 的边框 + 阴影，箭头随之翻转
-- 入口：`js/page-tasks.js` → `state.open / toggleStoreRow() / storeRowHtml() / onEnter()`
+- **点中的那家要「深一档」**：抬头（`.sk-row.open .sk-head`）铺 `#dfe9fd` 蓝底 + 上面两个圆角，
+  整行底色 `#fafcff`，左边加 3px 主色竖条（`.sk-row.open::before`，绝对定位，不吃布局宽度）
+  - 竖条不能用 `box-shadow: inset`：会画在父级背景层，被子元素（抬头/明细）的背景盖住，看不见
+  - 未展开的行只做 `#f7faff` 的 hover 淡底，不抢眼
+- 入口：`js/page-tasks.js` → `state.open / toggleStoreRow() / storeRowHtml() / onEnter()`；
+  `css/components.css` → `.sk-row.open / .sk-row.open::before / .sk-row.open .sk-head`
 
 ## 数据模型要点
 - 门店 `stage` 只能取 `CONST.STAGES` 的 key；`risk` 只能取 `CONST.RISKS` 的 key
