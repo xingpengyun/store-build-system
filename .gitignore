@@ -3,3 +3,5 @@
 Thumbs.db
 *.log
 .wbapp_*.genie
+_dump-*.html
+_shot-*.png

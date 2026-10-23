@@ -11,12 +11,13 @@ window.Pages.tasks = (function () {
   var C = window.CONST;
 
   /* stage = 左侧时间线选中的「门店当前阶段」；sub = 再细一层的二级阶段
-     open = 右侧哪几家门店展开了任务明细（以门店为主，任务展开看） */
+     open = 右侧当前展开任务明细的那一家门店 id（'' = 全部收起）
+            只允许开一家：默认全收着，点开一家自动把别家收回去，页面不会被撑得很长 */
   var state = {
     tab: 'all', q: '', owner: '', stage: '', sub: '',
     editing: '',          /* 正在给哪个一级阶段加二级（存阶段名） */
     editingStage: false,  /* 正在加一级阶段 */
-    page: 1, per: 12, open: {}
+    page: 1, per: 12, open: ''
   };
 
   /* 这排是「按门店里任务的状态筛门店」，计数是门店数。
@@ -542,7 +543,7 @@ window.Pages.tasks = (function () {
     var m = statOfTasks(tasksOf(st.id));
     var def = C.stageDef(st.stage) || {};
     var owner = S.memberById(st.ownerId);
-    var open = !!state.open[st.id];
+    var open = state.open === st.id;
     var days = st.openDate ? U.diffDays(U.today(), st.openDate) : null;
     var sub = S.storeSub(st);
     var stageTxt = U.esc(st.stage || '—') + (sub ? ' · ' + U.esc(sub) : '');
@@ -581,6 +582,23 @@ window.Pages.tasks = (function () {
         '点右上「新增任务」给它添一条。</div>';
 
     return '<div class="sk-row open">' + head + '<div class="sk-body">' + body + '</div></div>';
+  }
+
+  /* 展开 / 收起一家门店：一次只开一家（点开 A，原来开着的 B 自动收回去）。
+     收起的那家如果在上面，列表会整体缩上去、刚点的这行会「跳」，所以先记下它的
+     屏幕位置，重绘后按差值把滚动条补回来，点哪儿就停在哪儿。 */
+  function toggleStoreRow(root, sid) {
+    var headBefore = root.querySelector('[data-srow="' + sid + '"]');
+    var topBefore = headBefore ? headBefore.getBoundingClientRect().top : null;
+
+    state.open = (state.open === sid) ? '' : sid;
+    updateList(root);
+
+    if (topBefore == null) return;
+    var headAfter = root.querySelector('[data-srow="' + sid + '"]');
+    if (!headAfter) return;
+    var delta = headAfter.getBoundingClientRect().top - topBefore;
+    if (delta) window.scrollBy(0, delta);
   }
 
   function pagerHtml(total, pages) {
@@ -1553,13 +1571,10 @@ window.Pages.tasks = (function () {
         return;
       }
 
-      /* ---- 右侧门店行：点一下展开 / 收起这家店的任务 ---- */
+      /* ---- 右侧门店行：点一下展开这家店的任务，别家自动收起（默认全部收起） ---- */
       var rowEl = e.target.closest('[data-srow]');
       if (rowEl && root.contains(rowEl)) {
-        var sid = rowEl.getAttribute('data-srow');
-        if (state.open[sid]) delete state.open[sid];
-        else state.open[sid] = true;
-        updateList(root);
+        toggleStoreRow(root, rowEl.getAttribute('data-srow'));
         return;
       }
 
@@ -1707,6 +1722,7 @@ window.Pages.tasks = (function () {
 
   function onEnter(params) {
     state.editing = '';
+    state.open = '';        /* 每次进来都是全部收起，想看哪家点哪家 */
     if (params && params.task) {
       var t = S.taskById(params.task);
       if (t) {
@@ -1717,7 +1733,7 @@ window.Pages.tasks = (function () {
         if (owner) {
           state.stage = owner.stage;
           state.sub = '';
-          state.open[owner.id] = true;
+          state.open = owner.id;
         }
         setTimeout(function () { openForm(t); }, 60);
       }
@@ -1730,7 +1746,7 @@ window.Pages.tasks = (function () {
       if (st) {
         state.stage = st.stage;
         state.sub = '';
-        state.open[st.id] = true;
+        state.open = st.id;
         state.page = 1;
       }
     }
