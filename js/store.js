@@ -1410,6 +1410,26 @@ window.Store = (function () {
       var openLeft = s.openDate ? U.diffDays(t0, s.openDate) : null;
       var shipped = info.status === 'sent';
 
+      /* 这家店每条物料的登记到货时间 —— 看板上一行全铺开，不用点进门店看
+         排序：还没通知的在前（日期近的在上）→ 已通知的沉后 */
+      var mats = list.map(function (a) {
+        var noted = arrNotified(a);
+        var dd = a.etaDate ? U.diffDays(t0, a.etaDate) : null;
+        return {
+          id: a.id,
+          item: (a.item || '').trim() || '未命名物料',
+          qty: a.qty || 0,
+          eta: a.etaDate || '',
+          d: dd,
+          notified: noted
+        };
+      }).sort(function (x, y) {
+        if (x.notified !== y.notified) return x.notified ? 1 : -1;
+        if (x.eta && y.eta && x.eta !== y.eta) return x.eta < y.eta ? -1 : 1;
+        if (!!x.eta !== !!y.eta) return x.eta ? -1 : 1;
+        return String(x.item).localeCompare(String(y.item), 'zh');
+      });
+
       return {
         id: s.id,
         name: s.name,
@@ -1422,6 +1442,9 @@ window.Store = (function () {
         seq: info.seq,
         note: info.note,
         sentAt: info.sentAt,
+        /* 实发那天到今天过了几天（登记的发货时间的倒推） */
+        sentAgo: info.sentAt ? U.diffDays(info.sentAt, t0) : null,
+        mats: mats,
         total: list.length,
         notified: list.length - pend.length,
         pending: pend.length,

@@ -96,40 +96,80 @@ window.Pages.ship = (function () {
   /* ---------------- 一行 ---------------- */
 
   function leftText(r) {
-    if (r.shipped) return '已发出';
+    if (r.shipped) {
+      if (r.sentAgo == null) return '已发出';
+      return r.sentAgo <= 0 ? '今天发出' : '已发 ' + r.sentAgo + ' 天';
+    }
     if (r.left == null) return '还没排发货日';
     if (r.left < 0) return '逾期 ' + Math.abs(r.left) + ' 天';
     if (r.left === 0) return '今天必须发';
     return '还有 ' + r.left + ' 天';
   }
 
-  /* 登记到货时间：日期 + 倒计时，这就是我们要盯的唯一东西 */
-  function etaMain(r) {
-    if (!r.total) return '<span class="se-none">还没录物料</span>';
-    if (!r.eta) {
-      if (!r.pending) return '<span class="se-ok">全部已通知</span>';
-      return '<span class="se-none">还没填到货时间</span>';
+  var MAT_MAX = 5;
+
+  /* 一家店的所有物料 + 登记的到货时间，全部铺在这一行里 ——
+     不用点进门店也知道这家哪天到货、哪条漏通知了。 */
+  function matsHtml(r) {
+    if (!r.mats || !r.mats.length) {
+      return '<span class="sm-none">还没录物料 · 点门店名进去录</span>';
     }
 
-    var d = U.diffDays(U.today(), r.eta);
-    var tag;
-    if (d < 0) tag = '<span class="se-tag late">过 ' + (-d) + ' 天</span>';
-    else if (d === 0) tag = '<span class="se-tag today">今天到</span>';
-    else if (d <= Number(C.ARR_WATCH_DAYS || 7)) tag = '<span class="se-tag soon">还有 ' + d + ' 天</span>';
-    else tag = '<span class="se-tag">还有 ' + d + ' 天</span>';
+    var watch = Number(C.ARR_WATCH_DAYS || 7);
+    var html = r.mats.slice(0, MAT_MAX).map(function (m) {
+      var cls = m.notified ? 'is-done'
+        : m.d == null ? 'is-nodate'
+          : m.d < 0 ? 'is-late'
+            : m.d <= watch ? 'is-soon' : '';
 
-    return '<b class="se-date mono">' + U.dateDot(r.eta) + '</b>' + tag;
+      var when = m.eta ? U.dateDot(m.eta) : '没日期';
+      var tail = '';
+      if (!m.notified && m.d != null) {
+        tail = m.d < 0 ? '过' + (-m.d) + '天'
+          : m.d === 0 ? '今天'
+            : m.d + '天后';
+      }
+
+      var tip = m.item + (m.qty ? ' ×' + m.qty : '') +
+        '：' + (m.eta ? m.eta.slice(5) + ' 到货' : '还没填到货时间') +
+        (m.notified ? '（已通知供应商）' : '（待通知供应商）');
+
+      return '<span class="sm-chip ' + cls + '" title="' + U.esc(tip) + '">' +
+        '<b class="sm-when mono">' + when + '</b>' +
+        '<span class="sm-item">' + U.esc(m.item) + (m.qty ? '<i>×' + m.qty + '</i>' : '') + '</span>' +
+        (tail ? '<span class="sm-tail">' + tail + '</span>' : '') +
+      '</span>';
+    }).join('');
+
+    if (r.mats.length > MAT_MAX) {
+      html += '<span class="sm-more" data-open title="还有 ' + (r.mats.length - MAT_MAX) + ' 条，点开门店看全部">' +
+        '+' + (r.mats.length - MAT_MAX) + ' 条</span>';
+    }
+    return html;
   }
 
-  function etaSub(r) {
-    if (!r.total) return '';
-    if (!r.pending) return '';   /* 全部已通知，主行已经说了 */
-    var parts = [];
-    if (r.lateArr) parts.push('<span class="se-hot">' + r.lateArr + ' 项漏通知</span>');
-    if (r.notify) parts.push('<span class="se-soon">' + r.notify + ' 项该通知</span>');
-    if (r.noEta) parts.push(r.noEta + ' 项没填日期');
-    if (r.notified) parts.push('已通知 ' + r.notified);
-    return parts.join(' · ');
+  /* 发出之后：这一环过了，下一环是什么 —— 看板要能顺着时间往下走 */
+  function nextText(r) {
+    if (!r.shipped) return '';
+    if (r.pending > 0) {
+      return r.eta ? '物料 ' + U.dateDot(r.eta) + ' 到' : '补物料时间';
+    }
+    if (r.openLeft == null) return '等定开业日';
+    if (r.openLeft > 0) return r.openLeft + ' 天后开业';
+    return '已开业';
+  }
+
+  /* 悬停时把「下一步」说全 */
+  function nextTip(r) {
+    if (!r.shipped) return '';
+    if (r.pending > 0) {
+      return r.eta
+        ? '这家已发出，下一步等物料 ' + U.monthDay(r.eta) + ' 到货（还有 ' + r.pending + ' 项没到）'
+        : '这家已发出，但还有 ' + r.pending + ' 项物料没登记到货时间';
+    }
+    if (r.openLeft == null) return '物料都到齐了，等门店定开业日';
+    if (r.openLeft > 0) return '物料都到齐了，' + r.openLeft + ' 天后开业';
+    return '门店已经开业了';
   }
 
   function rowHtml(r, idx) {
@@ -163,6 +203,9 @@ window.Pages.ship = (function () {
         '</div>' +
       '</td>' +
 
+      /* 这一列把这家店所有物料的到货时间铺开 —— 原来是空的，现在填满 */
+      '<td class="ship-mats">' + matsHtml(r) + '</td>' +
+
       '<td class="ship-plan">' +
         '<div class="ship-plan-row">' +
           '<input class="ship-date mono' + (r.date ? '' : ' is-empty') + '" type="date" data-date value="' +
@@ -172,16 +215,16 @@ window.Pages.ship = (function () {
           U.esc(leftText(r)) + '</div>' +
       '</td>' +
 
-      '<td class="ship-eta">' +
-        '<div class="ship-eta-main' + (r.arrLate ? ' is-late' : '') + '">' + etaMain(r) + '</div>' +
-        '<div class="ship-eta-sub">' + etaSub(r) + '</div>' +
-      '</td>' +
-
-      '<td>' +
+      '<td class="ship-sent">' +
         '<button type="button" class="ship-st is-' + r.status + '" data-sent' +
           ' title="' + (r.shipped ? '点一下改回「未发出」' : '发出去以后点这里，这家就不用再跟了') + '">' +
           '<i></i>' + (r.shipped ? '已发出' : '未发出') +
         '</button>' +
+        (r.shipped
+          ? '<input class="ship-sent-date mono" type="date" data-sentdate value="' + U.esc(r.sentAt || '') +
+              '" title="登记的发货时间，点一下可以改" />' +
+            '<div class="ship-next" title="' + U.esc(nextTip(r)) + '">' + U.esc(nextText(r)) + '</div>'
+          : '') +
       '</td>' +
 
       '<td class="ship-note-cell">' +
@@ -206,13 +249,15 @@ window.Pages.ship = (function () {
 
     return '<div class="table-wrap"><table class="tbl ship-tbl">' +
       '<thead><tr>' +
-        '<th style="width:56px">顺序</th>' +
-        '<th>门店 / 开业</th>' +
-        '<th style="width:126px">计划发货</th>' +
-        '<th style="width:180px">登记到货（最早）</th>' +
-        '<th style="width:84px">发出</th>' +
-        '<th style="width:170px">备注</th>' +
-        '<th style="width:58px"></th>' +
+        '<th style="width:50px">顺序</th>' +
+        '<th style="width:168px">门店 / 开业</th>' +
+        '<th>物料 · 登记的到货时间' +
+          '<span class="th-legend"><i class="is-late"></i>过了到货日<i class="is-soon"></i>7 天内到<i class="is-done"></i>已通知</span>' +
+        '</th>' +
+        '<th style="width:112px">计划发货</th>' +
+        '<th style="width:132px">发出 / 下一步</th>' +
+        '<th style="width:138px">备注</th>' +
+        '<th style="width:44px"></th>' +
       '</tr></thead><tbody>' +
       rows.map(function (r, i) { return rowHtml(r, i); }).join('') +
       '</tbody></table></div>';
@@ -228,6 +273,27 @@ window.Pages.ship = (function () {
   }
 
   function bannerHtml(rows, s) {
+    /* 全部发完：这一环结束了，给个明确的下一步 —— 不然一发完这页就没话说了 */
+    if (!s.todo && s.all) {
+      var waiting = rows.filter(function (r) { return r.pending > 0; });
+      var nextEta = '';
+      waiting.forEach(function (r) {
+        if (r.eta && (!nextEta || r.eta < nextEta)) nextEta = r.eta;
+      });
+      return '<div class="ship-banner is-done">' +
+        '<span class="sb-ico">' + UI.icon('check') + '</span>' +
+        '<div class="sb-body">' +
+          '<b>' + s.all + ' 家全部发出去了，发货这一环结束</b>' +
+          '<span>下一个流程：盯物料到货' +
+            (waiting.length
+              ? '（' + waiting.length + ' 家还有物料没到' + (nextEta ? '，最近 ' + U.monthDay(nextEta) + ' 到' : '') + '）'
+              : '（物料都通知过了）') +
+            '；每条物料的日期都铺在下面表格里，也可以顺着「按到货日」的时间线看</span>' +
+        '</div>' +
+        '<button type="button" class="btn btn-sm" data-view="date">按到货日跟进 →</button>' +
+      '</div>';
+    }
+
     var late = rows.filter(function (r) { return r.late; });
     var arrLate = rows.filter(function (r) { return r.arrLate; });
     var today = rows.filter(function (r) { return r.dueToday; });
@@ -554,9 +620,9 @@ window.Pages.ship = (function () {
       '</div>' +
       '<div id="shipTable">' + tableHtml(list) + '</div>' +
       '<div class="ship-foot">' +
-        '<span>顺序：未发出的在前 → ★先发 → 手动排的 → 计划发货日近的在前 → 已发出沉底</span>' +
+        '<span>每行都铺开了这家店全部物料的到货时间；发出后填「实发」日期，右边自动提示下一个流程</span>' +
         '<span>' + (s.noPlan ? '<b class="text-red">' + s.noPlan + ' 家还没填发货日</b>　·　' : '') +
-          '到货时间以门店 / 供应商登记的为准，改日期就是新承诺；通知完在「按到货日」里点一下「待通知」</span>' +
+          '到货时间以门店 / 供应商登记的为准，改日期就是新承诺</span>' +
       '</div>' +
     '</div>';
   }
@@ -744,6 +810,17 @@ window.Pages.ship = (function () {
         if (!rid) return;
         S.setShip(rid, { date: d.value });
         repaintRow(tr, rid);
+        return;
+      }
+
+      /* 登记的发货时间：发出去以后可以改（当天忘了点，第二天补也不会错） */
+      var sd = e.target.closest('[data-sentdate]');
+      if (sd && root.contains(sd)) {
+        var tr3 = sd.closest('tr[data-ship]');
+        if (!tr3) return;
+        S.setShip(tr3.getAttribute('data-ship'), { sentAt: sd.value });
+        UI.toast(sd.value ? '实发日期已登记为 ' + U.monthDay(sd.value) : '已清掉实发日期', 'success');
+        App.refresh();
         return;
       }
 

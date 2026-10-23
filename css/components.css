@@ -2435,6 +2435,11 @@ body.tl-sorting * { cursor: grabbing !important; user-select: none !important; }
   background: linear-gradient(180deg, #f6fdf9, #eefaf3);
   border: 1px solid #cdeedd;
 }
+/* 全部发完：这一环收尾，直接给下一环入口 */
+.ship-banner.is-done {
+  background: linear-gradient(180deg, #f2fbf6, #e8f8f0);
+  border: 1px solid #b7e6cd;
+}
 .sb-ico {
   width: 30px;
   height: 30px;
@@ -2446,6 +2451,7 @@ body.tl-sorting * { cursor: grabbing !important; user-select: none !important; }
 }
 .ship-banner.is-alert .sb-ico { background: #feeceb; color: var(--red); }
 .ship-banner.is-ok .sb-ico { background: var(--green-soft); color: var(--green); }
+.ship-banner.is-done .sb-ico { background: #17b26a; color: #fff; }
 .sb-ico svg { width: 16px; height: 16px; }
 .sb-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .sb-body b { font-size: 13px; color: var(--text); font-weight: 600; }
@@ -2472,7 +2478,7 @@ body.tl-sorting * { cursor: grabbing !important; user-select: none !important; }
 .ship-tools { display: flex; align-items: center; gap: 8px; }
 
 /* ---------------- 表 ---------------- */
-.ship-tbl { min-width: 900px; }
+.ship-tbl { min-width: 1080px; }
 /* 几十家店要能一屏看更多行：表头钉住，表体自己滚 */
 .ship-card .table-wrap {
   max-height: calc(100vh - 356px);
@@ -2488,9 +2494,11 @@ body.tl-sorting * { cursor: grabbing !important; user-select: none !important; }
   box-shadow: 0 1px 0 var(--line-2);
 }
 .ship-tbl tbody td {
-  padding: 5px 8px;
+  padding: 6px 8px;
   height: 45px;
+  vertical-align: middle;
 }
+.ship-tbl tbody tr.is-sent { opacity: .82; }
 
 /* 行状态：逾期红条 / 今天橙条 / 已发出淡化 / 先发浅橙底 */
 .ship-tbl tbody tr.is-late td:first-child { box-shadow: inset 3px 0 0 var(--red); }
@@ -2498,7 +2506,6 @@ body.tl-sorting * { cursor: grabbing !important; user-select: none !important; }
 .ship-tbl tbody tr.is-pin td:first-child { box-shadow: inset 3px 0 0 var(--orange); }
 .ship-tbl tbody tr.is-late { background: #fffafa; }
 .ship-tbl tbody tr.is-late:hover { background: #fff5f4; }
-.ship-tbl tbody tr.is-sent { opacity: .58; }
 .ship-tbl tbody tr.is-sent:hover { opacity: 1; }
 
 /* ---------------- 视图切换：按门店 / 按到货日 ---------------- */
@@ -2719,44 +2726,6 @@ body.tl-sorting * { cursor: grabbing !important; user-select: none !important; }
 .ship-left.is-late { color: var(--red); font-weight: 600; }
 .ship-left.is-today { color: var(--orange); font-weight: 600; }
 
-/* 登记到货时间：这一列才是我们真正盯的东西 */
-.ship-eta { min-width: 152px; }
-.ship-eta-main {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12.5px;
-  color: var(--text-2);
-}
-.ship-eta-main.is-late { color: var(--red); }
-.se-date { font-size: 13px; font-weight: 700; color: var(--text); letter-spacing: .2px; }
-.ship-eta-main.is-late .se-date { color: var(--red); }
-.se-none { font-size: 11.5px; color: #b6c0d2; }
-.se-ok { font-size: 12px; color: var(--green); font-weight: 600; }
-.se-tag {
-  font-size: 10px;
-  line-height: 15px;
-  padding: 0 5px;
-  border-radius: 5px;
-  background: var(--card-2);
-  color: var(--text-3);
-  white-space: nowrap;
-}
-.se-tag.soon { color: #b06f05; background: var(--orange-soft); }
-.se-tag.today { color: #fff; background: var(--orange); }
-.se-tag.late { color: var(--red); background: var(--red-soft); }
-.ship-eta-sub {
-  margin-top: 3px;
-  font-size: 10.5px;
-  color: var(--text-3);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 168px;
-}
-.se-hot { color: var(--red); font-weight: 600; }
-.se-soon { color: #b06f05; font-weight: 600; }
-
 /* 发出：一个胶囊，点一下就翻过来 */
 .ship-st {
   height: 25px;
@@ -2783,6 +2752,107 @@ body.tl-sorting * { cursor: grabbing !important; user-select: none !important; }
 .ship-st.is-todo { color: #5b6b85; background: var(--card-2); }
 .ship-st.is-sent { color: var(--green); background: var(--green-soft); }
 .ship-st:hover { filter: brightness(.96); box-shadow: 0 2px 8px rgba(31, 53, 102, .1); }
+
+/* 物料 · 登记的到货时间：一行把这家店所有物料的日期铺开
+   红=过了到货日还没通知 / 橙=7 天内到该通知供应商 / 灰=已通知（不用再催） */
+.ship-mats {
+  min-width: 320px;
+  line-height: 1.5;
+}
+.sm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 23px;
+  padding: 0 7px;
+  margin: 2px 4px 2px 0;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: var(--card-2);
+  font-size: 11px;
+  color: var(--text-2);
+  white-space: nowrap;
+  max-width: 210px;
+  transition: .14s;
+}
+.sm-chip:hover { border-color: #c8d5ee; background: #fff; box-shadow: 0 2px 8px rgba(31, 53, 102, .07); }
+.sm-when { font-size: 11px; font-weight: 700; color: var(--text); letter-spacing: -.2px; }
+.sm-item {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 96px;
+  color: var(--text-2);
+}
+.sm-item i { font-style: normal; color: var(--text-3); margin-left: 2px; }
+.sm-tail { font-size: 10px; color: var(--text-3); }
+
+.sm-chip.is-late { background: #fdedeb; border-color: #f8d2cd; }
+.sm-chip.is-late .sm-when, .sm-chip.is-late .sm-tail, .sm-chip.is-late .sm-item { color: #b42318; }
+.sm-chip.is-soon { background: #fef6e8; border-color: #f7e0ba; }
+.sm-chip.is-soon .sm-when, .sm-chip.is-soon .sm-tail { color: #b06f05; }
+.sm-chip.is-done { opacity: .55; }
+.sm-chip.is-nodate { border-style: dashed; }
+.sm-chip.is-nodate .sm-when { color: var(--text-3); }
+.sm-none { font-size: 11.5px; color: #b6c0d2; }
+.sm-more {
+  font-size: 11px;
+  color: var(--text-3);
+  padding: 2px 4px;
+  cursor: pointer;
+  border-radius: 5px;
+}
+.sm-more:hover { color: var(--primary); background: var(--primary-soft); }
+
+/* 表头小图例 */
+.th-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  font-weight: 400;
+  color: var(--text-3);
+  font-size: 10.5px;
+}
+.th-legend i {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  margin-left: 5px;
+}
+.th-legend i:first-child { margin-left: 0; }
+.th-legend i.is-late { background: #f04438; }
+.th-legend i.is-soon { background: #f79009; }
+.th-legend i.is-done { background: #c2cbdb; }
+
+/* 发出：胶囊 + 登记的发货时间 + 下一步 */
+.ship-sent { min-width: 124px; }
+.ship-sent-date {
+  margin-top: 3px;
+  width: 100%;
+  height: 22px;
+  padding: 0 4px;
+  border: 1px dashed var(--line-2);
+  border-radius: 6px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--green);
+}
+.ship-sent-date:hover { border-color: #a9c1f9; background: #fff; }
+.ship-sent-date:focus {
+  border-style: solid;
+  border-color: #a9c1f9;
+  background: #fff;
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(63, 107, 245, .09);
+}
+.ship-next {
+  margin-top: 2px;
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: var(--text-3);
+  white-space: normal;
+}
 
 /* 备注 */
 .ship-note {
