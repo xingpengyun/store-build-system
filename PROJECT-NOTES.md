@@ -87,51 +87,58 @@
 - 入口：`js/store.js` → `snoozeMap / snoozeDaysOf / snoozeTask / unsnoozeTask`；`js/page-tasks.js` → `actionHtml`
 
 
-## 2026-10-23 物料到货：提前 7 天就要盯上（不再是等当天才提醒）
+## 2026-10-23 物料到货：只认登记的到货时间，提前 7 天通知供应商
 
-- 口径：**到货日 − `CONST.ARR_WATCH_DAYS`（默认 7 天）就要开始关注**
-  - 门店说 11-10 到货 → **11-03** 就该有人去确认对方发货安排、收货人、库位、安装排期
-  - 过了到货日还没到 → 直接升成「物料未到」高危（大概率卡物流 / 仓库 / 对方没发）
+> 口径（用户定死）：**在途 / 到店都不管、不记**。整个物料环节只有两件事：
+> 记下对方给的到货时间 → 到货日往前 7 天通知供应商发货。
+
+- 一条物料只有一个时间字段 `etaDate`（**登记的到货时间**），没有任何「在途 / 已到店」过程状态
+  - 改日期 = 对方给了新承诺（延期就这么改），不是新建一条
+  - `addArrival` **不再兜底 today+N**：没填就留空，绝不替门店编一个日期（编了就会误报 / 漏报）
+- 口径：**到货日 − `CONST.ARR_WATCH_DAYS`（默认 7 天）就该通知供应商发货**
+  - 门店说 11-10 到货 → **11-03** 就要打电话让对方安排发货
+  - 过了到货日还没到 → 「该到没到」高危，去要个新日期回来改
 - 「关注」在三个地方同时可见：
   1. **清单行**：7 天内的行标橙（左侧橙条 + 浅橙底），已过期的标红；日期后面直接跟倒计时「还有 4 天 / 过 2 天 / 今天到」
-  2. **清单顶部小结**：`共 9 项 · 过了到货日 1 · 7 天内到 3 · 未到 3 · 已到 2`（数字随改日期实时变）
-  3. **提醒中心**：`arrsoon-<id>`（7 天内，3 天内升 high）、`arrlate-<id>`（已过期，danger）
-- 排序：未到的在前（按到货日升序，过期和快到的自然浮上来）→ 没填日期的 → 已到的沉底（按最近日期在上）
-- 排版：一行压到 30px（输入框 26px、表头 11px、按钮 24px），一屏能看完整批 9 项；
-  日期 + 倒计时同一行（`.arr-eta` flex），倒计时不额外占高度
-- 新建 / 一键添加的物料 **日期留空**（以前默认 today+7，一加进来全是「7 天内」，橙成一片全是噪音）；
-  没日期的行不显示倒计时、不提醒、排最后
+  2. **清单顶部小结**：`共 9 项 · 该到没到 1 · 该通知供应商 3（7 天内到）· 还早 3 · 已到 2`
+  3. **提醒中心**：`arrsoon-<id>`（「该通知供应商」，3 天内升 high）、`arrlate-<id>`（「物料未到」，danger）
+- 唯一的「结案」动作：行尾按钮 **「到货了 / ✓ 已到货」**（`status: arrived`）——这是「这条不用再盯了」的本地确认，
+  不是物流状态；点错了再点一下改回来
+- 排序：未到的在前（按到货日升序，过期和快到的自然浮上来）→ 没填日期的 → 已到的沉底
+- 排版：一行 30px（输入框 26px、表头 11px、按钮 24px），日期 + 倒计时同一行（`.arr-eta`）
 - 入口：`js/constants.js` → `ARR_WATCH_DAYS`；`js/page-stores.js` → `arrList / arrDays / arrWatch / arrBody`；
-  `js/store.js` → `alerts()` 里的 `arrlate / arrsoon`；`css/components.css` → `.arr-tbl / .arr-tag / .arr-sum`
+  `js/store.js` → `addArrival / alerts()` 里的 `arrlate / arrsoon`；`css/components.css` → `.arr-tbl / .arr-tag / .arr-sum`
 
 ## 2026-10-23 发货看板：几十家店谁先发、谁漏了，一屏看完
 
 > 背景：门店一多（几十家待发货），「谁今天该发、谁已经逾期、这批先发哪家」靠人记必然漏。
 > 每天早上只要打开「发货看板」这一页，顺序就是当天该干的顺序。
 
-- **状态四态**（`CONST.SHIP_STATUS`，存 `settings.ship[门店id].status`）：
-  `todo 待备货 → ready 待发货 → sent 已发出 → done 已到店`
-  点状态胶囊弹小菜单改，切到「已发出」时自动记 `sentAt`
-- **计划发货日是唯一时间口径**（`settings.ship[门店id].date`）：
-  - `逾期未发` = 有计划发货日，且**今天 > 发货日**，状态还不是 sent/done
-  - `今天该发` = 发货日 = 今天
-  - 3 天内（`CONST.SHIP_WATCH_DAYS`）进「即将发货」
-  - **没填发货日 → 一律不判逾期**，只标「没排期」（不编日期吓人，和开业日同一条原则）
-- **排序 = 先发标记 → 手动顺序 → 计划发货日 → 名字**，已到店永远沉底
-  - ★ `pin`：点一下永远排最前（「这几家必须今早先发」）
+- **状态只有两态**（`CONST.SHIP_STATUS`，存 `settings.ship[门店id].status`）：`todo 未发出` / `sent 已发出`
+  - 点胶囊**一次翻转**，没有「待备货 / 待发货 / 在途 / 已到店」这些中间和后续环节
+  - 老数据兼容：`normShipStatus()` 把 `ready → todo`、`done → sent` 并过来
+  - 切到「已发出」时只留痕记 `sentAt`（不参与任何计算，在途几天我们不关心）
+- **两列并排看，都是「有没有到点」**：
+  - `计划发货`（`settings.ship[门店id].date`）：逾期未发 / 今天该发 / 3 天内即将发 / 没排期
+  - `登记到货（最早）`：取未到物料里最早的 `etaDate` + 倒计时，副行写「N 项过了到货日 / N 项该通知供应商」
+    —— 这一列才是要每天盯的，`该到没到` 和 `该通知供应商` 都从这里算
+- **都不编日期**：没填发货日 → 只标「没排期」不判逾期；没填到货时间 → 不显示倒计时、不提醒
+- **排序 = 未发出的在前 → 先发标记 → 手动顺序 → 计划发货日 → 名字**，已发出的沉到底
+  - ★ `pin`：点一下排到最前（「这几家必须今早先发」）
   - ↑↓：交换相邻两位，然后把当前整表顺序固化成 `seq`（`writeShipSeq`）
   - 「按发货日重排」= `clearShipSeq()` 清掉 seq，回到自动排
-- **防漏四层**：
-  1. 行的左侧色条（红=逾期、橙=今天）+ 日期下方「逾期 2 天 / 今天必须发」
-  2. 顶部横幅「N 家已经过了计划发货日还没发 · 最急：xxx」+「只看这几家」
-  3. 提醒中心 `shiplate-`（danger）/ `shiptoday-`（high）/ `shipsoon-`（warn）/
-     `shipnone-`（距开业 ≤21 天还没排发货日，warn）
-  4. 首页 hero 下面那条「发货：…」+ 四个 chip，一点进看板
+- **防漏五层**：
+  1. 行左侧色条（红=逾期、橙=今天）+ 日期下方「逾期 2 天 / 今天必须发」
+  2. 到货列：红「过 2 天」+ 副行「N 项过了到货日」
+  3. 顶部横幅「N 家过了计划发货日还没发，M 家物料过了登记的到货日…」+「只看这几家」
+  4. 提醒中心 `shiplate-` / `shiptoday-` / `shipsoon-` / `shipnone-` + 物料侧 `arrlate- / arrsoon-`
+  5. 首页 hero 下面那条「发货：…」+ chip（逾期未发 / 该到没到 / 今天该发 / 该通知供应商 / 还没发出 / 已发出）
+- 5 个 KPI 可点：未发出 / 逾期未发 / 今天该发 / 该通知供应商 / 该到没到；7 个 tab 同口径
 - 排版：一行 45px、表头 sticky、表体 `max-height: calc(100vh - 356px)` 自己滚，
   1440×900 一屏 10 家店不用滚页面
 - 数据放 `settings.ship`（走 app_settings 整包上云），**不改 stores 表结构**，同事打开看到同一份
-- 入口：`js/constants.js` → `SHIP_STATUS / SHIP_WATCH_DAYS`；`js/store.js` → `shipOf / setShip / shipRows / shipStats / moveShip / toggleShipPin / clearShipSeq`；
-  `js/page-ship.js`（整页）；`js/page-home.js` → `shipBarHtml()`；`css/components.css` → `.ship-* / .home-ship`
+- 入口：`js/constants.js` → `SHIP_STATUS / SHIP_WATCH_DAYS`；`js/store.js` → `normShipStatus / shipOf / setShip / toggleShipSent / shipRows / shipStats / moveShip / toggleShipPin / clearShipSeq`；
+  `js/page-ship.js`（整页）；`js/page-home.js` → `shipBarHtml()`；`css/components.css` → `.ship-* / .se-* / .home-ship`
 - 路由：`js/app.js` 的 `ROUTES` 必须包含 `'ship'`，否则 `App.go('ship')` 会掉回首页
 
 ## 数据模型要点

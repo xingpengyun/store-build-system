@@ -232,10 +232,11 @@ window.Pages.stores = (function () {
   }
 
   /* ---------------- 物料到货（可编辑） ----------------
-     门店给出到货时间 → 在这里逐条填；通知发货后点「标记已完成」。
-     口径：到货日往前 ARR_WATCH_DAYS 天（默认 7）开始盯 —— 门店说 11-10 到，
-     11-03 就要有人去确认对方发货安排 / 收货人 / 库位。
-     所以这里不是简单按日期排一列，而是把「快到的 / 已经过期的」排到最前面并标色。 */
+     门店给出到货时间 → 在这里逐条填；这条物料到了就点一下「到货了」。
+     口径：登记的到货日往前 ARR_WATCH_DAYS 天（默认 7）就该通知供应商发货 ——
+     门店说 11-10 到，11-03 就要打电话让对方安排发货。
+     所以这里不记在途 / 到店，只认登记的到货时间：
+     「快到了 / 已经过了到货日」的排最前面并标色。 */
   function arrList(storeId) {
     return S.getState().arrivals.filter(function (a) { return a.storeId === storeId; })
       .sort(function (a, b) {
@@ -308,14 +309,14 @@ window.Pages.stores = (function () {
         '</div>'
       : '<div class="arr-sum">' +
           '<span class="arr-sum-i">共 <b>' + list.length + '</b> 项</span>' +
-          (late ? '<span class="arr-sum-i late"><i></i>过了到货日 <b>' + late + '</b></span>' : '') +
-          (soon ? '<span class="arr-sum-i soon"><i></i>' + watchDays + ' 天内到 <b>' + soon + '</b></span>' : '') +
-          (wait ? '<span class="arr-sum-i">未到 <b>' + wait + '</b></span>' : '') +
+          (late ? '<span class="arr-sum-i late"><i></i>该到没到 <b>' + late + '</b></span>' : '') +
+          (soon ? '<span class="arr-sum-i soon"><i></i>该通知供应商 <b>' + soon + '</b>（' + watchDays + ' 天内到）</span>' : '') +
+          (wait ? '<span class="arr-sum-i">还早 <b>' + wait + '</b></span>' : '') +
           (ok ? '<span class="arr-sum-i ok">已到 <b>' + ok + '</b></span>' : '') +
         '</div>' +
-        '<div class="table-wrap"><table class="tbl arr-tbl" style="min-width:500px">' +
-          '<thead><tr><th>物料 / 供应商</th><th style="width:54px">数量</th>' +
-            '<th style="width:178px">到货日期</th><th style="width:98px">状态</th><th style="width:28px"></th></tr></thead>' +
+        '<div class="table-wrap"><table class="tbl arr-tbl" style="min-width:520px">' +
+          '<thead><tr><th>物料 / 供应商</th><th style="width:52px">数量</th>' +
+            '<th style="width:186px">登记的到货时间</th><th style="width:76px">到货</th><th style="width:28px"></th></tr></thead>' +
           '<tbody>' + list.map(function (a) {
             var done = a.status === 'arrived';
             var d = arrDays(a);
@@ -335,11 +336,12 @@ window.Pages.stores = (function () {
               '<td><input class="arr-in" list="arrItems" data-arr-field="item" value="' + U.esc(a.item) + '" placeholder="填物料或供应商名字" /></td>' +
               '<td><input class="arr-in mono" type="number" min="0" step="1" data-arr-field="qty" value="' + (a.qty ? a.qty : '') + '" placeholder="—" title="数量可以不填" /></td>' +
               '<td><div class="arr-eta">' +
-                '<input class="arr-in mono" type="date" data-arr-field="etaDate" value="' + U.esc(a.etaDate || '') + '" />' +
+                '<input class="arr-in mono" type="date" data-arr-field="etaDate" value="' + U.esc(a.etaDate || '') + '" title="门店 / 供应商给的到货日；改日期 = 对方给了新承诺" />' +
                 tag +
               '</div></td>' +
-              '<td><button type="button" class="arr-btn' + (done ? ' done' : '') + '" data-arr-done>' +
-                (done ? '✓ 已到' : '标记已完成') + '</button></td>' +
+              '<td><button type="button" class="arr-btn' + (done ? ' done' : '') + '" data-arr-done title="' +
+                (done ? '点一下改回没到' : '这条真到了就点一下，不再盯着它') + '">' +
+                (done ? '✓ 已到货' : '到货了') + '</button></td>' +
               '<td><button type="button" class="arr-del" data-arr-del title="删除这条">' + UI.icon('close') + '</button></td>' +
             '</tr>';
           }).join('') + '</tbody></table></div>';
@@ -508,8 +510,8 @@ window.Pages.stores = (function () {
             S.updateArrival(aid, { status: next });
             repaintArr();
             UI.toast(next === 'arrived'
-              ? '已标记完成：' + (rec.item || '该物料') + '（已通知发货）'
-              : '已改回未发货', 'success');
+              ? (rec.item || '该物料') + ' 已到货，不再盯着它'
+              : '已改回没到，继续按登记的到货时间盯', 'success');
             return;
           }
 

@@ -2,6 +2,10 @@
    page-ship.js — 发货看板
    几十家门店待发货，每天早上打开这一页：
    谁今天就该发、谁已经逾期、谁排在最前面要发，一眼看完。
+
+   只看两件事：
+   1) 发了没发（一次点击翻过来，在途 / 到店不记）
+   2) 物料登记的到货时间（到货日 − 7 天就该通知供应商）
    ========================================================== */
 window.Pages = window.Pages || {};
 
@@ -17,28 +21,22 @@ window.Pages.ship = (function () {
   /* 顶部这排既能看数，也能点进去只看这一类 */
   var TABS = [
     { key: 'all', label: '全部' },
-    { key: 'active', label: '还没发出' },
-    { key: 'late', label: '逾期' },
-    { key: 'today', label: '今天' },
-    { key: 'sent', label: '在途' },
-    { key: 'done', label: '已到店' },
-    { key: 'noplan', label: '没排期' }
+    { key: 'todo', label: '未发出' },
+    { key: 'late', label: '逾期未发' },
+    { key: 'today', label: '今天该发' },
+    { key: 'notify', label: '该通知供应商' },
+    { key: 'arrlate', label: '该到没到' },
+    { key: 'sent', label: '已发出' }
   ];
-
-  function statusMeta(key) {
-    var list = C.SHIP_STATUS || [];
-    for (var i = 0; i < list.length; i++) if (list[i].key === key) return list[i];
-    return list[0] || { key: 'todo', label: '待备货', color: '#8b97ab', soft: '#eef1f6' };
-  }
 
   function hitTab(r, key) {
     if (!key || key === 'all') return true;
-    if (key === 'active') return r.status !== 'done';
+    if (key === 'todo') return !r.shipped;
     if (key === 'late') return r.late;
     if (key === 'today') return r.dueToday;
-    if (key === 'sent') return r.status === 'sent';
-    if (key === 'done') return r.status === 'done';
-    if (key === 'noplan') return r.noPlan;
+    if (key === 'notify') return r.needNotify;
+    if (key === 'arrlate') return r.arrLate;
+    if (key === 'sent') return r.shipped;
     return true;
   }
 
@@ -54,38 +52,52 @@ window.Pages.ship = (function () {
   /* ---------------- 一行 ---------------- */
 
   function leftText(r) {
-    if (r.status === 'done') return '已到店';
+    if (r.shipped) return '已发出';
     if (r.left == null) return '还没排发货日';
     if (r.left < 0) return '逾期 ' + Math.abs(r.left) + ' 天';
     if (r.left === 0) return '今天必须发';
     return '还有 ' + r.left + ' 天';
   }
 
-  function matSub(r) {
-    if (!r.total) return '未录入';
-    if (r.status === 'done') return r.pending
-      ? '<span class="text-red">还有 ' + r.pending + ' 项没到</span>'
-      : '全部到齐';
-    if (r.lateArr) return '<span class="text-red">' + r.lateArr + ' 项过了到货日</span>';
-    if (r.eta) return '最早 ' + U.dateDot(r.eta) + ' 到';
-    return '没填到货时间';
+  /* 登记到货时间：日期 + 倒计时，这就是我们要盯的唯一东西 */
+  function etaMain(r) {
+    if (!r.total) return '<span class="se-none">还没录物料</span>';
+    if (!r.eta) {
+      if (!r.pending) return '<span class="se-ok">全部已到</span>';
+      return '<span class="se-none">还没填到货时间</span>';
+    }
+
+    var d = U.diffDays(U.today(), r.eta);
+    var tag;
+    if (d < 0) tag = '<span class="se-tag late">过 ' + (-d) + ' 天</span>';
+    else if (d === 0) tag = '<span class="se-tag today">今天到</span>';
+    else if (d <= Number(C.ARR_WATCH_DAYS || 7)) tag = '<span class="se-tag soon">还有 ' + d + ' 天</span>';
+    else tag = '<span class="se-tag">还有 ' + d + ' 天</span>';
+
+    return '<b class="se-date mono">' + U.dateDot(r.eta) + '</b>' + tag;
+  }
+
+  function etaSub(r) {
+    if (!r.total) return '';
+    if (!r.eta && !r.pending) return '';   /* 全部已到，主行已经说了 */
+    var parts = [];
+    if (r.lateArr) parts.push('<span class="se-hot">' + r.lateArr + ' 项过了到货日</span>');
+    if (r.notify) parts.push('<span class="se-soon">' + r.notify + ' 项该通知供应商</span>');
+    if (r.arrived) parts.push(r.arrived + ' 项已到');
+    if (r.noEta) parts.push(r.noEta + ' 项没填时间');
+    return parts.join(' · ') || '全部已到';
   }
 
   function rowHtml(r, idx) {
-    var st = statusMeta(r.status);
     var cls = [];
     if (r.late) cls.push('is-late');
     else if (r.dueToday) cls.push('is-today');
-    if (r.status === 'done') cls.push('is-done');
+    if (r.shipped) cls.push('is-sent');
     if (r.pin) cls.push('is-pin');
 
     var openTxt = r.openLeft == null
       ? '开业日未定'
       : (r.openLeft < 0 ? '开业已过 ' + (-r.openLeft) + ' 天' : '距开业 ' + r.openLeft + ' 天');
-
-    var etatxt = r.total
-      ? '物料 ' + r.total + ' 项 · 已到 ' + r.arrived
-      : '还没录物料';
 
     return '<tr data-ship="' + U.esc(r.id) + '" class="' + cls.join(' ') + '">' +
       '<td class="ship-idx-cell">' +
@@ -116,15 +128,15 @@ window.Pages.ship = (function () {
           U.esc(leftText(r)) + '</div>' +
       '</td>' +
 
-      '<td class="ship-mat">' +
-        '<div class="ship-mat-main">' + U.esc(etatxt) + '</div>' +
-        '<div class="ship-mat-sub">' + matSub(r) + '</div>' +
+      '<td class="ship-eta">' +
+        '<div class="ship-eta-main' + (r.arrLate ? ' is-late' : '') + '">' + etaMain(r) + '</div>' +
+        '<div class="ship-eta-sub">' + etaSub(r) + '</div>' +
       '</td>' +
 
       '<td>' +
-        '<button type="button" class="ship-st" data-st' +
-          ' style="color:' + st.color + ';background:' + st.soft + '">' +
-          '<i style="background:' + st.color + '"></i>' + st.label +
+        '<button type="button" class="ship-st is-' + r.status + '" data-sent' +
+          ' title="' + (r.shipped ? '点一下改回「未发出」' : '发出去以后点这里，这家就不用再跟了') + '">' +
+          '<i></i>' + (r.shipped ? '已发出' : '未发出') +
         '</button>' +
       '</td>' +
 
@@ -152,10 +164,10 @@ window.Pages.ship = (function () {
       '<thead><tr>' +
         '<th style="width:56px">顺序</th>' +
         '<th>门店 / 开业</th>' +
-        '<th style="width:132px">计划发货</th>' +
-        '<th style="width:150px">物料</th>' +
-        '<th style="width:92px">状态</th>' +
-        '<th style="width:190px">备注</th>' +
+        '<th style="width:126px">计划发货</th>' +
+        '<th style="width:164px">登记到货（最早）</th>' +
+        '<th style="width:84px">发出</th>' +
+        '<th style="width:170px">备注</th>' +
         '<th style="width:58px"></th>' +
       '</tr></thead><tbody>' +
       rows.map(function (r, i) { return rowHtml(r, i); }).join('') +
@@ -164,28 +176,40 @@ window.Pages.ship = (function () {
 
   /* ---------------- 顶部 ---------------- */
 
+  function reasonText(r) {
+    if (r.late) return leftText(r) + '，计划 ' + U.dateDot(r.date) + ' 发';
+    if (r.arrLate) return r.lateArr + ' 项物料过了登记的到货日';
+    if (r.dueToday) return '计划今天发出';
+    return '';
+  }
+
   function bannerHtml(rows, s) {
     var late = rows.filter(function (r) { return r.late; });
+    var arrLate = rows.filter(function (r) { return r.arrLate; });
     var today = rows.filter(function (r) { return r.dueToday; });
+    var notify = rows.filter(function (r) { return r.needNotify; });
 
-    if (!late.length && !today.length) {
+    if (!late.length && !arrLate.length && !today.length) {
       return '<div class="ship-banner is-ok">' +
         '<span class="sb-ico">' + UI.icon('check') + '</span>' +
         '<div class="sb-body"><b>今天没有该发没发的门店</b>' +
-          '<span>还没发出的 ' + s.active + ' 家都在排期里，盯着下面的顺序就行</span></div>' +
+          '<span>' + (s.active ? '还没发出的 ' + s.active + ' 家都在排期里' : '所有门店都已发出') +
+          (notify.length ? '；' + notify.length + ' 家物料 7 天内到，今天该通知供应商发货' : '') +
+          '</span></div>' +
       '</div>';
     }
 
-    var first = late[0] || today[0];
+    var first = late[0] || arrLate[0] || today[0];
     var txt = [];
-    if (late.length) txt.push('<b>' + late.length + '</b> 家已经过了计划发货日还没发');
+    if (late.length) txt.push('<b>' + late.length + '</b> 家过了计划发货日还没发');
+    if (arrLate.length) txt.push('<b>' + arrLate.length + '</b> 家物料过了登记的到货日');
     if (today.length) txt.push('<b>' + today.length + '</b> 家今天就该发');
 
     return '<div class="ship-banner is-alert">' +
       '<span class="sb-ico">' + UI.icon('alert') + '</span>' +
       '<div class="sb-body">' +
         '<b>' + txt.join('，') + '</b>' +
-        '<span>最急：' + U.esc(first.name) + '（' + U.esc(leftText(first)) + '）　·　先去处理这几家</span>' +
+        '<span>最急：' + U.esc(first.name) + '（' + U.esc(reasonText(first)) + '）　·　先去处理这几家</span>' +
       '</div>' +
       '<button type="button" class="btn btn-sm" data-act="focus">只看这几家</button>' +
     '</div>';
@@ -193,11 +217,11 @@ window.Pages.ship = (function () {
 
   function kpiHtml(rows, s) {
     var items = [
-      { k: 'active', label: '还没发出', v: s.active, foot: '要跟的门店', color: '#3f6bf5', soft: '#edf2fe', icon: 'truck' },
+      { k: 'todo', label: '未发出', v: s.todo, foot: '要跟的门店', color: '#3f6bf5', soft: '#edf2fe', icon: 'truck' },
       { k: 'late', label: '逾期未发', v: s.late, foot: '已经过了发货日', color: '#f04438', soft: '#feeceb', icon: 'alert' },
       { k: 'today', label: '今天该发', v: s.today, foot: '今天必须发出去', color: '#f79009', soft: '#fef4e6', icon: 'clock' },
-      { k: 'sent', label: '在途', v: s.sent, foot: '已发出，等到店', color: '#dba005', soft: '#fdf6e3', icon: 'truck' },
-      { k: 'done', label: '已到店', v: s.done, foot: '这家店发完了', color: '#17b26a', soft: '#e6f8ef', icon: 'check' }
+      { k: 'notify', label: '该通知供应商', v: s.notify, foot: '到货日在 7 天内', color: '#7a5af8', soft: '#f2eefe', icon: 'bell' },
+      { k: 'arrlate', label: '该到没到', v: s.arrLate, foot: '过了登记到货日', color: '#d92d20', soft: '#fdedeb', icon: 'box' }
     ];
 
     return '<section class="kpi-grid fade-up" style="grid-template-columns:repeat(5,minmax(0,1fr));animation-delay:.04s">' +
@@ -216,8 +240,8 @@ window.Pages.ship = (function () {
 
   function tabsHtml(rows, s) {
     var n = {
-      all: rows.length, active: s.active, late: s.late, today: s.today,
-      sent: s.sent, done: s.done, noplan: s.noPlan
+      all: rows.length, todo: s.todo, late: s.late, today: s.today,
+      notify: s.notify, arrlate: s.arrLate, sent: s.sent
     };
     return TABS.map(function (t) {
       return '<div class="tab' + (state.tab === t.key ? ' active' : '') + '" data-tab="' + t.key + '">' +
@@ -239,6 +263,7 @@ window.Pages.ship = (function () {
         '<h1>发货看板</h1>' +
         '<p>' + U.cnDate(today) + ' · 共 ' + rows.length + ' 家门店要跟' +
           (s.late ? '，<b class="text-red">' + s.late + ' 家逾期未发</b>' : '') +
+          (s.arrLate ? '，<b class="text-red">' + s.arrLate + ' 家物料该到没到</b>' : '') +
           (s.today ? '，' + s.today + ' 家今天就该发' : '') + '</p>' +
       '</div>' +
       '<div style="display:flex;gap:8px">' +
@@ -261,52 +286,14 @@ window.Pages.ship = (function () {
       '</div>' +
       '<div id="shipTable">' + tableHtml(list) + '</div>' +
       '<div class="ship-foot">' +
-        '<span>顺序：★先发 → 手动排的 → 计划发货日近的在前 → 已到店沉底</span>' +
+        '<span>顺序：未发出的在前 → ★先发 → 手动排的 → 计划发货日近的在前 → 已发出沉底</span>' +
         '<span>' + (s.noPlan ? '<b class="text-red">' + s.noPlan + ' 家还没填发货日</b>　·　' : '') +
-          '发货日一改，全组人打开都是新的（云端同步）</span>' +
+          '到货时间以门店 / 供应商登记的为准，改日期就是新承诺</span>' +
       '</div>' +
     '</div>';
   }
 
   /* ---------------- 交互 ---------------- */
-
-  var menuEl = null;
-
-  function closeMenu() {
-    if (menuEl && menuEl.parentNode) menuEl.parentNode.removeChild(menuEl);
-    menuEl = null;
-  }
-
-  function openStMenu(anchor, row) {
-    closeMenu();
-    var wrap = document.createElement('div');
-    wrap.className = 'ship-menu';
-    wrap.innerHTML = (C.SHIP_STATUS || []).map(function (s) {
-      return '<button type="button" class="ship-menu-i' + (s.key === row.status ? ' is-on' : '') + '"' +
-        ' data-pick="' + s.key + '">' +
-        '<i style="background:' + s.color + '"></i>' + s.label +
-        (s.key === row.status ? '<em>✓</em>' : '') +
-      '</button>';
-    }).join('');
-    document.body.appendChild(wrap);
-
-    var rect = anchor.getBoundingClientRect();
-    var w = 132, h = wrap.offsetHeight || 160;
-    wrap.style.left = Math.min(rect.left, window.innerWidth - w - 12) + 'px';
-    wrap.style.top = (rect.bottom + 6 + h > window.innerHeight ? rect.top - 6 - h : rect.bottom + 6) + 'px';
-
-    wrap.addEventListener('click', function (e) {
-      var b = e.target.closest('[data-pick]');
-      if (!b) return;
-      var key = b.getAttribute('data-pick');
-      S.setShip(row.id, { status: key });
-      closeMenu();
-      UI.toast(row.name + ' 改成「' + statusMeta(key).label + '」', 'success');
-      App.refresh();
-    });
-
-    menuEl = wrap;
-  }
 
   function findRow(id) {
     var rows = S.shipRows();
@@ -400,20 +387,25 @@ window.Pages.ship = (function () {
         return;
       }
 
-      /* 状态 */
-      if (e.target.closest('[data-st]')) {
-        openStMenu(e.target.closest('[data-st]'), hit.row);
+      /* 发了没发：一次点击翻过来，点错了再点一下就回来 */
+      if (e.target.closest('[data-sent]')) {
+        var next = S.toggleShipSent(id);
+        UI.toast(next === 'sent'
+          ? hit.row.name + ' 已标记发出，沉到列表最后'
+          : hit.row.name + ' 改回「未发出」，重新回到要跟的队列',
+          next === 'sent' ? 'success' : 'info');
+        App.refresh();
         return;
       }
 
-      /* 点门店名 → 门店详情（物料都在那儿录） */
+      /* 点门店名 → 门店详情（到货时间都在那儿录） */
       if (e.target.closest('[data-open]')) {
         Pages.stores.openDetail(id);
         return;
       }
     });
 
-    /* 计划发货日 */
+    /* 计划发货日 / 备注 */
     root.addEventListener('change', function (e) {
       var d = e.target.closest('[data-date]');
       if (d && root.contains(d)) {
@@ -432,12 +424,6 @@ window.Pages.ship = (function () {
         S.setShip(tr2.getAttribute('data-ship'), { note: n.value });
       }
     });
-
-    /* 点别处关掉状态菜单 */
-    document.addEventListener('click', function (e) {
-      if (menuEl && !menuEl.contains(e.target) && !e.target.closest('[data-st]')) closeMenu();
-    });
-    window.addEventListener('scroll', closeMenu, true);
   }
 
   function onEnter() { state.tab = 'all'; state.q = ''; }

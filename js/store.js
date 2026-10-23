@@ -920,10 +920,10 @@ window.Store = (function () {
       }
     });
 
-    /* ---------------- 物料到货：提前 7 天就要盯 ----------------
-       门店说 11-10 到货，11-03 就该有人去确认对方发货安排。
+    /* ---------------- 物料到货：提前 7 天就该通知供应商 ----------------
+       门店说 11-10 到货，11-03 就要打电话让对方安排发货。
        所以不是等到货当天才提醒，而是「到货日 − ARR_WATCH_DAYS」就开始进提醒；
-       过了到货日还没到 → 升成高危（大概率卡在物流 / 仓库 / 对方没发）。 */
+       过了到货日还没到 → 升成高危（对方没发 / 卡在路上，去要个新的到货时间）。 */
     var watchDays = Number(C.ARR_WATCH_DAYS || 7);
     state.arrivals.forEach(function (a) {
       if (a.status === 'arrived' || !a.etaDate) return;
@@ -939,16 +939,16 @@ window.Store = (function () {
         addAlert({
           id: 'arrlate-' + a.id, level: 'danger', type: '物料未到',
           title: storeName + ' · ' + name,
-          desc: '说好 ' + U.monthDay(a.etaDate) + ' 到货，已经过了 ' + (-d) +
-            ' 天还没到，先确认是不是卡在物流 / 仓库',
+          desc: '登记的是 ' + U.monthDay(a.etaDate) + ' 到货，已经过了 ' + (-d) +
+            ' 天还没到，找供应商要个新的到货时间，回来把日期改掉',
           owner: man ? man.name : '未指派', storeId: a.storeId, arrivalId: a.id
         });
       } else {
         addAlert({
-          id: 'arrsoon-' + a.id, level: d <= 3 ? 'high' : 'warn', type: '物料即将到货',
+          id: 'arrsoon-' + a.id, level: d <= 3 ? 'high' : 'warn', type: '该通知供应商',
           title: storeName + ' · ' + name,
           desc: (d === 0 ? '今天就该到货' : '还有 ' + d + ' 天到货（' + U.monthDay(a.etaDate) + '）') +
-            '，提前确认收货人 / 库位 / 安装排期',
+            '，现在就告诉供应商安排发货，别等到那天才问',
           owner: man ? man.name : '未指派', storeId: a.storeId, arrivalId: a.id
         });
       }
@@ -956,10 +956,11 @@ window.Store = (function () {
 
     /* ---------------- 发货：按计划发货日盯着 ----------------
        计划今天发 → 提醒；已经过了还没发出 → 高危；
-       3 天内要发 → 提醒；快开业了还没排发货日 → 也提醒（这种最容易漏）。 */
+       3 天内要发 → 提醒；快开业了还没排发货日 → 也提醒（这种最容易漏）。
+       发出去了就不再管（在途 / 到店不记）。 */
     var shipWatch = Number(C.SHIP_WATCH_DAYS || 3);
     shipRows().forEach(function (r) {
-      if (r.status === 'done') return;
+      if (r.shipped) return;
       var man = r.owner || '未指派';
 
       if (r.late) {
@@ -967,7 +968,7 @@ window.Store = (function () {
           id: 'shiplate-' + r.id, level: 'danger', type: '发货逾期',
           title: r.name + ' · 计划 ' + U.monthDay(r.date) + ' 发货',
           desc: '已经过了 ' + Math.abs(r.left) + ' 天还没发出，' +
-            (r.pending ? '还有 ' + r.pending + ' 项物料没到，' : '') + '先确认仓库备货和车辆',
+            (r.lateArr ? '还有 ' + r.lateArr + ' 项物料过了到货日，' : '') + '先确认仓库备货和车辆',
           owner: man, storeId: r.id
         });
       } else if (r.dueToday) {
@@ -982,7 +983,7 @@ window.Store = (function () {
           id: 'shipsoon-' + r.id, level: 'warn', type: '即将发货',
           title: r.name + ' · 还有 ' + r.left + ' 天到发货日',
           desc: '计划 ' + U.monthDay(r.date) + ' 发出，先备好货、定好车' +
-            (r.pending ? '（还有 ' + r.pending + ' 项物料没到）' : ''),
+            (r.lateArr ? '（还有 ' + r.lateArr + ' 项物料过了到货日）' : ''),
           owner: man, storeId: r.id
         });
       } else if (r.noPlan && r.openLeft != null && r.openLeft >= 0 && r.openLeft <= 21) {
@@ -1275,7 +1276,8 @@ window.Store = (function () {
       storeId: data.storeId,
       item: data.item || '物料',
       qty: (q === '' || q === null || q === undefined) ? 0 : Math.max(0, Number(q) || 0),
-      etaDate: data.etaDate || U.addDays(U.today(), 3),
+      /* 到货时间只认登记的那个日期：没填就留空，绝不替门店编一个（编了就会误报 / 漏报） */
+      etaDate: data.etaDate || '',
       status: data.status || 'pending'
     };
     state.arrivals.push(a);
@@ -1304,8 +1306,9 @@ window.Store = (function () {
   }
 
   /* ================= 发货看板 =================
-     一家店一条发货记录：计划发货日 + 进度状态 + 「先发」标记 + 备注。
-     存 settings.ship = { 门店id: {status, date, pin, seq, note} }，
+     一家店一条发货记录：计划发货日 + 「发了没发」+ 「先发」标记 + 备注。
+     在途 / 到店这些物流环节不记 —— 发出去就算完事，之后只看物料登记的到货时间。
+     存 settings.ship = { 门店id: {status, date, pin, seq, note, sentAt} }，
      跟着 app_settings 整包上云，几十家门店共用一份 —— 同事打开看到的是同一屏。
      不写进 stores 表，是为了不改数据库结构。
      --------------------------------------------------------- */
@@ -1315,16 +1318,22 @@ window.Store = (function () {
     return (m && typeof m === 'object') ? m : {};
   }
 
+  /* 老数据的 ready / done 并到新两态上：已经发过的（含已到店）都算「已发出」 */
+  function normShipStatus(s) {
+    if (s === 'sent' || s === 'done') return 'sent';
+    return 'todo';
+  }
+
   /* 单家店的发货设置（没设过就给一份默认值，别返回 null） */
   function shipOf(storeId) {
     var raw = shipMap()[storeId] || {};
     return {
-      status: raw.status || 'todo',
+      status: normShipStatus(raw.status),
       date: raw.date || '',
       pin: !!raw.pin,
       seq: (raw.seq == null || raw.seq === '') ? null : Number(raw.seq),
       note: raw.note || '',
-      sentAt: raw.sentAt || ''      /* 点「已发出」的时间，用来算在途几天 */
+      sentAt: raw.sentAt || ''      /* 哪天点的「已发出」，只做留痕，不参与计算 */
     };
   }
 
@@ -1360,9 +1369,12 @@ window.Store = (function () {
     cacheLocal();
   }
 
-  /* 看板的一行：门店 + 发货进度 + 物料到货情况，全是实时算的 */
+  /* 看板的一行：门店 + 发了没发 + 物料登记的到货时间，全是实时算的。
+     到货时间只认门店 / 供应商登记的那个日期 —— 没有「在途」「到店」，
+     日期过了还没到就是「该到没到」，去要个新日期回来改。 */
   function shipRows() {
     var t0 = U.today();
+    var watchDays = Number(C.ARR_WATCH_DAYS || 7);
 
     var rows = state.stores.map(function (s) {
       var info = shipOf(s.id);
@@ -1372,14 +1384,20 @@ window.Store = (function () {
       /* 还没到的物料里最早的那个到货日 —— 门店给的时间，不改它、只用来提示 */
       var etas = pend.map(function (a) { return a.etaDate; }).filter(Boolean).sort();
       var earliest = etas[0] || '';
-      var lateArr = pend.filter(function (a) {
-        return a.etaDate && a.etaDate < t0;
-      }).length;
+
+      var lateArr = 0, notify = 0, noEta = 0;
+      pend.forEach(function (a) {
+        if (!a.etaDate) { noEta += 1; return; }
+        var d = U.diffDays(t0, a.etaDate);
+        if (isNaN(d)) { noEta += 1; return; }
+        if (d < 0) lateArr += 1;
+        else if (d <= watchDays) notify += 1;   /* 7 天内到 → 今天该通知供应商发货 */
+      });
 
       var owner = memberById(s.ownerId);
       var left = info.date ? U.diffDays(t0, info.date) : null;   /* 距计划发货日 */
       var openLeft = s.openDate ? U.diffDays(t0, s.openDate) : null;
-      var shipped = info.status === 'sent' || info.status === 'done';
+      var shipped = info.status === 'sent';
 
       return {
         id: s.id,
@@ -1387,6 +1405,7 @@ window.Store = (function () {
         province: s.province || '',
         owner: owner ? owner.name : '',
         status: info.status,
+        shipped: shipped,
         date: info.date,
         pin: info.pin,
         seq: info.seq,
@@ -1397,21 +1416,25 @@ window.Store = (function () {
         pending: pend.length,
         eta: earliest,
         lateArr: lateArr,
+        notify: notify,
+        noEta: noEta,
         left: left,
         openLeft: openLeft,
         openDate: s.openDate || '',
-        /* 三个状态：逾期未发 / 今天必须发 / 还没排期 */
+        /* 发货这块只有三件事：逾期未发 / 今天必须发 / 还没排期 */
         late: !shipped && left != null && left < 0,
         dueToday: !shipped && left === 0,
-        noPlan: !shipped && !info.date
+        noPlan: !shipped && !info.date,
+        /* 到货这块也只有两件事：该到没到 / 7 天内到该通知供应商 */
+        arrLate: lateArr > 0,
+        needNotify: notify > 0
       };
     });
 
-    /* 排序：先发置顶 → 已到店沉底 → 手动顺序 → 计划发货日 → 名字 */
+    /* 排序：还没发出的在前 → 先发置顶 → 手动顺序 → 计划发货日 → 名字 */
     rows.sort(function (a, b) {
+      if (a.shipped !== b.shipped) return a.shipped ? 1 : -1;
       if (a.pin !== b.pin) return a.pin ? -1 : 1;
-      var ad = a.status === 'done', bd = b.status === 'done';
-      if (ad !== bd) return ad ? 1 : -1;
       if (a.seq != null && b.seq != null && a.seq !== b.seq) return a.seq - b.seq;
       if ((a.seq != null) !== (b.seq != null)) return a.seq != null ? -1 : 1;
       if (a.date && b.date && a.date !== b.date) return a.date < b.date ? -1 : 1;
@@ -1424,18 +1447,24 @@ window.Store = (function () {
 
   function shipStats(rows) {
     rows = rows || shipRows();
-    var s = { all: rows.length, late: 0, today: 0, soon: 0, sent: 0, done: 0, todo: 0, noPlan: 0 };
+    var s = {
+      all: rows.length, todo: 0, sent: 0, late: 0, today: 0, soon: 0,
+      noPlan: 0, arrLate: 0, notify: 0
+    };
     rows.forEach(function (r) {
-      if (r.status === 'done') { s.done += 1; return; }
-      if (r.status === 'sent') s.sent += 1;
-      else s.todo += 1;
-      if (r.late) s.late += 1;
-      else if (r.dueToday) s.today += 1;
-      else if (r.left != null && r.left > 0 && r.left <= (C.SHIP_WATCH_DAYS || 3)) s.soon += 1;
-      if (r.noPlan) s.noPlan += 1;
+      if (r.shipped) s.sent += 1;
+      else {
+        s.todo += 1;
+        if (r.late) s.late += 1;
+        else if (r.dueToday) s.today += 1;
+        else if (r.left != null && r.left > 0 && r.left <= (C.SHIP_WATCH_DAYS || 3)) s.soon += 1;
+        if (r.noPlan) s.noPlan += 1;
+      }
+      /* 到货这两项不管发没发都要盯：货没到，发出去了也没用 */
+      if (r.arrLate) s.arrLate += 1;
+      if (r.needNotify) s.notify += 1;
     });
-    /* 「要跟的」= 还没发出去（不含已到店） */
-    s.active = s.all - s.done;
+    s.active = s.todo;   /* 「还没发出」= 要跟的店 */
     return s;
   }
 
@@ -1460,6 +1489,14 @@ window.Store = (function () {
     var cur = shipOf(storeId);
     setShip(storeId, { pin: !cur.pin });
     return !cur.pin;
+  }
+
+  /* 发了没发：一次点击就翻过来，不做「在途 / 到店」那些中间态 */
+  function toggleShipSent(storeId) {
+    var cur = shipOf(storeId);
+    var next = cur.status === 'sent' ? 'todo' : 'sent';
+    setShip(storeId, { status: next });
+    return next;
   }
 
   /* 清掉手动顺序，回到「按计划发货日自动排」 */
@@ -2053,6 +2090,7 @@ window.Store = (function () {
     shipStats: shipStats,
     moveShip: moveShip,
     toggleShipPin: toggleShipPin,
+    toggleShipSent: toggleShipSent,
     clearShipSeq: clearShipSeq,
     setSetting: setSetting,
     templates: templates,

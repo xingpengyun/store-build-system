@@ -108,16 +108,19 @@ window.Pages.home = (function () {
 
     var head = s.late
       ? '<b class="text-red">' + s.late + '</b> 家已经过了计划发货日还没发'
-      : (s.today
-        ? '<b class="sb-num">' + s.today + '</b> 家今天该发货'
-        : '今天没有该发没发的门店');
+      : (s.arrLate
+        ? '<b class="text-red">' + s.arrLate + '</b> 家物料过了登记的到货日'
+        : (s.today
+          ? '<b class="sb-num">' + s.today + '</b> 家今天该发货'
+          : '今天没有该发没发的门店'));
 
     var chips = [
       s.late ? { k: '逾期未发', v: s.late, cls: 'late' } : null,
+      s.arrLate ? { k: '该到没到', v: s.arrLate, cls: 'late' } : null,
       s.today ? { k: '今天该发', v: s.today, cls: 'today' } : null,
+      s.notify ? { k: '该通知供应商', v: s.notify, cls: 'today' } : null,
       { k: '还没发出', v: s.active, cls: '' },
-      { k: '在途', v: s.sent, cls: '' },
-      { k: '已到店', v: s.done, cls: 'ok' }
+      { k: '已发出', v: s.sent, cls: 'ok' }
     ].filter(Boolean).map(function (c) {
       return '<span class="hs-chip ' + c.cls + '">' + c.k + ' <b>' + c.v + '</b></span>';
     }).join('');
@@ -281,7 +284,7 @@ window.Pages.home = (function () {
       '</div>' +
     '</section>' +
 
-    /* 今日发货：每天早上先看这一条（谁该发、谁逾期、谁在途） */
+    /* 今日发货：每天早上先看这一条（谁该发、谁逾期、谁该通知供应商） */
     shipBarHtml() +
 
     /* KPI */

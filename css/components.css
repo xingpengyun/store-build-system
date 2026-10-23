@@ -2492,14 +2492,14 @@ body.tl-sorting * { cursor: grabbing !important; user-select: none !important; }
   height: 45px;
 }
 
-/* 行状态：逾期红条 / 今天橙条 / 已到店淡化 / 先发浅橙底 */
+/* 行状态：逾期红条 / 今天橙条 / 已发出淡化 / 先发浅橙底 */
 .ship-tbl tbody tr.is-late td:first-child { box-shadow: inset 3px 0 0 var(--red); }
 .ship-tbl tbody tr.is-today td:first-child { box-shadow: inset 3px 0 0 var(--orange); }
 .ship-tbl tbody tr.is-pin td:first-child { box-shadow: inset 3px 0 0 var(--orange); }
 .ship-tbl tbody tr.is-late { background: #fffafa; }
 .ship-tbl tbody tr.is-late:hover { background: #fff5f4; }
-.ship-tbl tbody tr.is-done { opacity: .62; }
-.ship-tbl tbody tr.is-done:hover { opacity: 1; }
+.ship-tbl tbody tr.is-sent { opacity: .58; }
+.ship-tbl tbody tr.is-sent:hover { opacity: 1; }
 
 /* 序号 + 先发星标 */
 .ship-idx-cell {
@@ -2599,11 +2599,45 @@ body.tl-sorting * { cursor: grabbing !important; user-select: none !important; }
 .ship-left.is-late { color: var(--red); font-weight: 600; }
 .ship-left.is-today { color: var(--orange); font-weight: 600; }
 
-/* 物料 */
-.ship-mat-main { font-size: 12px; color: var(--text-2); }
-.ship-mat-sub { font-size: 10.5px; color: var(--text-3); margin-top: 2px; }
+/* 登记到货时间：这一列才是我们真正盯的东西 */
+.ship-eta { min-width: 152px; }
+.ship-eta-main {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.ship-eta-main.is-late { color: var(--red); }
+.se-date { font-size: 13px; font-weight: 700; color: var(--text); letter-spacing: .2px; }
+.ship-eta-main.is-late .se-date { color: var(--red); }
+.se-none { font-size: 11.5px; color: #b6c0d2; }
+.se-ok { font-size: 12px; color: var(--green); font-weight: 600; }
+.se-tag {
+  font-size: 10px;
+  line-height: 15px;
+  padding: 0 5px;
+  border-radius: 5px;
+  background: var(--card-2);
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.se-tag.soon { color: #b06f05; background: var(--orange-soft); }
+.se-tag.today { color: #fff; background: var(--orange); }
+.se-tag.late { color: var(--red); background: var(--red-soft); }
+.ship-eta-sub {
+  margin-top: 3px;
+  font-size: 10.5px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 168px;
+}
+.se-hot { color: var(--red); font-weight: 600; }
+.se-soon { color: #b06f05; font-weight: 600; }
 
-/* 状态胶囊 */
+/* 发出：一个胶囊，点一下就翻过来 */
 .ship-st {
   height: 25px;
   padding: 0 9px;
@@ -2624,7 +2658,10 @@ body.tl-sorting * { cursor: grabbing !important; user-select: none !important; }
   height: 5px;
   border-radius: 50%;
   flex: 0 0 5px;
+  background: currentColor;
 }
+.ship-st.is-todo { color: #5b6b85; background: var(--card-2); }
+.ship-st.is-sent { color: var(--green); background: var(--green-soft); }
 .ship-st:hover { filter: brightness(.96); box-shadow: 0 2px 8px rgba(31, 53, 102, .1); }
 
 /* 备注 */
@@ -2678,39 +2715,6 @@ body.tl-sorting * { cursor: grabbing !important; user-select: none !important; }
   color: var(--text-3);
   flex-wrap: wrap;
 }
-
-/* 状态切换浮层 */
-.ship-menu {
-  position: fixed;
-  z-index: 999;
-  width: 132px;
-  padding: 5px;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 11px;
-  box-shadow: 0 12px 32px rgba(24, 44, 90, .16);
-  animation: fadeUp .14s ease both;
-}
-.ship-menu-i {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 7px 8px;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  font-family: inherit;
-  font-size: 12.5px;
-  color: var(--text-2);
-  cursor: pointer;
-  text-align: left;
-  transition: .12s;
-}
-.ship-menu-i i { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 6px; }
-.ship-menu-i em { margin-left: auto; color: var(--green); font-style: normal; font-weight: 700; }
-.ship-menu-i:hover { background: var(--card-2); color: var(--text); }
-.ship-menu-i.is-on { color: var(--text); font-weight: 600; background: var(--primary-soft); }
 
 /* ---------------- 首页顶部「今日发货」条 ---------------- */
 .home-ship {
