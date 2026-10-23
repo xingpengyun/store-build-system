@@ -1479,6 +1479,56 @@ window.Store = (function () {
     return s;
   }
 
+  /* ================= 按到货日看：所有门店的物料摊平 =================
+     一家店的物料日期不一样，门店一多就看不全。
+     这里把「所有门店 × 所有物料」拍成一条条，按登记到货日排序，
+     发货看板的「按到货日」视图就是用它 —— 谁哪天到、哪几条漏通知，全在一条时间线上。
+     --------------------------------------------------------- */
+  function arrivalRows() {
+    var t0 = U.today();
+    var watch = Number(C.ARR_WATCH_DAYS || 7);
+
+    var rows = [];
+    state.arrivals.forEach(function (a) {
+      var s = storeById(a.storeId);
+      if (!s) return;                       /* 门店删了，这条也不显示 */
+      var man = memberById(s.ownerId);
+      var notified = arrNotified(a);
+      var hasEta = !!a.etaDate;
+      var d = hasEta ? U.diffDays(t0, a.etaDate) : null;
+
+      rows.push({
+        id: a.id,
+        storeId: s.id,
+        storeName: s.name,
+        province: s.province || '',
+        owner: man ? man.name : '',
+        openDate: s.openDate || '',
+        openLeft: s.openDate ? U.diffDays(t0, s.openDate) : null,
+        item: (a.item || '').trim() || '未命名物料',
+        qty: Number(a.qty) || 0,
+        eta: a.etaDate || '',
+        hasEta: hasEta,
+        d: d,
+        notified: notified,
+        /* 三个口径：漏通知（过了到货日还没通知）/ 该通知（7 天内到）/ 还早 */
+        late: !notified && d != null && d < 0,
+        soon: !notified && d != null && d >= 0 && d <= watch,
+        today: !notified && d === 0
+      });
+    });
+
+    /* 没通知的排前面（按到货日升序，过期的自然浮到最上面）→ 没填日期的 → 已通知的沉底 */
+    rows.sort(function (a, b) {
+      if (a.notified !== b.notified) return a.notified ? 1 : -1;
+      if (a.hasEta !== b.hasEta) return a.hasEta ? -1 : 1;
+      if (a.eta && b.eta && a.eta !== b.eta) return a.eta < b.eta ? -1 : 1;
+      return String(a.storeName).localeCompare(String(b.storeName), 'zh');
+    });
+
+    return rows;
+  }
+
   /* 上移 / 下移一位：把当前看到的顺序整体固化成 seq，之后就一直按这个顺序 */
   function moveShip(storeId, dir) {
     var rows = shipRows();
@@ -2100,6 +2150,7 @@ window.Store = (function () {
     setShip: setShip,
     shipRows: shipRows,
     shipStats: shipStats,
+    arrivalRows: arrivalRows,
     moveShip: moveShip,
     toggleShipPin: toggleShipPin,
     toggleShipSent: toggleShipSent,

@@ -2501,6 +2501,126 @@ body.tl-sorting * { cursor: grabbing !important; user-select: none !important; }
 .ship-tbl tbody tr.is-sent { opacity: .58; }
 .ship-tbl tbody tr.is-sent:hover { opacity: 1; }
 
+/* ---------------- 视图切换：按门店 / 按到货日 ---------------- */
+.ship-views {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line-2);
+  border-radius: 9px;
+  background: var(--card-2);
+}
+.ship-view {
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: .14s;
+  white-space: nowrap;
+}
+.ship-view:hover { color: var(--text); }
+.ship-view.is-on {
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(31, 53, 102, .1);
+}
+
+/* ---------------- 按到货日：所有门店的物料排成一条时间线 ---------------- */
+.sd-tbl { min-width: 760px; }
+.sd-tbl thead th {
+  padding: 6px 10px;
+  font-size: 11px;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--card-2);
+  box-shadow: 0 1px 0 var(--line-2);
+}
+.sd-tbl tbody td {
+  padding: 0 10px;
+  height: 35px;
+  font-size: 12.5px;
+}
+
+/* 日期分组行 */
+.sd-tbl tbody tr.sd-day td {
+  height: 30px;
+  padding: 0 !important;
+  background: var(--card-2);
+  border-top: 1px solid var(--line);
+  box-shadow: none !important;
+}
+.sd-tbl tbody tr.sd-day:first-child td { border-top: 0; }
+.sd-daybar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 10px;
+}
+.sd-day.is-late td { background: #fdf1ef !important; }
+.sd-day.is-today td { background: var(--orange-soft) !important; }
+.sd-day.is-none td { background: #f6f7fb !important; }
+
+.sd-date { font-size: 12.5px; font-weight: 700; color: var(--text); }
+.sd-week { font-size: 11px; color: var(--text-3); }
+.sd-sub { font-size: 11px; color: var(--text-3); }
+.sd-left {
+  padding: 1px 7px;
+  border-radius: 20px;
+  background: var(--card);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+.sd-left.is-late { background: var(--red-soft); color: #d92d20; }
+.sd-left.is-today { background: var(--orange-soft); color: #b54708; }
+.sd-cnt { margin-left: auto; font-size: 11px; color: var(--text-3); }
+
+/* 行 */
+.sd-tbl tbody tr.is-late { background: #fffafa; }
+.sd-tbl tbody tr.is-late:hover { background: #fff4f2; }
+.sd-tbl tbody tr.is-late td:first-child { box-shadow: inset 3px 0 0 var(--red); }
+.sd-tbl tbody tr.is-soon td:first-child { box-shadow: inset 3px 0 0 var(--orange); }
+.sd-tbl tbody tr.is-notified { opacity: .5; }
+.sd-tbl tbody tr.is-notified:hover { opacity: 1; }
+
+.sd-store-cell, .sd-item-cell, .sd-open-cell { white-space: nowrap; }
+.sd-store { font-weight: 600; color: var(--text); cursor: pointer; }
+.sd-store:hover { color: var(--primary); text-decoration: underline; }
+.sd-province { margin-left: 6px; font-size: 10.5px; color: var(--text-3); }
+.sd-item-cell { color: var(--text-2); }
+.sd-qty { margin-left: 6px; font-size: 10.5px; color: var(--text-3); }
+.sd-open-cell { font-size: 11.5px; color: var(--text-3); }
+
+/* 通知按钮 */
+.sd-st {
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--card);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: .14s;
+  white-space: nowrap;
+}
+.sd-st:hover { border-color: #c7d2e5; color: var(--text); }
+.sd-st.is-on {
+  border-color: #bfe7d1;
+  background: var(--green-soft);
+  color: #0f8a4d;
+}
+
 /* 序号 + 先发星标 */
 .ship-idx-cell {
   display: flex;

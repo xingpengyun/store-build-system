@@ -67,7 +67,7 @@ window.Pages.settings = (function () {
         '<div style="display:flex;flex-direction:column;gap:8px">' +
           '<button class="btn" data-act="export">' + UI.icon('download') + '导出备份（JSON）</button>' +
           '<button class="btn" data-act="import">' + UI.icon('upload') + '从备份文件导入</button>' +
-          '<button class="btn btn-danger" data-act="reset">' + UI.icon('refresh') + '清空云端并恢复演示数据</button>' +
+          '<button class="btn btn-danger" data-act="reset">' + UI.icon('refresh') + '清空云端并生成 50 家演示门店</button>' +
         '</div>' +
         '<input type="file" id="importFile" accept=".json,application/json" style="display:none" />' +
         '<p style="margin-top:12px;font-size:11.5px;color:var(--text-3);line-height:1.7">' +
@@ -280,7 +280,7 @@ window.Pages.settings = (function () {
       else if (act === 'reset') {
         UI.confirm({
           title: '清空云端数据',
-          text: '这会删除云端所有门店、任务、成员和到货记录，换成一套演示数据。',
+          text: '这会删除云端所有门店、任务、成员和到货记录，换成 50 家随机演示门店（阶段、进度、到货日期都不一样）。',
           warn: '所有同事看到的数据都会被替换，且无法撤销。建议先导出备份。',
           danger: true,
           okText: '确认清空',

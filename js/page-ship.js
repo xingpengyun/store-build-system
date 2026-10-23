@@ -16,7 +16,7 @@ window.Pages.ship = (function () {
   var S = window.Store;
   var C = window.CONST;
 
-  var state = { tab: 'all', q: '' };
+  var state = { tab: 'all', q: '', view: 'store', dtab: 'all' };
 
   /* 顶部这排既能看数，也能点进去只看这一类 */
   var TABS = [
@@ -28,6 +28,50 @@ window.Pages.ship = (function () {
     { key: 'arrlate', label: '漏通知' },
     { key: 'sent', label: '已发出' }
   ];
+
+  /* 「按到货日」视图的分类：一条物料一条记录，日期各店不同也能一眼看完 */
+  var DTABS = [
+    { key: 'all', label: '全部' },
+    { key: 'late', label: '漏通知' },
+    { key: 'today', label: '今天到' },
+    { key: 'soon', label: '7 天内到' },
+    { key: 'noeta', label: '没填日期' },
+    { key: 'notified', label: '已通知' }
+  ];
+
+  function hitD(r, key) {
+    if (!key || key === 'all') return true;
+    if (key === 'late') return r.late;
+    if (key === 'today') return r.today;
+    if (key === 'soon') return r.soon;
+    if (key === 'noeta') return !r.hasEta && !r.notified;
+    if (key === 'notified') return r.notified;
+    return true;
+  }
+
+  function dStats(rows) {
+    var s = { all: rows.length, late: 0, today: 0, soon: 0, noeta: 0, notified: 0, stores: {} };
+    rows.forEach(function (r) {
+      s.stores[r.storeId] = 1;
+      if (r.notified) { s.notified += 1; return; }
+      if (r.late) s.late += 1;
+      if (r.today) s.today += 1;
+      if (r.soon) s.soon += 1;
+      if (!r.hasEta) s.noeta += 1;
+    });
+    s.storeCount = Object.keys(s.stores).length;
+    return s;
+  }
+
+  function filteredDates(rows) {
+    var q = String(state.q || '').trim().toLowerCase();
+    return rows.filter(function (r) {
+      if (!hitD(r, state.dtab)) return false;
+      if (!q) return true;
+      return (r.storeName + ' ' + r.province + ' ' + r.item + ' ' + r.owner)
+        .toLowerCase().indexOf(q) >= 0;
+    });
+  }
 
   function hitTab(r, key) {
     if (!key || key === 'all') return true;
@@ -81,10 +125,10 @@ window.Pages.ship = (function () {
     if (!r.total) return '';
     if (!r.pending) return '';   /* 全部已通知，主行已经说了 */
     var parts = [];
-    if (r.lateArr) parts.push('<span class="se-hot">' + r.lateArr + ' 项过了到货日没通知</span>');
-    if (r.notify) parts.push('<span class="se-soon">' + r.notify + ' 项该通知供应商</span>');
-    if (r.notified) parts.push(r.notified + ' 项已通知');
-    if (r.noEta) parts.push(r.noEta + ' 项没填时间');
+    if (r.lateArr) parts.push('<span class="se-hot">' + r.lateArr + ' 项漏通知</span>');
+    if (r.notify) parts.push('<span class="se-soon">' + r.notify + ' 项该通知</span>');
+    if (r.noEta) parts.push(r.noEta + ' 项没填日期');
+    if (r.notified) parts.push('已通知 ' + r.notified);
     return parts.join(' · ');
   }
 
@@ -249,13 +293,236 @@ window.Pages.ship = (function () {
     }).join('');
   }
 
+  /* ---------------- 「按到货日」视图：一条物料一行 ---------------- */
+
+  /* 这一天的状态：只要还有没通知的过期物料才算「红」，全通知过的只是历史记录 */
+  function dayState(list) {
+    var late = false, today = false, pend = 0;
+    list.forEach(function (r) {
+      if (r.notified) return;
+      pend += 1;
+      if (r.late) late = true;
+      if (r.today) today = true;
+    });
+    return { late: late, today: today, pend: pend };
+  }
+
+  function dayHead(key, list) {
+    if (key === '__none__') {
+      return '<span class="sd-date">没填到货时间</span>' +
+        '<span class="sd-sub">这些没法提醒，点门店名进去补一个日期</span>' +
+        '<span class="sd-cnt">' + list.length + ' 条</span>';
+    }
+    var d = list[0].d;
+    var st = dayState(list);
+    var cls = st.late ? 'is-late' : (d === 0 && st.pend) ? 'is-today' : '';
+    var left = d < 0 ? '过了 ' + (-d) + ' 天' : d === 0 ? '今天' : '还有 ' + d + ' 天';
+    var stores = {};
+    list.forEach(function (r) { stores[r.storeId] = 1; });
+
+    return '<span class="sd-date mono">' + U.dateDot(key) + '</span>' +
+      '<span class="sd-week">' + U.weekdayCn(key) + '</span>' +
+      '<span class="sd-left ' + cls + '">' + left + '</span>' +
+      '<span class="sd-cnt">' + list.length + ' 条 · ' + Object.keys(stores).length + ' 家店' +
+        (st.pend && d < 0 ? ' · <b class="text-red">' + st.pend + ' 条没通知</b>' : '') + '</span>';
+  }
+
+  function dateRowHtml(r) {
+    var openTxt = r.openLeft == null
+      ? '开业日未定'
+      : (r.openLeft < 0 ? '已开业 ' + (-r.openLeft) + ' 天' : '距开业 ' + r.openLeft + ' 天');
+
+    return '<tr data-arrown="' + U.esc(r.id) + '" data-sid="' + U.esc(r.storeId) + '"' +
+        ' class="' + (r.notified ? 'is-notified' : r.late ? 'is-late' : r.soon ? 'is-soon' : '') + '">' +
+      '<td class="sd-store-cell">' +
+        '<span class="sd-store" data-open>' + U.esc(r.storeName) + '</span>' +
+        '<span class="sd-province">' + U.esc(r.province) + '</span>' +
+      '</td>' +
+      '<td class="sd-item-cell">' + U.esc(r.item) +
+        (r.qty ? '<span class="sd-qty">×' + r.qty + '</span>' : '') + '</td>' +
+      '<td class="sd-open-cell">' + U.esc(openTxt) + '</td>' +
+      '<td class="sd-act-cell">' +
+        '<button type="button" class="sd-st' + (r.notified ? ' is-on' : '') + '" data-arrtoggle' +
+          ' title="' + (r.notified ? '点一下改回「待通知」' : '已经通知供应商发货了？点一下记下来') + '">' +
+          (r.notified ? '✓ 已通知' : '待通知') + '</button>' +
+      '</td>' +
+    '</tr>';
+  }
+
+  /* 按日期分组：过去的在最上面，今天、明天… 没填日期的收在最后 */
+  function groupByDate(rows) {
+    var map = {}, keys = [];
+    rows.forEach(function (r) {
+      var k = r.hasEta ? r.eta : '__none__';
+      if (!map[k]) { map[k] = []; keys.push(k); }
+      map[k].push(r);
+    });
+
+    /* 排序：过期还没通知的排最前（最急），然后今天 → 未来 → 没填日期 → 早已通知完的历史 */
+    function rank(k) {
+      if (k === '__none__') return 3;
+      var d = U.diffDays(U.today(), k);
+      if (d < 0) return dayState(map[k]).pend ? 0 : 4;
+      if (d === 0) return 1;
+      return 2;
+    }
+
+    var dated = keys.sort(function (a, b) {
+      var ra = rank(a), rb = rank(b);
+      if (ra !== rb) return ra - rb;
+      if (a === '__none__') return 0;
+      return ra === 4 ? (a < b ? 1 : -1) : (a < b ? -1 : 1);
+    });
+
+    return dated.map(function (k) {
+      var list = map[k].slice().sort(function (a, b) {
+        if (a.notified !== b.notified) return a.notified ? 1 : -1;
+        return String(a.storeName).localeCompare(String(b.storeName), 'zh');
+      });
+      return { key: k, rows: list };
+    });
+  }
+
+  function dateTableHtml(list) {
+    if (!list.length) {
+      if (!S.getState().arrivals.length) {
+        return UI.empty('还没有物料到货记录', '在「门店管理」里点门店名进去，把供应商给的到货时间录进来');
+      }
+      return UI.empty('这个筛选下没有物料', '换个分类或清空搜索看看');
+    }
+
+    var groups = groupByDate(list);
+
+    return '<div class="table-wrap"><table class="tbl sd-tbl">' +
+      '<thead><tr>' +
+        '<th style="width:196px">门店</th>' +
+        '<th>物料</th>' +
+        '<th style="width:118px">开业</th>' +
+        '<th style="width:104px">通知</th>' +
+      '</tr></thead><tbody>' +
+      groups.map(function (g) {
+        var gs = g.key === '__none__' ? { late: false, today: false } : dayState(g.rows);
+        var cls = g.key === '__none__' ? 'is-none'
+          : gs.late ? 'is-late'
+            : gs.today ? 'is-today' : '';
+        return '<tr class="sd-day ' + cls + '"><td colspan="4">' +
+          '<div class="sd-daybar">' + dayHead(g.key, g.rows) + '</div></td></tr>' +
+          g.rows.map(dateRowHtml).join('');
+      }).join('') +
+      '</tbody></table></div>';
+  }
+
+  function dateKpiHtml(s) {
+    var items = [
+      { k: 'all', label: '待通知', v: s.all - s.notified, foot: '共 ' + s.storeCount + ' 家店', color: '#3f6bf5', soft: '#edf2fe', icon: 'box' },
+      { k: 'late', label: '漏通知', v: s.late, foot: '过了到货日还没通知', color: '#d92d20', soft: '#fdedeb', icon: 'alert' },
+      { k: 'today', label: '今天到', v: s.today, foot: '今天该到的', color: '#f79009', soft: '#fef4e6', icon: 'clock' },
+      { k: 'soon', label: '7 天内到', v: s.soon, foot: '该通知供应商发货', color: '#7a5af8', soft: '#f2eefe', icon: 'bell' },
+      { k: 'notified', label: '已通知', v: s.notified, foot: '不用再催了', color: '#17b26a', soft: '#e6f8ef', icon: 'check' }
+    ];
+
+    return '<section class="kpi-grid fade-up" style="grid-template-columns:repeat(5,minmax(0,1fr));animation-delay:.04s">' +
+      items.map(function (i) {
+        return '<div class="kpi ship-kpi' + (state.dtab === i.k ? ' is-on' : '') + '" data-dkpi="' + i.k + '">' +
+          '<span class="kpi-icon" style="background:' + i.soft + ';color:' + i.color + '">' + UI.icon(i.icon) + '</span>' +
+          '<div class="kpi-body">' +
+            '<div class="kpi-label">' + i.label + '</div>' +
+            '<div class="kpi-value">' + i.v + '</div>' +
+            '<div class="kpi-foot">' + i.foot + '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('') +
+    '</section>';
+  }
+
+  function dateTabsHtml(s) {
+    var n = { all: s.all, late: s.late, today: s.today, soon: s.soon, noeta: s.noeta, notified: s.notified };
+    return DTABS.map(function (t) {
+      return '<div class="tab' + (state.dtab === t.key ? ' active' : '') + '" data-dtab="' + t.key + '">' +
+        t.label + '<span class="cnt">' + (n[t.key] || 0) + '</span></div>';
+    }).join('');
+  }
+
+  function dateBannerHtml(s) {
+    if (!s.late && !s.today) {
+      return '<div class="ship-banner is-ok">' +
+        '<span class="sb-ico">' + UI.icon('check') + '</span>' +
+        '<div class="sb-body"><b>所有登记的到货时间都还没到点</b>' +
+          '<span>' + s.all + ' 条物料分布在 ' + s.storeCount + ' 家门店' +
+          (s.soon ? '，其中 ' + s.soon + ' 条 7 天内到，记得提前通知供应商发货' : '') +
+          '</span></div>' +
+      '</div>';
+    }
+
+    var txt = [];
+    if (s.late) txt.push('<b>' + s.late + '</b> 条物料过了登记的到货日还没通知供应商');
+    if (s.today) txt.push('<b>' + s.today + '</b> 条今天就到');
+
+    return '<div class="ship-banner is-alert">' +
+      '<span class="sb-ico">' + UI.icon('alert') + '</span>' +
+      '<div class="sb-body"><b>' + txt.join('，') + '</b>' +
+        '<span>往下就是按日期排的整条时间线：' + s.all + ' 条物料 · ' + s.storeCount + ' 家门店</span>' +
+      '</div>' +
+      '<button type="button" class="btn btn-sm" data-dtab="late">只看漏通知</button>' +
+    '</div>';
+  }
+
   /* ---------------- 页面 ---------------- */
 
+  function viewSwitchHtml() {
+    return '<div class="ship-views">' +
+      '<button type="button" class="ship-view' + (state.view === 'store' ? ' is-on' : '') + '" data-view="store">按门店</button>' +
+      '<button type="button" class="ship-view' + (state.view === 'date' ? ' is-on' : '') + '" data-view="date">按到货日</button>' +
+    '</div>';
+  }
+
   function render() {
+    var today = U.today();
+
+    /* ============ 按到货日：所有门店的物料摊在一条时间线上 ============ */
+    if (state.view === 'date') {
+      var all = S.arrivalRows();
+      var ds = dStats(all);
+      var dlist = filteredDates(all);
+
+      return '' +
+      '<div class="page-head fade-up">' +
+        '<div>' +
+          '<h1>发货看板</h1>' +
+          '<p>' + U.cnDate(today) + ' · 共 <b>' + ds.storeCount + '</b> 家门店 · <b>' + ds.all + '</b> 条物料记录，按登记到货日排在下面' +
+            (ds.late ? '，<b class="text-red">' + ds.late + ' 条漏通知</b>' : '') +
+            (ds.today ? '，' + ds.today + ' 条今天就到' : '') + '</p>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;align-items:center">' +
+          viewSwitchHtml() +
+          '<button class="btn btn-primary" data-act="toStores">' + UI.icon('box') + '门店物料</button>' +
+        '</div>' +
+      '</div>' +
+
+      dateBannerHtml(ds) +
+      dateKpiHtml(ds) +
+
+      '<div class="card ship-card fade-up" style="animation-delay:.08s">' +
+        '<div class="ship-bar">' +
+          '<div class="tabs" id="shipTabs">' + dateTabsHtml(ds) + '</div>' +
+          '<div class="ship-tools">' +
+            '<div class="mini-search">' + UI.icon('search') +
+              '<input id="shipQ" placeholder="搜门店 / 物料 / 负责人" value="' + U.esc(state.q) + '" />' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div id="shipTable">' + dateTableHtml(dlist) + '</div>' +
+        '<div class="ship-foot">' +
+          '<span>按登记的到货日排序：过去的在最上面 → 今天 → 之后；已通知的沉在每天末尾</span>' +
+          '<span>一家店几条物料不同日期都会分开列出来，漏哪条都看得见</span>' +
+        '</div>' +
+      '</div>';
+    }
+
+    /* ============ 按门店：一家店一行，看谁该发 ============ */
     var rows = S.shipRows();
     var s = S.shipStats(rows);
     var list = filtered(rows);
-    var today = U.today();
 
     return '' +
     '<div class="page-head fade-up">' +
@@ -266,7 +533,8 @@ window.Pages.ship = (function () {
           (s.arrLate ? '，<b class="text-red">' + s.arrLate + ' 家漏通知供应商</b>' : '') +
           (s.today ? '，' + s.today + ' 家今天就该发' : '') + '</p>' +
       '</div>' +
-      '<div style="display:flex;gap:8px">' +
+      '<div style="display:flex;gap:8px;align-items:center">' +
+        viewSwitchHtml() +
         '<button class="btn" data-act="autoOrder" title="清掉手动顺序，回到按计划发货日自动排">' + UI.icon('refresh') + '按发货日重排</button>' +
         '<button class="btn btn-primary" data-act="toStores">' + UI.icon('box') + '门店物料</button>' +
       '</div>' +
@@ -288,7 +556,7 @@ window.Pages.ship = (function () {
       '<div class="ship-foot">' +
         '<span>顺序：未发出的在前 → ★先发 → 手动排的 → 计划发货日近的在前 → 已发出沉底</span>' +
         '<span>' + (s.noPlan ? '<b class="text-red">' + s.noPlan + ' 家还没填发货日</b>　·　' : '') +
-          '到货时间以门店 / 供应商登记的为准，改日期就是新承诺；通知完在门店详情点「已通知」</span>' +
+          '到货时间以门店 / 供应商登记的为准，改日期就是新承诺；通知完在「按到货日」里点一下「待通知」</span>' +
       '</div>' +
     '</div>';
   }
@@ -313,8 +581,17 @@ window.Pages.ship = (function () {
 
   function updateList(root) {
     var wrap = root.querySelector('#shipTable');
-    if (wrap) wrap.innerHTML = tableHtml(filtered(S.shipRows()));
     var tabs = root.querySelector('#shipTabs');
+
+    if (state.view === 'date') {
+      var all = S.arrivalRows();
+      var ds = dStats(all);
+      if (wrap) wrap.innerHTML = dateTableHtml(filteredDates(all));
+      if (tabs) tabs.innerHTML = dateTabsHtml(ds);
+      return;
+    }
+
+    if (wrap) wrap.innerHTML = tableHtml(filtered(S.shipRows()));
     if (tabs) {
       var rows = S.shipRows();
       tabs.innerHTML = tabsHtml(rows, S.shipStats(rows));
@@ -332,6 +609,36 @@ window.Pages.ship = (function () {
     }
 
     root.addEventListener('click', function (e) {
+      /* 两个视图切换 */
+      var vw = e.target.closest('[data-view]');
+      if (vw && root.contains(vw)) {
+        var nextView = vw.getAttribute('data-view');
+        if (nextView !== state.view) {
+          state.view = nextView;
+          state.q = '';
+          state.tab = 'all';
+          state.dtab = 'all';
+          App.refresh();
+        }
+        return;
+      }
+
+      /* 「按到货日」的分类 / KPI */
+      var dtab = e.target.closest('[data-dtab]');
+      if (dtab && root.contains(dtab)) {
+        state.dtab = dtab.getAttribute('data-dtab');
+        App.refresh();
+        return;
+      }
+
+      var dkpi = e.target.closest('[data-dkpi]');
+      if (dkpi && root.contains(dkpi)) {
+        var dk = dkpi.getAttribute('data-dkpi');
+        state.dtab = (state.dtab === dk) ? 'all' : dk;
+        App.refresh();
+        return;
+      }
+
       var tab = e.target.closest('[data-tab]');
       if (tab && root.contains(tab)) {
         state.tab = tab.getAttribute('data-tab');
@@ -362,6 +669,29 @@ window.Pages.ship = (function () {
           App.refresh();
           return;
         }
+      }
+
+      /* 按到货日视图的物料行：点门店名进详情，点「待通知」直接翻转 */
+      var dtr = e.target.closest('tr[data-arrown]');
+      if (dtr && root.contains(dtr)) {
+        var arrId = dtr.getAttribute('data-arrown');
+        if (e.target.closest('[data-open]')) {
+          Pages.stores.openDetail(dtr.getAttribute('data-sid'));
+          return;
+        }
+        if (e.target.closest('[data-arrtoggle]')) {
+          var rec = null;
+          S.getState().arrivals.forEach(function (x) { if (x.id === arrId) rec = x; });
+          if (!rec) return;
+          var was = S.arrNotified(rec);
+          S.updateArrival(arrId, { status: was ? 'pending' : 'notified' });
+          UI.toast(was
+            ? '已改回「待通知」，这条重新进提醒'
+            : (rec.item || '该物料') + ' 已记为通知过供应商', 'success');
+          updateList(root);
+          return;
+        }
+        return;
       }
 
       var tr = e.target.closest('tr[data-ship]');
@@ -426,7 +756,7 @@ window.Pages.ship = (function () {
     });
   }
 
-  function onEnter() { state.tab = 'all'; state.q = ''; }
+  function onEnter() { state.tab = 'all'; state.dtab = 'all'; state.q = ''; }
 
   return { title: '发货看板', render: render, mount: mount, onEnter: onEnter };
 })();
