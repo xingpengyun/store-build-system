@@ -16,7 +16,7 @@ window.Pages.reports = (function () {
     var tc = st.taskCounts;
 
     var doneRate = tc.total ? Math.round(tc.done / tc.total * 100) : 0;
-    /* 平均进度：每家的百分比都来自「阶段时间线」（完成几个阶段 / 筹建阶段总数） */
+    /* 平均进度：每家的百分比都来自「门店停在第几个阶段」（阶段数平分 100%，最后一个阶段 100%） */
     var avgProgress = s.stores.length
       ? Math.round(U.sum(s.stores, function (x) { return S.storeProgress(x).pct; }) / s.stores.length)
       : 0;
