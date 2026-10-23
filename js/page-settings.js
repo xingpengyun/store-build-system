@@ -76,6 +76,18 @@ window.Pages.settings = (function () {
       '</div>' +
     '</section>' +
 
+    '<div class="card fade-up" style="animation-delay:.065s">' +
+      '<div class="card-head"><h3>逾期倒推口径</h3>' +
+        '<span class="card-sub">建议完成日 = 门店计划开业日 − 这里的提前天数</span></div>' +
+      '<div class="lead-grid">' + leadRows() + '</div>' +
+      '<div class="lead-foot">' +
+        '<button class="btn btn-primary" type="button" data-act="saveLead">保存提前天数</button>' +
+        '<span class="lead-foot-tip">保存后，所有门店的任务日期立刻按新口径重算</span>' +
+      '</div>' +
+      '<p class="item-hint">例：门店 11 月 15 日开业、图纸建议提前 45 天 → 10 月 1 日前必须出图；' +
+        '过了 10 月 1 日还没做完，这条任务就自动标成逾期。阶段名改过也没关系，会按关键词自动对上。</p>' +
+    '</div>' +
+
     '<div class="card fade-up" style="animation-delay:.08s">' +
       '<div class="card-head"><h3>到货物料清单</h3>' +
         '<span class="card-sub">门店详情里「物料到货」的快捷按钮，共 <b id="arrItemsCount">' + S.items().length + '</b> 个</span></div>' +
@@ -99,6 +111,26 @@ window.Pages.settings = (function () {
         '<div class="d-item"><div class="d-label">数据读写</div><div class="d-val">js/store.js</div></div>' +
       '</div>' +
     '</div>';
+  }
+
+  /* 逾期倒推口径：每个筹建阶段「开业前 N 天该做完」 */
+  function leadRows() {
+    var list = S.stages() || [];
+    if (!list.length) return '<p class="item-none">还没有阶段</p>';
+
+    return list.map(function (st) {
+      var key = st.key;
+      var days = S.leadDaysOf({ stage: key });
+      return '<label class="lead-row">' +
+        '<span class="lead-name">' +
+          '<i class="lead-dot" style="background:' + (st.color || '#98a2b8') + '"></i>' +
+          U.esc(key) + '</span>' +
+        '<span class="lead-box">开业前' +
+          '<input class="input lead-input" type="number" min="0" max="365" step="1" ' +
+            'data-lead="' + U.esc(key) + '" value="' + days + '" />' +
+          '天做完</span>' +
+      '</label>';
+    }).join('');
   }
 
   /* 物料按钮：长按变成「删除？」，再点一下才删（防误触） */
@@ -216,6 +248,20 @@ window.Pages.settings = (function () {
         st.weatherText = UI.formValue(form, 'weatherText') || '多云';
         S.saveAll();
         UI.toast('设置已保存，团队其他人刷新后可见', 'success');
+        App.refresh();
+      }
+
+      else if (act === 'saveLead') {
+        var patch = {};
+        [].slice.call(root.querySelectorAll('[data-lead]')).forEach(function (inp) {
+          var key = inp.getAttribute('data-lead');
+          var v = String(inp.value || '').trim();
+          if (key && v !== '') patch[key] = v;
+        });
+        var hit = S.saveLeadDays(patch);
+        UI.toast(hit
+          ? '已保存 ' + hit + ' 个阶段的提前天数，任务日期已重算'
+          : '没有可保存的数值', hit ? 'success' : 'info');
         App.refresh();
       }
 

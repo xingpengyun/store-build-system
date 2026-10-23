@@ -471,6 +471,10 @@ window.Pages.tasks = (function () {
       var lead = S.leadDaysOf(t);
       var left = S.daysLeftOf(t);              /* 距开业 */
       var mem = S.memberById(t.assigneeId);
+      var stt = S.storeById(t.storeId);
+      var dueTip = stt && stt.openDate
+        ? '倒推：开业 ' + U.monthDay(stt.openDate) + ' − 提前 ' + lead + ' 天 = ' + U.monthDay(due) + ' 前完成'
+        : '门店没填开业日，按今天 +7 天兜底';
 
       var sub;
       if (cls === 'done') {
@@ -489,7 +493,7 @@ window.Pages.tasks = (function () {
         '<td>' + (mem
           ? '<div class="store-cell">' + UI.avatar(mem.name, mem.color, 'sm') + '<span>' + U.esc(mem.name) + '</span></div>'
           : '<span class="dim">未指派</span>') + '</td>' +
-        '<td class="nowrap">' +
+        '<td class="nowrap" title="' + U.esc(dueTip) + '">' +
           '<span class="mono ' + (late ? 'text-red' : 'muted') + '">' + U.monthDay(due) + '</span>' +
           '<span class="dim" style="font-size:10.5px;margin-left:5px">' +
             '开业前 ' + lead + ' 天 · ' + sub +
@@ -597,16 +601,23 @@ window.Pages.tasks = (function () {
     return (C.STAGES[0] || {}).key || '';
   }
 
-  /* 表单里的「建议完成」提示：门店开业日 - 该阶段建议提前天数 */
+  /* 表单里的「建议完成」提示：把倒推过程写出来，别让人猜
+     = 门店计划开业日 − 该阶段建议提前天数 */
   function dueHintHtml(t) {
     var stage = t.stage || defaultStage();
     var storeId = t.storeId || ((S.getState().stores[0] || {}).id || '');
     var lead = S.leadDaysOf({ stage: stage });
     var due = S.suggestFor(storeId, stage);
     var st = S.storeById(storeId);
-    return '建议 <b>' + U.monthDay(due) + '</b> 前完成（开业前 ' + lead + ' 天）' +
-      (st && st.openDate ? '　·　' + U.esc(st.name) + ' 计划 ' + U.monthDay(st.openDate) + ' 开业' : '') +
-      '<br /><span style="font-size:11px">距开业不足 ' + lead + ' 天还没做完，就会自动标成逾期；开业日改了这里跟着变。</span>';
+
+    if (!st || !st.openDate) {
+      return '这家门店还没填<b>计划开业日</b>，暂时按今天 +7 天兜底。' +
+        '<br /><span style="font-size:11px">填了开业日之后，这里会自动倒推，不用手填日期。</span>';
+    }
+    return '倒推：<b>' + U.esc(st.name) + '</b> 计划 <b>' + U.monthDay(st.openDate) + '</b> 开业' +
+      ' − 该阶段建议提前 <b>' + lead + '</b> 天 = 建议 <b>' + U.monthDay(due) + '</b> 前完成' +
+      '<br /><span style="font-size:11px">过了 ' + U.monthDay(due) + ' 还没做完，就自动标成逾期；' +
+      '开业日一改，这里跟着变。</span>';
   }
 
   function formHtml(task) {

@@ -491,11 +491,61 @@ window.Store = (function () {
      门店开业日一改，所有任务的建议完成日自动跟着挪，不用逐条改。
      ------------------------------------------------------------------ */
 
+  /* 当前生效的「提前天数表」= 出厂默认 + 设置里改过的（设置里改的优先） */
+  function leadDaysMap() {
+    var out = {};
+    var base = C.LEAD_DAYS || {};
+    Object.keys(base).forEach(function (k) { out[k] = Number(base[k]); });
+    var own = (state && state.settings && state.settings.leadDays) || {};
+    Object.keys(own).forEach(function (k) {
+      var n = Number(own[k]);
+      if (own[k] !== '' && own[k] != null && !isNaN(n)) out[k] = n;
+    });
+    return out;
+  }
+
+  /* 一个阶段开业前多少天该做完：
+     1) 设置里改过的 / 出厂表里精确同名 → 直接用
+     2) 阶段名改过（「图纸设计」「量房出图」）→ 按 C.LEAD_KEYWORDS 关键词兜底
+     3) 都对不上 → LEAD_DAYS_DEFAULT */
   function leadDaysOf(task) {
-    var map = C.LEAD_DAYS || {};
     var base = C.stageSplit(task && task.stage).base;
-    if (map[base] != null) return Number(map[base]);
+    var map = leadDaysMap();
+    if (base && map[base] != null) return Number(map[base]);
+
+    var kw = C.LEAD_KEYWORDS || [];
+    for (var i = 0; i < kw.length; i++) {
+      if (base && base.indexOf(kw[i][0]) >= 0) return Number(kw[i][1]);
+    }
     return Number(C.LEAD_DAYS_DEFAULT || 30);
+  }
+
+  /* 设置里改提前天数：存进 settings.leadDays，并把所有任务的建议完成日
+     按新口径重算一遍（不然表里还是旧日期）。支持一次改多个阶段。 */
+  function saveLeadDays(map) {
+    var own = (state && state.settings && state.settings.leadDays) || {};
+    var hit = 0;
+    Object.keys(map || {}).forEach(function (k) {
+      var n = Math.round(Number(map[k]));
+      if (!k || isNaN(n) || n < 0) return;
+      own[k] = n;
+      hit += 1;
+    });
+    if (!hit) return 0;
+
+    state.settings = state.settings || {};
+    state.settings.leadDays = own;
+    pushSettings();
+    cacheLocal();
+    resyncTaskDates('');      /* 空 = 全部门店的任务都重算 */
+    return hit;
+  }
+
+  function setLeadDays(stageKey, days) {
+    var one = {};
+    one[stageKey] = days;
+    saveLeadDays(one);
+    return leadDaysOf({ stage: stageKey });
   }
 
   function storeOpenDate(task) {
@@ -882,12 +932,13 @@ window.Store = (function () {
     return t;
   }
 
-  /* 门店开业日改了：这家店所有任务的截止日跟着挪（建议完成日 = 开业日 - 提前天数） */
+  /* 门店开业日改了：这家店所有任务的截止日跟着挪（建议完成日 = 开业日 - 提前天数）
+     storeId 传空 = 全量重算（改了提前天数口径时用） */
   function resyncTaskDates(storeId) {
     var changed = [];
     state.tasks.forEach(function (t) {
-      if (t.storeId !== storeId) return;
-      var due = suggestFor(storeId, t.stage);
+      if (storeId && t.storeId !== storeId) return;
+      var due = suggestFor(t.storeId, t.stage);   /* 用任务自己的门店，别用入参（入参可能是空=全量） */
       if (due && t.dueDate !== due) { t.dueDate = due; changed.push(t); }
     });
     if (changed.length) {
@@ -1581,6 +1632,9 @@ window.Store = (function () {
     progressStages: progressStages,
     progressPlan: progressPlan,
     leadDaysOf: leadDaysOf,
+    leadDaysMap: leadDaysMap,
+    setLeadDays: setLeadDays,
+    saveLeadDays: saveLeadDays,
     suggestDateOf: suggestDateOf,
     daysLeftOf: daysLeftOf,
     suggestFor: suggestFor,
