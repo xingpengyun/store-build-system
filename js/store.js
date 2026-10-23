@@ -1185,6 +1185,19 @@ window.Store = (function () {
       cacheLocal();
     }
 
+    /* 4) 门店自己记着的那一支：跟着改名，不然会留个查不到的旧名字 */
+    var sMap = storeSubs();
+    var sDirty = false;
+    Object.keys(sMap).forEach(function (sid) {
+      if (sMap[sid] !== from) return;
+      var st = storeById(sid);
+      if (st && C.stageSplit(st.stage).base !== base) return;
+      sMap[sid] = to;
+      sDirty = true;
+      hit++;
+    });
+    if (sDirty) setSetting('storeSubs', sMap);
+
     return hit;
   }
 
@@ -1224,6 +1237,19 @@ window.Store = (function () {
       pushMany('tasks', changed);
       cacheLocal();
     }
+
+    /* 门店自己记着的这一支被删掉了 → 一起清掉，别留个不存在的二级 */
+    var sMap = storeSubs();
+    var sDirty = false;
+    Object.keys(sMap).forEach(function (sid) {
+      if (sMap[sid] !== name) return;
+      var st = storeById(sid);
+      if (st && C.stageSplit(st.stage).base !== base) return;
+      delete sMap[sid];
+      sDirty = true;
+      hit++;
+    });
+    if (sDirty) setSetting('storeSubs', sMap);
 
     return hit;
   }

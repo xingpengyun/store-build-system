@@ -71,7 +71,7 @@ window.Pages.home = (function () {
         '<td class="muted">' + U.esc(store.province) + '</td>' +
         '<td class="muted mono">' + store.openDate + '</td>' +
         '<td>' + UI.progress(S.storeProgress(store).pct, null, S.progressTip(store)) + '</td>' +
-        '<td>' + UI.stageBadge(store.stage) + '</td>' +
+        '<td>' + UI.stageBadge(store.stage, S.storeSub(store)) + '</td>' +
         '<td>' + UI.riskBadge(store.risk) + '</td>' +
         '<td>' + (owner ? '<div class="store-cell">' + UI.avatar(owner.name, owner.color, 'sm') +
           '<span>' + U.esc(owner.name) + '</span></div>' : '<span class="dim">未指派</span>') + '</td>' +

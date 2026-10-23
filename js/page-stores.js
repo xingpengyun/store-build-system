@@ -57,7 +57,7 @@ window.Pages.stores = (function () {
         '<td class="muted">' + U.esc(store.province || '—') + '</td>' +
         '<td class="muted mono">' + store.openDate + '</td>' +
         '<td>' + UI.progress(S.storeProgress(store).pct, null, S.progressTip(store)) + '</td>' +
-        '<td>' + UI.stageBadge(store.stage) + '</td>' +
+        '<td>' + UI.stageBadge(store.stage, S.storeSub(store)) + '</td>' +
         '<td>' + UI.riskBadge(store.risk) + '</td>' +
         '<td>' + (owner
           ? '<div class="store-cell">' + UI.avatar(owner.name, owner.color, 'sm') + '<span>' + U.esc(owner.name) + '</span></div>'
@@ -312,7 +312,7 @@ window.Pages.stores = (function () {
 
     var body =
       '<div class="desc-list">' +
-        '<div class="d-item"><div class="d-label">当前阶段</div><div class="d-val">' + UI.stageBadge(store.stage) + '</div></div>' +
+        '<div class="d-item"><div class="d-label">当前阶段</div><div class="d-val">' + UI.stageBadge(store.stage, S.storeSub(store)) + '</div></div>' +
         '<div class="d-item"><div class="d-label">风险等级</div><div class="d-val">' + UI.riskBadge(store.risk) + '</div></div>' +
         '<div class="d-item"><div class="d-label">省份</div><div class="d-val">' + U.esc(store.province || '—') + '</div></div>' +
         '<div class="d-item"><div class="d-label">负责人</div><div class="d-val">' + U.esc(owner ? owner.name : '未指派') + '</div></div>' +

@@ -52,13 +52,17 @@ window.UI = (function () {
   }
 
   /* 阶段徽章：支持一级 + 二级（"施工/装修 / 水电" → 施工/装修 · 水电，配色跟一级） */
-  function stageBadge(key) {
+  /* sub 可选：门店自己推到了二级时（已出图 · 已做首批）跟在阶段后面显示 */
+  function stageBadge(key, sub) {
     var p = C.stageSplit(key);
     var s = C.stageDef(key);
     var label = C.stageLabel(key);
-    if (!s) return '<span class="badge">' + U.esc(label || key) + '</span>';
-    return '<span class="badge" title="' + U.esc(label) + '" style="color:' + s.color + ';background:' + s.soft + '">' +
+    var html;
+    if (!s) html = '<span class="badge">' + U.esc(label || key) + '</span>';
+    else html = '<span class="badge" title="' + U.esc(label) + '" style="color:' + s.color + ';background:' + s.soft + '">' +
       U.esc(label) + '</span>';
+    if (sub) html += '<span class="badge badge-sub">' + U.esc(sub) + '</span>';
+    return html;
   }
 
   function statusBadge(key) {

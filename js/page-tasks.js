@@ -61,7 +61,10 @@ window.Pages.tasks = (function () {
     return S.getState().stores.filter(function (st) {
       if (state.stage && st.stage !== state.stage) return false;
       if (state.sub) {
-        var hitSub = tasksOf(st.id).some(function (t) { return C.stageSplit(t.stage).sub === state.sub; });
+        /* 二级有两个来源：门店自己推到了这一支（推送时选的），
+           或者这家店有任务挂在这个二级下。两个都算命中。 */
+        var hitSub = S.storeSub(st) === state.sub ||
+          tasksOf(st.id).some(function (t) { return C.stageSplit(t.stage).sub === state.sub; });
         if (!hitSub) return false;
       }
       if (state.owner) {
@@ -203,15 +206,14 @@ window.Pages.tasks = (function () {
           var m = statOfSub(ids, st.key, sub);
           var subOn = state.sub === sub;
           var tplN = tpl.byStage[C.stageValue(st.key, sub)] || 0;
+          /* 门店自己推到了这一支的，也算这个二级下的门店 */
+          var subStores = list.filter(function (x) { return S.storeSub(x) === sub; }).length;
 
-          var right;
-          if (m.open) {
-            right = '待办 ' + m.open + (m.late ? ' · <b>逾期' + m.late + '</b>' : '');
-          } else if (tplN) {
-            right = '<span class="tl-tpl">清单 ' + tplN + ' 条</span>';
-          } else {
-            right = '—';
-          }
+          var bits = [];
+          if (subStores) bits.push(subStores + ' 家');
+          if (m.open) bits.push('待办 ' + m.open + (m.late ? ' · <b>逾期' + m.late + '</b>' : ''));
+          else if (tplN) bits.push('<span class="tl-tpl">清单 ' + tplN + ' 条</span>');
+          var right = bits.length ? bits.join(' · ') : '—';
 
           return '<div class="tl-sub' + (subOn ? ' on' : '') + '" data-sub="' + U.esc(sub) +
               '" data-base="' + U.esc(st.key) + '"' +
@@ -443,10 +445,14 @@ window.Pages.tasks = (function () {
 
   /* ---------------- 右侧：门店列表（点开看任务） ---------------- */
 
-  /* 这家店要展开的任务：受二级 / 负责人筛选影响，未完成的排前面 */
+  /* 这家店要展开的任务：受二级 / 负责人筛选影响，未完成的排前面
+     门店本身就是靠「自己推到了这一支」命中二级时，就不再按任务的二级过滤，
+     否则点了「未做首批」这家店展开会显示 0 条任务，看着像空的。 */
   function tasksForRow(storeId) {
+    var store = S.storeById(storeId);
+    var byStoreSub = !!(store && state.sub && S.storeSub(store) === state.sub);
     return tasksOf(storeId).filter(function (t) {
-      if (state.sub && C.stageSplit(t.stage).sub !== state.sub) return false;
+      if (state.sub && !byStoreSub && C.stageSplit(t.stage).sub !== state.sub) return false;
       if (state.owner && t.assigneeId !== state.owner) return false;
       return true;
     }).sort(function (a, b) {
