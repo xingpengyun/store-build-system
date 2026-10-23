@@ -1656,25 +1656,22 @@
   gap: 14px;
   align-items: start;
 }
-/* 左栏跟着视口高度走：阶段多也不会把卡片撑爆，底部提示始终贴住底边 */
+/* 左栏跟着视口高度走：至少铺满一屏，内容更多时整张卡片继续变长，
+   绝不出现「文字被卡片边缘切掉」的情况（高度只增不减） */
 .tk-rail {
   position: sticky;
   top: 74px;
   display: flex;
   flex-direction: column;
-  padding: 16px 13px 13px;
-  height: calc(100vh - 92px);
-  min-height: 420px;
+  padding: 16px 13px 14px;
+  height: auto;
+  min-height: max(420px, calc(100vh - 92px));
 }
 .tk-rail .card-head { margin-bottom: 10px; padding: 0 2px; flex: none; }
 .tk-rail .tl-all { flex: none; }
 .tk-rail .tl-nodes {
-  flex: 0 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  flex: 0 0 auto;
   padding: 2px 1px 2px 0;
-  scrollbar-width: thin;
 }
 .tk-rail .tl-hint { flex: none; margin-top: auto; }
 .tl-hint {
@@ -1959,7 +1956,6 @@
 @media (max-width: 1180px) {
   .tk-layout { grid-template-columns: minmax(0, 1fr); }
   .tk-rail { position: static; height: auto; min-height: 0; }
-  .tk-rail .tl-nodes { overflow: visible; }
   .tl-nodes::before { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
