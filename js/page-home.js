@@ -188,9 +188,11 @@ window.Pages.home = (function () {
           (late ? '#f04438' : '#f79009') + '">' + UI.icon(late ? 'alert' : 'clock') + '</span>' +
         '<div class="focus-body">' +
           '<div class="focus-title">' + U.esc(f.store ? f.store.name : '') + ' · ' + U.esc(f.task.title) + '</div>' +
-          '<div class="focus-desc">建议 ' + U.monthDay(f.due) + ' 前完成' +
-            (late ? '（已逾期 ' + Math.abs(f.days) + ' 天）' : '（还剩 ' + f.days + ' 天）') +
-            (f.left != null ? '　·　距开业 ' + f.left + ' 天，建议提前 ' + f.lead + ' 天' : '') + '</div>' +
+          '<div class="focus-desc">' + (f.due
+            ? '建议 ' + U.monthDay(f.due) + ' 前完成' +
+              (late ? '（已逾期 ' + Math.abs(f.days) + ' 天）' : '（还剩 ' + f.days + ' 天）')
+            : '未设开业日期 · 开业前 ' + f.lead + ' 天') +
+            (f.left != null ? '　·　距开业 ' + f.left + ' 天，开业前 ' + f.lead + ' 天' : '') + '</div>' +
         '</div>' +
         '<span class="focus-owner">' + U.esc(f.owner ? f.owner.name : '未指派') + '</span>' +
       '</div>';

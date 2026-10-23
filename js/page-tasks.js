@@ -456,35 +456,43 @@ window.Pages.tasks = (function () {
       var da = a.status === 'done' ? 1 : 0;
       var db = b.status === 'done' ? 1 : 0;
       if (da !== db) return da - db;
-      var sa = S.suggestDateOf(a), sb = S.suggestDateOf(b);
+      var sa = S.suggestDateOf(a) || '9999-12-31';
+      var sb = S.suggestDateOf(b) || '9999-12-31';
       return sa < sb ? -1 : sa > sb ? 1 : 0;
     });
   }
 
-  /* 建议完成 = 门店开业日 - 该阶段建议提前天数，全是实时算的，不存死日期 */
+  /* 建议完成 = 门店开业日 − 这条任务自己的「开业前 N 天」（清单里填的那个数）
+     全国统一口径：没开业日期就不算日期，如实显示「未设开业日」 */
   function taskTableHtml(list) {
     var body = list.map(function (t) {
       var cls = S.classify(t);
       var late = cls === 'overdue';
       var due = S.suggestDateOf(t);
-      var days = U.diffDays(U.today(), due);   /* 距建议完成日 */
-      var lead = S.leadDaysOf(t);
+      var days = due ? U.diffDays(U.today(), due) : null;   /* 距建议完成日 */
+      var lead = S.taskBeforeOf(t);
       var left = S.daysLeftOf(t);              /* 距开业 */
       var mem = S.memberById(t.assigneeId);
       var stt = S.storeById(t.storeId);
-      var dueTip = stt && stt.openDate
-        ? '倒推：开业 ' + U.monthDay(stt.openDate) + ' − 提前 ' + lead + ' 天 = ' + U.monthDay(due) + ' 前完成'
-        : '门店没填开业日，按今天 +7 天兜底';
+      var dueTip = (stt && stt.openDate)
+        ? '倒推：开业 ' + U.monthDay(stt.openDate) + ' − 开业前 ' + lead + ' 天 = ' + U.monthDay(due) + ' 前完成'
+        : '这家门店还没填开业日期，填了才会自动倒推';
 
       var sub;
       if (cls === 'done') {
         sub = '已完成';
+      } else if (!due) {
+        sub = '填了开业日就自动倒推';
       } else {
         if (late) sub = '逾期 ' + Math.abs(days) + ' 天';
         else if (days === 0) sub = '今天到期';
         else sub = days + ' 天后';
         if (left != null) sub += ' · 距开业 ' + left + ' 天';
       }
+
+      var dueCell = due
+        ? '<span class="mono ' + (late ? 'text-red' : 'muted') + '">' + U.monthDay(due) + '</span>'
+        : '<span class="dim">未设开业日</span>';
 
       return '<tr>' +
         '<td><div class="sk-task-title">' + U.esc(t.title) + '</div>' +
@@ -494,7 +502,7 @@ window.Pages.tasks = (function () {
           ? '<div class="store-cell">' + UI.avatar(mem.name, mem.color, 'sm') + '<span>' + U.esc(mem.name) + '</span></div>'
           : '<span class="dim">未指派</span>') + '</td>' +
         '<td class="nowrap" title="' + U.esc(dueTip) + '">' +
-          '<span class="mono ' + (late ? 'text-red' : 'muted') + '">' + U.monthDay(due) + '</span>' +
+          dueCell +
           '<span class="dim" style="font-size:10.5px;margin-left:5px">' +
             '开业前 ' + lead + ' 天 · ' + sub +
           '</span></td>' +
@@ -602,28 +610,34 @@ window.Pages.tasks = (function () {
   }
 
   /* 表单里的「建议完成」提示：把倒推过程写出来，别让人猜
-     = 门店计划开业日 − 该阶段建议提前天数 */
+     = 门店计划开业日 − 这条任务的「开业前 N 天」 */
   function dueHintHtml(t) {
     var stage = t.stage || defaultStage();
     var storeId = t.storeId || ((S.getState().stores[0] || {}).id || '');
-    var lead = S.leadDaysOf({ stage: stage });
-    var due = S.suggestFor(storeId, stage);
+    var before = (t.before != null && t.before !== '' && !isNaN(Number(t.before)))
+      ? Number(t.before)
+      : (S.beforeFromTemplates(t.title) != null ? S.beforeFromTemplates(t.title) : S.leadDaysOf({ stage: stage }));
+    var due = S.suggestFor(storeId, stage, before);
     var st = S.storeById(storeId);
 
     if (!st || !st.openDate) {
-      return '这家门店还没填<b>计划开业日</b>，暂时按今天 +7 天兜底。' +
-        '<br /><span style="font-size:11px">填了开业日之后，这里会自动倒推，不用手填日期。</span>';
+      return '这家门店还没填<b>计划开业日</b>，所以先不显示日期，只记「开业前 ' + before + ' 天」。' +
+        '<br /><span style="font-size:11px">去门店资料里把开业日期填上，这里立刻按日期倒推。</span>';
     }
     return '倒推：<b>' + U.esc(st.name) + '</b> 计划 <b>' + U.monthDay(st.openDate) + '</b> 开业' +
-      ' − 该阶段建议提前 <b>' + lead + '</b> 天 = 建议 <b>' + U.monthDay(due) + '</b> 前完成' +
-      '<br /><span style="font-size:11px">过了 ' + U.monthDay(due) + ' 还没做完，就自动标成逾期；' +
-      '开业日一改，这里跟着变。</span>';
+      ' − 开业前 <b>' + before + '</b> 天 = 建议 <b>' + U.monthDay(due) + '</b> 前完成' +
+      '<br /><span style="font-size:11px">过了 ' + U.monthDay(due) + ' 还没做完就自动标逾期；' +
+      '开业日或这个天数一改，这里跟着变。</span>';
   }
 
   function formHtml(task) {
     var isNew = !task;
     var t = task || {};
     var stores = S.getState().stores;
+    /* 「开业前 N 天」的初值：任务自己调过的 → 清单里同名的 → 阶段默认 */
+    var beforeVal = S.taskBeforeOf({
+      id: t.id, title: t.title, stage: t.stage || defaultStage(), before: t.before
+    });
 
     return '<form autocomplete="off">' +
       '<div class="field"><label>任务名称 <span class="req">*</span></label>' +
@@ -641,9 +655,12 @@ window.Pages.tasks = (function () {
         '<div class="field"><label>负责人</label>' +
           '<select class="select" name="assigneeId">' + UI.options(S.getState().members, t.assigneeId || '', 'id', 'name') + '</select>' +
         '</div>' +
-        '<div class="field"><label>建议完成 <span class="dim">（开业日往前推，自动算）</span></label>' +
-          '<div class="push-none-tip" data-due-hint>' + dueHintHtml(t) + '</div>' +
+        '<div class="field"><label>开业前（天） <span class="dim">（清单里那列的默认值）</span></label>' +
+          '<input class="input" type="number" min="0" max="365" step="1" name="before" value="' + beforeVal + '" />' +
         '</div>' +
+      '</div>' +
+      '<div class="field"><label>建议完成 <span class="dim">（开业日 − 上面的天数，自动算）</span></label>' +
+        '<div class="push-none-tip" data-due-hint>' + dueHintHtml(t) + '</div>' +
       '</div>' +
       '<div class="field-row">' +
         '<div class="field"><label>状态</label>' +
@@ -682,17 +699,23 @@ window.Pages.tasks = (function () {
       onMount: function (rootEl, close) {
         rootEl.querySelector('[data-act="cancel"]').onclick = close;
 
-        /* 改门店 / 改阶段，建议完成日即时重算 */
+        /* 改门店 / 阶段 / 开业前天数，建议完成日即时重算 */
         var hint = rootEl.querySelector('[data-due-hint]');
         function repaintHint() {
+          var bv = UI.formValue(rootEl, 'before');
           hint.innerHTML = dueHintHtml({
             stage: UI.formValue(rootEl, 'stage'),
-            storeId: UI.formValue(rootEl, 'storeId')
+            storeId: UI.formValue(rootEl, 'storeId'),
+            title: UI.formValue(rootEl, 'title'),
+            before: bv === '' ? null : bv
           });
         }
-        ['storeId', 'stage'].forEach(function (name) {
+        ['storeId', 'stage', 'before', 'title'].forEach(function (name) {
           var el = rootEl.querySelector('[name="' + name + '"]');
-          if (el) el.addEventListener('change', repaintHint);
+          if (el) {
+            el.addEventListener('change', repaintHint);
+            el.addEventListener('input', repaintHint);
+          }
         });
 
         rootEl.querySelector('[data-act="save"]').onclick = function () {
@@ -706,6 +729,7 @@ window.Pages.tasks = (function () {
             storeId: UI.formValue(rootEl, 'storeId'),
             stage: UI.formValue(rootEl, 'stage'),
             assigneeId: UI.formValue(rootEl, 'assigneeId'),
+            before: Math.max(0, Number(UI.formValue(rootEl, 'before')) || 0),
             status: UI.formValue(rootEl, 'status'),
             priority: UI.formValue(rootEl, 'priority'),
             remark: UI.formValue(rootEl, 'remark')

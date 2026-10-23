@@ -55,7 +55,7 @@ window.Pages.stores = (function () {
           '<span class="store-name" data-act="view" data-id="' + store.id + '">' + U.esc(store.name) + '</span>' +
         '</div></td>' +
         '<td class="muted">' + U.esc(store.province || '—') + '</td>' +
-        '<td class="muted mono">' + store.openDate + '</td>' +
+        '<td class="muted mono">' + (store.openDate || '<span class="dim">未定</span>') + '</td>' +
         '<td>' + UI.progress(S.storeProgress(store).pct, null, S.progressTip(store)) + '</td>' +
         '<td>' + UI.stageBadge(store.stage, S.storeSub(store)) + '</td>' +
         '<td>' + UI.riskBadge(store.risk) + '</td>' +
@@ -103,8 +103,9 @@ window.Pages.stores = (function () {
             placeholder: '打一个字，如「广」'
           }) +
         '</div>' +
-        '<div class="field"><label>计划开业日期 <span class="req">*</span></label>' +
-          '<input class="input" type="date" name="openDate" value="' + (s.openDate || U.addDays(U.today(), 30)) + '" />' +
+        '<div class="field"><label>计划开业日期 <span class="dim">（没定可以先空着）</span></label>' +
+          '<input class="input" type="date" name="openDate" value="' + (s.openDate || '') + '" />' +
+          '<div class="dim" style="font-size:11px;margin-top:4px">填了才能倒推任务日期；空着时清单只显示「开业前 N 天」，不判逾期。</div>' +
         '</div>' +
       '</div>' +
       '<div class="field-row">' +
@@ -300,11 +301,14 @@ window.Pages.stores = (function () {
     var taskRows = tasks.map(function (t) {
       var cls = S.classify(t);
       var m = S.memberById(t.assigneeId);
+      var due = S.suggestDateOf(t);
       return '<tr>' +
         '<td>' + U.esc(t.title) + '</td>' +
         '<td>' + UI.stageBadge(t.stage) + '</td>' +
         '<td class="muted">' + U.esc(m ? m.name : '未指派') + '</td>' +
-        '<td class="mono muted">' + U.monthDay(S.suggestDateOf(t)) + '</td>' +
+        '<td class="mono muted">' + (due
+          ? U.monthDay(due)
+          : '<span class="dim">开业前 ' + S.taskBeforeOf(t) + ' 天</span>') + '</td>' +
         '<td>' + UI.statusBadge(cls) + '</td>' +
       '</tr>';
     }).join('');
@@ -320,8 +324,10 @@ window.Pages.stores = (function () {
         '<div class="d-item"><div class="d-label">风险等级</div><div class="d-val">' + UI.riskBadge(store.risk) + '</div></div>' +
         '<div class="d-item"><div class="d-label">省份</div><div class="d-val">' + U.esc(store.province || '—') + '</div></div>' +
         '<div class="d-item"><div class="d-label">负责人</div><div class="d-val">' + U.esc(owner ? owner.name : '未指派') + '</div></div>' +
-        '<div class="d-item"><div class="d-label">计划开业</div><div class="d-val mono">' + store.openDate +
-          ' <span class="dim" style="font-weight:400">（' + (days >= 0 ? '还剩 ' + days + ' 天' : '已过 ' + (-days) + ' 天') + '）</span></div></div>' +
+        '<div class="d-item"><div class="d-label">计划开业</div><div class="d-val mono">' + (store.openDate
+          ? store.openDate + ' <span class="dim" style="font-weight:400">（' +
+            (days >= 0 ? '还剩 ' + days + ' 天' : '已过 ' + (-days) + ' 天') + '）</span>'
+          : '<span class="dim">未设置（任务只按「开业前 N 天」计，不算逾期）</span>') + '</div></div>' +
         '<div class="d-item"><div class="d-label">阶段进度</div><div class="d-val">' +
           UI.progress(pr.pct, null, S.progressTip(store)) +
           '<span class="dim" style="font-weight:400;margin-left:8px">' +

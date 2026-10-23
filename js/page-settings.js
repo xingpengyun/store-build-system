@@ -78,14 +78,17 @@ window.Pages.settings = (function () {
 
     '<div class="card fade-up" style="animation-delay:.065s">' +
       '<div class="card-head"><h3>逾期倒推口径</h3>' +
-        '<span class="card-sub">建议完成日 = 门店计划开业日 − 这里的提前天数</span></div>' +
+        '<span class="card-sub">任务没单独设「开业前(天)」时，用这里的阶段默认值</span></div>' +
       '<div class="lead-grid">' + leadRows() + '</div>' +
       '<div class="lead-foot">' +
-        '<button class="btn btn-primary" type="button" data-act="saveLead">保存提前天数</button>' +
-        '<span class="lead-foot-tip">保存后，所有门店的任务日期立刻按新口径重算</span>' +
+        '<button class="btn btn-primary" type="button" data-act="saveLead">保存阶段默认天数</button>' +
+        '<span class="lead-foot-tip">保存后，没单独设过天数的任务立刻按新值重算</span>' +
       '</div>' +
-      '<p class="item-hint">例：门店 11 月 15 日开业、图纸建议提前 45 天 → 10 月 1 日前必须出图；' +
-        '过了 10 月 1 日还没做完，这条任务就自动标成逾期。阶段名改过也没关系，会按关键词自动对上。</p>' +
+      '<p class="item-hint">' +
+        '倒推优先级：<b>筹建任务清单里每条任务的「开业前(天)」</b> → 这里的阶段默认值。' +
+        '建议完成日 = 门店计划开业日 − 开业前 N 天；门店没填开业日期时不算日期、也不判逾期。' +
+        '<br />例：门店 11 月 15 日开业、清单里「设计是否出图」填 30 天 → 10 月 16 日前必须出图；' +
+        '过了 10 月 16 日还没做完，这条任务就自动标成逾期。</p>' +
     '</div>' +
 
     '<div class="card fade-up" style="animation-delay:.08s">' +

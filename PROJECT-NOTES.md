@@ -52,26 +52,32 @@
 - 带二级的阶段值（`已出图 / 未做首批`）按一级阶段算
 - 入口：`js/store.js` → `storeProgress()`（`pct / idx / total / at / ended / isEnd / label`）、`progressTip()`、`progressStages()`、`isEndStage()`
 
-## 2026-10-23 逾期口径：跟着门店开业日走，不手填截止日期
+## 2026-10-23 逾期口径：开业日 − 这条任务的「开业前 N 天」（以筹建任务清单为准）
 
-- 每个阶段有「建议提前天数」`CONST.LEAD_DAYS`（如 广告物料 10、发货阶段 12、准备开业 4），没配的按 `LEAD_DAYS_DEFAULT`（30）
-- **建议完成日 = 门店计划开业日 − 提前天数**；**距开业天数 < 提前天数 且没完成 → 逾期**
-  - 例：门店 11-30 开业、广告物料提前 10 天 → 11-20 前要发出去；今天 11-21（剩 9 天）算逾期，今天 11-20 不算
-  - 例：门店 11-15 开业、图纸（已出图）提前 45 天 → **10-01 前要出图**；今天 10-23 已过 10-01，没做完就是逾期
-- **提前天数可在「系统设置 → 逾期倒推口径」里按阶段改**，存 `settings.leadDays = { 阶段名: 天数 }`（优先级高于出厂表），
-  保存后 `saveLeadDays()` 会 `resyncTaskDates('')` 全量重算所有任务日期
+- **建议完成日 = 门店计划开业日 − 这条任务的开业前 N 天**；**今天 > 建议完成日 且没完成 → 逾期**
+  - 例：aaa 店 11-15 开业，清单里「设计是否出图」填 30 天 → **10-16 前要出图**；今天 10-23 已过 10-16，没做完就是逾期
+  - 例：同一家店「已发送广告物料」填 7 天 → 11-08 前；今天还没到，不算逾期
+- **N 的来源（`taskBeforeOf()`，全系统唯一口径）**：
+  1. `settings.taskBefore[任务id]` —— 这条任务单独调过（任务表单里的「开业前（天）」）
+  2. 任务对象上的 `before`（老数据）
+  3. 按标题去筹建任务清单 `settings.taskTemplates` 里找同名项的 `before`
+  4. 阶段默认值（`CONST.LEAD_DAYS`，设置页「逾期倒推口径」可改 → `settings.leadDays`）
+- **门店没填开业日期 → 不编日期、不判逾期**：`suggestDateOf()` 返回空，`dueDate` 也留空，
+  任务表显示「未设开业日 / 开业前 30 天 · 填了开业日就自动倒推」；补上开业日立刻按日期倒推
+- 门店开业日一改（含清空）→ 这家店所有任务日期重算（`resyncTaskDates`）；改阶段默认天数 → 全量重算
+- 派发任务时把清单里的 `before` 写进 `settings.taskBefore`（云端 tasks 表没这一列，不改表结构）；
+  之后改清单只影响新派发的任务，已有任务的天数不会被动
+- 改阶段时：任务自己的天数是「自己定死的」就不动，原本跟着阶段默认走的才按新阶段重算
 - 阶段名被改过（「图纸设计」「主体施工」）时按 `CONST.LEAD_KEYWORDS` 关键词兜底，避免掉到默认 30 天；
-  关键词表有序，长词在前（「广告物料」先于「物料」），否则提前天数会被算小
-- 门店开业日一改，这家店所有任务截止日自动重算（`resyncTaskDates`）
+  关键词表有序，长词在前（「广告物料」先于「物料」）
 - 任务状态只有两类：未完成 / 已完成（「进行中」废弃，历史值读成未完成）
 - 筹建清单的筛选只剩 全部 / 逾期 / 风险 / 已完成；任务表列名改为「建议完成」，显示「建议日期 + 开业前 N 天 · 距开业 X 天」
-- 门店没填开业日时退回任务自己的 dueDate 判断（兼容老数据）
-- 入口：`js/store.js` → `leadDaysOf / suggestDateOf / daysLeftOf / suggestFor / classify`
+- 入口：`js/store.js` → `taskBeforeOf / suggestDateOf / daysLeftOf / suggestFor / classify / setTaskBefore / saveLeadDays`
 
 ## 数据模型要点
 - 门店 `stage` 只能取 `CONST.STAGES` 的 key；`risk` 只能取 `CONST.RISKS` 的 key
 - 任务 `status` 只有 `pending` / `doing` / `done` 三种
-- **「已逾期」是派生状态**（门店有开业日时：`今天 > 开业日 − 提前天数`；没开业日才退回 `dueDate < 今天`），不落库，由 `Store.classify()` 算
+- **「已逾期」是派生状态**（门店有开业日时：`今天 > 开业日 − 任务的开业前 N 天`；没开业日不判逾期），不落库，由 `Store.classify()` 算
 - `classify()` 返回五种：`done` / `doing` / `pending` / `overdue` / `risk`
 - 「风险」= 所属门店 risk 为 high/overdue，且任务未完成
 

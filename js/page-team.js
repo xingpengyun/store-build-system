@@ -50,10 +50,13 @@ window.Pages.team = (function () {
 
     var rows = tasks.map(function (t) {
       var store = S.storeById(t.storeId);
+      var due = S.suggestDateOf(t);
       return '<tr>' +
         '<td>' + U.esc(t.title) + '</td>' +
         '<td class="muted">' + U.esc(store ? store.name : '—') + '</td>' +
-        '<td class="mono muted">' + U.monthDay(S.suggestDateOf(t)) + '</td>' +
+        '<td class="mono muted">' + (due
+          ? U.monthDay(due)
+          : '<span class="dim">开业前 ' + S.taskBeforeOf(t) + ' 天</span>') + '</td>' +
         '<td>' + UI.statusBadge(S.classify(t)) + '</td>' +
       '</tr>';
     }).join('');

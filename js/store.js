@@ -482,16 +482,17 @@ window.Store = (function () {
     return null;
   }
 
-  /* ---------------- 建议完成日：跟着门店开业日走，不手填 ----------------
-     每个阶段有「建议提前 N 天」（C.LEAD_DAYS）：
-       建议完成日 = 门店计划开业日 - N
-       距开业天数 < N 且任务还没完成 → 逾期
-     例：11-30 开业、广告物料建议提前 10 天 → 11-20 前要发出去；
-         今天 11-21（距开业只剩 9 天）→ 逾期 1 天；今天 11-20 → 还没逾期。
-     门店开业日一改，所有任务的建议完成日自动跟着挪，不用逐条改。
+  /* ---------------- 建议完成日：门店开业日 − 这条任务自己的「开业前 N 天」 ----------------
+     天数从哪来（优先级从高到低）：
+       1) 任务自己带的 before —— 就是「筹建任务清单」里那一列「开业前(天)」，
+          派发 / 新建任务时写进任务，之后单独调也不影响别人
+       2) 任务没带（老数据）：按标题去筹建任务清单里找同名项，用清单里的 before
+       3) 还没有：用阶段默认值（设置页「逾期倒推口径」可改，出厂表在 C.LEAD_DAYS）
+     门店没填开业日 → 没有建议完成日（返回 ''），也不判逾期，
+     界面上如实显示「未设置开业日期 · 开业前 N 天」，绝不自己编一个日期。
      ------------------------------------------------------------------ */
 
-  /* 当前生效的「提前天数表」= 出厂默认 + 设置里改过的（设置里改的优先） */
+  /* 当前生效的「阶段默认提前天数表」= 出厂默认 + 设置里改过的（设置里改的优先） */
   function leadDaysMap() {
     var out = {};
     var base = C.LEAD_DAYS || {};
@@ -504,7 +505,7 @@ window.Store = (function () {
     return out;
   }
 
-  /* 一个阶段开业前多少天该做完：
+  /* 阶段默认的天数（任务没单独设时才用）：
      1) 设置里改过的 / 出厂表里精确同名 → 直接用
      2) 阶段名改过（「图纸设计」「量房出图」）→ 按 C.LEAD_KEYWORDS 关键词兜底
      3) 都对不上 → LEAD_DAYS_DEFAULT */
@@ -520,8 +521,76 @@ window.Store = (function () {
     return Number(C.LEAD_DAYS_DEFAULT || 30);
   }
 
-  /* 设置里改提前天数：存进 settings.leadDays，并把所有任务的建议完成日
-     按新口径重算一遍（不然表里还是旧日期）。支持一次改多个阶段。 */
+  /* 单条任务的「开业前 N 天」单独调过就记这儿。
+     tasks 表没这一列，放 settings 里既能跟云端同步，又不用改表结构。 */
+  function taskBeforeMap() {
+    return (state && state.settings && state.settings.taskBefore) || {};
+  }
+
+  function setTaskBefore(taskId, days) {
+    if (!taskId) return 0;
+    var n = Math.max(0, Math.round(Number(days) || 0));
+    setTaskBeforeMany([{ id: taskId, before: n }]);
+    return n;
+  }
+
+  /* 批量记（新开门店一次派几十条任务时用，避免每条都写一次设置） */
+  function setTaskBeforeMany(pairs) {
+    if (!pairs || !pairs.length) return;
+    state.settings = state.settings || {};
+    var map = taskBeforeMap();
+    pairs.forEach(function (p) {
+      if (!p || !p.id) return;
+      map[p.id] = Math.max(0, Math.round(Number(p.before) || 0));
+    });
+    state.settings.taskBefore = map;
+    pushSettings();
+    cacheLocal();
+  }
+
+  /* 按任务标题去筹建任务清单里找「开业前 N 天」 */
+  function beforeFromTemplates(title) {
+    if (!title) return null;
+    var tpls = templates();
+    for (var i = 0; i < tpls.length; i++) {
+      if (tpls[i].title === title && tpls[i].before != null) return Number(tpls[i].before);
+    }
+    return null;
+  }
+
+  /* 这条任务的天数是「自己定死的」还是「跟着阶段默认走的」
+     自己定死 = 单独调过 / 清单同名项带了 before → 改阶段时不动它的天数 */
+  function taskHasOwnBefore(task) {
+    if (!task) return false;
+    var map = taskBeforeMap();
+    if (map[task.id] != null && map[task.id] !== '') return true;
+    if (task.before != null && task.before !== '' && !isNaN(Number(task.before))) return true;
+    return beforeFromTemplates(task.title) != null;
+  }
+
+  /* 这条任务「开业前多少天」做完 —— 全系统只有这一个口径
+     1) 这条任务单独调过的（settings.taskBefore[任务id]）
+     2) 任务对象上带的 before（老数据 / 内存里）
+     3) 筹建任务清单里同名的「开业前(天)」
+     4) 阶段默认值（设置页「逾期倒推口径」） */
+  function taskBeforeOf(task) {
+    if (!task) return 0;
+
+    var map = taskBeforeMap();
+    if (map[task.id] != null && map[task.id] !== '' && !isNaN(Number(map[task.id]))) {
+      return Number(map[task.id]);
+    }
+    /* before 允许是 0（开业当天），所以不能用真值判断 */
+    if (task.before != null && task.before !== '' && !isNaN(Number(task.before))) {
+      return Number(task.before);
+    }
+    var fromTpl = beforeFromTemplates(task.title);
+    if (fromTpl != null) return fromTpl;
+    return leadDaysOf(task);
+  }
+
+  /* 设置里改阶段默认天数：存进 settings.leadDays，并把没单独设过的任务
+     建议完成日按新口径重算一遍。支持一次改多个阶段。 */
   function saveLeadDays(map) {
     var own = (state && state.settings && state.settings.leadDays) || {};
     var hit = 0;
@@ -553,12 +622,12 @@ window.Store = (function () {
     return (s && s.openDate) || '';
   }
 
-  /* 建议完成日（门店没填开业日时，退回任务自己的日期） */
+  /* 建议完成日 = 门店开业日 − 任务的开业前 N 天；门店没填开业日 → ''（不猜） */
   function suggestDateOf(task) {
     if (!task) return '';
     var od = storeOpenDate(task);
-    if (!od) return task.dueDate || '';
-    return U.addDays(od, -leadDaysOf(task));
+    if (!od) return '';
+    return U.addDays(od, -taskBeforeOf(task));
   }
 
   /* 距开业天数：正数=还没到，负数=已经过了；门店没开业日返回 null */
@@ -568,29 +637,32 @@ window.Store = (function () {
     return U.diffDays(U.today(), od);
   }
 
-  /* 给新建 / 改阶段的任务算一个默认截止日（仍然存 due_date，方便排序和云同步） */
-  function suggestFor(storeId, stage) {
+  /* 给新建 / 改阶段的任务算建议完成日并回写 due_date（方便排序和云同步）
+     before 传了就用它，没传按阶段默认；门店没开业日 → '' */
+  function suggestFor(storeId, stage, before) {
     var s = storeById(storeId);
-    if (!s || !s.openDate) return U.addDays(U.today(), 7);
-    return U.addDays(s.openDate, -leadDaysOf({ stage: stage }));
+    if (!s || !s.openDate) return '';
+    var n = (before != null && before !== '' && !isNaN(Number(before)))
+      ? Number(before)
+      : leadDaysOf({ stage: stage });
+    return U.addDays(s.openDate, -n);
   }
 
   /* 任务状态只有两类：done（已完成）/ 其他（未完成）。
-     逾期的唯一口径 = 距开业不足该阶段的建议提前天数且没完成。 */
+     逾期 = 今天已过「开业日 − 开业前 N 天」且没完成。
+     门店没填开业日 → 无从倒推，一律按未完成算，不硬判逾期。 */
   function classify(task) {
-    var t0 = U.today();
     if (task.status === 'done') return 'done';
 
     var left = daysLeftOf(task);
     if (left != null) {
-      if (left < leadDaysOf(task)) return 'overdue';
+      if (left < taskBeforeOf(task)) return 'overdue';
       var s2 = storeById(task.storeId);
       if (s2 && (s2.risk === 'high' || s2.risk === 'overdue')) return 'risk';
       return 'pending';
     }
 
-    /* 门店没填开业日：退回任务自己的截止日期 */
-    if (task.dueDate && task.dueDate < t0) return 'overdue';
+    /* 门店没填开业日：没有倒推基准，不硬判逾期 */
     var s = storeById(task.storeId);
     if (s && (s.risk === 'high' || s.risk === 'overdue')) return 'risk';
     return 'pending';
@@ -676,10 +748,10 @@ window.Store = (function () {
       focus.push({
         task: t, store: s, late: c === 'overdue',
         owner: memberById(t.assigneeId),
-        due: suggestDateOf(t),        /* 建议完成日 */
+        due: suggestDateOf(t),        /* 建议完成日（没开业日时为空） */
         days: U.diffDays(t0, suggestDateOf(t)),  /* 距建议完成日 */
         left: daysLeftOf(t),          /* 距开业天数 */
-        lead: leadDaysOf(t)           /* 建议提前天数 */
+        lead: taskBeforeOf(t)         /* 这条任务的开业前天数 */
       });
     });
     focus.sort(function (a, b) {
@@ -727,25 +799,26 @@ window.Store = (function () {
       var owner = memberById(t.assigneeId);
       var c = classify(t);
       var due = suggestDateOf(t);
-      var d = U.diffDays(t0, due);
-      var lead = leadDaysOf(t);
+      var lead = taskBeforeOf(t);
       var left = daysLeftOf(t);
+
+      /* 没有建议完成日（门店没填开业日）就不发到期提醒，别编日期吓人 */
+      if (!due) return;
+      var d = U.diffDays(t0, due);
 
       if (c === 'overdue') {
         addAlert({
           id: 'late-' + t.id, level: 'high', type: '任务逾期',
           title: storeName + ' · ' + t.title,
-          desc: (left == null
-            ? '已逾期 ' + Math.abs(d) + ' 天（建议 ' + U.monthDay(due) + ' 完成）'
-            : '距开业只剩 ' + left + ' 天，建议提前 ' + lead + ' 天完成，已逾期 ' +
-              Math.abs(d) + ' 天（建议 ' + U.monthDay(due) + ' 前做完）'),
+          desc: '距开业只剩 ' + left + ' 天，建议开业前 ' + lead + ' 天做完，已逾期 ' +
+            Math.abs(d) + ' 天（建议 ' + U.monthDay(due) + ' 前做完）',
           owner: owner ? owner.name : '未指派', storeId: t.storeId, taskId: t.id
         });
       } else if (d >= 0 && d <= warnDays) {
         addAlert({
           id: 'soon-' + t.id, level: 'warn', type: '即将到期',
           title: storeName + ' · ' + t.title,
-          desc: '还有 ' + d + ' 天就到建议完成日（' + U.monthDay(due) + '，建议提前 ' + lead + ' 天）',
+          desc: '还有 ' + d + ' 天就到建议完成日（' + U.monthDay(due) + '，开业前 ' + lead + ' 天）',
           owner: owner ? owner.name : '未指派', storeId: t.storeId, taskId: t.id
         });
       }
@@ -811,7 +884,8 @@ window.Store = (function () {
          显示用的百分比统一由 storeProgress() 按「阶段时间线」现算 */
       progress: U.clamp(Number(data.progress) || 0, 0, 100),
       ownerId: data.ownerId || (state.members[0] || {}).id,
-      openDate: data.openDate || U.addDays(t0, 30),
+      /* 开业日允许空：没定就先不填，任务只显示「开业前 N 天」，不硬算日期 */
+      openDate: data.openDate || '',
       address: data.address || '',
       remark: data.remark || '',
       createdAt: t0
@@ -824,10 +898,11 @@ window.Store = (function () {
       var roleToId = {};
       state.members.forEach(function (m) { roleToId[m.role] = m.id; });
       var created = [];
-      tpls.forEach(function (tpl, i) {
-        /* 截止日 = 开业日往前推 tpl.before 天；推出去了就顺延到近期 */
-        var due = U.addDays(store.openDate, -(Number(tpl.before) || (i + 1) * 7));
-        if (!due || due < t0) due = U.addDays(t0, 2 + i * 3);
+      var beforePairs = [];
+      tpls.forEach(function (tpl) {
+        /* 截止日 = 开业日 − 清单里填的「开业前 N 天」；没开业日就留空（不编日期，也不顺延） */
+        var before = Number(tpl.before) || 0;
+        var due = store.openDate ? U.addDays(store.openDate, -before) : '';
 
         var t = {
           id: U.uid('task'),
@@ -843,7 +918,9 @@ window.Store = (function () {
         };
         state.tasks.push(t);
         created.push(t);
+        beforePairs.push({ id: t.id, before: before });
       });
+      setTaskBeforeMany(beforePairs);
       pushMany('tasks', created);
     }
 
@@ -860,8 +937,8 @@ window.Store = (function () {
     push('stores', s);
     cacheLocal();
 
-    /* 开业日变了：这家店的任务建议完成日全部重算 */
-    if (patch.openDate && patch.openDate !== oldOpen) resyncTaskDates(id);
+    /* 开业日变了（含清空）：这家店的任务建议完成日全部重算 */
+    if (patch.openDate != null && patch.openDate !== oldOpen) resyncTaskDates(id);
     return s;
   }
 
@@ -893,13 +970,20 @@ window.Store = (function () {
   /* ================= 任务 CRUD ================= */
 
   function addTask(data) {
+    /* 开业前 N 天：优先用传进来的，没传就按标题去清单里找，再不行用阶段默认 */
+    var before = (data.before != null && data.before !== '' && !isNaN(Number(data.before)))
+      ? Number(data.before)
+      : (beforeFromTemplates((data.title || '').trim()) != null
+        ? beforeFromTemplates((data.title || '').trim())
+        : leadDaysOf({ stage: data.stage }));
+
     var t = {
       id: U.uid('task'),
       storeId: data.storeId,
       title: (data.title || '未命名任务').trim(),
       stage: data.stage || ((C.STAGES[0] || {}).key || '未出图'),
       assigneeId: data.assigneeId || (state.members[0] || {}).id,
-      dueDate: data.dueDate || suggestFor(data.storeId, data.stage),
+      dueDate: data.dueDate || suggestFor(data.storeId, data.stage, before),
       status: data.status === 'doing' ? 'pending' : (data.status || 'pending'),
       priority: data.priority || 'normal',
       remark: data.remark || '',
@@ -907,6 +991,8 @@ window.Store = (function () {
     };
     state.tasks.unshift(t);
     push('tasks', t);
+    /* 「开业前 N 天」记在 settings 里（云端 tasks 表没这一列，不用改表） */
+    setTaskBefore(t.id, before);
     cacheLocal();
     return t;
   }
@@ -918,13 +1004,32 @@ window.Store = (function () {
     /* 「进行中」这套状态取消：一律按未处理算 */
     if (patch.status === 'doing') patch.status = 'pending';
 
+    var curBefore = taskBeforeOf(t);
+    var ownsBefore = taskHasOwnBefore(t);
     var stageChanged = patch.stage != null && patch.stage !== t.stage;
     var storeChanged = patch.storeId != null && patch.storeId !== t.storeId;
-    Object.keys(patch).forEach(function (k) { t[k] = patch[k]; });
+    var beforeChanged = patch.before != null && Number(patch.before) !== curBefore;
 
-    /* 阶段 / 门店变了，截止日重算成「新门店开业日 - 该阶段提前天数」 */
-    if (stageChanged || storeChanged) {
-      t.dueDate = suggestFor(t.storeId, t.stage);
+    /* 天数：显式传了就用传的；否则原本跟着阶段走的，改阶段后按新阶段默认；
+       原本自己定死的，改阶段也不动它 */
+    var nextBefore;
+    if (patch.before != null) {
+      nextBefore = Math.max(0, Math.round(Number(patch.before) || 0));
+    } else if (!ownsBefore && patch.stage != null) {
+      nextBefore = leadDaysOf({ stage: patch.stage });
+    } else {
+      nextBefore = curBefore;
+    }
+
+    /* before 不进任务对象，单独存起来 */
+    var rest = {};
+    Object.keys(patch).forEach(function (k) { if (k !== 'before') rest[k] = patch[k]; });
+    Object.keys(rest).forEach(function (k) { t[k] = rest[k]; });
+    if (patch.before != null) setTaskBefore(t.id, nextBefore);
+
+    /* 阶段 / 门店 / 开业前天数变了，截止日按新口径重算 */
+    if (stageChanged || storeChanged || beforeChanged) {
+      t.dueDate = suggestFor(t.storeId, t.stage, nextBefore);
     }
 
     push('tasks', t);
@@ -932,14 +1037,14 @@ window.Store = (function () {
     return t;
   }
 
-  /* 门店开业日改了：这家店所有任务的截止日跟着挪（建议完成日 = 开业日 - 提前天数）
-     storeId 传空 = 全量重算（改了提前天数口径时用） */
+  /* 门店开业日改了：这家店所有任务的截止日跟着挪（开业日 − 任务的开业前天数）
+     storeId 传空 = 全量重算（改了阶段默认天数时用） */
   function resyncTaskDates(storeId) {
     var changed = [];
     state.tasks.forEach(function (t) {
       if (storeId && t.storeId !== storeId) return;
-      var due = suggestFor(t.storeId, t.stage);   /* 用任务自己的门店，别用入参（入参可能是空=全量） */
-      if (due && t.dueDate !== due) { t.dueDate = due; changed.push(t); }
+      var due = suggestFor(t.storeId, t.stage, taskBeforeOf(t));
+      if (t.dueDate !== due) { t.dueDate = due; changed.push(t); }
     });
     if (changed.length) {
       pushMany('tasks', changed);
@@ -1477,10 +1582,11 @@ window.Store = (function () {
     state.members.forEach(function (m) { roleToId[m.role] = m.id; });
 
     var created = [];
-    tpls.forEach(function (tpl, i) {
+    var beforePairs = [];
+    tpls.forEach(function (tpl) {
       if (exist[tpl.title]) return;
-      var due = U.addDays(store.openDate, -(Number(tpl.before) || (i + 1) * 7));
-      if (!due || due < t0) due = U.addDays(t0, 2 + i * 3);
+      var before = Number(tpl.before) || 0;
+      var due = store.openDate ? U.addDays(store.openDate, -before) : '';
       created.push({
         id: U.uid('task'),
         storeId: storeId,
@@ -1493,10 +1599,12 @@ window.Store = (function () {
         remark: '',
         createdAt: t0
       });
+      beforePairs.push({ id: created[created.length - 1].id, before: before });
     });
 
     if (!created.length) return 0;
     created.forEach(function (t) { state.tasks.push(t); });
+    setTaskBeforeMany(beforePairs);
     pushMany('tasks', created);
     cacheLocal();
     return created.length;
@@ -1633,6 +1741,9 @@ window.Store = (function () {
     progressPlan: progressPlan,
     leadDaysOf: leadDaysOf,
     leadDaysMap: leadDaysMap,
+    taskBeforeOf: taskBeforeOf,
+    setTaskBefore: setTaskBefore,
+    beforeFromTemplates: beforeFromTemplates,
     setLeadDays: setLeadDays,
     saveLeadDays: saveLeadDays,
     suggestDateOf: suggestDateOf,

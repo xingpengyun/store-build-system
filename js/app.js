@@ -120,7 +120,10 @@ window.App = (function () {
       if (out.length >= 8) return;
       if (t.title.toLowerCase().indexOf(lower) >= 0) {
         var st = S.storeById(t.storeId);
-        out.push({ kind: 'task', id: t.id, label: t.title, sub: (st ? st.name : '—') + ' · 建议 ' + U.monthDay(S.suggestDateOf(t)), type: '任务' });
+        var dueTxt = S.suggestDateOf(t);
+        out.push({ kind: 'task', id: t.id, label: t.title,
+          sub: (st ? st.name : '—') + ' · ' + (dueTxt ? '建议 ' + U.monthDay(dueTxt) : '未设开业日 · 开业前 ' + S.taskBeforeOf(t) + ' 天'),
+          type: '任务' });
       }
     });
 
