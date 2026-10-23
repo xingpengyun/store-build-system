@@ -1656,24 +1656,15 @@
   gap: 14px;
   align-items: start;
 }
-/* 左栏跟着视口高度走：至少铺满一屏，内容更多时整张卡片继续变长，
-   绝不出现「文字被卡片边缘切掉」的情况（高度只增不减） */
+/* 左栏高度就是内容高度：阶段越多卡片越长，
+   说明文字始终紧跟在最后一级（闭店 / 后续新增的阶段）下面 */
 .tk-rail {
   position: sticky;
   top: 74px;
-  display: flex;
-  flex-direction: column;
   padding: 16px 13px 14px;
-  height: auto;
-  min-height: max(420px, calc(100vh - 92px));
 }
-.tk-rail .card-head { margin-bottom: 10px; padding: 0 2px; flex: none; }
-.tk-rail .tl-all { flex: none; }
-.tk-rail .tl-nodes {
-  flex: 0 0 auto;
-  padding: 2px 1px 2px 0;
-}
-.tk-rail .tl-hint { flex: none; margin-top: auto; }
+.tk-rail .card-head { margin-bottom: 10px; padding: 0 2px; }
+.tk-rail .tl-nodes { padding: 2px 1px 2px 0; }
 .tl-hint {
   margin: 12px 3px 0;
   padding-top: 10px;
@@ -1955,7 +1946,7 @@
 
 @media (max-width: 1180px) {
   .tk-layout { grid-template-columns: minmax(0, 1fr); }
-  .tk-rail { position: static; height: auto; min-height: 0; }
+  .tk-rail { position: static; }
   .tl-nodes::before { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
