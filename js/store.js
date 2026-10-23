@@ -57,7 +57,10 @@ window.Store = (function () {
       saved.forEach(function (x) {
         var key = String((x && x.key) == null ? '' : x.key).trim();
         if (!key || seen[key]) return;
-        if (key.indexOf('/') >= 0) return;
+        /* 只挡「一级 / 二级」那种带分隔符的值（分隔符是两边带空格的 ' / '）。
+           注意别用 indexOf('/') 一刀切：出厂阶段本来就有「资料/建档」「施工/装修」
+           「物料/到货」，一刀切会把它们悄悄丢掉 —— 时间线就只剩 4 个阶段了。 */
+        if (key.indexOf(C.STAGE_SEP) >= 0) return;
         seen[key] = 1;
         var d = null;
         C.STAGE_BUILTIN.forEach(function (b) { if (b.key === key) d = b; });
@@ -116,7 +119,8 @@ window.Store = (function () {
   function addStage(name, after) {
     name = String(name == null ? '' : name).trim().replace(/\s+/g, ' ');
     if (!name) return { ok: false, error: '名字不能为空' };
-    if (name.indexOf('/') >= 0) return { ok: false, error: '阶段名里不要带斜杠（斜杠是「一级 / 二级」的分隔符）' };
+    /* 只挡「 / 」（两边带空格）这种分隔符；「资料/建档」这种紧贴的斜杠是正常阶段名 */
+    if (name.indexOf(C.STAGE_SEP) >= 0) return { ok: false, error: '阶段名里不要带「 / 」（斜杠两边带空格是「一级 / 二级」的分隔符）' };
     if (stageByName(name)) return { ok: false, error: '「' + name + '」已经存在' };
 
     var list = C.STAGES.map(function (x) { return { key: x.key, color: x.color, soft: x.soft }; });
@@ -141,7 +145,7 @@ window.Store = (function () {
     from = String(from == null ? '' : from).trim();
     to = String(to == null ? '' : to).trim().replace(/\s+/g, ' ');
     if (!from || !to || from === to) return { ok: false, error: '名字没变' };
-    if (to.indexOf('/') >= 0) return { ok: false, error: '阶段名里不要带斜杠' };
+    if (to.indexOf(C.STAGE_SEP) >= 0) return { ok: false, error: '阶段名里不要带「 / 」' };
     if (!stageByName(from)) return { ok: false, error: '找不到阶段「' + from + '」' };
     if (stageByName(to)) return { ok: false, error: '「' + to + '」已经存在' };
 
@@ -407,6 +411,7 @@ window.Store = (function () {
 
       state = normalized(data);
       cacheLocal();
+      snapshotSettings('load');   /* 每次进系统都留一份配置快照，误删可找回 */
       return { imported: 0, seeded: false };
     }).catch(function (e) {
       /* 网络失败 → 退回本地缓存，离线可用 */
@@ -2122,12 +2127,224 @@ window.Store = (function () {
       if (ROLE_RENAME[m.role]) m.role = ROLE_RENAME[m.role];
     });
 
+    snapshotSettings('before-import');
+    var prevSettings = (state && state.settings) || null;
+
     state = normalized(data);
+
+    /* 备份文件里没带配置（老备份 / 只导出门店数据）时，保留现在这份配置，
+       别又像 2026-10-24 那次一样把阶段 / 清单 / 物料一起清掉。
+       只有文件里「明确没这个键」才保留；文件里写着空数组代表你就是想清空。 */
+    if (prevSettings && state.settings) {
+      ['stages', 'stageSubs', 'taskTemplates', 'arrivalItems', 'leadDays'].forEach(function (k) {
+        if (state.settings[k] === undefined && prevSettings[k] !== undefined) {
+          state.settings[k] = prevSettings[k];
+        }
+      });
+      applyStages(resolveStages(state.settings));
+    }
+
     cacheLocal();
     return window.Cloud.importAll(state).then(function () {
       listeners.forEach(function (fn) { fn(state); });
       return state;
     });
+  }
+
+  /* ==================================================================
+     配置快照（只备份 settings：阶段 / 二级 / 筹建清单 / 物料清单 / 提前天数）
+     —— 2026-10-24 加的：之前「清空云端」把 app_settings 整张删了，
+        用户的真实工作流（阶段时间线、筹建任务清单、物料清单）跟着一起没了。
+        从此每次加载、每次危险操作前都留一份快照，最多 5 份，可一键找回。
+     ================================================================== */
+
+  var SNAP_KEY = KEY + '.setting-snap';
+
+  function readSnaps() {
+    try {
+      var raw = localStorage.getItem(SNAP_KEY);
+      var list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch (e) { return []; }
+  }
+
+  function configWeight(settings) {
+    if (!settings) return 0;
+    var w = 0;
+    if (Array.isArray(settings.stages)) w += settings.stages.length * 10;
+    if (settings.stageSubs) {
+      Object.keys(settings.stageSubs).forEach(function (k) {
+        w += Array.isArray(settings.stageSubs[k]) ? settings.stageSubs[k].length * 5 : 0;
+      });
+    }
+    if (Array.isArray(settings.taskTemplates)) w += settings.taskTemplates.length * 3;
+    if (Array.isArray(settings.arrivalItems)) w += settings.arrivalItems.length;
+    return w;
+  }
+
+  /* 存一份快照；内容跟上一份一样就不重复存 */
+  function snapshotSettings(reason) {
+    try {
+      if (!state || !state.settings) return;
+      var list = readSnaps();
+      var json = JSON.stringify(state.settings);
+      if (list[0] && list[0].json === json) return;
+      list.unshift({
+        at: new Date().toISOString(),
+        reason: reason || 'auto',
+        weight: configWeight(state.settings),
+        json: json
+      });
+      localStorage.setItem(SNAP_KEY, JSON.stringify(list.slice(0, 5)));
+    } catch (e) { /* 超配额就算了，不影响主流程 */ }
+  }
+
+  /* 给设置页用：最近一份「配置比现在更全」的快照（被清空后能找回的那份） */
+  function settingsSnapshot() {
+    var list = readSnaps();
+    var now = configWeight(state && state.settings);
+    var hit = null;
+    list.forEach(function (x) {
+      if (hit) return;
+      if (x.weight > now) hit = x;
+    });
+    if (!hit && list[0]) hit = list[0];
+    if (!hit) return null;
+
+    var set = null;
+    try { set = JSON.parse(hit.json); } catch (e) { set = null; }
+    if (!set) return null;
+
+    return {
+      at: hit.at,
+      reason: hit.reason,
+      richer: hit.weight > now,
+      /* 快照里没存 stages 时，按出厂的 7 个算（别显示成 0 阶段） */
+      stages: (Array.isArray(set.stages) && set.stages.length ? set.stages : C.STAGE_BUILTIN).length,
+      templates: (set.taskTemplates || []).length,
+      items: (set.arrivalItems || []).length,
+      settings: set
+    };
+  }
+
+  /* 把快照里的配置恢复回来（只恢复配置，门店 / 任务不动） */
+  function restoreSettingsSnapshot() {
+    var snap = settingsSnapshot();
+    if (!snap) return { ok: false, error: '没有可恢复的快照' };
+    var set = snap.settings;
+
+    snapshotSettings('before-restore');   /* 先把现在这份也留一份，别把退路也堵了 */
+
+    var next = state.settings;
+    if (Array.isArray(set.stages) && set.stages.length) next.stages = set.stages;
+    if (set.stageSubs && typeof set.stageSubs === 'object') next.stageSubs = set.stageSubs;
+    if (Array.isArray(set.taskTemplates)) next.taskTemplates = set.taskTemplates;
+    if (Array.isArray(set.arrivalItems)) next.arrivalItems = set.arrivalItems;
+    if (set.leadDays && typeof set.leadDays === 'object') next.leadDays = set.leadDays;
+
+    applyStages(resolveStages(next));
+    pushSettings();
+    cacheLocal();
+    listeners.forEach(function (fn) { fn(state); });
+
+    return {
+      ok: true,
+      at: snap.at,
+      stages: (next.stages || []).length,
+      templates: (next.taskTemplates || []).length,
+      items: (next.arrivalItems || []).length
+    };
+  }
+
+  /* ==================================================================
+     演示门店：只往业务表里加，配置一个字都不改
+     ================================================================== */
+
+  function addDemoStores(bundle) {
+    if (!bundle || !bundle.stores || !bundle.stores.length) {
+      return Promise.reject(new Error('没有生成门店'));
+    }
+    snapshotSettings('before-add-demo');
+
+    state.stores = state.stores.concat(bundle.stores);
+    state.tasks = state.tasks.concat(bundle.tasks || []);
+    state.arrivals = (state.arrivals || []).concat(bundle.arrivals || []);
+
+    /* 发货计划并进 settings.ship（这是门店级数据，属于业务），别的设置键不碰 */
+    if (bundle.ship) {
+      state.settings.ship = state.settings.ship || {};
+      Object.keys(bundle.ship).forEach(function (k) {
+        state.settings.ship[k] = bundle.ship[k];
+      });
+    }
+
+    cacheLocal();
+    listeners.forEach(function (fn) { fn(state); });
+
+    return window.Cloud.importBusiness({
+      stores: bundle.stores,
+      tasks: bundle.tasks || [],
+      arrivals: bundle.arrivals || []
+    }).then(function () {
+      return window.Cloud.saveSettings(state.settings, state.alertsRead);
+    }).then(function () {
+      return {
+        ok: true,
+        stores: bundle.stores.length,
+        tasks: (bundle.tasks || []).length,
+        arrivals: (bundle.arrivals || []).length
+      };
+    });
+  }
+
+  /* 只清门店 / 任务 / 到货，配置和成员都留着 */
+  function clearBusiness() {
+    snapshotSettings('before-clear-business');
+    state.stores = [];
+    state.tasks = [];
+    state.arrivals = [];
+    state.settings.ship = {};     /* 门店没了，发货计划跟着去掉 */
+    cacheLocal();
+    listeners.forEach(function (fn) { fn(state); });
+
+    return window.Cloud.wipeBusiness().then(function () {
+      return window.Cloud.saveSettings(state.settings, state.alertsRead);
+    });
+  }
+
+  /* ==================================================================
+     一键恢复标准工作流：7 个阶段（含「已出图」二级）+ 7 条筹建任务 + 8 项物料
+     被误清空后，用这个把「真实的工作逻辑」一次找回来。
+     ================================================================== */
+
+  function restoreWorkflow() {
+    snapshotSettings('before-restore-workflow');
+
+    var set = state.settings;
+    set.stages = C.STAGE_BUILTIN.map(function (x) {
+      return { key: x.key, color: x.color, soft: x.soft };
+    });
+    set.stageSubs = JSON.parse(JSON.stringify(C.DEFAULT_STAGE_SUBS || {}));
+    set.taskTemplates = C.TASK_TEMPLATES.map(function (t) {
+      return { title: t.title, stage: t.stage, before: t.before, role: t.role };
+    });
+    set.arrivalItems = C.ITEMS.slice();
+
+    applyStages(resolveStages(set));
+    pushSettings();
+    cacheLocal();
+    listeners.forEach(function (fn) { fn(state); });
+
+    var subCount = 0;
+    Object.keys(set.stageSubs).forEach(function (k) { subCount += set.stageSubs[k].length; });
+
+    return {
+      ok: true,
+      stages: set.stages.length,
+      subs: subCount,
+      templates: set.taskTemplates.length,
+      items: set.arrivalItems.length
+    };
   }
 
   function storageBytes() {
@@ -2227,6 +2444,12 @@ window.Store = (function () {
     exportJSON: exportJSON,
     downloadJSON: downloadJSON,
     importJSON: importJSON,
+    addDemoStores: addDemoStores,
+    clearBusiness: clearBusiness,
+    restoreWorkflow: restoreWorkflow,
+    snapshotSettings: snapshotSettings,
+    settingsSnapshot: settingsSnapshot,
+    restoreSettingsSnapshot: restoreSettingsSnapshot,
     storageBytes: storageBytes
   };
 })();

@@ -67,14 +67,22 @@ window.Pages.settings = (function () {
         '<div style="display:flex;flex-direction:column;gap:8px">' +
           '<button class="btn" data-act="export">' + UI.icon('download') + '导出备份（JSON）</button>' +
           '<button class="btn" data-act="import">' + UI.icon('upload') + '从备份文件导入</button>' +
-          '<button class="btn btn-danger" data-act="reset">' + UI.icon('refresh') + '清空云端并生成 50 家演示门店</button>' +
+          '<button class="btn btn-primary" data-act="addDemo">' + UI.icon('plus') + '添加 50 家演示门店</button>' +
+          '<button class="btn" data-act="clearStores">' + UI.icon('refresh') + '清空门店与任务</button>' +
         '</div>' +
+        '<p style="margin-top:8px;font-size:11.5px;color:var(--text-3);line-height:1.7">' +
+          '「添加演示门店」只往门店 / 任务 / 到货里加数据，' +
+          '<b>阶段时间线、筹建任务清单、到货物料清单、成员一个都不动</b>；' +
+          '「清空门店与任务」同样只清业务数据，配置留着。' +
+        '</p>' +
         '<input type="file" id="importFile" accept=".json,application/json" style="display:none" />' +
-        '<p style="margin-top:12px;font-size:11.5px;color:var(--text-3);line-height:1.7">' +
+        '<p style="margin-top:8px;font-size:11.5px;color:var(--text-3);line-height:1.7">' +
           '数据实时保存在云端，换电脑、清缓存都不会丢。本机缓存约 ' + U.bytes(bytes) + '，仅用于断网时应急。' +
         '</p>' +
       '</div>' +
     '</section>' +
+
+    configCard() +
 
     '<div class="card fade-up" style="animation-delay:.065s">' +
       '<div class="card-head"><h3>逾期倒推口径</h3>' +
@@ -112,6 +120,71 @@ window.Pages.settings = (function () {
         '<div class="d-item"><div class="d-label">云端接入代码</div><div class="d-val">js/cloud.js</div></div>' +
         '<div class="d-item"><div class="d-label">登录逻辑</div><div class="d-val">js/login.js</div></div>' +
         '<div class="d-item"><div class="d-label">数据读写</div><div class="d-val">js/store.js</div></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /* ================= 我的工作流配置（阶段 / 清单 / 物料） =================
+     2026-10-24：这里以前被「清空云端并生成演示门店」一起删掉过 ——
+     阶段时间线、筹建任务清单、到货物料清单都是用户真实的工作逻辑，
+     现在单独一张卡看得见、能一键恢复，演示门店也不会再动它们。 */
+
+  function fmtSnapTime(iso) {
+    try {
+      var d = new Date(iso);
+      return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' +
+        U.pad2(d.getHours()) + ':' + U.pad2(d.getMinutes());
+    } catch (e) { return ''; }
+  }
+
+  function configCard() {
+    var stages = S.stages() || [];
+    var subs = S.stageSubs() || {};
+    var subCount = 0;
+    Object.keys(subs).forEach(function (k) { subCount += (subs[k] || []).length; });
+    var tpls = S.templates() || [];
+    var items = S.items() || [];
+    var snap = S.settingsSnapshot ? S.settingsSnapshot() : null;
+    var missing = !tpls.length;
+
+    function box(label, val, foot) {
+      return '<div class="mini-stat"><div class="ms-label">' + label + '</div>' +
+        '<div class="ms-val">' + val + '</div>' +
+        '<div class="cfg-foot-num">' + foot + '</div></div>';
+    }
+
+    return '' +
+    '<div class="card fade-up cfg-card" style="animation-delay:.062s">' +
+      '<div class="card-head"><h3>我的工作流配置</h3>' +
+        '<span class="card-sub">阶段时间线 / 筹建任务清单 / 到货物料清单 —— 演示门店不会改动它们</span></div>' +
+
+      '<div class="mini-stats cfg-stats">' +
+        box('阶段时间线', stages.length + ' 个', subCount + ' 个二级阶段') +
+        box('筹建任务清单', tpls.length + ' 条', tpls.length ? '新门店按它派活' : '没有任务可派') +
+        box('到货物料清单', items.length + ' 项', items.length ? '门店里点一下就能选' : '门店里只能手填') +
+        box('团队成员', (S.getState().members || []).length + ' 人', '任务负责人从这里选') +
+      '</div>' +
+
+      (missing
+        ? '<div class="cfg-warn">' +
+            '<b>筹建任务清单现在是空的。</b>' +
+            '新建门店不会再自动派任务，清单里也看不到你原来那套流程。' +
+            '点下面「恢复标准工作流」可以把 7 个阶段 + 7 条任务 + 8 项物料一次找回来。' +
+          '</div>'
+        : '') +
+
+      '<div class="lead-foot">' +
+        '<button class="btn btn-primary btn-sm" data-act="restoreWorkflow">' +
+          UI.icon('refresh') + '恢复标准工作流</button>' +
+        (snap && snap.richer
+          ? '<button class="btn btn-sm" data-act="restoreSnap">' +
+              UI.icon('refresh') + '恢复 ' + fmtSnapTime(snap.at) + ' 的配置快照' +
+              '<span class="dim">（' + snap.stages + ' 阶段 / ' + snap.templates + ' 任务 / ' + snap.items + ' 物料）</span>' +
+            '</button>'
+          : '') +
+        '<span class="lead-foot-tip">' +
+          '「恢复标准工作流」只写回配置，不动已建的门店和任务；恢复前会自动存一份当前配置的快照。' +
+        '</span>' +
       '</div>' +
     '</div>';
   }
@@ -273,33 +346,103 @@ window.Pages.settings = (function () {
         UI.toast('备份文件已下载', 'success');
       }
 
-      else if (act === 'import') {
-        root.querySelector('#importFile').click();
-      }
-
-      else if (act === 'reset') {
+      else if (act === 'addDemo') {
+        var st0 = S.getState();
         UI.confirm({
-          title: '清空云端数据',
-          text: '这会删除云端所有门店、任务、成员和到货记录，换成 50 家随机演示门店（阶段、进度、到货日期都不一样）。',
-          warn: '所有同事看到的数据都会被替换，且无法撤销。建议先导出备份。',
-          danger: true,
-          okText: '确认清空',
+          title: '添加 50 家演示门店',
+          text: '会往现有数据里<b>再加 50 家演示门店</b>（各自的阶段、进度、到货日期都不一样），' +
+                '并给它们派任务、编发货计划。<br />' +
+                '<b>阶段时间线、筹建任务清单、到货物料清单、团队成员一个都不动</b>，' +
+                '演示门店直接按你现在的配置生成。',
+          warn: '现在系统里有 <b>' + st0.stores.length + ' 家门店</b>，加完会变成 ' +
+                (st0.stores.length + 50) + ' 家。只在演示 / 试用时用。',
+          okText: '加 50 家',
           onOk: function () {
-            UI.loading('正在重置云端数据…');
-            window.Cloud.wipeAll()
-              .then(function () { return window.Cloud.importAll(window.Seed()); })
-              .then(function () {
+            UI.loading('正在生成 50 家门店…');
+            var bundle = window.Seed({ count: 50 });
+            S.addDemoStores(bundle)
+              .then(function (r) {
                 UI.hideLoading();
-                UI.toast('已恢复演示数据', 'success');
-                setTimeout(function () { location.reload(); }, 600);
+                UI.toast('已添加 ' + r.stores + ' 家门店、' + r.tasks + ' 条任务，配置没动', 'success', 2600);
+                setTimeout(function () { location.reload(); }, 800);
               })
               .catch(function (err) {
                 UI.hideLoading();
-                UI.toast('重置失败：' + (err.message || err), 'error');
+                UI.toast('添加失败：' + (err.message || err), 'error');
               });
           }
         });
       }
+
+      else if (act === 'clearStores') {
+        var st1 = S.getState();
+        UI.confirm({
+          title: '清空门店与任务',
+          text: '删除全部 <b>' + st1.stores.length + ' 家门店</b>、' + st1.tasks.length + ' 条任务和到货记录。' +
+                '<br /><b>阶段时间线、筹建任务清单、到货物料清单、团队成员都会保留</b>。',
+          warn: '门店和任务删了就没了（配置不会）。建议先「导出备份」。',
+          danger: true,
+          okText: '确认清空门店',
+          onOk: function () {
+            UI.loading('正在清空门店…');
+            S.clearBusiness()
+              .then(function () {
+                UI.hideLoading();
+                UI.toast('门店和任务已清空，配置都还在', 'success');
+                setTimeout(function () { location.reload(); }, 700);
+              })
+              .catch(function (err) {
+                UI.hideLoading();
+                UI.toast('清空失败：' + (err.message || err), 'error');
+              });
+          }
+        });
+      }
+
+      else if (act === 'restoreWorkflow') {
+        UI.confirm({
+          title: '恢复标准工作流',
+          text: '写回这套流程：<b>7 个阶段</b>（未出图 → 已出图 → 资料/建档 → 施工/装修 → 物料/到货 → 开业准备 → 已开业）、' +
+                '「已出图」下的 <b>已做首批 / 未做首批</b>、<b>7 条筹建任务</b>、<b>8 项到货物料</b>。',
+          warn: '如果你现在自己配过阶段 / 清单，会被这套标准流程覆盖（覆盖前会自动存一份快照，可再恢复回来）。',
+          okText: '恢复',
+          onOk: function () {
+            var r = S.restoreWorkflow();
+            UI.toast('已恢复：' + r.stages + ' 个阶段（含 ' + r.subs + ' 个二级）、' +
+              r.templates + ' 条任务、' + r.items + ' 项物料', 'success', 3200);
+            setTimeout(function () { App.refresh(); }, 300);
+          }
+        });
+      }
+
+      else if (act === 'restoreSnap') {
+        var snap = S.settingsSnapshot();
+        if (!snap) { UI.toast('没有可恢复的快照', 'error'); return; }
+        UI.confirm({
+          title: '恢复配置快照',
+          text: '把 ' + fmtSnapTime(snap.at) + ' 那一份配置恢复回来：' +
+                '<b>' + snap.stages + ' 个阶段</b>、<b>' + snap.templates + ' 条筹建任务</b>、' +
+                '<b>' + snap.items + ' 项物料</b>。',
+          warn: '只改配置，门店和任务不动。现在这份也会先存成快照，随时能换回来。',
+          okText: '恢复这份',
+          onOk: function () {
+            var r = S.restoreSettingsSnapshot();
+            if (!r || !r.ok) { UI.toast((r && r.error) || '恢复失败', 'error'); return; }
+            UI.toast('已恢复到 ' + fmtSnapTime(r.at) + ' 的配置', 'success', 2800);
+            setTimeout(function () { App.refresh(); }, 300);
+          }
+        });
+      }
+
+      else if (act === 'import') {
+        root.querySelector('#importFile').click();
+      }
+
+      /* 注意：原来的 data-act="reset"（wipeAll + 塞演示数据）已经删掉。
+         wipeAll 会把 app_settings 整张清空 —— 阶段时间线、筹建任务清单、
+         物料清单全在里面，用户真实的工作流就是这么被一起删掉的。
+         现在拆成「添加演示门店（addDemo）」和「清空门店（clearStores）」两步，
+         都不碰配置。需要彻底重置，用「从备份文件导入」或手动清库。 */
     });
 
     var file = root.querySelector('#importFile');

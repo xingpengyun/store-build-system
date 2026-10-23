@@ -214,6 +214,47 @@
 - 入口：`js/page-tasks.js` → `state.open / toggleStoreRow() / storeRowHtml() / onEnter()`；
   `css/components.css` → `.sk-row.open / .sk-row.open::before / .sk-row.open .sk-head`
 
+## 2026-10-24 事故与修正：「演示门店」把真实工作流一起删了
+
+> 用户反馈：我只是想添加门店数据，为什么阶段时间线、筹建任务清单、物料供应商都没了？
+
+**原因（两个 bug 叠加）**
+
+1. 设置页那个「清空云端并生成 50 家演示门店」调的是 `Cloud.wipeAll()`，
+   它把 `app_settings` 整张表删掉 —— 而**阶段时间线（`settings.stages` / `stageSubs`）、
+   筹建任务清单（`settings.taskTemplates`）、到货物料清单（`settings.arrivalItems`）、
+   各阶段提前天数（`settings.leadDays`）全都存在这张表的那一条 JSON 里**，一并没了。
+   随后 `Seed()` 再塞数据，等于用演示配置把真实配置顶掉。
+2. `Store.resolveStages()` 用 `key.indexOf('/')` 过滤阶段名，而「资料/建档」「施工/装修」
+   「物料/到货」本身就带斜杠 → 只要 `settings.stages` 保存过一次，下次加载就只剩 4 个阶段。
+   分隔符其实两边带空格（`C.STAGE_SEP = ' / '`），校验必须用它，不能用裸 `/`。
+
+**现在的规则（改代码时别破坏）**
+
+- **配置与业务数据彻底分开**：门店 / 任务 / 到货 / 发货计划算业务；阶段、二级、筹建清单、
+  物料清单、提前天数、系统设置算配置。任何「加数据 / 清数据」的操作只能碰业务。
+- 设置页按钮拆成两个，都不碰配置：
+  - `addDemo` → `Seed({count:50})` + `S.addDemoStores(bundle)` → 只 upsert stores/tasks/arrivals
+  - `clearStores` → `S.clearBusiness()` → `Cloud.wipeBusiness()`（只删三张业务表）
+  - 原来的 `reset`（wipeAll + importAll）**已从界面移除**，注释留在 `page-settings.js` 里
+- `Seed()` 变成「按当前配置生成」：阶段读 `settings.stages`、任务读 `Store.templates()`、
+  物料读 `Store.items()`、负责人用现有成员（系统里一个人都没有才用演示成员），
+  **不再返回 members / settings.brand**，只返回 `{stores,tasks,arrivals,ship}`。
+  阶段数量也是动态摊（权重曲线），加了阶段不会再越界或漏掉。
+- `templates()` 是「0 条就是 0 条」语义（不自动兜底），所以 `Seed()` 内部单独兜底出厂 7 条，
+  只影响演示数据，不回写配置。
+- **配置快照**：`Store.snapshotSettings(reason)` 把 settings 存 localStorage
+  （`shopbuild.v1.setting-snap`，最多 5 份，内容相同不重复存）。加载时、加演示门店前、
+  清空业务前、整库导入前各存一次。`settingsSnapshot()` 会挑「比现在更全」的那一份，
+  `restoreSettingsSnapshot()` 只回写配置，不动门店任务。
+- 整库导入（`importJSON`）也补了保护：备份文件里**没有**某个配置键时，保留现在这份，
+  不会再把阶段 / 清单 / 物料清空；文件里明确写了空数组才算「我就是要空」。
+- 设置页新增「我的工作流配置」卡片：阶段 / 清单 / 物料 / 成员 四个数字 + 一键
+  「恢复标准工作流」（`Store.restoreWorkflow()`：7 阶段 + 已出图二级 + 7 条任务 + 8 项物料）
+  + 「恢复 xx 的配置快照」。
+- 回归测试：`chk-config-safety.js`（45 项，含「wipeAll 一次都没调」「加了演示数据后
+  配置字符串不变」「带斜杠阶段名不丢」）。
+
 ## 数据模型要点
 - 门店 `stage` 只能取 `CONST.STAGES` 的 key；`risk` 只能取 `CONST.RISKS` 的 key
 - 任务 `status` 只有 `pending` / `doing` / `done` 三种

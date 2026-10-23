@@ -1747,6 +1747,33 @@
   color: var(--text-3);
 }
 
+/* ---------------- 设置页：我的工作流配置（阶段 / 清单 / 物料） ---------------- */
+.cfg-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.cfg-stats .mini-stat { padding: 10px 12px; }
+.cfg-stats .ms-val { font-size: 17px; }
+.cfg-foot-num {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cfg-warn {
+  margin-top: 10px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  background: var(--yellow-soft);
+  border: 1px solid #f5e3b8;
+  color: #8a6202;
+  font-size: 11.8px;
+  line-height: 1.75;
+}
+.cfg-warn b { color: #7a5600; }
+@media (max-width: 1180px) {
+  .cfg-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 /* ---------------- 物料到货：底部操作条（一键添加 / 手动添加） ---------------- */
 .arr-actions {
   display: flex;

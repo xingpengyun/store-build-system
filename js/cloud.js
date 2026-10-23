@@ -282,6 +282,35 @@ window.Cloud = (function () {
       });
   }
 
+  /* ---------------- 只写业务数据（门店 / 任务 / 到货） ----------------
+     演示门店、追加导入都用它：绝不碰 app_settings（阶段时间线、筹建任务清单、
+     物料清单、提前天数、发货设置都在这张表里），也不碰 members。
+     ---------------------------------------------------------------- */
+
+  function importBusiness(data, onProgress) {
+    return bulkInsert('stores', (data.stores || []).map(MAP.stores.toRow), onProgress)
+      .then(function () {
+        return bulkInsert('tasks', (data.tasks || []).map(MAP.tasks.toRow), onProgress);
+      })
+      .then(function () {
+        return bulkInsert('arrivals', (data.arrivals || []).map(MAP.arrivals.toRow), onProgress);
+      });
+  }
+
+  /* ---------------- 只清业务数据（保留配置和成员） ---------------- */
+
+  function wipeBusiness() {
+    var db = api().database;
+    var tables = ['tasks', 'arrivals', 'stores'];
+    return tables.reduce(function (p, t) {
+      return p.then(function () {
+        return db.from(t).delete().neq('id', '__none__').then(function (r) {
+          if (r.error) throw new Error(r.error.message || (t + ' 清空失败'));
+        });
+      });
+    }, Promise.resolve(true));
+  }
+
   /* ---------------- 清空云端（危险操作，仅用于重置） ---------------- */
 
   function wipeAll() {
@@ -313,6 +342,8 @@ window.Cloud = (function () {
     remove: remove,
     saveSettings: saveSettings,
     importAll: importAll,
+    importBusiness: importBusiness,
+    wipeBusiness: wipeBusiness,
     wipeAll: wipeAll,
     map: MAP
   };
