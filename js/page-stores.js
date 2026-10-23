@@ -232,23 +232,23 @@ window.Pages.stores = (function () {
   }
 
   /* ---------------- 物料到货（可编辑） ----------------
-     门店给出到货时间 → 在这里逐条填；这条物料到了就点一下「到货了」。
+     门店给出到货时间 → 在这里逐条填；通知完供应商就点一下「通知供应商」变成「已通知」。
      口径：登记的到货日往前 ARR_WATCH_DAYS 天（默认 7）就该通知供应商发货 ——
      门店说 11-10 到，11-03 就要打电话让对方安排发货。
-     所以这里不记在途 / 到店，只认登记的到货时间：
-     「快到了 / 已经过了到货日」的排最前面并标色。 */
+     所以这里不记在途 / 到店、也不确认到货，只认登记的到货时间和「通知了没」：
+     「快到了 / 已经过了到货日还没通知」的排最前面并标色。 */
   function arrList(storeId) {
     return S.getState().arrivals.filter(function (a) { return a.storeId === storeId; })
       .sort(function (a, b) {
-        /* 1) 未到的排前面，已到的沉底（已到的按最近日期在上） */
-        var da = a.status === 'arrived' ? 1 : 0;
-        var db = b.status === 'arrived' ? 1 : 0;
+        /* 1) 还没通知的排前面，已通知的沉底（已通知的按最近日期在上） */
+        var da = S.arrNotified(a) ? 1 : 0;
+        var db = S.arrNotified(b) ? 1 : 0;
         if (da !== db) return da - db;
 
         /* 2) 没填日期的放最后，别占着第一屏 */
         if (!a.etaDate !== !b.etaDate) return a.etaDate ? -1 : 1;
 
-        /* 3) 未到货按日期升序（过期 & 7 天内的自然浮上来）；已到货按日期降序 */
+        /* 3) 待通知按日期升序（过期 & 7 天内的自然浮上来）；已通知按日期降序 */
         var cmp = String(a.etaDate || '').localeCompare(String(b.etaDate || ''));
         return da ? -cmp : cmp;
       });
@@ -261,9 +261,9 @@ window.Pages.stores = (function () {
     return isNaN(d) ? null : d;
   }
 
-  /* 这条要不要盯着：'late' 已过到货日 / 'soon' 提前天数内 / null 不用管 */
+  /* 这条要不要盯着：'late' 已过到货日还没通知 / 'soon' 提前天数内该通知 / null 不用管 */
   function arrWatch(a) {
-    if (!a || a.status === 'arrived') return null;
+    if (!a || S.arrNotified(a)) return null;
     var d = arrDays(a);
     if (d == null) return null;
     if (d < 0) return 'late';
@@ -286,7 +286,7 @@ window.Pages.stores = (function () {
     /* 顶部小结：一眼看出有几项要盯 */
     var late = 0, soon = 0, wait = 0, ok = 0;
     list.forEach(function (a) {
-      if (a.status === 'arrived') { ok += 1; return; }
+      if (S.arrNotified(a)) { ok += 1; return; }
       var w = arrWatch(a);
       if (w === 'late') late += 1;
       else if (w === 'soon') soon += 1;
@@ -309,16 +309,16 @@ window.Pages.stores = (function () {
         '</div>'
       : '<div class="arr-sum">' +
           '<span class="arr-sum-i">共 <b>' + list.length + '</b> 项</span>' +
-          (late ? '<span class="arr-sum-i late"><i></i>该到没到 <b>' + late + '</b></span>' : '') +
-          (soon ? '<span class="arr-sum-i soon"><i></i>该通知供应商 <b>' + soon + '</b>（' + watchDays + ' 天内到）</span>' : '') +
+          (late ? '<span class="arr-sum-i late"><i></i>漏通知 <b>' + late + '</b></span>' : '') +
+          (soon ? '<span class="arr-sum-i soon"><i></i>该通知 <b>' + soon + '</b>（' + watchDays + ' 天内到）</span>' : '') +
           (wait ? '<span class="arr-sum-i">还早 <b>' + wait + '</b></span>' : '') +
-          (ok ? '<span class="arr-sum-i ok">已到 <b>' + ok + '</b></span>' : '') +
+          (ok ? '<span class="arr-sum-i ok">已通知 <b>' + ok + '</b></span>' : '') +
         '</div>' +
         '<div class="table-wrap"><table class="tbl arr-tbl" style="min-width:520px">' +
           '<thead><tr><th>物料 / 供应商</th><th style="width:52px">数量</th>' +
-            '<th style="width:186px">登记的到货时间</th><th style="width:76px">到货</th><th style="width:28px"></th></tr></thead>' +
+            '<th style="width:180px">登记的到货时间</th><th style="width:92px">通知</th><th style="width:28px"></th></tr></thead>' +
           '<tbody>' + list.map(function (a) {
-            var done = a.status === 'arrived';
+            var done = S.arrNotified(a);
             var d = arrDays(a);
             var w = arrWatch(a);
 
@@ -340,8 +340,8 @@ window.Pages.stores = (function () {
                 tag +
               '</div></td>' +
               '<td><button type="button" class="arr-btn' + (done ? ' done' : '') + '" data-arr-done title="' +
-                (done ? '点一下改回没到' : '这条真到了就点一下，不再盯着它') + '">' +
-                (done ? '✓ 已到货' : '到货了') + '</button></td>' +
+                (done ? '点一下改回「待通知」' : '打电话 / 发微信让对方发货后点一下，这条就不用再催了') + '">' +
+                (done ? '✓ 已通知' : '通知供应商') + '</button></td>' +
               '<td><button type="button" class="arr-del" data-arr-del title="删除这条">' + UI.icon('close') + '</button></td>' +
             '</tr>';
           }).join('') + '</tbody></table></div>';
@@ -506,12 +506,12 @@ window.Pages.stores = (function () {
           if (!rec) return;
 
           if (e.target.closest('[data-arr-done]')) {
-            var next = rec.status === 'arrived' ? 'pending' : 'arrived';
-            S.updateArrival(aid, { status: next });
+            var was = S.arrNotified(rec);
+            S.updateArrival(aid, { status: was ? 'pending' : 'notified' });
             repaintArr();
-            UI.toast(next === 'arrived'
-              ? (rec.item || '该物料') + ' 已到货，不再盯着它'
-              : '已改回没到，继续按登记的到货时间盯', 'success');
+            UI.toast(was
+              ? '已改回待通知，继续按登记的到货时间提醒你'
+              : '已记下：' + (rec.item || '该物料') + ' 已通知供应商', 'success');
             return;
           }
 

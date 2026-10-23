@@ -131,7 +131,7 @@ window.Seed = function () {
   var arrivals = [];
   var ai = 0;
 
-  /* 过去 7 天已到货（用于到货趋势图） */
+  /* 过去 7 天的到货时间分布（用于到货量图） */
   var pastCounts = [4, 6, 9, 8, 11, 7, 14];
   pastCounts.forEach(function (cnt, di) {
     for (var k = 0; k < cnt; k++) {
@@ -142,12 +142,12 @@ window.Seed = function () {
         item: C.ITEMS[ai % C.ITEMS.length],
         qty: 10 + (ai * 7) % 40,
         etaDate: U.addDays(t0, -(6 - di)),
-        status: 'arrived'
+        status: 'notified'
       });
     }
   });
 
-  /* 未来 7 天待到货 */
+  /* 未来 7 天该到、还没通知供应商 */
   var futureCounts = [1, 2, 1, 0, 2, 1, 1];
   futureCounts.forEach(function (cnt, di) {
     for (var k = 0; k < cnt; k++) {

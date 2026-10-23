@@ -5,7 +5,7 @@
 
    只看两件事：
    1) 发了没发（一次点击翻过来，在途 / 到店不记）
-   2) 物料登记的到货时间（到货日 − 7 天就该通知供应商）
+   2) 物料登记的到货时间（到货日 − 7 天就该通知供应商，通知完点「已通知」）
    ========================================================== */
 window.Pages = window.Pages || {};
 
@@ -25,7 +25,7 @@ window.Pages.ship = (function () {
     { key: 'late', label: '逾期未发' },
     { key: 'today', label: '今天该发' },
     { key: 'notify', label: '该通知供应商' },
-    { key: 'arrlate', label: '该到没到' },
+    { key: 'arrlate', label: '漏通知' },
     { key: 'sent', label: '已发出' }
   ];
 
@@ -63,7 +63,7 @@ window.Pages.ship = (function () {
   function etaMain(r) {
     if (!r.total) return '<span class="se-none">还没录物料</span>';
     if (!r.eta) {
-      if (!r.pending) return '<span class="se-ok">全部已到</span>';
+      if (!r.pending) return '<span class="se-ok">全部已通知</span>';
       return '<span class="se-none">还没填到货时间</span>';
     }
 
@@ -79,13 +79,13 @@ window.Pages.ship = (function () {
 
   function etaSub(r) {
     if (!r.total) return '';
-    if (!r.eta && !r.pending) return '';   /* 全部已到，主行已经说了 */
+    if (!r.pending) return '';   /* 全部已通知，主行已经说了 */
     var parts = [];
-    if (r.lateArr) parts.push('<span class="se-hot">' + r.lateArr + ' 项过了到货日</span>');
+    if (r.lateArr) parts.push('<span class="se-hot">' + r.lateArr + ' 项过了到货日没通知</span>');
     if (r.notify) parts.push('<span class="se-soon">' + r.notify + ' 项该通知供应商</span>');
-    if (r.arrived) parts.push(r.arrived + ' 项已到');
+    if (r.notified) parts.push(r.notified + ' 项已通知');
     if (r.noEta) parts.push(r.noEta + ' 项没填时间');
-    return parts.join(' · ') || '全部已到';
+    return parts.join(' · ');
   }
 
   function rowHtml(r, idx) {
@@ -165,7 +165,7 @@ window.Pages.ship = (function () {
         '<th style="width:56px">顺序</th>' +
         '<th>门店 / 开业</th>' +
         '<th style="width:126px">计划发货</th>' +
-        '<th style="width:164px">登记到货（最早）</th>' +
+        '<th style="width:180px">登记到货（最早）</th>' +
         '<th style="width:84px">发出</th>' +
         '<th style="width:170px">备注</th>' +
         '<th style="width:58px"></th>' +
@@ -178,7 +178,7 @@ window.Pages.ship = (function () {
 
   function reasonText(r) {
     if (r.late) return leftText(r) + '，计划 ' + U.dateDot(r.date) + ' 发';
-    if (r.arrLate) return r.lateArr + ' 项物料过了登记的到货日';
+    if (r.arrLate) return r.lateArr + ' 项物料过了到货日还没通知供应商';
     if (r.dueToday) return '计划今天发出';
     return '';
   }
@@ -202,7 +202,7 @@ window.Pages.ship = (function () {
     var first = late[0] || arrLate[0] || today[0];
     var txt = [];
     if (late.length) txt.push('<b>' + late.length + '</b> 家过了计划发货日还没发');
-    if (arrLate.length) txt.push('<b>' + arrLate.length + '</b> 家物料过了登记的到货日');
+    if (arrLate.length) txt.push('<b>' + arrLate.length + '</b> 家物料过了到货日还没通知供应商');
     if (today.length) txt.push('<b>' + today.length + '</b> 家今天就该发');
 
     return '<div class="ship-banner is-alert">' +
@@ -221,7 +221,7 @@ window.Pages.ship = (function () {
       { k: 'late', label: '逾期未发', v: s.late, foot: '已经过了发货日', color: '#f04438', soft: '#feeceb', icon: 'alert' },
       { k: 'today', label: '今天该发', v: s.today, foot: '今天必须发出去', color: '#f79009', soft: '#fef4e6', icon: 'clock' },
       { k: 'notify', label: '该通知供应商', v: s.notify, foot: '到货日在 7 天内', color: '#7a5af8', soft: '#f2eefe', icon: 'bell' },
-      { k: 'arrlate', label: '该到没到', v: s.arrLate, foot: '过了登记到货日', color: '#d92d20', soft: '#fdedeb', icon: 'box' }
+      { k: 'arrlate', label: '漏通知', v: s.arrLate, foot: '过了到货日还没通知', color: '#d92d20', soft: '#fdedeb', icon: 'box' }
     ];
 
     return '<section class="kpi-grid fade-up" style="grid-template-columns:repeat(5,minmax(0,1fr));animation-delay:.04s">' +
@@ -263,7 +263,7 @@ window.Pages.ship = (function () {
         '<h1>发货看板</h1>' +
         '<p>' + U.cnDate(today) + ' · 共 ' + rows.length + ' 家门店要跟' +
           (s.late ? '，<b class="text-red">' + s.late + ' 家逾期未发</b>' : '') +
-          (s.arrLate ? '，<b class="text-red">' + s.arrLate + ' 家物料该到没到</b>' : '') +
+          (s.arrLate ? '，<b class="text-red">' + s.arrLate + ' 家漏通知供应商</b>' : '') +
           (s.today ? '，' + s.today + ' 家今天就该发' : '') + '</p>' +
       '</div>' +
       '<div style="display:flex;gap:8px">' +
@@ -288,7 +288,7 @@ window.Pages.ship = (function () {
       '<div class="ship-foot">' +
         '<span>顺序：未发出的在前 → ★先发 → 手动排的 → 计划发货日近的在前 → 已发出沉底</span>' +
         '<span>' + (s.noPlan ? '<b class="text-red">' + s.noPlan + ' 家还没填发货日</b>　·　' : '') +
-          '到货时间以门店 / 供应商登记的为准，改日期就是新承诺</span>' +
+          '到货时间以门店 / 供应商登记的为准，改日期就是新承诺；通知完在门店详情点「已通知」</span>' +
       '</div>' +
     '</div>';
   }

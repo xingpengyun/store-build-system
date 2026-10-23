@@ -114,7 +114,7 @@ window.Pages.reports = (function () {
       '</div>' +
 
       '<div class="card">' +
-        '<div class="card-head"><h3>近 7 天到货趋势</h3></div>' +
+        '<div class="card-head"><h3>近 7 天到货量</h3></div>' +
         Charts.bars(st.trend) +
         '<div class="section-title">风险等级分布</div>' +
         riskRows +

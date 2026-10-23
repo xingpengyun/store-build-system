@@ -770,9 +770,11 @@ window.Store = (function () {
       return !!d && U.diffDays(t0, d) <= 7;
     }).length;
 
+    /* 7 天内该到的（还没通知供应商的）—— 这批是这两周要打电话的 */
     var arrivals7 = st.arrivals.filter(function (a) {
+      if (arrNotified(a)) return false;
       var d = U.diffDays(t0, a.etaDate);
-      return a.status === 'pending' && d >= 0 && d <= Number(C.ARR_WATCH_DAYS || 7);
+      return d >= 0 && d <= Number(C.ARR_WATCH_DAYS || 7);
     }).length;
 
     var team = st.members.map(function (m) {
@@ -791,12 +793,11 @@ window.Store = (function () {
     });
     team.sort(function (a, b) { return b.percent - a.percent || b.done - a.done; });
 
+    /* 近 7 天到货量：只按登记的到货日统计，跟通没通知无关 */
     var trend = [];
     for (var i = 6; i >= 0; i--) {
       var d = U.addDays(t0, -i);
-      var cnt = st.arrivals.filter(function (a) {
-        return a.status === 'arrived' && a.etaDate === d;
-      }).length;
+      var cnt = st.arrivals.filter(function (a) { return a.etaDate === d; }).length;
       trend.push({ date: d, label: U.dateDot(d), count: cnt });
     }
 
@@ -926,7 +927,7 @@ window.Store = (function () {
        过了到货日还没到 → 升成高危（对方没发 / 卡在路上，去要个新的到货时间）。 */
     var watchDays = Number(C.ARR_WATCH_DAYS || 7);
     state.arrivals.forEach(function (a) {
-      if (a.status === 'arrived' || !a.etaDate) return;
+      if (arrNotified(a) || !a.etaDate) return;
       var d = U.diffDays(t0, a.etaDate);
       if (isNaN(d) || d > watchDays) return;
 
@@ -937,10 +938,10 @@ window.Store = (function () {
 
       if (d < 0) {
         addAlert({
-          id: 'arrlate-' + a.id, level: 'danger', type: '物料未到',
+          id: 'arrlate-' + a.id, level: 'danger', type: '漏通知',
           title: storeName + ' · ' + name,
           desc: '登记的是 ' + U.monthDay(a.etaDate) + ' 到货，已经过了 ' + (-d) +
-            ' 天还没到，找供应商要个新的到货时间，回来把日期改掉',
+            ' 天还没通知供应商，赶紧让对方发，顺便确认一个新的到货时间',
           owner: man ? man.name : '未指派', storeId: a.storeId, arrivalId: a.id
         });
       } else {
@@ -968,7 +969,7 @@ window.Store = (function () {
           id: 'shiplate-' + r.id, level: 'danger', type: '发货逾期',
           title: r.name + ' · 计划 ' + U.monthDay(r.date) + ' 发货',
           desc: '已经过了 ' + Math.abs(r.left) + ' 天还没发出，' +
-            (r.lateArr ? '还有 ' + r.lateArr + ' 项物料过了到货日，' : '') + '先确认仓库备货和车辆',
+            (r.lateArr ? '还有 ' + r.lateArr + ' 项物料过了到货日还没通知供应商，' : '') + '先确认仓库备货和车辆',
           owner: man, storeId: r.id
         });
       } else if (r.dueToday) {
@@ -983,7 +984,7 @@ window.Store = (function () {
           id: 'shipsoon-' + r.id, level: 'warn', type: '即将发货',
           title: r.name + ' · 还有 ' + r.left + ' 天到发货日',
           desc: '计划 ' + U.monthDay(r.date) + ' 发出，先备好货、定好车' +
-            (r.lateArr ? '（还有 ' + r.lateArr + ' 项物料过了到货日）' : ''),
+            (r.lateArr ? '（还有 ' + r.lateArr + ' 项物料过了到货日还没通知）' : ''),
           owner: man, storeId: r.id
         });
       } else if (r.noPlan && r.openLeft != null && r.openLeft >= 0 && r.openLeft <= 21) {
@@ -1267,7 +1268,17 @@ window.Store = (function () {
     return state.tasks.filter(function (t) { return t.assigneeId === id; }).length;
   }
 
-  /* ================= 到货 CRUD ================= */
+  /* ================= 到货 CRUD =================
+     物料这块只有两件事：记下登记的到货时间 → 到货日往前 7 天通知供应商发货。
+     所以 status 只有两个值：
+       pending  待通知
+       notified 已通知（历史数据存的是 'arrived'，旧版叫「已到货」，语义按「已通知」处理）
+     不记在途 / 到店，那些物流环节不管。
+     --------------------------------------------------------- */
+
+  function arrNotified(a) {
+    return !!a && (a.status === 'notified' || a.status === 'arrived');
+  }
 
   function addArrival(data) {
     var q = data.qty;
@@ -1371,7 +1382,7 @@ window.Store = (function () {
 
   /* 看板的一行：门店 + 发了没发 + 物料登记的到货时间，全是实时算的。
      到货时间只认门店 / 供应商登记的那个日期 —— 没有「在途」「到店」，
-     日期过了还没到就是「该到没到」，去要个新日期回来改。 */
+     日期过了还没通知就是「漏通知」，赶紧让对方发、顺便要个新日期。 */
   function shipRows() {
     var t0 = U.today();
     var watchDays = Number(C.ARR_WATCH_DAYS || 7);
@@ -1379,7 +1390,7 @@ window.Store = (function () {
     var rows = state.stores.map(function (s) {
       var info = shipOf(s.id);
       var list = state.arrivals.filter(function (a) { return a.storeId === s.id; });
-      var pend = list.filter(function (a) { return a.status !== 'arrived'; });
+      var pend = list.filter(function (a) { return !arrNotified(a); });
 
       /* 还没到的物料里最早的那个到货日 —— 门店给的时间，不改它、只用来提示 */
       var etas = pend.map(function (a) { return a.etaDate; }).filter(Boolean).sort();
@@ -1412,7 +1423,7 @@ window.Store = (function () {
         note: info.note,
         sentAt: info.sentAt,
         total: list.length,
-        arrived: list.length - pend.length,
+        notified: list.length - pend.length,
         pending: pend.length,
         eta: earliest,
         lateArr: lateArr,
@@ -1425,7 +1436,7 @@ window.Store = (function () {
         late: !shipped && left != null && left < 0,
         dueToday: !shipped && left === 0,
         noPlan: !shipped && !info.date,
-        /* 到货这块也只有两件事：该到没到 / 7 天内到该通知供应商 */
+        /* 到货这块也只有两件事：漏通知（过了到货日还没通知）/ 7 天内到该通知供应商 */
         arrLate: lateArr > 0,
         needNotify: notify > 0
       };
@@ -2081,6 +2092,7 @@ window.Store = (function () {
     updateMember: updateMember,
     removeMember: removeMember,
     memberTaskCount: memberTaskCount,
+    arrNotified: arrNotified,
     addArrival: addArrival,
     updateArrival: updateArrival,
     removeArrival: removeArrival,

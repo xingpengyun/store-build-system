@@ -109,14 +109,14 @@ window.Pages.home = (function () {
     var head = s.late
       ? '<b class="text-red">' + s.late + '</b> 家已经过了计划发货日还没发'
       : (s.arrLate
-        ? '<b class="text-red">' + s.arrLate + '</b> 家物料过了登记的到货日'
+        ? '<b class="text-red">' + s.arrLate + '</b> 家物料过了到货日还没通知供应商'
         : (s.today
           ? '<b class="sb-num">' + s.today + '</b> 家今天该发货'
           : '今天没有该发没发的门店'));
 
     var chips = [
       s.late ? { k: '逾期未发', v: s.late, cls: 'late' } : null,
-      s.arrLate ? { k: '该到没到', v: s.arrLate, cls: 'late' } : null,
+      s.arrLate ? { k: '漏通知', v: s.arrLate, cls: 'late' } : null,
       s.today ? { k: '今天该发', v: s.today, cls: 'today' } : null,
       s.notify ? { k: '该通知供应商', v: s.notify, cls: 'today' } : null,
       { k: '还没发出', v: s.active, cls: '' },
@@ -166,7 +166,7 @@ window.Pages.home = (function () {
         color: '#f04438', soft: '#feeceb', icon: 'clock'
       },
       {
-        label: '7天内待到货', value: st.arrivals7, foot: U.pct(st.arrivals7, st.totalStores),
+        label: '7天内该通知', value: st.arrivals7, foot: U.pct(st.arrivals7, st.totalStores),
         color: '#7a5af8', soft: '#f2effe', icon: 'truck'
       }
     ];
@@ -347,7 +347,7 @@ window.Pages.home = (function () {
 
       '<div class="card">' +
         '<div class="card-head">' +
-          '<h3>近 7 天到货趋势</h3>' +
+          '<h3>近 7 天到货量</h3>' +
           '<div class="card-tools"><span class="link-more" data-go="reports">明细 →</span></div>' +
         '</div>' +
         Charts.bars(st.trend) +
