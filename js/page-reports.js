@@ -102,19 +102,6 @@ window.Pages.reports = (function () {
         }))
       : UI.empty('暂无排期');
 
-    /* 任务状态环形 */
-    var donutItems = [
-      { name: '已完成', value: tc.done, color: '#17b26a' },
-      { name: '未完成', value: tc.pending, color: '#98a2b8' },
-      { name: '逾期', value: tc.overdue, color: '#f04438' },
-      { name: '风险', value: tc.risk, color: '#f79009' }
-    ];
-    var donutLegend = donutItems.map(function (d) {
-      return '<div class="dl-row"><i class="dl-dot" style="background:' + d.color + '"></i>' +
-        '<span class="dl-name">' + d.name + '</span>' +
-        '<span class="dl-val">' + d.value + '</span></div>';
-    }).join('');
-
     /* 按省份分布 */
     var provMap = {};
     s.stores.forEach(function (x) {
@@ -156,13 +143,14 @@ window.Pages.reports = (function () {
       '<div class="card">' +
         '<div class="card-head"><h3>各阶段门店分布</h3><span class="card-sub">共 ' + st.totalStores + ' 家</span></div>' +
         stageRows +
-        '<div class="section-title">任务状态分布</div>' +
-        '<div class="donut-wrap">' +
-          Charts.donut(donutItems, { size: 132, centerLabel: '总任务', centerValue: tc.total }) +
-          '<div class="donut-legend">' + donutLegend + '</div>' +
-        '</div>' +
       '</div>' +
+      '<div class="card">' +
+        '<div class="card-head"><h3>省份门店分布</h3><span class="card-sub">共 ' + st.totalStores + ' 家</span></div>' +
+        provRows +
+      '</div>' +
+    '</section>' +
 
+    '<section class="home-grid-2 fade-up" style="animation-delay:.1s">' +
       '<div class="card">' +
         '<div class="card-head"><h3>当月开店与环比</h3><span class="card-sub">按计划开业日</span></div>' +
         '<div class="open-cmp">' +
@@ -174,13 +162,6 @@ window.Pages.reports = (function () {
         '</div>' +
         '<div class="section-title">近 6 个月开店数</div>' +
         Charts.bars(trend6) +
-      '</div>' +
-    '</section>' +
-
-    '<section class="home-grid-2 fade-up" style="animation-delay:.1s">' +
-      '<div class="card">' +
-        '<div class="card-head"><h3>省份门店分布</h3><span class="card-sub">共 ' + st.totalStores + ' 家</span></div>' +
-        provRows +
       '</div>' +
       '<div class="card">' +
         '<div class="card-head"><h3>开业排期</h3><span class="card-sub">按计划开业月份</span></div>' +
