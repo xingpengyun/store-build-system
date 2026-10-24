@@ -487,7 +487,7 @@ window.Pages.tasks = (function () {
             '</span>'
           : '') +
       '</div>' +
-      '<div class="sk-prog">' + UI.progress(S.storeProgress(st).pct, def.color, S.progressTip(st)) + '</div>' +
+      '<div class="sk-prog">' + UI.progress(S.progressValue(st), def.color, S.progressTip(st)) + '</div>' +
       '<div class="sk-tasks">' + (m.total
         ? '<span class="sk-open">未完成 ' + m.open + '</span>' +
           (m.late ? '<span class="sk-late">逾期 ' + m.late + '</span>' : '<span class="sk-ok">无逾期</span>')

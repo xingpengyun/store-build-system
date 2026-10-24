@@ -70,7 +70,7 @@ window.Pages.home = (function () {
         '</div></td>' +
         '<td class="muted">' + U.esc(store.province) + '</td>' +
         '<td class="muted mono">' + store.openDate + '</td>' +
-        '<td>' + UI.progress(S.storeProgress(store).pct, null, S.progressTip(store)) + '</td>' +
+        '<td>' + UI.progress(S.progressValue(store), null, S.progressTip(store)) + '</td>' +
         '<td>' + UI.stageBadge(store.stage, S.storeSub(store)) + '</td>' +
         '<td>' + UI.riskBadge(store.risk) + '</td>' +
         '<td>' + (owner ? '<div class="store-cell">' + UI.avatar(owner.name, owner.color, 'sm') +
@@ -282,7 +282,7 @@ window.Pages.home = (function () {
         '<div class="stage-legend">' + legend + '</div>' +
         '<div class="table-wrap"><table class="tbl">' +
           '<thead><tr>' +
-            '<th>门店名称</th><th>省份</th><th>开业日期</th><th>整体进度</th>' +
+            '<th>门店名称</th><th>省份</th><th>开业日期</th><th title="已完成任务 / 任务总计">整体进度</th>' +
             '<th>当前阶段</th><th>风险等级</th><th>负责人</th><th>操作</th>' +
           '</tr></thead>' +
           '<tbody data-role="stageBody">' + tableRows + '</tbody>' +

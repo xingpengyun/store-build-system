@@ -28,10 +28,14 @@ window.Pages.reports = (function () {
     var tc = st.taskCounts;
 
     var doneRate = tc.total ? Math.round(tc.done / tc.total * 100) : 0;
-    /* 平均进度：每家的百分比都来自「门店停在第几个阶段」（阶段数平分 100%，最后一个阶段 100%） */
-    var avgProgress = s.stores.length
-      ? Math.round(U.sum(s.stores, function (x) { return S.storeProgress(x).pct; }) / s.stores.length)
+    /* 平均进度：每家门店自己的「已完成任务 / 任务总计」，再对这些百分比取平均。
+       还没派任务的门店没有分母，不拉进来（否则一堆 0% 会把平均拉得很低）。 */
+    var withTasks = s.stores.filter(function (x) { return S.taskProgress(x).total > 0; });
+    var avgProgress = withTasks.length
+      ? Math.round(U.sum(withTasks, function (x) { return S.taskProgress(x).pct; }) / withTasks.length)
       : 0;
+    var avgFoot = '按各门店任务完成率平均' +
+      (withTasks.length < s.stores.length ? '（' + withTasks.length + '/' + s.stores.length + ' 家有任务）' : '');
 
     /* ---------- 当月开店 + 环比（按计划开业日） ---------- */
     var t0 = U.today();
@@ -130,7 +134,7 @@ window.Pages.reports = (function () {
         '<div class="kpi-foot">' + momFoot + '</div></div></div>' +
       '<div class="kpi"><span class="kpi-icon" style="background:#e6f8ef;color:#17b26a">' + UI.icon('target') + '</span>' +
         '<div class="kpi-body"><div class="kpi-label">平均进度</div><div class="kpi-value">' + avgProgress + '%</div>' +
-        '<div class="kpi-foot">按阶段时间线推进计算</div></div></div>' +
+        '<div class="kpi-foot">' + avgFoot + '</div></div></div>' +
       '<div class="kpi"><span class="kpi-icon" style="background:#f2effe;color:#7a5af8">' + UI.icon('list') + '</span>' +
         '<div class="kpi-body"><div class="kpi-label">任务完成率</div><div class="kpi-value">' + doneRate + '%</div>' +
         '<div class="kpi-foot">' + tc.done + ' / ' + tc.total + '</div></div></div>' +

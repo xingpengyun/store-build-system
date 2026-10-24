@@ -81,11 +81,19 @@ window.UI = (function () {
   }
 
   /* ---------------- 进度条 ----------------
-     title 可选：鼠标悬停解释这个百分比是怎么来的（门店进度=阶段推进数） */
+     title 可选：鼠标悬停解释这个百分比是怎么来的（门店进度=已完成任务/任务总计）
+     value 传 null：这条没有可算的分母（比如门店还没派任务），轨道留空、数字显示「—」 */
   function progress(value, color, title) {
+    var tip = title ? ' title="' + U.esc(title) + '"' : '';
+    if (value === null || value === undefined || value === '') {
+      return '<div class="mini-progress"' + tip + '>' +
+        '<span class="mini-track"><i style="width:0"></i></span>' +
+        '<span class="mini-num dim">—</span>' +
+      '</div>';
+    }
     var v = U.clamp(Number(value) || 0, 0, 100);
     var col = color || (v >= 100 ? '#17b26a' : v >= 66 ? '#3f6bf5' : v >= 33 ? '#f79009' : '#f04438');
-    return '<div class="mini-progress"' + (title ? ' title="' + U.esc(title) + '"' : '') + '>' +
+    return '<div class="mini-progress"' + tip + '>' +
       '<span class="mini-track"><i style="width:' + v + '%;background:' + col + '"></i></span>' +
       '<span class="mini-num">' + v + '%</span>' +
     '</div>';

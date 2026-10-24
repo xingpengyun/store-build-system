@@ -867,9 +867,9 @@ window.Store = (function () {
 
     state.stores.forEach(function (s) {
       var pr = storeProgress(s);
-      var pctTxt = pr.idx
-        ? '进度 ' + pr.pct + '%（第 ' + pr.idx + '/' + pr.total + ' 个筹建阶段）'
-        : '进度 ' + pr.pct + '%';
+      var pctTxt = pr.taskTotal
+        ? '进度 ' + pr.pct + '%（任务已完成 ' + pr.done + '/' + pr.taskTotal + ' 条）'
+        : '进度 0%（还没有筹建任务）';
 
       if (s.risk === 'high' || s.risk === 'overdue') {
         addAlert({
@@ -956,7 +956,7 @@ window.Store = (function () {
       stage: data.stage || ((C.STAGES[0] || {}).key || '未出图'),
       risk: data.risk || 'normal',
       /* 云端 stores.progress 这一列还在（不做表结构迁移），但界面不再读它：
-         显示用的百分比统一由 storeProgress() 按「阶段时间线」现算 */
+         显示用的百分比统一由 storeProgress() 按「已完成任务 / 任务总计」现算 */
       progress: U.clamp(Number(data.progress) || 0, 0, 100),
       ownerId: data.ownerId || (state.members[0] || {}).id,
       /* 开业日允许空：没定就先不填，任务只显示「开业前 N 天」，不硬算日期 */
@@ -1137,8 +1137,8 @@ window.Store = (function () {
     return changed.length;
   }
 
-  /* 注：门店进度已改为按「阶段时间线」现算（storeProgress），
-     不再由任务完成率回写 stores.progress。云端那一列保留不动，只是不再参与显示。 */
+  /* 注：门店进度条的口径是「已完成任务 / 任务总计」，由 storeProgress() 现算，
+     不写回 stores.progress。云端那一列保留不动，只是不参与显示。 */
 
   function removeTask(id) {
     state.tasks = state.tasks.filter(function (t) { return t.id !== id; });
@@ -1800,17 +1800,21 @@ window.Store = (function () {
     return s;
   }
 
-  /* ---------------- 门店进度：一个阶段一格，最后一格就是 100% ----------------
-     口径：只看门店「现在停在哪个阶段」，不看清单做了几条，也不管二级。
-     进度 = 停在第几个筹建阶段 ÷ 筹建阶段总数：
-       6 个筹建阶段 → 每个 16.7%，最后一个（准备开业）就是 100%
-       设计阶段 16.7%  已出图 33.3%  建档资料 50%  发货阶段 66.7%
-       广告物料 83.3%  准备开业 100%
-     结束类阶段（已开业 / 闭店 …，见 CONST.PROGRESS_END_STAGES）不进分母，
-     否则「准备开业」会被摊成 6/8 = 75%，看不出已经可以开业了。
-     新店不用做前面的事：直接推到「广告物料」就是 5/6 ≈ 83.3%。
+  /* ---------------- 门店进度 ----------------
+     两个口径分开，别混着用：
+
+       stageProgress() —— 阶段口径：门店停在第几个筹建阶段
+         6 个筹建阶段 → 每个 16.7%，最后一个（准备开业）= 100%
+         设计 16.7%  已出图 33.3%  建档资料 50%  发货 66.7%  广告物料 83.3%  准备开业 100%
+         结束类阶段（已开业 / 闭店 …，见 CONST.PROGRESS_END_STAGES）不进分母。
+         只用于门店表单里那格「阶段进度」的即时预览 —— 改阶段就跟着变。
+
+       storeProgress() —— 任务口径：这家店「已完成任务 / 任务总计」
+         页面上所有进度条（首页 / 门店列表 / 任务页 / 报表平均进度）统一走它，
+         跟任务页里看到的「未完成 N / 逾期 N」是同一份数据，不会两处对不上。
+         同时还带出阶段位置（idx / total / at），文案里想提一句也能用。
+
      阶段是用户自己加 / 改名 / 删 / 排序的，分母一律按当前 C.STAGES 现算。
-     阶段被删 / 改名后门店还挂着旧值：找不到就按 0% 算，不会错乱成 100%。
      ------------------------------------------------------------------ */
 
   /* 结束类阶段？（按一级阶段名精确匹配，二级不影响） */
@@ -1861,9 +1865,10 @@ window.Store = (function () {
     return progressPlan().flow;
   }
 
-  /* { pct, idx, total, at, ended, isEnd, label }
-     idx = 停在第几个筹建阶段（从 1 开始），total = 筹建阶段总数 */
-  function storeProgress(store) {
+  /* 阶段口径：{ pct, idx, total, at, ended, isEnd, label }
+     idx = 停在第几个筹建阶段（从 1 开始），total = 筹建阶段总数
+     只给「门店表单 → 阶段进度」预览用；页面上的进度条请用 storeProgress() */
+  function stageProgress(store) {
     var plan = progressPlan();
     var flow = plan.flow;
     var total = flow.length || 1;
@@ -1891,17 +1896,56 @@ window.Store = (function () {
     };
   }
 
+  /* 任务口径：这家店的任务「已完成 / 总计」
+     { done, total, pct }；还没派任务时 total = 0、pct = 0（页面显示「—」） */
+  function taskProgress(store) {
+    var id = store && store.id;
+    var total = 0, done = 0;
+    if (id) {
+      for (var i = 0; i < state.tasks.length; i++) {
+        var t = state.tasks[i];
+        if (t.storeId !== id) continue;
+        total++;
+        if (t.status === 'done') done++;
+      }
+    }
+    return { done: done, total: total, pct: total ? Math.round(done / total * 100) : 0 };
+  }
+
+  /* 页面统一用的门店进度：pct = 已完成任务 / 任务总计
+     另外把阶段位置一并带出来（idx / total / at / isEnd / label），文案里想提就用。 */
+  function storeProgress(store) {
+    var sp = stageProgress(store);
+    var tp = taskProgress(store);
+    return {
+      pct: store && store.id ? tp.pct : sp.pct,   /* 没有 id 的伪对象（表单预览）退回阶段口径 */
+      done: tp.done,
+      taskTotal: tp.total,
+      stagePct: sp.pct,
+      idx: sp.idx, total: sp.total,
+      at: sp.at, ended: sp.ended, isEnd: sp.isEnd, label: sp.label
+    };
+  }
+
+  /* 页面直接丢给 UI.progress() 的值：没派任务就返回 null（进度条显示「—」，不假装 0%） */
+  function progressValue(store) {
+    var p = storeProgress(store);
+    if (!store || !store.id) return p.stagePct;   /* 表单预览走阶段口径 */
+    return p.taskTotal ? p.pct : null;
+  }
+
   /* 鼠标悬停的说明文字，各页面共用，避免同一个数字三种说法 */
   function progressTip(store) {
     var p = storeProgress(store);
-    if (!p.at) return '还没设置阶段';
+    var at = p.at
+      ? '门店在「' + p.at + '」' + (p.idx ? '（第 ' + p.idx + ' / ' + p.total + ' 个筹建阶段）' : '')
+      : '还没设置阶段';
 
-    var per = Math.round(100 / p.total * 10) / 10;
-    var tail = '（' + p.total + ' 个筹建阶段各占 ' + per + '%，推到最后一个就是 100%）';
-
-    if (p.isEnd) return '门店在「' + p.at + '」，' + p.total + ' 个筹建阶段已全部走完，进度 100%';
-    if (p.ended) return '门店在「' + p.at + '」，' + p.label + '，进度 100% —— 走到这一步就代表可以开业了';
-    return '门店在「' + p.at + '」，' + p.label + '，进度 ' + p.pct + '%' + tail;
+    if (!p.taskTotal) {
+      return '进度 = 已完成任务 / 任务总计；这家店还没有任务，所以显示「—」。' + at;
+    }
+    return '进度 = 已完成任务 / 任务总计：' + p.done + ' / ' + p.taskTotal +
+      ' 条已完成 → ' + p.pct + '%。' + at;
   }
 
   /* ---------------- 二级的改名 / 删除（三处一起同步） ----------------
@@ -2414,7 +2458,10 @@ window.Store = (function () {
     suggestFor: suggestFor,
     resyncTaskDates: resyncTaskDates,
     isEndStage: isEndStage,
+    stageProgress: stageProgress,
+    taskProgress: taskProgress,
     storeProgress: storeProgress,
+    progressValue: progressValue,
     progressTip: progressTip,
     stageSubUsage: stageSubUsage,
     renameStageSub: renameStageSub,

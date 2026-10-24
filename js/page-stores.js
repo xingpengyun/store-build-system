@@ -56,7 +56,7 @@ window.Pages.stores = (function () {
         '</div></td>' +
         '<td class="muted">' + U.esc(store.province || '—') + '</td>' +
         '<td class="muted mono">' + (store.openDate || '<span class="dim">未定</span>') + '</td>' +
-        '<td>' + UI.progress(S.storeProgress(store).pct, null, S.progressTip(store)) + '</td>' +
+        '<td>' + UI.progress(S.progressValue(store), null, S.progressTip(store)) + '</td>' +
         '<td>' + UI.stageBadge(store.stage, S.storeSub(store)) + '</td>' +
         '<td>' + UI.riskBadge(store.risk) + '</td>' +
         '<td>' + (owner
@@ -73,7 +73,7 @@ window.Pages.stores = (function () {
 
     return '<div class="table-wrap"><table class="tbl">' +
       '<thead><tr>' +
-        '<th>门店名称</th><th>省份</th><th>开业日期</th><th>整体进度</th>' +
+        '<th>门店名称</th><th>省份</th><th>开业日期</th><th title="已完成任务 / 任务总计">整体进度</th>' +
         '<th>当前阶段</th><th>风险等级</th><th>负责人</th><th>任务</th><th>操作</th>' +
       '</tr></thead>' +
       '<tbody>' + body + '</tbody>' +
@@ -143,9 +143,10 @@ window.Pages.stores = (function () {
   }
 
   /* 表单里那格「阶段进度」：只读预览，跟着「当前阶段」即时变。
-     进度 = 门店停在第几个筹建阶段（每格 16.7%，准备开业 = 100%，收尾阶段不计入）。 */
+     这里刻意用阶段口径（stageProgress）——表单里还没保存、任务也还没派，
+     按任务算只会一直显示「—」。页面上其他地方的门店进度条走任务口径。 */
   function progPreviewHtml(stage) {
-    var p = S.storeProgress({ stage: stage });
+    var p = S.stageProgress({ stage: stage });
     var per = Math.round(100 / p.total * 10) / 10;
     var tip = p.isEnd
       ? '收尾阶段不占进度，筹建部分已走完 → 100%'
@@ -211,7 +212,7 @@ window.Pages.stores = (function () {
             address: UI.formValue(rootEl, 'address'),
             remark: UI.formValue(rootEl, 'remark')
           };
-          /* progress 不再手填：显示用的百分比由 Store.storeProgress() 按阶段现算 */
+          /* progress 不再手填：显示用的百分比由 Store.storeProgress() 按「已完成任务 / 任务总计」现算 */
 
           if (isNew) {
             var auto = rootEl.querySelector('[name="autoTasks"]');
@@ -418,10 +419,10 @@ window.Pages.stores = (function () {
           ? store.openDate + ' <span class="dim" style="font-weight:400">（' +
             (days >= 0 ? '还剩 ' + days + ' 天' : '已过 ' + (-days) + ' 天') + '）</span>'
           : '<span class="dim">未设置（任务只按「开业前 N 天」计，不算逾期）</span>') + '</div></div>' +
-        '<div class="d-item"><div class="d-label">阶段进度</div><div class="d-val">' +
-          UI.progress(pr.pct, null, S.progressTip(store)) +
+        '<div class="d-item"><div class="d-label">任务进度</div><div class="d-val">' +
+          UI.progress(S.progressValue(store), null, S.progressTip(store)) +
           '<span class="dim" style="font-weight:400;margin-left:8px">' +
-            (pr.idx ? '当前<b>第 ' + pr.idx + ' / ' + pr.total + '</b> 个筹建阶段' : '阶段未设置') +
+            (pr.taskTotal ? '已完成 <b>' + pr.done + ' / ' + pr.taskTotal + '</b> 条' : '还没有任务') +
           '</span></div></div>' +
       '</div>' +
       (store.address || store.remark
