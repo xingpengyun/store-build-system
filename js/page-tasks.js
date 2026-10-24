@@ -358,6 +358,14 @@ window.Pages.tasks = (function () {
           note: '「' + task.title + '」已完成' +
             (jumped.skipped.length > 1 ? ' · 越过 ' + jumped.skipped.length + ' 格' : '')
         });
+
+        /* 门店阶段变了：左侧还筛着旧阶段的话，这家店会当场从列表消失（看着像被删了），
+           连它的「重开」按钮一起没了。放开筛选，让门店行留在原地。 */
+        var movedStore = S.storeById(store.id);
+        if (movedStore && state.stage && movedStore.stage !== state.stage) {
+          state.stage = '';
+          state.sub = '';
+        }
       }
 
       App.refresh({ keep: true });
