@@ -132,22 +132,28 @@ window.Pages.settings = (function () {
     var snap = S.settingsSnapshot ? S.settingsSnapshot() : null;
     var missing = !tpls.length;
 
-    function box(label, val, foot) {
-      return '<div class="mini-stat"><div class="ms-label">' + label + '</div>' +
+    /* 每一张都能点：点一下直接去能调整它的地方（2026-10-24 用户要求） */
+    function box(label, val, foot, act, tip) {
+      return '<div class="mini-stat cfg-go" data-cfg="' + act + '" title="' + U.esc(tip) + '">' +
+        '<div class="ms-label">' + label + '</div>' +
         '<div class="ms-val">' + val + '</div>' +
-        '<div class="cfg-foot-num">' + foot + '</div></div>';
+        '<div class="cfg-foot-num">' + foot + '<span class="cfg-arrow">去调整 →</span></div></div>';
     }
 
     return '' +
     '<div class="card fade-up cfg-card" style="animation-delay:.062s">' +
       '<div class="card-head"><h3>我的工作流配置</h3>' +
-        '<span class="card-sub">阶段时间线 / 筹建任务清单 / 到货物料清单 —— 演示门店不会改动它们</span></div>' +
+        '<span class="card-sub">点任意一张卡牌，直达它的调整入口；演示门店不会改动它们</span></div>' +
 
       '<div class="mini-stats cfg-stats">' +
-        box('阶段时间线', stages.length + ' 个', subCount + ' 个二级阶段') +
-        box('筹建任务清单', tpls.length + ' 条', tpls.length ? '新门店按它派活' : '没有任务可派') +
-        box('到货物料清单', items.length + ' 项', items.length ? '门店里点一下就能选' : '门店里只能手填') +
-        box('团队成员', (S.getState().members || []).length + ' 人', '任务负责人从这里选') +
+        box('阶段时间线', stages.length + ' 个', subCount + ' 个二级阶段', 'stages',
+          '去「任务管理」左侧的阶段时间线：可加一级 / 二级、改名、删除、按住行拖排序') +
+        box('筹建任务清单', tpls.length + ' 条', tpls.length ? '新门店按它派活' : '没有任务可派', 'tpl',
+          '打开筹建任务清单：增删改每条任务的名称、所属阶段、开业前天数') +
+        box('到货物料清单', items.length + ' 项', items.length ? '门店里点一下就能选' : '门店里只能手填', 'items',
+          '就在本页下面「到货物料清单」：加词条，长按删除') +
+        box('团队成员', (S.getState().members || []).length + ' 人', '任务负责人从这里选', 'members',
+          '去「团队工作台」：新增 / 编辑 / 移除成员') +
       '</div>' +
 
       (missing
@@ -271,6 +277,38 @@ window.Pages.settings = (function () {
     });
 
     root.addEventListener('click', function (e) {
+      /* 工作流配置卡：点一下直接去能调整它的地方（2026-10-24 用户要求） */
+      var cfg = e.target.closest('[data-cfg]');
+      if (cfg) {
+        var k = cfg.getAttribute('data-cfg');
+        if (k === 'stages') {
+          App.go('tasks');
+          UI.toast('左边就是阶段时间线：悬停阶段可改名 / 加二级 / 删除，按住行上下拖排序', 'info', 4000);
+        } else if (k === 'tpl') {
+          App.go('tasks');
+          /* 等任务管理页渲染出来，再点它顶部的「筹建任务清单」按钮把弹窗打开 */
+          setTimeout(function () {
+            var btn = document.querySelector('#view [data-act="tpl"]');
+            if (btn) btn.click();
+          }, 420);
+        } else if (k === 'members') {
+          App.go('team');
+          UI.toast('在这儿新增 / 编辑 / 移除成员，任务负责人从成员里选', 'info', 3200);
+        } else if (k === 'items') {
+          var ib = root.querySelector('#arrItemsBox');
+          if (ib) {
+            ib.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            var card = ib.closest('.card');
+            if (card) {
+              card.classList.remove('cfg-flash');
+              void card.offsetWidth;   /* 强制重排，让动画能重新触发 */
+              card.classList.add('cfg-flash');
+            }
+          }
+        }
+        return;
+      }
+
       var el = e.target.closest('[data-act]');
       if (!el) return;
       var act = el.getAttribute('data-act');

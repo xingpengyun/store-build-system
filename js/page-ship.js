@@ -108,23 +108,29 @@ window.Pages.ship = (function () {
 
   var MAT_MAX = 5;
 
-  /* 一家店的所有物料 + 登记的到货时间，全部铺在这一行里 ——
-     不用点进门店也知道这家哪天到货、哪条漏通知了。 */
+  /* 一家店还要催的物料 + 登记的到货时间，全部铺在这一行里 ——
+     不用点进门店也知道这家哪天到货、哪条漏通知了。
+     2026-10-24 用户要求：已通知的不在此处显示，只留未通知的，并且要看得清楚。 */
   function matsHtml(r) {
-    if (!r.mats || !r.mats.length) {
+    var all = r.mats || [];
+    var pend = all.filter(function (m) { return !m.notified; });
+
+    if (!pend.length) {
+      if (all.length) {
+        return '<span class="sm-none is-ok">物料都通知过了 · 共 ' + all.length + ' 项</span>';
+      }
       return '<span class="sm-none">还没录物料 · 点门店名进去录</span>';
     }
 
     var watch = Number(C.ARR_WATCH_DAYS || 7);
-    var html = r.mats.slice(0, MAT_MAX).map(function (m) {
-      var cls = m.notified ? 'is-done'
-        : m.d == null ? 'is-nodate'
-          : m.d < 0 ? 'is-late'
-            : m.d <= watch ? 'is-soon' : '';
+    var html = pend.slice(0, MAT_MAX).map(function (m) {
+      var cls = m.d == null ? 'is-nodate'
+        : m.d < 0 ? 'is-late'
+          : m.d <= watch ? 'is-soon' : '';
 
       var when = m.eta ? U.dateDot(m.eta) : '没日期';
       var tail = '';
-      if (!m.notified && m.d != null) {
+      if (m.d != null) {
         tail = m.d < 0 ? '过' + (-m.d) + '天'
           : m.d === 0 ? '今天'
             : m.d + '天后';
@@ -132,7 +138,7 @@ window.Pages.ship = (function () {
 
       var tip = m.item + (m.qty ? ' ×' + m.qty : '') +
         '：' + (m.eta ? m.eta.slice(5) + ' 到货' : '还没填到货时间') +
-        (m.notified ? '（已通知供应商）' : '（待通知供应商）');
+        '（待通知供应商）';
 
       return '<span class="sm-chip ' + cls + '" title="' + U.esc(tip) + '">' +
         '<b class="sm-when mono">' + when + '</b>' +
@@ -141,9 +147,9 @@ window.Pages.ship = (function () {
       '</span>';
     }).join('');
 
-    if (r.mats.length > MAT_MAX) {
-      html += '<span class="sm-more" data-open title="还有 ' + (r.mats.length - MAT_MAX) + ' 条，点开门店看全部">' +
-        '+' + (r.mats.length - MAT_MAX) + ' 条</span>';
+    if (pend.length > MAT_MAX) {
+      html += '<span class="sm-more" data-open title="还有 ' + (pend.length - MAT_MAX) + ' 条没通知，点开门店看全部">' +
+        '+' + (pend.length - MAT_MAX) + ' 条</span>';
     }
     return html;
   }
@@ -175,6 +181,7 @@ window.Pages.ship = (function () {
   function rowHtml(r, idx) {
     var cls = [];
     if (r.late) cls.push('is-late');
+    else if (r.arrLate) cls.push('is-arrlate');   /* 物料过了到货日还没通知 → 整行淡红底 */
     else if (r.dueToday) cls.push('is-today');
     if (r.shipped) cls.push('is-sent');
     if (r.pin) cls.push('is-pin');
@@ -251,8 +258,8 @@ window.Pages.ship = (function () {
       '<thead><tr>' +
         '<th style="width:50px">顺序</th>' +
         '<th style="width:168px">门店 / 开业</th>' +
-        '<th>物料 · 登记的到货时间' +
-          '<span class="th-legend"><i class="is-late"></i>过了到货日<i class="is-soon"></i>7 天内到<i class="is-done"></i>已通知</span>' +
+        '<th>物料 · 登记的到货时间（只列未通知）' +
+          '<span class="th-legend"><i class="is-late"></i>过了到货日<i class="is-soon"></i>7 天内到<i class="is-nodate"></i>没填日期</span>' +
         '</th>' +
         '<th style="width:112px">计划发货</th>' +
         '<th style="width:132px">发出 / 下一步</th>' +
@@ -620,7 +627,7 @@ window.Pages.ship = (function () {
       '</div>' +
       '<div id="shipTable">' + tableHtml(list) + '</div>' +
       '<div class="ship-foot">' +
-        '<span>每行都铺开了这家店全部物料的到货时间；发出后填「实发」日期，右边自动提示下一个流程</span>' +
+        '<span>每行只铺还没通知供应商的物料，通知过的不再占地方；历史记录去「按到货日」视图的「已通知」</span>' +
         '<span>' + (s.noPlan ? '<b class="text-red">' + s.noPlan + ' 家还没填发货日</b>　·　' : '') +
           '到货时间以门店 / 供应商登记的为准，改日期就是新承诺</span>' +
       '</div>' +

@@ -1,5 +1,9 @@
 /* ==========================================================
    page-reports.js — 数据报表
+   2026-10-24：按用户要求调整——
+   · 新增「当月开店数量 + 与上月环比」
+   · 「近 7 天到货量」整块去掉（用户说不需要了）
+   · 省份门店分布独立成卡
    ========================================================== */
 window.Pages = window.Pages || {};
 
@@ -9,6 +13,14 @@ window.Pages.reports = (function () {
   var U = window.Utils;
   var S = window.Store;
   var C = window.CONST;
+
+  /* 'YYYY-MM' 往前/后挪 N 个月 */
+  function ymShift(ym, delta) {
+    var y = Number(ym.slice(0, 4));
+    var m = Number(ym.slice(5, 7)) - 1 + delta;
+    var d = new Date(y, m, 1);
+    return d.getFullYear() + '-' + U.pad2(d.getMonth() + 1);
+  }
 
   function render() {
     var st = S.stats();
@@ -20,6 +32,41 @@ window.Pages.reports = (function () {
     var avgProgress = s.stores.length
       ? Math.round(U.sum(s.stores, function (x) { return S.storeProgress(x).pct; }) / s.stores.length)
       : 0;
+
+    /* ---------- 当月开店 + 环比（按计划开业日） ---------- */
+    var t0 = U.today();
+    var ymNow = t0.slice(0, 7);
+    var ymLast = ymShift(ymNow, -1);
+    function openIn(ym) {
+      return s.stores.filter(function (x) {
+        return x.openDate && x.openDate.slice(0, 7) === ym;
+      }).length;
+    }
+    var curOpen = openIn(ymNow);
+    var lastOpen = openIn(ymLast);
+    /* 环比：上月为 0 时不说百分比，说人话 */
+    var momPct = lastOpen ? Math.round((curOpen - lastOpen) / lastOpen * 100) : 0;
+    var momCls, momTxt, momFoot;
+    if (!lastOpen && curOpen) {
+      momCls = 'is-up';
+      momTxt = '新增 ' + curOpen + ' 家';
+      momFoot = '上月 0 家 · 本月新增 ' + curOpen + ' 家';
+    } else if (!lastOpen && !curOpen) {
+      momCls = 'is-flat';
+      momTxt = '都还没安排';
+      momFoot = '近两个月都没排开业';
+    } else {
+      momCls = momPct > 0 ? 'is-up' : (momPct < 0 ? 'is-down' : 'is-flat');
+      momTxt = '环比 ' + (momPct > 0 ? '+' : '') + momPct + '%';
+      momFoot = '上月 ' + lastOpen + ' 家 · 环比 ' + (momPct > 0 ? '+' : '') + momPct + '%';
+    }
+
+    /* 近 6 个月开店数（含当月），给环比一个上下文 */
+    var trend6 = [];
+    for (var i = 5; i >= 0; i--) {
+      var ym = ymShift(ymNow, -i);
+      trend6.push({ label: Number(ym.slice(5, 7)) + '月', count: openIn(ym) });
+    }
 
     /* 阶段分布 */
     var stageRows = Charts.statRows(st.stageCounts.map(function (x) {
@@ -45,13 +92,13 @@ window.Pages.reports = (function () {
     var monthMap = {};
     s.stores.forEach(function (x) {
       if (x.stage === '已开业') return;
-      var ym = x.openDate.slice(0, 7);
-      monthMap[ym] = (monthMap[ym] || 0) + 1;
+      var ym2 = x.openDate.slice(0, 7);
+      monthMap[ym2] = (monthMap[ym2] || 0) + 1;
     });
     var months = Object.keys(monthMap).sort();
     var monthRows = months.length
-      ? Charts.statRows(months.map(function (ym) {
-          return { name: ym.replace('-', '年') + '月', value: monthMap[ym], color: '#3f6bf5' };
+      ? Charts.statRows(months.map(function (ym2) {
+          return { name: ym2.replace('-', '年') + '月', value: monthMap[ym2], color: '#3f6bf5' };
         }))
       : UI.empty('暂无排期');
 
@@ -87,10 +134,13 @@ window.Pages.reports = (function () {
       '<button class="btn" data-act="export">' + UI.icon('download') + '导出数据</button>' +
     '</div>' +
 
-    '<section class="kpi-grid fade-up" style="grid-template-columns:repeat(4,minmax(0,1fr));animation-delay:.04s">' +
+    '<section class="kpi-grid fade-up" style="grid-template-columns:repeat(5,minmax(0,1fr));animation-delay:.04s">' +
       '<div class="kpi"><span class="kpi-icon" style="background:#edf2fe;color:#3f6bf5">' + UI.icon('box') + '</span>' +
         '<div class="kpi-body"><div class="kpi-label">门店总数</div><div class="kpi-value">' + st.totalStores + '</div>' +
         '<div class="kpi-foot">已开业 ' + st.opened + ' 家</div></div></div>' +
+      '<div class="kpi"><span class="kpi-icon" style="background:#e6f8ef;color:#17b26a">' + UI.icon('flag') + '</span>' +
+        '<div class="kpi-body"><div class="kpi-label">当月开店</div><div class="kpi-value">' + curOpen + '</div>' +
+        '<div class="kpi-foot">' + momFoot + '</div></div></div>' +
       '<div class="kpi"><span class="kpi-icon" style="background:#e6f8ef;color:#17b26a">' + UI.icon('target') + '</span>' +
         '<div class="kpi-body"><div class="kpi-label">平均进度</div><div class="kpi-value">' + avgProgress + '%</div>' +
         '<div class="kpi-foot">按阶段时间线推进计算</div></div></div>' +
@@ -114,23 +164,38 @@ window.Pages.reports = (function () {
       '</div>' +
 
       '<div class="card">' +
-        '<div class="card-head"><h3>近 7 天到货量</h3></div>' +
-        Charts.bars(st.trend) +
-        '<div class="section-title">风险等级分布</div>' +
-        riskRows +
+        '<div class="card-head"><h3>当月开店与环比</h3><span class="card-sub">按计划开业日</span></div>' +
+        '<div class="open-cmp">' +
+          '<div class="oc-item is-cur"><div class="oc-num">' + curOpen + '</div>' +
+            '<div class="oc-lab">本月 · ' + Number(ymNow.slice(5, 7)) + '月</div></div>' +
+          '<div class="oc-item"><div class="oc-num">' + lastOpen + '</div>' +
+            '<div class="oc-lab">上月 · ' + Number(ymLast.slice(5, 7)) + '月</div></div>' +
+          '<div class="oc-mom ' + momCls + '">环比 ' + momTxt + '</div>' +
+        '</div>' +
+        '<div class="section-title">近 6 个月开店数</div>' +
+        Charts.bars(trend6) +
       '</div>' +
     '</section>' +
 
     '<section class="home-grid-2 fade-up" style="animation-delay:.1s">' +
       '<div class="card">' +
-        '<div class="card-head"><h3>成员待办负荷</h3><span class="card-sub">未完成任务数</span></div>' +
-        teamRows +
+        '<div class="card-head"><h3>省份门店分布</h3><span class="card-sub">共 ' + st.totalStores + ' 家</span></div>' +
+        provRows +
       '</div>' +
       '<div class="card">' +
         '<div class="card-head"><h3>开业排期</h3><span class="card-sub">按计划开业月份</span></div>' +
         monthRows +
-        '<div class="section-title">省份分布</div>' +
-        provRows +
+      '</div>' +
+    '</section>' +
+
+    '<section class="home-grid-2 fade-up" style="animation-delay:.13s">' +
+      '<div class="card">' +
+        '<div class="card-head"><h3>成员待办负荷</h3><span class="card-sub">未完成任务数</span></div>' +
+        teamRows +
+      '</div>' +
+      '<div class="card">' +
+        '<div class="card-head"><h3>风险等级分布</h3><span class="card-sub">全部门店</span></div>' +
+        riskRows +
       '</div>' +
     '</section>';
   }

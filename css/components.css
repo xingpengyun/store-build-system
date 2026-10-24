@@ -1729,6 +1729,39 @@
   .cfg-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
+/* 配置卡整张可点：去对应调整入口（2026-10-24） */
+.cfg-go { cursor: pointer; transition: border-color .15s, background .15s; }
+.cfg-go:hover { border-color: var(--primary); background: var(--primary-soft); }
+.cfg-arrow { color: var(--primary); font-weight: 600; margin-left: 4px; }
+.cfg-go:hover .cfg-arrow { text-decoration: underline; }
+.cfg-flash { animation: cfgFlash 1.6s ease; }
+@keyframes cfgFlash {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(63, 107, 245, 0); }
+  25%, 65% { box-shadow: 0 0 0 4px rgba(63, 107, 245, .22); }
+}
+
+/* ---------------- 报表页：当月开店与环比 ---------------- */
+.open-cmp { display: flex; align-items: center; gap: 10px; margin: 2px 0 4px; }
+.oc-item {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card-2);
+  text-align: center;
+}
+.oc-item.is-cur { border-color: var(--primary); background: var(--primary-soft); }
+.oc-num { font-size: 24px; font-weight: 700; color: var(--text); line-height: 1.15; }
+.oc-item.is-cur .oc-num { color: var(--primary); }
+.oc-lab { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.oc-mom { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.oc-mom.is-up { color: #b42318; background: var(--red-soft); }
+.oc-mom.is-down { color: #067647; background: var(--green-soft); }
+.oc-mom.is-flat { color: var(--text-3); background: var(--card-2); }
+.kpi-foot b.is-up { color: var(--red); }
+.kpi-foot b.is-down { color: var(--green); }
+.kpi-foot b.is-flat { color: var(--text-3); }
+
 /* ---------------- 物料到货：底部操作条（一键添加 / 手动添加） ---------------- */
 .arr-actions {
   display: flex;
@@ -2504,6 +2537,9 @@ body.tl-sorting * { cursor: grabbing !important; user-select: none !important; }
 
 /* 行状态：逾期红条 / 今天橙条 / 已发出淡化 / 先发浅橙底 */
 .ship-tbl tbody tr.is-late td:first-child { box-shadow: inset 3px 0 0 var(--red); }
+.ship-tbl tbody tr.is-arrlate td:first-child { box-shadow: inset 3px 0 0 #f04438; }
+.ship-tbl tbody tr.is-arrlate { background: #fffafa; }
+.ship-tbl tbody tr.is-arrlate:hover { background: #fff5f4; }
 .ship-tbl tbody tr.is-today td:first-child { box-shadow: inset 3px 0 0 var(--orange); }
 .ship-tbl tbody tr.is-pin td:first-child { box-shadow: inset 3px 0 0 var(--orange); }
 .ship-tbl tbody tr.is-late { background: #fffafa; }
@@ -2768,37 +2804,39 @@ body.tl-sorting * { cursor: grabbing !important; user-select: none !important; }
   height: 23px;
   padding: 0 7px;
   margin: 2px 4px 2px 0;
-  border: 1px solid var(--line-2);
+  border: 1px solid #c7d3ec;
   border-radius: 6px;
-  background: var(--card-2);
+  background: #fff;
   font-size: 11px;
-  color: var(--text-2);
+  color: var(--text);
   white-space: nowrap;
   max-width: 210px;
   transition: .14s;
 }
-.sm-chip:hover { border-color: #c8d5ee; background: #fff; box-shadow: 0 2px 8px rgba(31, 53, 102, .07); }
+.sm-chip:hover { border-color: #a9bdf0; background: #fff; box-shadow: 0 2px 8px rgba(31, 53, 102, .1); }
 .sm-when { font-size: 11px; font-weight: 700; color: var(--text); letter-spacing: -.2px; }
 .sm-item {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 96px;
-  color: var(--text-2);
+  color: var(--text);
+  font-weight: 500;
 }
 .sm-item i { font-style: normal; color: var(--text-3); margin-left: 2px; }
-.sm-tail { font-size: 10px; color: var(--text-3); }
+.sm-tail { font-size: 10px; color: var(--text-2); font-weight: 600; }
 
-.sm-chip.is-late { background: #fdedeb; border-color: #f8d2cd; }
+.sm-chip.is-late { background: #fdedeb; border-color: #f3b9b2; }
 .sm-chip.is-late .sm-when, .sm-chip.is-late .sm-tail, .sm-chip.is-late .sm-item { color: #b42318; }
-.sm-chip.is-soon { background: #fef6e8; border-color: #f7e0ba; }
+.sm-chip.is-soon { background: #fef6e8; border-color: #f5d49c; }
 .sm-chip.is-soon .sm-when, .sm-chip.is-soon .sm-tail { color: #b06f05; }
-.sm-chip.is-done { opacity: .55; }
-.sm-chip.is-nodate { border-style: dashed; }
-.sm-chip.is-nodate .sm-when { color: var(--text-3); }
+.sm-chip.is-nodate { background: #f5f3fe; border-color: #d8d2fa; border-style: dashed; }
+.sm-chip.is-nodate .sm-when, .sm-chip.is-nodate .sm-tail { color: #6941c6; }
 .sm-none { font-size: 11.5px; color: #b6c0d2; }
+.sm-none.is-ok { color: var(--green); }
 .sm-more {
   font-size: 11px;
-  color: var(--text-3);
+  font-weight: 600;
+  color: #b06f05;
   padding: 2px 4px;
   cursor: pointer;
   border-radius: 5px;
@@ -2824,7 +2862,7 @@ body.tl-sorting * { cursor: grabbing !important; user-select: none !important; }
 .th-legend i:first-child { margin-left: 0; }
 .th-legend i.is-late { background: #f04438; }
 .th-legend i.is-soon { background: #f79009; }
-.th-legend i.is-done { background: #c2cbdb; }
+.th-legend i.is-nodate { background: #7a5af8; }
 
 /* 发出：胶囊 + 登记的发货时间 + 下一步 */
 .ship-sent { min-width: 124px; }
