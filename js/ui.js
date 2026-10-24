@@ -36,7 +36,9 @@ window.UI = (function () {
     bell: '<path d="M10 3.2a4.4 4.4 0 0 0-4.4 4.4c0 3.9-1.5 4.9-1.5 4.9h11.8s-1.5-1-1.5-4.9A4.4 4.4 0 0 0 10 3.2z"/><path d="M8.6 15.4a1.7 1.7 0 0 0 2.8 0"/>',
     refreshDot: '<circle cx="10" cy="10" r="6.6"/><path d="M10 6.6v3.6l2.4 1.4"/>',
     grip: '<circle cx="7.6" cy="5.4" r="1.15"/><circle cx="7.6" cy="10" r="1.15"/><circle cx="7.6" cy="14.6" r="1.15"/>' +
-          '<circle cx="12.4" cy="5.4" r="1.15"/><circle cx="12.4" cy="10" r="1.15"/><circle cx="12.4" cy="14.6" r="1.15"/>'
+          '<circle cx="12.4" cy="5.4" r="1.15"/><circle cx="12.4" cy="10" r="1.15"/><circle cx="12.4" cy="14.6" r="1.15"/>',
+    send: '<path d="M3.2 10L16.6 4.2l-4.3 11.8-3.3-4.6-5.8-1.4z"/><path d="M9 11.4l7.6-7.2"/>',
+    board: '<rect x="3.4" y="3.6" width="13.2" height="9.6" rx="1.8"/><path d="M6.2 16.4l2.6-3.2"/><path d="M6.8 7h6.4M6.8 9.8h4"/>'
   };
 
   function icon(name, cls) {

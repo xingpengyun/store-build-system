@@ -618,3 +618,58 @@
 - 团队弹窗：能打开、文本里没有「给他派任务」、`[data-act="assign"]` 为 0、仍有「关闭」
 - `smoke` 8 页 / `chk-tl-readonly` / `chk-theme` / `chk-accordion` 无回归
 
+
+---
+
+## 2026-10-24（续）团队工作台新增留言板
+
+### 一、需求
+团队工作台加一个留言板，**其他人也能留言**，大家进来看得到同一份。
+
+### 二、落地方式：存在云端配置里，不动表结构
+沿用本项目既有做法（`leadDays`、`ship`、`stages` 都是这么存的）：
+
+```
+settings.board = [ { id, text, authorId, authorName, color, at } ]
+```
+
+- 跟着 `app_settings` 整包上云 → 换台电脑登录就是同一块板，**零表结构改动、零 SQL**
+- `authorName` / `color` 存的是发言当时的**快照**：成员被删了，历史留言照样显示得出来
+- 上限 500 条（`BOARD_MAX`），超了从最老的开始丢，防止配置包无限变大
+- `normalized()` 里补 `settings.board` 默认 `[]`，老数据进来不会报错
+
+### 三、并发：发帖前先读一次再合并，避免两个人同时留言互相覆盖
+整包写 `app_settings` 天然有覆盖风险，所以：
+
+1. `Cloud.pullSettings()`（新增，只读 `app_settings` 一行，不碰门店/任务/成员）
+2. 把云端那份里本地没有的留言按 id 并进来（`mergeBoardNotes`）
+3. 再 `pushSettings()` 整包写回
+
+删帖同理：先在远端那份里剔掉这条 id，再合并写回 —— 否则远端那份会把删掉的又推回来。
+
+### 四、别人发的新留言多久能看到
+`stampOf()` 原来只算「门店/任务/成员/到货」条数，配置变了不触发刷新。
+现在把 **留言条数 + 最后一条时间** 也算进 stamp，自动同步（45s）一到就会重绘出来。
+
+### 五、界面（`page-team.js`，卡片放在「成员概览」下面）
+- 输入区：发言人下拉（取成员名册，选中的人记在 `localStorage.sbs.boardWho`，下次进来还是你）
+  - 名册为空时自动换成「你的名字」输入框（记在 `sbs.boardGuest`）
+- 输入框 800 字、支持换行，**Ctrl / Cmd + Enter 直接发**，发送后光标留在框里方便连着补一句
+- 列表：头像 + 名字 + 相对时间（`U.timeAgo` 新增）+ 内容，自己留的那条文字颜色更深一点
+- 鼠标移到某条上右侧才出现 ✕，点了先确认（会把这条的开头摘出来做提示）再删
+- 超过 5 条折叠，底部「展开全部 N 条 / 收起」
+- **只重画这块卡片**（`repaintBoard`），不走 `App.refresh()` —— 后者会 `scrollTo(0,0)`，留言板在页面最底部，一发就跳回顶部没法用
+- 草稿存 `bs.draft`：自动同步触发整页重绘时，正在写的内容不会丢
+
+### 六、验证（`chk-board.js`，25 项全过，真浏览器）
+结构 4 项 / 发帖 6 项（条数、内容、DOM、输入框清空、作者 + 相对时间、**云端确实写进去了**）/
+空内容不发 2 项 / Ctrl+Enter 1 项 / 重绘后草稿还在 1 项 / 折叠展开 4 项 / 删除 2 项 /
+收尾清理 2 项（本地 + 云端都清干净）/ 无异常无 console.error 2 项。
+测试期间发的留言结束时全部删掉，不污染真实留言板。
+`smoke` 8 页 / `chk-tl-readonly` / `chk-theme` / `chk-accordion` / `chk-tl-fix-team` / `chk-config-safety` 无回归。
+
+### 七、踩坑
+CDP 测试脚本里 `Runtime.evaluate` 是**裸表达式**，写 `var n=...; return n.text` 会
+`SyntaxError: Illegal return statement`，而且异常是静默的（只在 `exceptionDetails` 里），
+断言看着像「功能坏了」。凡是以 `var` 开头的都包一层 `(function(){...})()`。
+另外页面里的 `S` / `C` 是模块内的局部别名，测试里必须写 `window.Store` / `window.CONST`。

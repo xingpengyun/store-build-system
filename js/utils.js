@@ -96,6 +96,26 @@ window.Utils = (function () {
     return d ? WEEK[d.getDay()] : '';
   }
 
+  /* ---------------- 相对时间（留言板用） ----------------
+     刚刚 / 12 分钟前 / 3 小时前 / 今天 14:20 / 昨天 18:20 / 10月20日 14:20 / 2025年… */
+  function timeAgo(iso) {
+    var d = iso ? new Date(iso) : null;
+    if (!d || isNaN(d.getTime())) return '';
+    var now = new Date();
+    var sec = (now.getTime() - d.getTime()) / 1000;
+    if (sec < 0) sec = 0;
+    if (sec < 60) return '刚刚';
+    if (sec < 3600) return Math.floor(sec / 60) + ' 分钟前';
+    if (sec < 21600 && d.toDateString() === now.toDateString()) return Math.floor(sec / 3600) + ' 小时前';
+
+    var hm = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    if (d.toDateString() === now.toDateString()) return '今天 ' + hm;
+    var yes = new Date(now.getTime() - 86400000);
+    if (d.toDateString() === yes.toDateString()) return '昨天 ' + hm;
+    if (d.getFullYear() === now.getFullYear()) return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + hm;
+    return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日';
+  }
+
   function greeting() {
     var h = new Date().getHours();
     if (h < 5) return '凌晨好';
@@ -175,6 +195,7 @@ window.Utils = (function () {
     dateDot: dateDot,
     parseDateLoose: parseDateLoose,
     weekdayCn: weekdayCn,
+    timeAgo: timeAgo,
     greeting: greeting,
     esc: esc,
     uid: uid,

@@ -299,6 +299,7 @@ window.Store = (function () {
     data.members = data.members || [];
     data.arrivals = data.arrivals || [];
     data.alertsRead = data.alertsRead || [];
+    if (!Array.isArray(data.settings.board)) data.settings.board = [];
 
     if (!data.settings.brand) data.settings.brand = '门店筹建管理系统';
     if (!data.settings.slogan) data.settings.slogan = '让每一家门店，按时开业！';
@@ -462,7 +463,9 @@ window.Store = (function () {
   }
 
   function stampOf(s) {
-    return [s.stores.length, s.tasks.length, s.members.length, s.arrivals.length].join('/');
+    var b = (s.settings && Array.isArray(s.settings.board)) ? s.settings.board : [];
+    return [s.stores.length, s.tasks.length, s.members.length, s.arrivals.length,
+      b.length, b.length ? (b[b.length - 1].at || '') : ''].join('/');
   }
 
   function stamp() {
@@ -1197,6 +1200,89 @@ window.Store = (function () {
 
   function memberTaskCount(id) {
     return state.tasks.filter(function (t) { return t.assigneeId === id; }).length;
+  }
+
+  /* ================= 留言板 =================
+     存在 settings.board，跟 app_settings 整包上云（不动表结构）。
+     每条：{ id, text, authorId, authorName, color, at }
+     authorName / color 存的是当时的快照 —— 成员被删了，历史留言照样显示得出来。
+
+     并发：发帖 / 删帖前先只读一次 app_settings，把别人这段时间留的言并进来
+     再整包写回，两个人同时留言不会互相覆盖。
+     --------------------------------------------------------- */
+
+  var BOARD_MAX = 500;   /* 最多留 500 条，超了从最老的开始丢，防止配置包无限变大 */
+
+  function boardNotes() {
+    var list = state && state.settings && state.settings.board;
+    if (!Array.isArray(list)) return [];
+    return list.slice().sort(function (a, b) {
+      var ta = String((a && a.at) || ''), tb = String((b && b.at) || '');
+      if (ta === tb) return 0;
+      return ta < tb ? 1 : -1;
+    });
+  }
+
+  /* 把云端那一份并回本地（按 id 去重，本地已有的以本地为准） */
+  function mergeBoardNotes(remote) {
+    if (!remote || !Array.isArray(remote.board)) return;
+    if (!Array.isArray(state.settings.board)) state.settings.board = [];
+    var seen = {};
+    state.settings.board.forEach(function (n) { if (n && n.id) seen[n.id] = 1; });
+    remote.board.forEach(function (n) {
+      if (n && n.id && !seen[n.id]) { state.settings.board.push(n); seen[n.id] = 1; }
+    });
+    cacheLocal();
+  }
+
+  /* 留言列表在云端那份里取最新（autoSync 靠 stamp 里的条数 + 最后时间发现新留言） */
+  function addBoardNote(data) {
+    var note = {
+      id: U.uid('note'),
+      text: String((data && data.text) || '').replace(/\s+$/, '').slice(0, 800),
+      authorId: (data && data.authorId) || '',
+      authorName: String((data && data.authorName) || '').trim().slice(0, 20) || '匿名',
+      color: (data && data.color) || '#3f6bf5',
+      at: new Date().toISOString()
+    };
+    if (!note.text.trim()) return { ok: false, error: '写点什么再发吧' };
+
+    if (!Array.isArray(state.settings.board)) state.settings.board = [];
+    state.settings.board.push(note);
+    if (state.settings.board.length > BOARD_MAX) {
+      state.settings.board = boardNotes().slice(0, BOARD_MAX);
+    }
+    cacheLocal();
+
+    if (window.Cloud && window.Cloud.pullSettings) {
+      window.Cloud.pullSettings().then(function (remote) {
+        mergeBoardNotes(remote);
+        pushSettings();
+      }).catch(function () { pushSettings(); });
+    } else {
+      pushSettings();
+    }
+    return { ok: true, note: note };
+  }
+
+  function removeBoardNote(id) {
+    var target = boardNotes().filter(function (n) { return n.id === id; })[0];
+    if (!target) return Promise.resolve(false);
+
+    state.settings.board = (state.settings.board || []).filter(function (n) { return n.id !== id; });
+    cacheLocal();
+
+    if (window.Cloud && window.Cloud.pullSettings) {
+      return window.Cloud.pullSettings().then(function (remote) {
+        if (remote && Array.isArray(remote.board)) {
+          mergeBoardNotes({ board: remote.board.filter(function (n) { return n.id !== id; }) });
+        }
+        pushSettings();
+        return true;
+      }).catch(function () { pushSettings(); return true; });
+    }
+    pushSettings();
+    return Promise.resolve(true);
   }
 
   /* ================= 到货 CRUD =================
@@ -2277,6 +2363,9 @@ window.Store = (function () {
     updateMember: updateMember,
     removeMember: removeMember,
     memberTaskCount: memberTaskCount,
+    boardNotes: boardNotes,
+    addBoardNote: addBoardNote,
+    removeBoardNote: removeBoardNote,
     arrNotified: arrNotified,
     addArrival: addArrival,
     updateArrival: updateArrival,

@@ -147,6 +147,173 @@ window.Pages.team = (function () {
     });
   }
 
+  /* ================= 留言板 =================
+     存在云端配置里（settings.board），谁留言都能看到，换台电脑刷新也在。
+     发言人从成员里选，选中的人记在本机，下次进来还是你。
+     --------------------------------------------------------- */
+
+  var BOARD_FOLD = 5;          /* 超过 5 条先折起来 */
+  var WHO_KEY = 'sbs.boardWho';
+  var GUEST_KEY = 'sbs.boardGuest';
+
+  var bs = {
+    who: '',                   /* 当前发言人 memberId */
+    guest: '',                 /* 没有成员时手填的昵称 */
+    draft: '',                 /* 草稿：自动同步重绘时不丢正在写的内容 */
+    open: false                /* 展开全部留言 */
+  };
+
+  function lsGet(k) {
+    try { return localStorage.getItem(k) || ''; } catch (e) { return ''; }
+  }
+  function lsSet(k, v) {
+    try { localStorage.setItem(k, v); } catch (e) {}
+  }
+
+  function boardWho() {
+    var members = S.getState().members || [];
+    if (!bs.who) bs.who = lsGet(WHO_KEY) || '';
+    var m = null;
+    for (var i = 0; i < members.length; i++) {
+      if (members[i].id === bs.who) { m = members[i]; break; }
+    }
+    /* 本机记住的人被删了 / 没选过 → 落到第一个成员 */
+    if (!m && members.length) { m = members[0]; bs.who = m.id; }
+    return m;
+  }
+
+  function boardAuthor() {
+    var m = boardWho();
+    if (m) return { id: m.id, name: m.name, color: m.color || COLORS[0] };
+    if (!bs.guest) bs.guest = lsGet(GUEST_KEY) || '';
+    return { id: '', name: bs.guest.trim() || '匿名', color: COLORS[0] };
+  }
+
+  function boardComposerHtml() {
+    var members = S.getState().members || [];
+    var me = boardWho();
+    var author = boardAuthor();
+
+    var whoHtml;
+    if (members.length) {
+      whoHtml = UI.avatar(author.name, author.color, 'md').replace('class="avatar', 'data-board-ava class="avatar') +
+        '<select class="select board-who-sel" data-board-who>' +
+          members.map(function (m) {
+            return '<option value="' + m.id + '"' + (me && m.id === me.id ? ' selected' : '') + '>' +
+              U.esc(m.name) + (m.role ? '（' + U.esc(m.role) + '）' : '') + '</option>';
+          }).join('') +
+        '</select>';
+    } else {
+      whoHtml = UI.avatar(author.name, author.color, 'md').replace('class="avatar', 'data-board-ava class="avatar') +
+        '<input class="input board-guest" data-board-guest maxlength="12" autocomplete="off"' +
+          ' value="' + U.esc(bs.guest) + '" placeholder="你的名字" />';
+    }
+
+    return '<div class="board-compose">' +
+      '<div class="board-who">' + whoHtml +
+        '<span class="board-hint">这里留的东西，团队所有人都能看到</span>' +
+      '</div>' +
+      '<textarea class="textarea board-input" data-board-input maxlength="800"' +
+        ' placeholder="说点什么…比如：深圳店明天验场地，物料先别发。">' + U.esc(bs.draft) + '</textarea>' +
+      '<div class="board-foot">' +
+        '<span class="board-tip">Ctrl + Enter 发送 · 支持换行</span>' +
+        '<button class="btn btn-primary" type="button" data-board-send>' + UI.icon('send') + '发送</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function boardNoteHtml(n, author) {
+    var name = n.authorName || '匿名';
+    var color = n.color || COLORS[0];
+    var isMine = author && ((n.authorId && n.authorId === author.id) ||
+      (!n.authorId && !author.id && name === author.name));
+    return '<div class="note' + (isMine ? ' mine' : '') + '" data-note-id="' + U.esc(n.id) + '">' +
+      UI.avatar(name, color, 'md') +
+      '<div class="note-main">' +
+        '<div class="note-head">' +
+          '<span class="note-name">' + U.esc(name) + '</span>' +
+          '<span class="note-time" title="' + U.esc(fullTime(n.at)) + '">' + U.esc(U.timeAgo(n.at)) + '</span>' +
+          '<span class="note-del" data-del-note="' + U.esc(n.id) + '" title="删除这条留言">' + UI.icon('close') + '</span>' +
+        '</div>' +
+        '<div class="note-text">' + U.esc(n.text) + '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function fullTime(iso) {
+    var d = iso ? new Date(iso) : null;
+    if (!d || isNaN(d.getTime())) return '';
+    return U.cnDate(iso) + ' ' + U.pad2(d.getHours()) + ':' + U.pad2(d.getMinutes());
+  }
+
+  function boardCardHtml() {
+    var notes = S.boardNotes();
+    var author = boardAuthor();
+    var fold = !bs.open && notes.length > BOARD_FOLD;
+    var head = notes.slice(0, fold ? BOARD_FOLD : notes.length);
+    var rest = fold ? notes.slice(BOARD_FOLD) : [];
+
+    var listHtml = notes.length
+      ? '<div class="board-list' + (fold ? ' collapsed' : '') + '">' +
+          head.map(function (n) { return boardNoteHtml(n, author); }).join('') +
+          (rest.length
+            ? '<div class="board-rest">' + rest.map(function (n) { return boardNoteHtml(n, author); }).join('') + '</div>'
+            : '') +
+        '</div>' +
+        (notes.length > BOARD_FOLD
+          ? '<button class="board-more" type="button" data-board-more>' +
+              (bs.open ? '收起' : '展开全部 ' + notes.length + ' 条') +
+            '</button>'
+          : '')
+      : UI.empty('还没有留言', '写第一句吧，同事打开就能看到');
+
+    return '<div class="card board-card" id="boardCard">' +
+      '<div class="card-head"><h3>留言板</h3>' +
+        '<span class="card-sub">' + (notes.length ? '共 ' + notes.length + ' 条 · ' : '') +
+          '谁都能留，云端同步，团队都看得到</span></div>' +
+      '<div class="board-body">' + boardComposerHtml() + listHtml + '</div>' +
+    '</div>';
+  }
+
+  /* 只重画留言板：发完留言不用整页 refresh（整页会滚回顶部） */
+  function repaintBoard(root) {
+    var el = root && root.querySelector('#boardCard');
+    if (!el) return;
+    var tmp = document.createElement('div');
+    tmp.innerHTML = boardCardHtml();
+    var fresh = tmp.firstChild;
+    el.parentNode.replaceChild(fresh, el);
+  }
+
+  function sendNote(root) {
+    var ta = root.querySelector('[data-board-input]');
+    var text = ta ? ta.value : bs.draft;
+    if (!text || !text.trim()) {
+      UI.toast('写点什么再发吧', 'error');
+      if (ta) ta.focus();
+      return;
+    }
+    var author = boardAuthor();
+    if (!author.id && author.name === '匿名' && !(S.getState().members || []).length) {
+      UI.toast('先填个名字，大家才知道是谁留的', 'error');
+      var g = root.querySelector('[data-board-guest]');
+      if (g) g.focus();
+      return;
+    }
+    var r = S.addBoardNote({ text: text, authorId: author.id, authorName: author.name, color: author.color });
+    if (!r.ok) { UI.toast(r.error, 'error'); return; }
+
+    bs.draft = '';
+    repaintBoard(root);
+    UI.toast('留言已发', 'success');
+
+    /* 发完把光标放回输入框，方便连着补一句（preventScroll 免得页面跳） */
+    var again = root.querySelector('[data-board-input]');
+    if (again && again.focus) {
+      try { again.focus({ preventScroll: true }); } catch (err) { again.focus(); }
+    }
+  }
+
   function render() {
     var rows = memberStats();
     var totalTodo = U.sum(rows, function (r) { return r.todo; });
@@ -206,11 +373,35 @@ window.Pages.team = (function () {
       '<div class="card-head"><h3>成员概览</h3>' +
         '<span class="card-sub">点击卡片查看该成员全部任务</span></div>' +
       (rows.length ? '<div class="team-grid">' + cards + '</div>' : UI.empty('还没有团队成员')) +
-    '</div>';
+    '</div>' +
+
+    boardCardHtml();
   }
 
   function mount(root) {
     root.addEventListener('click', function (e) {
+      /* ---- 留言板：这些分支必须排在 [data-act] 前面，别被别的动作吃掉 ---- */
+      if (e.target.closest('[data-board-send]')) {
+        sendNote(root);
+        return;
+      }
+      var moreBtn = e.target.closest('[data-board-more]');
+      if (moreBtn) {
+        bs.open = !bs.open;
+        var card = root.querySelector('#boardCard');
+        var list = card && card.querySelector('.board-list');
+        if (list) list.classList.toggle('collapsed', !bs.open);
+        moreBtn.textContent = bs.open
+          ? '收起'
+          : '展开全部 ' + S.boardNotes().length + ' 条';
+        return;
+      }
+      var delBtn = e.target.closest('[data-del-note]');
+      if (delBtn) {
+        deleteNote(root, delBtn.getAttribute('data-del-note'));
+        return;
+      }
+
       var el = e.target.closest('[data-act], [data-member]');
       if (!el || !root.contains(el)) return;
 
@@ -249,6 +440,64 @@ window.Pages.team = (function () {
       if (mid) {
         var mm = S.memberById(mid);
         if (mm) openDetail(mm);
+      }
+    });
+
+    /* ---- 留言板：草稿、发言人都先记在本地，自动同步重绘也不会丢 ---- */
+    root.addEventListener('input', function (e) {
+      if (e.target.hasAttribute && e.target.hasAttribute('data-board-input')) {
+        bs.draft = e.target.value;
+      }
+    });
+
+    root.addEventListener('change', function (e) {
+      if (e.target.hasAttribute && e.target.hasAttribute('data-board-who')) {
+        bs.who = e.target.value;
+        lsSet(WHO_KEY, bs.who);
+        var m = S.memberById(bs.who);
+        var ava = root.querySelector('[data-board-ava]');
+        if (m && ava) {
+          ava.style.background = m.color || COLORS[0];
+          ava.textContent = (m.name || '?').slice(0, 1);
+        }
+        return;
+      }
+      if (e.target.hasAttribute && e.target.hasAttribute('data-board-guest')) {
+        bs.guest = e.target.value;
+        lsSet(GUEST_KEY, bs.guest);
+        var g = root.querySelector('[data-board-ava]');
+        if (g) g.textContent = (bs.guest.trim() || '匿').slice(0, 1);
+      }
+    });
+
+    root.addEventListener('keydown', function (e) {
+      var el = e.target;
+      if (!el || el.tagName !== 'TEXTAREA') return;
+      if (!el.hasAttribute('data-board-input')) return;
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        sendNote(root);
+      }
+    });
+  }
+
+  function deleteNote(root, id) {
+    var n = S.boardNotes().filter(function (x) { return x.id === id; })[0];
+    if (!n) return;
+    var preview = String(n.text || '').replace(/\s+/g, ' ').slice(0, 40);
+    UI.confirm({
+      title: '删除留言',
+      text: '确定删掉 <b>' + U.esc(n.authorName || '匿名') + '</b> 的这条留言吗？',
+      warn: '「' + U.esc(preview) + (String(n.text || '').length > 40 ? '…' : '') + '」删除后所有人都看不到了。',
+      danger: true,
+      okText: '删除',
+      onOk: function () {
+        S.removeBoardNote(id).then(function () {
+          UI.toast('留言已删除', 'success');
+          repaintBoard(root);
+        }).catch(function (e) {
+          UI.toast('删除失败：' + (e.message || e), 'error');
+        });
       }
     });
   }

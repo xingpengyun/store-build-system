@@ -242,6 +242,23 @@ window.Cloud = (function () {
       });
   }
 
+  /* 只读一次配置（不碰门店 / 任务 / 成员）：
+     留言板发帖前用它拿云端最新的一份，合并后再整包写回，
+     两个人同时留言就不会互相覆盖。 */
+  function pullSettings() {
+    return api().database.from('app_settings').select('*').eq('key', 'main').then(function (r) {
+      if (r.error) throw new Error(r.error.message || '读取配置失败');
+      var row = (r.data || [])[0];
+      if (!row || !row.value) return null;
+      try {
+        var saved = JSON.parse(row.value);
+        return saved.settings || null;
+      } catch (e) {
+        return null;
+      }
+    });
+  }
+
   /* ---------------- 批量导入（分批，避免请求过大） ---------------- */
 
   function chunk(arr, size) {
@@ -341,6 +358,7 @@ window.Cloud = (function () {
     upsert: upsert,
     remove: remove,
     saveSettings: saveSettings,
+    pullSettings: pullSettings,
     importAll: importAll,
     importBusiness: importBusiness,
     wipeBusiness: wipeBusiness,
