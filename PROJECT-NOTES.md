@@ -1167,3 +1167,36 @@ function onEnter() { state.tab = 'all'; state.dtab = 'all'; state.q = ''; }
   chk-gate 31 / chk-gate-ui 40 / chk-reopen 31 / smoke 8 页 / board / theme 全过
 
 版本 `?v=20261025z75`。
+
+---
+
+## 2026-10-25 门禁六修 + 推送 GitHub
+
+### 一、需求（用户）
+> 「建档资料提前给了，点完成，那首批已做点完成后是不是应该跳过建档直接进到发货阶段？」
+
+上一版「相邻格到达落点就停」做成了「到建档就停」，没继续往下跳。用户要的是：
+门店在首批阶段，建档/到货都已提前完成 → 点「首批已做」完成后，顺着这些已完成
+落点连续跳过去，停在「发货阶段」。
+
+### 二、改动
+- `Store.advanceStore(storeId)` 重写：从当前格出发，只要下一格有已完成任务的落点就继续走，
+  停在最后一个「下一格还没完成」的格；不再只跳一格、也不再落到最远落点。签名去掉 targetBase。
+- 删 `Store.landStore`（相邻格统一走 advanceStore）；回退点改由 completeTask 记
+  （`setReopenPoint(task.id, jumped.from, jumped.to)`）
+- `completeTask` 相邻分支改用 advanceStore；`page-stores.js` 手动推进改无参调用
+- **顺带修的 bug**：门店跳阶段后 `state.stage` 还筛着旧阶段，门店行被筛出列表、
+  连「重开」按钮一起消失 → 补上跳阶段后放开阶段筛选
+- 版本 `?v=20261025z77`
+
+### 三、验证
+- chk-gate 31 / chk-reopen 31（Store 层）全过
+- chk-gate-ui 32（真浏览器，含连跳+卡片+重开+撤销+删店）全过
+- smoke 8 页 / board / theme 回归全绿
+
+### 四、GitHub 推送
+- 之前代理挡 github.com:443，本地累计 22 提交未推
+- 根因：本地有 `c8444c7`「同步远端 main 到 3e39c98」的 squash 提交（树与远端 tip 一致）
+- 做法：`git rebase --onto origin/main c8444c7` 丢弃 squash 提交、21 提交重放到真正 origin/main，
+  无冲突；再补 2 个新提交（门禁六修 + bug fix）
+- `git push origin main` → `3e39c98..ef64a22` 成功；代理（sandbox-cli.exe）间歇 502，重试即通
