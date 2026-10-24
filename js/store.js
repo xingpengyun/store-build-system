@@ -492,37 +492,17 @@ window.Store = (function () {
        1) 任务自己带的 before —— 就是「筹建任务清单」里那一列「开业前(天)」，
           派发 / 新建任务时写进任务，之后单独调也不影响别人
        2) 任务没带（老数据）：按标题去筹建任务清单里找同名项，用清单里的 before
-       3) 还没有：用阶段默认值（设置页「逾期倒推口径」可改，出厂表在 C.LEAD_DAYS）
+       3) 都对不上（手建的任务、标题改过）：LEAD_DAYS_DEFAULT（30 天）兜底
+     2026-10-24：设置页「逾期倒推口径」（按阶段配默认天数）整块删掉了 —— 天数只认清单，
+     同一条任务在哪家店都是同一个「开业前 N 天」，不用再按阶段记一份。
      门店没填开业日 → 没有建议完成日（返回 ''），也不判逾期，
      界面上如实显示「未设置开业日期 · 开业前 N 天」，绝不自己编一个日期。
      ------------------------------------------------------------------ */
 
-  /* 当前生效的「阶段默认提前天数表」= 出厂默认 + 设置里改过的（设置里改的优先） */
-  function leadDaysMap() {
-    var out = {};
-    var base = C.LEAD_DAYS || {};
-    Object.keys(base).forEach(function (k) { out[k] = Number(base[k]); });
-    var own = (state && state.settings && state.settings.leadDays) || {};
-    Object.keys(own).forEach(function (k) {
-      var n = Number(own[k]);
-      if (own[k] !== '' && own[k] != null && !isNaN(n)) out[k] = n;
-    });
-    return out;
-  }
-
-  /* 阶段默认的天数（任务没单独设时才用）：
-     1) 设置里改过的 / 出厂表里精确同名 → 直接用
-     2) 阶段名改过（「图纸设计」「量房出图」）→ 按 C.LEAD_KEYWORDS 关键词兜底
-     3) 都对不上 → LEAD_DAYS_DEFAULT */
-  function leadDaysOf(task) {
-    var base = C.stageSplit(task && task.stage).base;
-    var map = leadDaysMap();
-    if (base && map[base] != null) return Number(map[base]);
-
-    var kw = C.LEAD_KEYWORDS || [];
-    for (var i = 0; i < kw.length; i++) {
-      if (base && base.indexOf(kw[i][0]) >= 0) return Number(kw[i][1]);
-    }
+  /* 兜底天数：清单里没有同名项、任务也没单独设过时才用。
+     不再按阶段配置（那块设置已删除），统一 LEAD_DAYS_DEFAULT。
+     保留参数是为了让既有调用点（leadDaysOf({stage})）不用改。 */
+  function leadDaysOf() {
     return Number(C.LEAD_DAYS_DEFAULT || 30);
   }
 
@@ -563,8 +543,8 @@ window.Store = (function () {
     return null;
   }
 
-  /* 这条任务的天数是「自己定死的」还是「跟着阶段默认走的」
-     自己定死 = 单独调过 / 清单同名项带了 before → 改阶段时不动它的天数 */
+  /* 这条任务的天数是不是「自己定死的」（单独调过 / 清单里有同名项）
+     是的话改阶段时不碰它的天数，否则可以跟着兜底值走 */
   function taskHasOwnBefore(task) {
     if (!task) return false;
     var map = taskBeforeMap();
@@ -575,9 +555,11 @@ window.Store = (function () {
 
   /* 这条任务「开业前多少天」做完 —— 全系统只有这一个口径
      1) 这条任务单独调过的（settings.taskBefore[任务id]）
+        新建任务时表单里填的「开业前（天）」就存这儿
      2) 任务对象上带的 before（老数据 / 内存里）
      3) 筹建任务清单里同名的「开业前(天)」
-     4) 阶段默认值（设置页「逾期倒推口径」） */
+     4) 都对不上 → LEAD_DAYS_DEFAULT（30 天）兜底
+     （2026-10-24 之前这里还有一层「按阶段配的默认天数」，设置页那块已整块删除） */
   function taskBeforeOf(task) {
     if (!task) return 0;
 
@@ -652,33 +634,8 @@ window.Store = (function () {
     return 0;
   }
 
-  /* 设置里改阶段默认天数：存进 settings.leadDays，并把没单独设过的任务
-     建议完成日按新口径重算一遍。支持一次改多个阶段。 */
-  function saveLeadDays(map) {
-    var own = (state && state.settings && state.settings.leadDays) || {};
-    var hit = 0;
-    Object.keys(map || {}).forEach(function (k) {
-      var n = Math.round(Number(map[k]));
-      if (!k || isNaN(n) || n < 0) return;
-      own[k] = n;
-      hit += 1;
-    });
-    if (!hit) return 0;
-
-    state.settings = state.settings || {};
-    state.settings.leadDays = own;
-    pushSettings();
-    cacheLocal();
-    resyncTaskDates('');      /* 空 = 全部门店的任务都重算 */
-    return hit;
-  }
-
-  function setLeadDays(stageKey, days) {
-    var one = {};
-    one[stageKey] = days;
-    saveLeadDays(one);
-    return leadDaysOf({ stage: stageKey });
-  }
+  /* 2026-10-24：原来的 saveLeadDays / setLeadDays 跟着设置页那块一起删了 ——
+     天数不再按阶段记录，settings.leadDays 停用（云端里已存的旧值不再读取，也不迁移）。 */
 
   function storeOpenDate(task) {
     var s = storeById(task && task.storeId);
@@ -702,7 +659,7 @@ window.Store = (function () {
   }
 
   /* 给新建 / 改阶段的任务算建议完成日并回写 due_date（方便排序和云同步）
-     before 传了就用它，没传按阶段默认；门店没开业日 → '' */
+     before 传了就用它，没传用兜底 30 天；门店没开业日 → '' */
   function suggestFor(storeId, stage, before) {
     var s = storeById(storeId);
     if (!s || !s.openDate) return '';
@@ -1124,7 +1081,7 @@ window.Store = (function () {
   /* ================= 任务 CRUD ================= */
 
   function addTask(data) {
-    /* 开业前 N 天：优先用传进来的，没传就按标题去清单里找，再不行用阶段默认 */
+    /* 开业前 N 天：优先用传进来的，没传就按标题去清单里找，再不行用兜底 30 天 */
     var before = (data.before != null && data.before !== '' && !isNaN(Number(data.before)))
       ? Number(data.before)
       : (beforeFromTemplates((data.title || '').trim()) != null
@@ -1164,8 +1121,8 @@ window.Store = (function () {
     var storeChanged = patch.storeId != null && patch.storeId !== t.storeId;
     var beforeChanged = patch.before != null && Number(patch.before) !== curBefore;
 
-    /* 天数：显式传了就用传的；否则原本跟着阶段走的，改阶段后按新阶段默认；
-       原本自己定死的，改阶段也不动它 */
+    /* 天数：显式传了就用传的；原本自己定死的（清单里有 / 单独调过），改阶段也不动它；
+       都没有的，退回兜底 30 天 */
     var nextBefore;
     if (patch.before != null) {
       nextBefore = Math.max(0, Math.round(Number(patch.before) || 0));
@@ -1191,8 +1148,8 @@ window.Store = (function () {
     return t;
   }
 
-  /* 门店开业日改了：这家店所有任务的截止日跟着挪（开业日 − 任务的开业前天数）
-     storeId 传空 = 全量重算（改了阶段默认天数时用） */
+  /* 门店开业日改了：这家店所有任务的截止日跟着挪（开业日 − 清单里这条任务的开业前天数）
+     storeId 传空 = 全量重算 */
   function resyncTaskDates(storeId) {
     var changed = [];
     state.tasks.forEach(function (t) {
@@ -2417,12 +2374,9 @@ window.Store = (function () {
     progressStages: progressStages,
     progressPlan: progressPlan,
     leadDaysOf: leadDaysOf,
-    leadDaysMap: leadDaysMap,
     taskBeforeOf: taskBeforeOf,
     setTaskBefore: setTaskBefore,
     beforeFromTemplates: beforeFromTemplates,
-    setLeadDays: setLeadDays,
-    saveLeadDays: saveLeadDays,
     suggestDateOf: suggestDateOf,
     daysLeftOf: daysLeftOf,
     snoozeDaysOf: snoozeDaysOf,

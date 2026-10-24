@@ -673,7 +673,7 @@ window.Pages.tasks = (function () {
     var isNew = !task;
     var t = task || {};
     var stores = S.getState().stores;
-    /* 「开业前 N 天」的初值：任务自己调过的 → 清单里同名的 → 阶段默认 */
+    /* 「开业前 N 天」的初值：任务自己调过的 → 清单里同名的 → 兜底 30 天 */
     var beforeVal = S.taskBeforeOf({
       id: t.id, title: t.title, stage: t.stage || defaultStage(), before: t.before
     });

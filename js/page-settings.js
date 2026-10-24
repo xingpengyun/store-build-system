@@ -84,21 +84,6 @@ window.Pages.settings = (function () {
 
     configCard() +
 
-    '<div class="card fade-up" style="animation-delay:.065s">' +
-      '<div class="card-head"><h3>逾期倒推口径</h3>' +
-        '<span class="card-sub">任务没单独设「开业前(天)」时，用这里的阶段默认值</span></div>' +
-      '<div class="lead-grid">' + leadRows() + '</div>' +
-      '<div class="lead-foot">' +
-        '<button class="btn btn-primary" type="button" data-act="saveLead">保存阶段默认天数</button>' +
-        '<span class="lead-foot-tip">保存后，没单独设过天数的任务立刻按新值重算</span>' +
-      '</div>' +
-      '<p class="item-hint">' +
-        '倒推优先级：<b>筹建任务清单里每条任务的「开业前(天)」</b> → 这里的阶段默认值。' +
-        '建议完成日 = 门店计划开业日 − 开业前 N 天；门店没填开业日期时不算日期、也不判逾期。' +
-        '<br />例：门店 11 月 15 日开业、清单里「设计是否出图」填 30 天 → 10 月 16 日前必须出图；' +
-        '过了 10 月 16 日还没做完，这条任务就自动标成逾期。</p>' +
-    '</div>' +
-
     '<div class="card fade-up" style="animation-delay:.08s">' +
       '<div class="card-head"><h3>到货物料清单</h3>' +
         '<span class="card-sub">门店详情里「物料到货」的快捷按钮，共 <b id="arrItemsCount">' + S.items().length + '</b> 个</span></div>' +
@@ -189,25 +174,10 @@ window.Pages.settings = (function () {
     '</div>';
   }
 
-  /* 逾期倒推口径：每个筹建阶段「开业前 N 天该做完」 */
-  function leadRows() {
-    var list = S.stages() || [];
-    if (!list.length) return '<p class="item-none">还没有阶段</p>';
-
-    return list.map(function (st) {
-      var key = st.key;
-      var days = S.leadDaysOf({ stage: key });
-      return '<label class="lead-row">' +
-        '<span class="lead-name">' +
-          '<i class="lead-dot" style="background:' + (st.color || '#98a2b8') + '"></i>' +
-          U.esc(key) + '</span>' +
-        '<span class="lead-box">开业前' +
-          '<input class="input lead-input" type="number" min="0" max="365" step="1" ' +
-            'data-lead="' + U.esc(key) + '" value="' + days + '" />' +
-          '天做完</span>' +
-      '</label>';
-    }).join('');
-  }
+  /* 2026-10-24：原来的「逾期倒推口径」（按阶段配默认天数）整块删掉了。
+     逾期天数只有一处来源 —— 筹建任务清单里每条任务的「开业前(天)」：
+     建议完成日 = 门店计划开业日 − 这条任务的开业前天数。
+     例：门店 11-15 开业、清单填 30 天 → 10-16 前要完成，10-17 起才算逾期。 */
 
   /* 物料按钮：长按变成「删除？」，再点一下才删（防误触） */
   function itemChips(list) {
@@ -324,20 +294,6 @@ window.Pages.settings = (function () {
         st.weatherText = UI.formValue(form, 'weatherText') || '多云';
         S.saveAll();
         UI.toast('设置已保存，团队其他人刷新后可见', 'success');
-        App.refresh();
-      }
-
-      else if (act === 'saveLead') {
-        var patch = {};
-        [].slice.call(root.querySelectorAll('[data-lead]')).forEach(function (inp) {
-          var key = inp.getAttribute('data-lead');
-          var v = String(inp.value || '').trim();
-          if (key && v !== '') patch[key] = v;
-        });
-        var hit = S.saveLeadDays(patch);
-        UI.toast(hit
-          ? '已保存 ' + hit + ' 个阶段的提前天数，任务日期已重算'
-          : '没有可保存的数值', hit ? 'success' : 'info');
         App.refresh();
       }
 

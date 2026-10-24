@@ -61,18 +61,27 @@
   1. `settings.taskBefore[任务id]` —— 这条任务单独调过（任务表单里的「开业前（天）」）
   2. 任务对象上的 `before`（老数据）
   3. 按标题去筹建任务清单 `settings.taskTemplates` 里找同名项的 `before`
-  4. 阶段默认值（`CONST.LEAD_DAYS`，设置页「逾期倒推口径」可改 → `settings.leadDays`）
+  4. 都对不上（手建的任务、标题改过）→ `CONST.LEAD_DAYS_DEFAULT`（30 天）兜底
+
+### 2026-10-24 删掉「逾期倒推口径」那张卡：天数只认清单
+
+- 设置页原来那张「逾期倒推口径」（按每个阶段配一个默认提前天数）**整块删了** ——
+  清单里每条任务本来就有自己的「开业前(天)」，再按阶段记一份是重复的，改了还容易打架
+- 连带删掉的：`CONST.LEAD_DAYS`（阶段默认天数表）、`CONST.LEAD_KEYWORDS`（阶段名关键词兜底）、
+  `Store.saveLeadDays()` / `Store.setLeadDays()`、`settings.leadDays`
+  —— 云端 `app_settings` 里已存的旧 `leadDays` 值**不再读取，也不做迁移**（零表结构改动）
+- 现在的口径一句话：**建议完成日 = 门店计划开业日 − 清单里这条任务填的开业前天数**
+  - 例：门店 11-15 开业、清单填 30 天 → 10-16 前必须完成，**10-17 起**才算逾期
+- `leadDaysOf()` 保留，但它现在只负责返回兜底的 30 天（参数留着是为了调用点不用改）
 - **门店没填开业日期 → 不编日期、不判逾期**：`suggestDateOf()` 返回空，`dueDate` 也留空，
   任务表显示「未设开业日 / 开业前 30 天 · 填了开业日就自动倒推」；补上开业日立刻按日期倒推
 - 门店开业日一改（含清空）→ 这家店所有任务日期重算（`resyncTaskDates`）；改阶段默认天数 → 全量重算
 - 派发任务时把清单里的 `before` 写进 `settings.taskBefore`（云端 tasks 表没这一列，不改表结构）；
   之后改清单只影响新派发的任务，已有任务的天数不会被动
 - 改阶段时：任务自己的天数是「自己定死的」就不动，原本跟着阶段默认走的才按新阶段重算
-- 阶段名被改过（「图纸设计」「主体施工」）时按 `CONST.LEAD_KEYWORDS` 关键词兜底，避免掉到默认 30 天；
-  关键词表有序，长词在前（「广告物料」先于「物料」）
 - 任务状态只有两类：未完成 / 已完成（「进行中」废弃，历史值读成未完成）
 - 筹建清单的筛选只剩 全部 / 逾期 / 风险 / 已完成；任务表列名改为「建议完成」，显示「建议日期 + 开业前 N 天 · 距开业 X 天」
-- 入口：`js/store.js` → `taskBeforeOf / suggestDateOf / daysLeftOf / suggestFor / classify / setTaskBefore / saveLeadDays`
+- 入口：`js/store.js` → `taskBeforeOf / suggestDateOf / daysLeftOf / suggestFor / classify / setTaskBefore / leadDaysOf`
 
 ### 逾期后怎么办：「+3天」（往后放，3 天后再提醒）
 
