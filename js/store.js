@@ -2316,41 +2316,6 @@ window.Store = (function () {
     });
   }
 
-  /* ==================================================================
-     一键恢复标准工作流：7 个阶段（含「已出图」二级）+ 7 条筹建任务 + 8 项物料
-     被误清空后，用这个把「真实的工作逻辑」一次找回来。
-     ================================================================== */
-
-  function restoreWorkflow() {
-    snapshotSettings('before-restore-workflow');
-
-    var set = state.settings;
-    set.stages = C.STAGE_BUILTIN.map(function (x) {
-      return { key: x.key, color: x.color, soft: x.soft };
-    });
-    set.stageSubs = JSON.parse(JSON.stringify(C.DEFAULT_STAGE_SUBS || {}));
-    set.taskTemplates = C.TASK_TEMPLATES.map(function (t) {
-      return { title: t.title, stage: t.stage, before: t.before, role: t.role };
-    });
-    set.arrivalItems = C.ITEMS.slice();
-
-    applyStages(resolveStages(set));
-    pushSettings();
-    cacheLocal();
-    listeners.forEach(function (fn) { fn(state); });
-
-    var subCount = 0;
-    Object.keys(set.stageSubs).forEach(function (k) { subCount += set.stageSubs[k].length; });
-
-    return {
-      ok: true,
-      stages: set.stages.length,
-      subs: subCount,
-      templates: set.taskTemplates.length,
-      items: set.arrivalItems.length
-    };
-  }
-
   function storageBytes() {
     try {
       return new Blob([localStorage.getItem(KEY) || '']).size;
@@ -2450,7 +2415,6 @@ window.Store = (function () {
     importJSON: importJSON,
     addDemoStores: addDemoStores,
     clearBusiness: clearBusiness,
-    restoreWorkflow: restoreWorkflow,
     snapshotSettings: snapshotSettings,
     settingsSnapshot: settingsSnapshot,
     restoreSettingsSnapshot: restoreSettingsSnapshot,

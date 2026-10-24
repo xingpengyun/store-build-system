@@ -130,7 +130,7 @@ window.Pages.settings = (function () {
     var tpls = S.templates() || [];
     var items = S.items() || [];
     var snap = S.settingsSnapshot ? S.settingsSnapshot() : null;
-    var missing = !tpls.length;
+    var missing = !tpls.length;   /* 清单空了提醒一声，引导去卡牌里加，不再提「恢复」 */
 
     /* 每一张都能点：点一下直接去能调整它的地方（2026-10-24 用户要求） */
     function box(label, val, foot, act, tip) {
@@ -159,24 +159,19 @@ window.Pages.settings = (function () {
       (missing
         ? '<div class="cfg-warn">' +
             '<b>筹建任务清单现在是空的。</b>' +
-            '新建门店不会再自动派任务，清单里也看不到你原来那套流程。' +
-            '点下面「恢复标准工作流」可以把 7 个阶段 + 7 条任务 + 8 项物料一次找回来。' +
+            '新建门店不会再自动派任务。点上面「筹建任务清单」卡牌进去，把任务的名称、所属阶段、开业前天数加回来。' +
           '</div>'
         : '') +
 
-      '<div class="lead-foot">' +
-        '<button class="btn btn-primary btn-sm" data-act="restoreWorkflow">' +
-          UI.icon('refresh') + '恢复标准工作流</button>' +
-        (snap && snap.richer
-          ? '<button class="btn btn-sm" data-act="restoreSnap">' +
+      (snap && snap.richer
+        ? '<div class="lead-foot">' +
+            '<button class="btn btn-sm" data-act="restoreSnap">' +
               UI.icon('refresh') + '恢复 ' + fmtSnapTime(snap.at) + ' 的配置快照' +
               '<span class="dim">（' + snap.stages + ' 阶段 / ' + snap.templates + ' 任务 / ' + snap.items + ' 物料）</span>' +
-            '</button>'
-          : '') +
-        '<span class="lead-foot-tip">' +
-          '「恢复标准工作流」只写回配置，不动已建的门店和任务；恢复前会自动存一份当前配置的快照。' +
-        '</span>' +
-      '</div>' +
+            '</button>' +
+            '<span class="lead-foot-tip">只改配置，不动已建的门店和任务；恢复前会再存一份现在的配置。</span>' +
+          '</div>'
+        : '') +
     '</div>';
   }
 
@@ -389,22 +384,6 @@ window.Pages.settings = (function () {
                 UI.hideLoading();
                 UI.toast('清空失败：' + (err.message || err), 'error');
               });
-          }
-        });
-      }
-
-      else if (act === 'restoreWorkflow') {
-        UI.confirm({
-          title: '恢复标准工作流',
-          text: '写回这套流程：<b>7 个阶段</b>（未出图 → 已出图 → 资料/建档 → 施工/装修 → 物料/到货 → 开业准备 → 已开业）、' +
-                '「已出图」下的 <b>已做首批 / 未做首批</b>、<b>7 条筹建任务</b>、<b>8 项到货物料</b>。',
-          warn: '如果你现在自己配过阶段 / 清单，会被这套标准流程覆盖（覆盖前会自动存一份快照，可再恢复回来）。',
-          okText: '恢复',
-          onOk: function () {
-            var r = S.restoreWorkflow();
-            UI.toast('已恢复：' + r.stages + ' 个阶段（含 ' + r.subs + ' 个二级）、' +
-              r.templates + ' 条任务、' + r.items + ' 项物料', 'success', 3200);
-            setTimeout(function () { App.refresh(); }, 300);
           }
         });
       }
