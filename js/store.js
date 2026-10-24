@@ -732,9 +732,11 @@ window.Store = (function () {
       return !!d && U.diffDays(t0, d) <= 7;
     }).length;
 
-    /* 7 天内该到的（还没通知供应商的）—— 这批是这两周要打电话的 */
+    /* 7 天内该到的（还没通知供应商的）—— 这批是这两周要打电话的。
+       没登记到货日的不算：diffDays 对空日期返回 0，会把「还没给时间」误算成「今天到」 */
     var arrivals7 = st.arrivals.filter(function (a) {
       if (arrNotified(a)) return false;
+      if (!a.etaDate) return false;
       var d = U.diffDays(t0, a.etaDate);
       return d >= 0 && d <= Number(C.ARR_WATCH_DAYS || 7);
     }).length;
@@ -1247,7 +1249,7 @@ window.Store = (function () {
     var a = {
       id: U.uid('arr'),
       storeId: data.storeId,
-      /* 允许先空着（下拉里显示「选物料」），选好再落库 */
+      /* 允许先空着：新增行第一格是手填的，填好失焦才锁定 */
       item: data.item || '',
       qty: (q === '' || q === null || q === undefined) ? 0 : Math.max(0, Number(q) || 0),
       /* 到货时间只认登记的那个日期：没填就留空，绝不替门店编一个（编了就会误报 / 漏报） */

@@ -278,16 +278,6 @@ window.Pages.stores = (function () {
     return s.slice(0, 4) === String(new Date().getFullYear()) ? s.slice(5) : s;
   }
 
-  /* 第一列的选项：常用物料清单 + 当前值（不在清单里的老数据也留着，别显示成空白） */
-  function itemOptions(cur) {
-    var list = S.items().slice();
-    if (cur && list.indexOf(cur) < 0) list.unshift(cur);
-    var html = '<option value="">选物料</option>' + list.map(function (x) {
-      return '<option value="' + U.esc(x) + '"' + (x === cur ? ' selected' : '') + '>' + U.esc(x) + '</option>';
-    }).join('');
-    return html;
-  }
-
   /* 清单里还没加进这家门店的物料 */
   function arrMissing(storeId) {
     var have = {};
@@ -316,7 +306,7 @@ window.Pages.stores = (function () {
           '<p>门店还没给到货时间</p>' +
           '<span>' + (preset.length
             ? '点「一键添加」把清单里的物料一次加进来，再换上门店给的时间；也可以点下面的单个物料'
-            : '拿到时间后点「+ 添加物料」，从清单里选一个物料填时间') + '</span>' +
+            : '拿到时间后点「+ 添加物料」，自己填物料名和到货时间') + '</span>' +
           (preset.length
             ? '<div class="arr-quick">' +
                 preset.map(function (x) {
@@ -332,9 +322,9 @@ window.Pages.stores = (function () {
           (wait ? '<span class="arr-sum-i">还早 <b>' + wait + '</b></span>' : '') +
           (ok ? '<span class="arr-sum-i ok">已通知 <b>' + ok + '</b></span>' : '') +
         '</div>' +
-        '<div class="table-wrap"><table class="tbl arr-tbl" style="min-width:660px">' +
-          '<thead><tr><th style="width:150px">物料 / 供应商</th><th style="width:52px">数量</th>' +
-            '<th style="width:168px">登记的到货时间</th><th>备注</th>' +
+        '<div class="table-wrap"><table class="tbl arr-tbl" style="min-width:640px">' +
+          '<thead><tr><th style="width:140px">物料 / 供应商</th><th>备注</th>' +
+            '<th style="width:52px">数量</th><th style="width:168px">登记的到货时间</th>' +
             '<th style="width:92px">通知</th><th style="width:28px"></th></tr></thead>' +
           '<tbody>' + list.map(function (a) {
             var done = S.arrNotified(a);
@@ -350,11 +340,19 @@ window.Pages.stores = (function () {
               else tag = '<span class="arr-tag">' + d + ' 天后</span>';
             }
 
+            /* 第一列：定好就不能改、也没有下拉（2026-10-24 用户要求）。
+               只有还没填物料名的新行才让打字，填好失焦后就锁上。 */
+            var itemLocked = !!a.item;
+
             return '<tr data-arr="' + U.esc(a.id) + '" class="' +
                 (done ? 'is-done' : w === 'late' ? 'is-late' : w === 'soon' ? 'is-soon' : '') + '">' +
-              /* 第一列只让选、不让打字：词条在「系统设置 → 到货物料清单」里维护 */
-              '<td><select class="arr-in arr-sel" data-arr-field="item" ' +
-                'title="从常用物料里选；要加新的去「系统设置 → 到货物料清单」">' + itemOptions(a.item) + '</select></td>' +
+              '<td><input class="arr-in arr-item' + (itemLocked ? '' : ' is-new') + '" type="text" autocomplete="off" ' +
+                'data-arr-field="item" value="' + U.esc(a.item) + '" placeholder="填物料名"' +
+                (itemLocked ? ' readonly' : '') + ' title="' +
+                (itemLocked ? '物料名定好就不改了；要新的点下面的「+ 添加物料」' : '填上物料或供应商名字，失焦后锁定') + '" /></td>' +
+              '<td><input class="arr-in" type="text" autocomplete="off" maxlength="200" ' +
+                'data-arr-field="remark" value="' + U.esc(S.arrRemarkOf(a.id)) + '" ' +
+                'placeholder="比如：等门店确认收货人" title="这一行的备注，比如「先发招牌，货架后发」" /></td>' +
               '<td><input class="arr-in mono" type="number" min="0" step="1" data-arr-field="qty" value="' + (a.qty ? a.qty : '') + '" placeholder="—" title="数量可以不填" /></td>' +
               '<td><div class="arr-eta">' +
                 '<input class="arr-in mono" type="text" inputmode="numeric" autocomplete="off" ' +
@@ -362,9 +360,6 @@ window.Pages.stores = (function () {
                   'title="到货日直接打字就行：10/25、10-25、10月25、1025、2026/10/25 都认；不带年份按今年算。改日期 = 对方给了新承诺" />' +
                 tag +
               '</div></td>' +
-              '<td><input class="arr-in arr-note" type="text" autocomplete="off" maxlength="200" ' +
-                'data-arr-field="remark" value="' + U.esc(S.arrRemarkOf(a.id)) + '" ' +
-                'placeholder="比如：等门店确认收货人" title="这一行的备注，比如「先发招牌，货架后发」" /></td>' +
               '<td><button type="button" class="arr-btn' + (done ? ' done' : '') + '" data-arr-done title="' +
                 (done ? '点一下改回「待通知」' : '打电话 / 发微信让对方发货后点一下，这条就不用再催了') + '">' +
                 (done ? '✓ 已通知' : '通知供应商') + '</button></td>' +
@@ -483,7 +478,7 @@ window.Pages.stores = (function () {
               etaDate: ''
             });
             repaintArr();
-            /* 新增行直接聚焦第一列的下拉，选一个物料再填时间 */
+            /* 新增行直接聚焦第一列（还没填名字的那一格），填完失焦自动锁定 */
             var sel = arrWrap.querySelector('[data-arr="' + a.id + '"] [data-arr-field="item"]');
             if (sel) sel.focus();
           }
@@ -505,7 +500,7 @@ window.Pages.stores = (function () {
         });
 
         /* 数量：输入即存（不重绘，避免光标跳走）。
-           其余字段都在 change 里存：select / 日期 / 备注都是「定下来才落库」 */
+           其余字段都在 change 里存：物料 / 日期 / 备注都是「定下来才落库」 */
         arrWrap.addEventListener('input', function (e) {
           var el = e.target;
           if (el.getAttribute('data-arr-field') !== 'qty') return;
@@ -528,9 +523,16 @@ window.Pages.stores = (function () {
           S.getState().arrivals.forEach(function (x) { if (x.id === aid) rec = x; });
           if (!rec) return;
 
-          /* 物料：下拉选的，直接存 */
+          /* 物料：填好了就锁定（第一列不允许再改，也没有下拉） */
           if (field === 'item') {
-            S.updateArrival(aid, { item: el.value });
+            var v = String(el.value || '').trim();
+            S.updateArrival(aid, { item: v });
+            if (v) {
+              /* 就地锁上这一格，不整表重绘——否则 Tab 去备注栏的光标会被打掉 */
+              el.readOnly = true;
+              el.classList.remove('is-new');
+              el.title = '物料名定好就不改了；要新的点下面的「+ 添加物料」';
+            }
             return;
           }
 
