@@ -392,3 +392,12 @@
 - **一次性引导**：首次进首页 toast「提示：KPI 标签旁的 ⓘ 点一下（或鼠标放上去）能查看判断逻辑」，`localStorage['sbs.kpiHelpTip']` 记住，之后不打扰
 - CSS `.kpi-help` 改 `cursor: pointer`、新增 `.kpi-help.is-open .kpi-help-pop` 显示规则组
 - 验证 14 项 PASS / 0 报错（点击展开/互斥/点内容不关/点别处收起/主题色/pointer）
+
+## 2026-10-24 删掉任务页时间线的「清单 N 条」标签（?v=20261024z40）
+用户确认解释后：「这个不需要帮我删掉吧」。
+
+- `page-tasks.js` `railHtml()` 删两处渲染：一级阶段 meta 里的 `tl-tpl`（截图红箭头那处）+ 二级阶段行的 `tl-tpl`；随之删掉 `tpl` / `tplBase` / `tplN` 三个变量
+- `store.js` 的 `templateStageStat()` + 导出一并删（全站确认无其他调用点）
+- CSS `.tl-tpl` / `.tl-num .tl-tpl` 删除
+- 二级阶段行若既无门店也无未完成任务，右侧显示「—」（原来的兜底）
+- 验证 12 项 PASS / 0 报错（tl-tpl 元素 0 个、无「清单 N 条」文字、7 个阶段节点正常、Store.templateStageStat 已移除、展开二级不崩、首页/设置页无回归）

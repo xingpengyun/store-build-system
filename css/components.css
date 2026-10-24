@@ -2001,20 +2001,6 @@
 .tl-meta b { color: var(--red); font-weight: 600; }
 
 /* 时间线里的「清单 N 条」：告诉人这个阶段 / 二级在筹建任务清单里有几条任务 */
-.tl-tpl {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 0 5px;
-  border-radius: 3px;
-  background: #e4eaf3;
-  color: #63728b;
-  font-size: 10.2px;
-  line-height: 16px;
-  white-space: nowrap;
-  vertical-align: 1px;
-}
-.tl-num .tl-tpl { margin-left: 0; }
-
 /* ---------------- 任务管理：右侧门店列表（点开看任务） ---------------- */
 .tabs-sm { padding: 2px; border-radius: 8px; }
 .tabs-sm .tab { padding: 4px 10px; font-size: 11.5px; }

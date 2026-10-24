@@ -158,8 +158,6 @@ window.Pages.tasks = (function () {
   function railHtml() {
     var stores = S.getState().stores;
     var subs = S.stageSubsWithUsed();
-    /* 清单按阶段的分组：时间线跟筹建任务清单共用同一套结构 */
-    var tpl = S.templateStageStat();
 
     var nodes = C.STAGES.map(function (st) {
       var list = stores.filter(function (x) { return x.stage === st.key; });
@@ -167,14 +165,12 @@ window.Pages.tasks = (function () {
       var n = statOfIds(ids);
       var on = state.stage === st.key;
       var subList = subs[st.key] || [];
-      var tplBase = tpl.byBase[st.key] || 0;
 
       var meta = list.length
         ? (n.open
             ? '未完成 ' + n.open + (n.late ? ' · <b>逾期 ' + n.late + '</b>' : '')
             : '全部已完成')
         : '暂无门店';
-      if (tplBase) meta += '<span class="tl-tpl">清单 ' + tplBase + ' 条</span>';
 
       var editing = state.editing === st.key;
 
@@ -205,14 +201,12 @@ window.Pages.tasks = (function () {
         html += '<div class="tl-subs">' + subList.map(function (sub) {
           var m = statOfSub(ids, st.key, sub);
           var subOn = state.sub === sub;
-          var tplN = tpl.byStage[C.stageValue(st.key, sub)] || 0;
           /* 门店自己推到了这一支的，也算这个二级下的门店 */
           var subStores = list.filter(function (x) { return S.storeSub(x) === sub; }).length;
 
           var bits = [];
           if (subStores) bits.push(subStores + ' 家');
           if (m.open) bits.push('未完成 ' + m.open + (m.late ? ' · <b>逾期' + m.late + '</b>' : ''));
-          else if (tplN) bits.push('<span class="tl-tpl">清单 ' + tplN + ' 条</span>');
           var right = bits.length ? bits.join(' · ') : '—';
 
           return '<div class="tl-sub' + (subOn ? ' on' : '') + '" data-sub="' + U.esc(sub) +

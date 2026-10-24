@@ -1732,23 +1732,6 @@ window.Store = (function () {
 
   /* 筹建任务清单按阶段的数量分布，用来和时间线对照：
        { byStage: { '施工/装修 / 水电': 2 }, byBase: { '施工/装修': 3 }, total: 7 } */
-  function templateStageStat() {
-    var byStage = {};
-    var byBase = {};
-    var total = 0;
-
-    templates().forEach(function (t) {
-      var v = String(t.stage || '');
-      if (!C.isStage(v)) return;
-      total++;
-      byStage[v] = (byStage[v] || 0) + 1;
-      var b = C.stageSplit(v).base;
-      byBase[b] = (byBase[b] || 0) + 1;
-    });
-
-    return { byStage: byStage, byBase: byBase, total: total };
-  }
-
   /* ---------------- 门店自己的二级（当前阶段的细分） ----------------
      settings.storeSubs = { storeId: '已做首批' }
      - stores 表没有这一列，所以落在 settings 里，跟着云端一起同步，不用改表结构
@@ -2385,7 +2368,6 @@ window.Store = (function () {
     storeSubs: storeSubs,
     storeSub: storeSub,
     setStoreStage: setStoreStage,
-    templateStageStat: templateStageStat,
     progressStages: progressStages,
     progressPlan: progressPlan,
     leadDaysOf: leadDaysOf,
