@@ -278,6 +278,16 @@ window.Pages.stores = (function () {
     return s.slice(0, 4) === String(new Date().getFullYear()) ? s.slice(5) : s;
   }
 
+  /* 第一列的选项：常用物料清单 + 当前值（不在清单里的老数据也留着，别显示成空白） */
+  function itemOptions(cur) {
+    var list = S.items().slice();
+    if (cur && list.indexOf(cur) < 0) list.unshift(cur);
+    var html = '<option value="">选物料</option>' + list.map(function (x) {
+      return '<option value="' + U.esc(x) + '"' + (x === cur ? ' selected' : '') + '>' + U.esc(x) + '</option>';
+    }).join('');
+    return html;
+  }
+
   /* 清单里还没加进这家门店的物料 */
   function arrMissing(storeId) {
     var have = {};
@@ -306,7 +316,7 @@ window.Pages.stores = (function () {
           '<p>门店还没给到货时间</p>' +
           '<span>' + (preset.length
             ? '点「一键添加」把清单里的物料一次加进来，再换上门店给的时间；也可以点下面的单个物料'
-            : '拿到时间后点「+ 添加物料」，物料名自己填（常用物料可以在「系统设置」里维护）') + '</span>' +
+            : '拿到时间后点「+ 添加物料」，从清单里选一个物料填时间') + '</span>' +
           (preset.length
             ? '<div class="arr-quick">' +
                 preset.map(function (x) {
@@ -322,9 +332,10 @@ window.Pages.stores = (function () {
           (wait ? '<span class="arr-sum-i">还早 <b>' + wait + '</b></span>' : '') +
           (ok ? '<span class="arr-sum-i ok">已通知 <b>' + ok + '</b></span>' : '') +
         '</div>' +
-        '<div class="table-wrap"><table class="tbl arr-tbl" style="min-width:520px">' +
-          '<thead><tr><th>物料 / 供应商</th><th style="width:52px">数量</th>' +
-            '<th style="width:180px">登记的到货时间</th><th style="width:92px">通知</th><th style="width:28px"></th></tr></thead>' +
+        '<div class="table-wrap"><table class="tbl arr-tbl" style="min-width:660px">' +
+          '<thead><tr><th style="width:150px">物料 / 供应商</th><th style="width:52px">数量</th>' +
+            '<th style="width:168px">登记的到货时间</th><th>备注</th>' +
+            '<th style="width:92px">通知</th><th style="width:28px"></th></tr></thead>' +
           '<tbody>' + list.map(function (a) {
             var done = S.arrNotified(a);
             var d = arrDays(a);
@@ -341,7 +352,9 @@ window.Pages.stores = (function () {
 
             return '<tr data-arr="' + U.esc(a.id) + '" class="' +
                 (done ? 'is-done' : w === 'late' ? 'is-late' : w === 'soon' ? 'is-soon' : '') + '">' +
-              '<td><input class="arr-in" list="arrItems" data-arr-field="item" value="' + U.esc(a.item) + '" placeholder="填物料或供应商名字" /></td>' +
+              /* 第一列只让选、不让打字：词条在「系统设置 → 到货物料清单」里维护 */
+              '<td><select class="arr-in arr-sel" data-arr-field="item" ' +
+                'title="从常用物料里选；要加新的去「系统设置 → 到货物料清单」">' + itemOptions(a.item) + '</select></td>' +
               '<td><input class="arr-in mono" type="number" min="0" step="1" data-arr-field="qty" value="' + (a.qty ? a.qty : '') + '" placeholder="—" title="数量可以不填" /></td>' +
               '<td><div class="arr-eta">' +
                 '<input class="arr-in mono" type="text" inputmode="numeric" autocomplete="off" ' +
@@ -349,6 +362,9 @@ window.Pages.stores = (function () {
                   'title="到货日直接打字就行：10/25、10-25、10月25、1025、2026/10/25 都认；不带年份按今年算。改日期 = 对方给了新承诺" />' +
                 tag +
               '</div></td>' +
+              '<td><input class="arr-in arr-note" type="text" autocomplete="off" maxlength="200" ' +
+                'data-arr-field="remark" value="' + U.esc(S.arrRemarkOf(a.id)) + '" ' +
+                'placeholder="比如：等门店确认收货人" title="这一行的备注，比如「先发招牌，货架后发」" /></td>' +
               '<td><button type="button" class="arr-btn' + (done ? ' done' : '') + '" data-arr-done title="' +
                 (done ? '点一下改回「待通知」' : '打电话 / 发微信让对方发货后点一下，这条就不用再催了') + '">' +
                 (done ? '✓ 已通知' : '通知供应商') + '</button></td>' +
@@ -425,10 +441,7 @@ window.Pages.stores = (function () {
             '<tbody>' + taskRows + '</tbody></table></div>'
         : UI.empty('还没有任务')) +
       '<div class="section-title">物料到货（<span id="arrCount">' + arrivals.length + '</span>）</div>' +
-      '<div id="arrWrap">' + arrBody(store.id) + '</div>' +
-      '<datalist id="arrItems">' +
-        S.items().map(function (x) { return '<option value="' + U.esc(x) + '"></option>'; }).join('') +
-      '</datalist>';
+      '<div id="arrWrap">' + arrBody(store.id) + '</div>';
 
     UI.modal({
       title: store.name,
@@ -470,8 +483,9 @@ window.Pages.stores = (function () {
               etaDate: ''
             });
             repaintArr();
-            var inp = arrWrap.querySelector('[data-arr="' + a.id + '"] [data-arr-field="item"]');
-            if (inp) inp.focus();
+            /* 新增行直接聚焦第一列的下拉，选一个物料再填时间 */
+            var sel = arrWrap.querySelector('[data-arr="' + a.id + '"] [data-arr-field="item"]');
+            if (sel) sel.focus();
           }
         });
 
@@ -490,27 +504,23 @@ window.Pages.stores = (function () {
           if (dt) dt.focus();
         });
 
-        /* 输入即存（不重绘，避免光标跳走） */
+        /* 数量：输入即存（不重绘，避免光标跳走）。
+           其余字段都在 change 里存：select / 日期 / 备注都是「定下来才落库」 */
         arrWrap.addEventListener('input', function (e) {
           var el = e.target;
-          var field = el.getAttribute('data-arr-field');
-          if (!field) return;
+          if (el.getAttribute('data-arr-field') !== 'qty') return;
           var tr = el.closest('tr[data-arr]');
           if (!tr) return;
           var aid = tr.getAttribute('data-arr');
-          if (field === 'qty') {
-            /* 数量允许留空：空 = 0（显示为「—」），不是 1 */
-            var digits = String(el.value).replace(/[^\d]/g, '');
-            S.updateArrival(aid, { qty: digits === '' ? 0 : Math.max(1, parseInt(digits, 10)) });
-          }
-          /* etaDate 不在这里存：打到一半的「10/」没法认，等失焦 / 回车时统一解析 */
-          else if (field !== 'etaDate') S.updateArrival(aid, { item: el.value });
+          /* 数量允许留空：空 = 0（显示为「—」），不是 1 */
+          var digits = String(el.value).replace(/[^\d]/g, '');
+          S.updateArrival(aid, { qty: digits === '' ? 0 : Math.max(1, parseInt(digits, 10)) });
         });
 
-        /* 到货日期：失焦 / 回车时解析「10/25」这类写法，认出来才落库 */
         arrWrap.addEventListener('change', function (e) {
           var el = e.target;
-          if (el.getAttribute('data-arr-field') !== 'etaDate') return;
+          var field = el.getAttribute('data-arr-field');
+          if (field !== 'item' && field !== 'etaDate' && field !== 'remark') return;
           var tr = el.closest('tr[data-arr]');
           if (!tr) return;
           var aid = tr.getAttribute('data-arr');
@@ -518,6 +528,19 @@ window.Pages.stores = (function () {
           S.getState().arrivals.forEach(function (x) { if (x.id === aid) rec = x; });
           if (!rec) return;
 
+          /* 物料：下拉选的，直接存 */
+          if (field === 'item') {
+            S.updateArrival(aid, { item: el.value });
+            return;
+          }
+
+          /* 备注：存 settings.arrRemarks（Store 内部 500ms 防抖后推云端） */
+          if (field === 'remark') {
+            S.setArrRemark(aid, el.value);
+            return;
+          }
+
+          /* 到货日期：解析「10/25」这类写法，认出来才落库 */
           var raw = String(el.value || '').trim();
           if (!raw) {
             /* 清空 = 不登记时间 */
@@ -570,7 +593,11 @@ window.Pages.stores = (function () {
           }
         });
 
-        rootEl.querySelector('[data-act="close"]').onclick = close;
+        /* 关弹窗前把还没推的备注立刻推上去，别让最后几个字悬着 */
+        rootEl.querySelector('[data-act="close"]').onclick = function () {
+          S.flushArrRemarks();
+          close();
+        };
         rootEl.querySelector('[data-act="edit"]').onclick = function () {
           close();
           openForm(store);

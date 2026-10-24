@@ -1247,7 +1247,8 @@ window.Store = (function () {
     var a = {
       id: U.uid('arr'),
       storeId: data.storeId,
-      item: data.item || '物料',
+      /* 允许先空着（下拉里显示「选物料」），选好再落库 */
+      item: data.item || '',
       qty: (q === '' || q === null || q === undefined) ? 0 : Math.max(0, Number(q) || 0),
       /* 到货时间只认登记的那个日期：没填就留空，绝不替门店编一个（编了就会误报 / 漏报） */
       etaDate: data.etaDate || '',
@@ -1274,8 +1275,51 @@ window.Store = (function () {
 
   function removeArrival(id) {
     state.arrivals = state.arrivals.filter(function (a) { return a.id !== id; });
+    /* 备注是挂在 settings 里的，顺手清掉，别留孤儿 */
+    if (state.settings && state.settings.arrRemarks) {
+      delete state.settings.arrRemarks[id];
+      pushSettings();
+    }
     drop('arrivals', id);
     cacheLocal();
+  }
+
+  /* ================= 到货物料的备注 =================
+     一行一句备注，比如「等门店确认收货人」「先发招牌，货架后发」。
+     arrivals 表没有这一列，所以跟 taskBefore / taskSnooze 一样挂在 settings 里：
+     既跟着云端同步，又不用改表结构。
+     打字时只更新内存和本地缓存，停下 500ms 才推云端 —— 别一个字母发一次请求。
+     --------------------------------------------------------- */
+
+  function arrRemarkMap() {
+    return (state.settings && state.settings.arrRemarks) || {};
+  }
+
+  function arrRemarkOf(id) {
+    return arrRemarkMap()[id] || '';
+  }
+
+  var remarkTimer = null;
+  var remarkDirty = false;
+
+  function setArrRemark(id, v) {
+    if (!id) return;
+    state.settings = state.settings || {};
+    var map = state.settings.arrRemarks || (state.settings.arrRemarks = {});
+    map[id] = String(v == null ? '' : v).slice(0, 200);
+    remarkDirty = true;
+    cacheLocal();
+    if (remarkTimer) clearTimeout(remarkTimer);
+    remarkTimer = setTimeout(function () {
+      remarkTimer = null;
+      if (remarkDirty) { remarkDirty = false; pushSettings(); }
+    }, 500);
+  }
+
+  /* 立刻把攒着的备注推上去（关弹窗 / 切页前调） */
+  function flushArrRemarks() {
+    if (remarkTimer) { clearTimeout(remarkTimer); remarkTimer = null; }
+    if (remarkDirty) { remarkDirty = false; pushSettings(); }
   }
 
   /* ================= 发货看板 =================
@@ -2198,6 +2242,7 @@ window.Store = (function () {
     if (Array.isArray(set.taskTemplates)) next.taskTemplates = set.taskTemplates;
     if (Array.isArray(set.arrivalItems)) next.arrivalItems = set.arrivalItems;
     if (set.leadDays && typeof set.leadDays === 'object') next.leadDays = set.leadDays;
+    if (set.arrRemarks && typeof set.arrRemarks === 'object') next.arrRemarks = set.arrRemarks;
 
     applyStages(resolveStages(next));
     pushSettings();
@@ -2343,6 +2388,9 @@ window.Store = (function () {
     addArrival: addArrival,
     updateArrival: updateArrival,
     removeArrival: removeArrival,
+    arrRemarkOf: arrRemarkOf,
+    setArrRemark: setArrRemark,
+    flushArrRemarks: flushArrRemarks,
     shipOf: shipOf,
     setShip: setShip,
     shipRows: shipRows,

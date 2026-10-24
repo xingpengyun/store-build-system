@@ -1530,6 +1530,16 @@
 /* 日期 + 倒计时同一行，倒计时不占额外高度 */
 .arr-eta { display: flex; align-items: center; gap: 5px; }
 .arr-eta .arr-in { flex: 1 1 auto; min-width: 0; }
+
+/* 第一列是下拉（只选不改），备注列是普通文本框 */
+.arr-sel {
+  height: 26px;
+  padding: 0 4px;
+  font-size: 12px;
+  cursor: pointer;
+  max-width: 100%;
+}
+.arr-note { font-size: 11.5px; width: 100%; }
 .arr-tag {
   flex: 0 0 auto;
   padding: 0 5px;
