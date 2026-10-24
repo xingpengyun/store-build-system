@@ -642,6 +642,10 @@ window.Pages.tasks = (function () {
     var beforeVal = S.taskBeforeOf({
       id: t.id, title: t.title, stage: t.stage || defaultStage(), before: t.before
     });
+    /* 备注框填的是「门店备注」（store.remark），和门店管理里那份是同一个字段。
+       新增任务时门店还没选，先按表单实际选中的那家（第一项）带出来 */
+    var initStoreId = t.storeId || (stores[0] || {}).id || '';
+    var initStore = S.storeById(initStoreId);
 
     return '<form autocomplete="off">' +
       '<div class="field"><label>任务名称 <span class="req">*</span></label>' +
@@ -680,8 +684,9 @@ window.Pages.tasks = (function () {
           '</select>' +
         '</div>' +
       '</div>' +
-      '<div class="field"><label>备注</label>' +
-        '<textarea class="textarea" name="remark" placeholder="选填">' + U.esc(t.remark || '') + '</textarea>' +
+      '<div class="field"><label>门店备注 <span class="dim">（和「门店管理 → 编辑门店」里的备注是同一份，改哪边都一样）</span></label>' +
+        '<textarea class="textarea" name="remark" placeholder="选填。比较重要的事情写这里：任务列表的门店行头不展开也能看到">' +
+          U.esc((initStore && initStore.remark) || '') + '</textarea>' +
       '</div>' +
     '</form>';
   }
@@ -702,6 +707,16 @@ window.Pages.tasks = (function () {
         '<button class="btn btn-primary" data-act="save">保存</button>',
       onMount: function (rootEl, close) {
         rootEl.querySelector('[data-act="cancel"]').onclick = close;
+
+        /* 备注框跟门店走：换个门店就把那家的备注带出来（不然会把 A 家的备注存到 B 家） */
+        var storeSel = rootEl.querySelector('[name="storeId"]');
+        var remarkEl = rootEl.querySelector('[name="remark"]');
+        if (storeSel && remarkEl) {
+          storeSel.addEventListener('change', function () {
+            var st = S.storeById(storeSel.value);
+            remarkEl.value = (st && st.remark) || '';
+          });
+        }
 
         /* 改门店 / 阶段 / 开业前天数，建议完成日即时重算 */
         var hint = rootEl.querySelector('[data-due-hint]');
@@ -729,16 +744,27 @@ window.Pages.tasks = (function () {
             UI.toast('任务名称不能为空', 'error');
             return;
           }
+          var sid = UI.formValue(rootEl, 'storeId');
           var payload = {
             title: title,
-            storeId: UI.formValue(rootEl, 'storeId'),
+            storeId: sid,
             stage: UI.formValue(rootEl, 'stage'),
             assigneeId: UI.formValue(rootEl, 'assigneeId'),
             before: Math.max(0, Number(UI.formValue(rootEl, 'before')) || 0),
             status: UI.formValue(rootEl, 'status'),
-            priority: UI.formValue(rootEl, 'priority'),
-            remark: UI.formValue(rootEl, 'remark')
+            priority: UI.formValue(rootEl, 'priority')
+            /* 备注不写 task.remark：这里填的是「门店备注」，落到 store.remark（下面单独写） */
           };
+
+          /* 门店备注：和门店管理同一份，值变了才写，避免无意义的同步 */
+          if (sid) {
+            var st = S.storeById(sid);
+            var rm = UI.formValue(rootEl, 'remark');
+            if (st && String(st.remark || '') !== String(rm || '')) {
+              S.updateStore(sid, { remark: rm });
+            }
+          }
+
           if (isNew) {
             S.addTask(payload);
             UI.toast('任务已创建', 'success');
