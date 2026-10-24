@@ -232,7 +232,8 @@ window.Pages.tasks = (function () {
      （原先叫「推送」，一线反馈不好理解，2026-10-25 改成「完成」） */
   function actionHtml(t) {
     if (t.status === 'done') {
-      return '<span class="tlink" data-act="reopen" data-id="' + t.id + '">重开</span>';
+      return '<span class="tlink" data-act="reopen" data-id="' + t.id + '"' +
+        ' title="点错了 / 又要补做：任务改回未完成，门店退回完成前那一格">重开</span>';
     }
     var tip = C.stageSplit(t.stage || '').base
       ? '这条做完了，门店自动进到「' + C.stageLabel(t.stage) + '」'
@@ -311,6 +312,7 @@ window.Pages.tasks = (function () {
     function undo() {
       S.updateTask(task.id, { status: prev.status || 'pending' });
       S.setStoreStage(store.id, prev.stage, prev.sub);
+      S.clearReopenPoint(task.id);   /* 已经退回去了，回退点用不上了 */
       UI.toast('已撤销，门店回到「' + C.stageLabel(C.stageValue(prev.stage, prev.sub)) + '」', 'info');
       App.refresh({ keep: true });
     }
@@ -322,6 +324,14 @@ window.Pages.tasks = (function () {
       if (forward) {
         S.setStoreStage(store.id, p.base, branch || '');
         moved = C.stageLabel(C.stageValue(p.base, branch || ''));
+
+        /* 记下「完成前停在哪 → 被推到了哪」：之后点「重开」要退回原来的格子。
+           阶段没动的（② ③ 两条规则）就清掉旧记录，重开时只改状态 */
+        S.setReopenPoint(task.id,
+          C.stageValue(prev.stage, prev.sub),
+          C.stageValue(p.base, branch || ''));
+      } else {
+        S.clearReopenPoint(task.id);
       }
 
       var msg;
@@ -376,6 +386,43 @@ window.Pages.tasks = (function () {
         });
       }
     });
+  }
+
+  /* ================= 重开：把这次完成退回去 =================
+     点「重开」做两件事，跟点错「完成」后按一次「撤销」是一个效果：
+
+       ① 任务状态改回「未完成」
+       ② 门店退回这条任务完成前停的那一格
+
+     ② 不是无条件的：只有「门店还停在这条任务推到的位置」才退。
+     门店已经被别的任务推得更远、或者被人手动改过阶段，就只改状态、
+     阶段原地不动 —— 否则点一下重开会把别人这几天的推进一起抹掉。
+     回退点由 completeTask 记录（settings.reopenLog），撤销时一并清掉。
+     ========================================================== */
+
+  function reopenTask(task) {
+    var store = S.storeById(task.storeId);
+    var pt = S.reopenPointOf(task.id);
+
+    S.updateTask(task.id, { status: 'pending' });
+    S.clearReopenPoint(task.id);
+
+    var note = '';
+    if (store && pt && pt.from) {
+      var now = C.stageValue(store.stage, S.storeSub(store));
+      var back = C.stageSplit(pt.from);
+      var backOk = stageIndex(back.base) >= 0;      /* 那个阶段被删掉了就别往回设 */
+
+      if (pt.to && now === pt.to && backOk) {
+        S.setStoreStage(store.id, back.base, back.sub);
+        note = '，门店退回「' + C.stageLabel(pt.from) + '」';
+      } else if (pt.to && now !== pt.to) {
+        note = '（门店现在在「' + (C.stageLabel(now) || '未设置') + '」，阶段没动）';
+      }
+    }
+
+    UI.toast('「' + task.title + '」已重开，状态改回未完成' + note, 'info');
+    App.refresh({ keep: true });
   }
 
   /* ---------------- 右侧：门店列表（点开看任务） ---------------- */
@@ -1188,9 +1235,7 @@ window.Pages.tasks = (function () {
         UI.toast('已撤销延后，回到原定日期', 'info');
         App.refresh({ keep: true });
       } else if (act === 'reopen' && task) {
-        S.updateTask(task.id, { status: 'pending' });
-        UI.toast('任务已重新打开', 'info');
-        App.refresh({ keep: true });
+        reopenTask(task);
       } else if (act === 'del' && task) {
         UI.confirm({
           title: '删除任务',

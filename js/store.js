@@ -300,6 +300,9 @@ window.Store = (function () {
     data.arrivals = data.arrivals || [];
     data.alertsRead = data.alertsRead || [];
     if (!Array.isArray(data.settings.board)) data.settings.board = [];
+    /* 完成 / 重开的回退点：{ 任务id: { from, to, at } }，见 reopenPointOf */
+    var rl = data.settings.reopenLog;
+    if (!rl || typeof rl !== 'object' || Array.isArray(rl)) data.settings.reopenLog = {};
 
     if (!data.settings.brand) data.settings.brand = '门店筹建管理系统';
     if (!data.settings.slogan) data.settings.slogan = '让每一家门店，按时开业！';
@@ -1150,6 +1153,7 @@ window.Store = (function () {
     ['taskBefore', 'taskSnooze'].forEach(function (key) {
       if (s[key] && s[key][id] != null) { delete s[key][id]; touched = true; }
     });
+    if (s.reopenLog && s.reopenLog[id]) { delete s.reopenLog[id]; touched = true; }
     if (touched) pushSettings();
 
     drop('tasks', id);
@@ -1283,6 +1287,56 @@ window.Store = (function () {
     }
     pushSettings();
     return Promise.resolve(true);
+  }
+
+  /* ================= 完成 / 重开：记下完成前的阶段 =================
+     点「完成」有可能把门店往前推一格，之后点「重开」得能退回原来那一格。
+     任务表没有多余的列可以放这个，所以存在 settings.reopenLog：
+
+       { 任务id: { from: '阶段 / 二级', to: '阶段 / 二级', at: '2026-10-25T…' } }
+
+     from = 完成之前门店停在哪，to = 这条任务把门店推到了哪。
+     重开时只有当门店还停在 to 时才回退（说明这期间没人再往前推），
+     否则阶段原地不动 —— 免得把别人后来推进的进度一起抹掉。
+     ---------------------------------------------------------------- */
+
+  var REOPEN_MAX = 300;
+
+  function reopenLog() {
+    var map = state && state.settings && state.settings.reopenLog;
+    if (!map || typeof map !== 'object' || Array.isArray(map)) return {};
+    return map;
+  }
+
+  function reopenPointOf(taskId) {
+    var p = reopenLog()[taskId];
+    return (p && typeof p === 'object' && (p.from || p.to)) ? p : null;
+  }
+
+  function setReopenPoint(taskId, from, to) {
+    if (!state.settings) state.settings = {};
+    var map = reopenLog();
+    map[taskId] = { from: from || '', to: to || '', at: new Date().toISOString() };
+
+    /* 配置包别无限长大：超过 300 条从最老的开始丢 */
+    var keys = Object.keys(map);
+    if (keys.length > REOPEN_MAX) {
+      keys.sort(function (a, b) { return String(map[a] && map[a].at) < String(map[b] && map[b].at) ? -1 : 1; });
+      keys.slice(0, keys.length - REOPEN_MAX).forEach(function (k) { delete map[k]; });
+    }
+
+    state.settings.reopenLog = map;
+    pushSettings();
+    cacheLocal();
+  }
+
+  function clearReopenPoint(taskId) {
+    var map = reopenLog();
+    if (!map[taskId]) return;
+    delete map[taskId];
+    state.settings.reopenLog = map;
+    pushSettings();
+    cacheLocal();
   }
 
   /* ================= 到货 CRUD =================
@@ -2410,6 +2464,9 @@ window.Store = (function () {
     boardNotes: boardNotes,
     addBoardNote: addBoardNote,
     removeBoardNote: removeBoardNote,
+    reopenPointOf: reopenPointOf,
+    setReopenPoint: setReopenPoint,
+    clearReopenPoint: clearReopenPoint,
     arrNotified: arrNotified,
     addArrival: addArrival,
     updateArrival: updateArrival,
