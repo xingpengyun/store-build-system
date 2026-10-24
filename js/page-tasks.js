@@ -328,8 +328,13 @@ window.Pages.tasks = (function () {
       if (branch) S.setGateSub(task.id, C.stageValue(p.base, branch));
       else S.clearGateSub(task.id);
 
-      /* 相邻格：这一格的活刚做完，直接推进并越过（advanceStore 会记回退点） */
-      if (adjacent) jumped = S.advanceStore(store.id, p.base);
+      /* 相邻格：落点就是下一格，门店「到达」这一格就停，不跳过。
+         （图纸出了 → 进「首批阶段」；不是把「首批阶段」当已做完再越过去） */
+      if (adjacent) {
+        var sub2 = branch || sub || '';
+        jumped = S.landStore(store.id, p.base, sub2);
+        S.setReopenPoint(task.id, C.stageValue(prev.stage, prev.sub), C.stageValue(p.base, sub2));
+      }
 
       var msg;
       if (jumped) {

@@ -2028,6 +2028,20 @@ window.Store = (function () {
     return { from: from, to: toVal, skipped: skipped, gate: gate, store: storeById(storeId) };
   }
 
+  /* 相邻格推进：门店直接「到达」目标格就停，不跳过目标格。
+     用于点「完成」时落点正好是下一格 —— 图纸出了，门店就进「首批阶段」，
+     而不是把「首批阶段」当已做完再越过去。回退点由调用方记。
+     返回 { from, to, skipped:[], gate:null, store } 与 advanceStore 同构。 */
+  function landStore(storeId, targetBase, sub) {
+    var store = storeById(storeId);
+    if (!store) return null;
+    if (stageOrder(targetBase) < 0) return null;
+    var from = C.stageValue(store.stage, storeSub(store));
+    var to = C.stageValue(targetBase, sub || '');
+    setStoreStage(storeId, targetBase, sub || '');
+    return { from: from, to: to, skipped: [], gate: null, store: storeById(storeId) };
+  }
+
   /* ---------------- 门店进度 ----------------
      两个口径分开，别混着用：
 
@@ -2683,6 +2697,7 @@ window.Store = (function () {
     gateOf: gateOf,
     doneLodges: doneLodges,
     advanceStore: advanceStore,
+    landStore: landStore,
     progressStages: progressStages,
     progressPlan: progressPlan,
     leadDaysOf: leadDaysOf,
