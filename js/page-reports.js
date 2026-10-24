@@ -150,7 +150,9 @@ window.Pages.reports = (function () {
       '</div>' +
       '<div class="card">' +
         '<div class="card-head"><h3>省份门店分布</h3><span class="card-sub">共 ' + st.totalStores + ' 家</span></div>' +
-        provRows +
+        /* 省份可能几十个：卡片里限高滚动，别把整页拉成一条长条
+           （2026-10-25 用户要求「不要太长，设置滚动条」） */
+        '<div class="card-scroll" tabindex="0" aria-label="省份门店分布，可上下滚动">' + provRows + '</div>' +
       '</div>' +
     '</section>' +
 

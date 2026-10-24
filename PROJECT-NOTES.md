@@ -884,3 +884,22 @@ settings.reopenLog = {
 jsdom 测试里连续 `mount` 同一个节点会让 click 监听叠加（点一次触发两次），
 必须像 `App.render` 那样每次 `cloneNode` 换新 `#view` 再挂 —— 真实页面一直是这么做的，
 只有测试里容易踩。
+
+## 2026-10-25 报表「省份门店分布」限高 + 卡片内滚动
+
+用户截图：25 个省份 25 行，把整页拉得很长，要求「不要太长，设置滚动条」。
+
+- `js/page-reports.js`：省份行包进 `<div class="card-scroll" tabindex="0">`，其余榜单不动。
+- `css/components.css` 新增 `.card-scroll`：
+  ```css
+  max-height: 240px;            /* ≈ 6.7 行，第 7 行露一半，一眼看出还能滚 */
+  overflow-y: auto;
+  overscroll-behavior: contain; /* 滚到头别把整页带着滚 */
+  ```
+  滚动条本身不加自定义样式，跟随 theme.css 里全局的 `*::-webkit-scrollbar`（细、灰蓝），
+  卡片内外观一致。`.card-scroll:focus-visible` 给键盘 Tab 一个焦点框。
+- 为什么是 240：左边「各阶段门店分布」自然高度 ≈ 308，右卡 240 + 卡头 + 内边距 ≈ 318，
+  两张卡基本齐平，不会出现大片空白。试过 290/342，左卡底部会空 100px 以上。
+- 效果：报表页整页高度 1700+ → 1135；省份区 clientHeight 240 / scrollHeight 893，
+  滚到底最后一行「吉林」完整可见；其他卡片高度不变。
+- `smoke` 8 页 OK、`chk-theme` 全过。版本 `?v=20261025z64`。

@@ -1042,6 +1042,21 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* 卡片里的滚动区：行数不定的榜单（省份门店分布，几十个省份）限高，
+   超出在卡片内部滚动，别把整页拉成一条长条。
+   右侧留 6px 给滚动条，出现 / 不出现时行宽不会跳。 */
+.card-scroll {
+  max-height: 240px;                 /* ≈ 6.7 行：第 7 行露一半，一眼看出还有；
+                                        跟左边「各阶段门店分布」差不多高，两卡不会一高一矮 */
+  overflow-y: auto;
+  overscroll-behavior: contain;      /* 滚到头别把整页一起带着滚 */
+}
+.card-scroll:focus-visible {         /* 键盘 Tab 进来能看出焦点在哪 */
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(63, 107, 245, .12);
+  border-radius: 8px;
+}
+
 /* 两列小卡 */
 .mini-stats {
   display: grid;
