@@ -2070,6 +2070,26 @@
   text-overflow: ellipsis;
 }
 
+/* 行内备注摘要：不展开也能看到（同一份 store.remark，门店编辑里改） */
+.sk-remark-inline {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 6px;
+  padding: 3px 9px;
+  border-radius: 7px;
+  background: #f6f9ff;
+  border: 1px solid #e3ecfc;
+  font-size: 11.3px;
+  color: #5b6b87;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sk-remark-inline svg { width: 11px; height: 11px; flex: 0 0 auto; color: var(--primary); opacity: .75; }
+
 .sk-prog .mini-progress { min-width: 0; }
 
 .sk-tasks { display: flex; align-items: center; gap: 6px; font-size: 11.5px; white-space: nowrap; }

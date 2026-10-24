@@ -512,6 +512,13 @@ window.Pages.tasks = (function () {
           '<div class="sk-name">' + U.esc(st.name) + '</div>' +
           '<div class="sk-meta">' + U.esc(st.province || '—') + ' · ' + stageTxt + '</div>' +
         '</div>' +
+        /* 备注（同一份 store.remark，门店编辑里改了这里跟着变）：
+           不展开也能看到——重要事情写在备注里，扫一眼行首就能看到 */
+        (st.remark
+          ? '<span class="sk-remark-inline" title="备注（在「门店管理 → 编辑门店」里修改）：' + U.esc(String(st.remark).slice(0, 60)) + '">' +
+              UI.icon('flag') + U.esc(st.remark) +
+            '</span>'
+          : '') +
       '</div>' +
       '<div class="sk-prog">' + UI.progress(S.storeProgress(st).pct, def.color, S.progressTip(st)) + '</div>' +
       '<div class="sk-tasks">' + (m.total
