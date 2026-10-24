@@ -401,3 +401,11 @@
 - CSS `.tl-tpl` / `.tl-num .tl-tpl` 删除
 - 二级阶段行若既无门店也无未完成任务，右侧显示「—」（原来的兜底）
 - 验证 12 项 PASS / 0 报错（tl-tpl 元素 0 个、无「清单 N 条」文字、7 个阶段节点正常、Store.templateStageStat 已移除、展开二级不崩、首页/设置页无回归）
+
+## 2026-10-24 发货看板删「计划发货」列 + 维护入口搬门店详情（?v=20261024z41）
+用户：图1「计划发货」列不需要了（点开门店已有每项物品的发货/到货时间），让图2「物料·登记的到货时间」列显示更多。
+
+- `page-ship.js`：按门店视图删「计划发货」列（th + ship-plan td + data-date 事件 + repaintRow 死函数 + `.ship-plan/.ship-date/.ship-left` CSS）；`MAT_MAX` 5 → 8（物料列从 ~500px 涨到 745px，一行铺更多 chip）
+- **配套**：`page-stores.js` 门店详情物料区（arr-sum 上方）新增「计划发货日」行（`.arr-ship-row`）：date 输入 + 状态提示（已过 N 天/今天该发/还有 N 天/还没排/已发出），写同一份 `settings.ship[storeId].date`（`S.setShip`），看板排序/逾期预警/「按发货日重排」全部照旧
+- 页脚「N 家还没填发货日」补了「（发货日在门店详情的物料区改）」的指引
+- 验证 21 项 PASS / 0 报错（6 列对齐、物料列宽 745>168、无 ship-plan/data-date、详情弹窗回填+改期落库+提示更新、看板/预警无回归）

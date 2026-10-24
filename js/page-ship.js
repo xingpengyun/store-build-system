@@ -106,7 +106,7 @@ window.Pages.ship = (function () {
     return '还有 ' + r.left + ' 天';
   }
 
-  var MAT_MAX = 5;
+  var MAT_MAX = 8;   /* 删掉「计划发货」列后物料列宽多了，多铺几条 */
 
   /* 一家店还要催的物料 + 登记的到货时间，全部铺在这一行里 ——
      不用点进门店也知道这家哪天到货、哪条漏通知了。
@@ -213,15 +213,6 @@ window.Pages.ship = (function () {
       /* 这一列把这家店所有物料的到货时间铺开 —— 原来是空的，现在填满 */
       '<td class="ship-mats">' + matsHtml(r) + '</td>' +
 
-      '<td class="ship-plan">' +
-        '<div class="ship-plan-row">' +
-          '<input class="ship-date mono' + (r.date ? '' : ' is-empty') + '" type="date" data-date value="' +
-            U.esc(r.date) + '" title="' + (r.date ? '点一下可以改发货日' : '还没排发货日，点这里选一个') + '" />' +
-        '</div>' +
-        '<div class="ship-left ' + (r.late ? 'is-late' : r.dueToday ? 'is-today' : '') + '">' +
-          U.esc(leftText(r)) + '</div>' +
-      '</td>' +
-
       '<td class="ship-sent">' +
         '<button type="button" class="ship-st is-' + r.status + '" data-sent' +
           ' title="' + (r.shipped ? '点一下改回「未发出」' : '发出去以后点这里，这家就不用再跟了') + '">' +
@@ -261,7 +252,6 @@ window.Pages.ship = (function () {
         '<th>物料 · 登记的到货时间（只列未通知）' +
           '<span class="th-legend"><i class="is-late"></i>过了到货日<i class="is-soon"></i>7 天内到<i class="is-nodate"></i>没填日期</span>' +
         '</th>' +
-        '<th style="width:112px">计划发货</th>' +
         '<th style="width:132px">发出 / 下一步</th>' +
         '<th style="width:138px">备注</th>' +
         '<th style="width:44px"></th>' +
@@ -628,7 +618,7 @@ window.Pages.ship = (function () {
       '<div id="shipTable">' + tableHtml(list) + '</div>' +
       '<div class="ship-foot">' +
         '<span>每行只铺还没通知供应商的物料，通知过的不再占地方；历史记录去「按到货日」视图的「已通知」</span>' +
-        '<span>' + (s.noPlan ? '<b class="text-red">' + s.noPlan + ' 家还没填发货日</b>　·　' : '') +
+        '<span>' + (s.noPlan ? '<b class="text-red">' + s.noPlan + ' 家还没填发货日</b>（发货日在门店详情的物料区改）　·　' : '') +
           '到货时间以门店 / 供应商登记的为准，改日期就是新承诺</span>' +
       '</div>' +
     '</div>';
@@ -640,16 +630,6 @@ window.Pages.ship = (function () {
     var rows = S.shipRows();
     for (var i = 0; i < rows.length; i++) if (rows[i].id === id) return { row: rows[i], idx: i };
     return null;
-  }
-
-  /* 只重画这一行：改日期时不重排，免得行跳走找不到 */
-  function repaintRow(tr, id) {
-    var hit = findRow(id);
-    if (!hit) return;
-    var tmp = document.createElement('tbody');
-    tmp.innerHTML = rowHtml(hit.row, hit.idx);
-    var fresh = tmp.firstChild;
-    if (fresh) tr.parentNode.replaceChild(fresh, tr);
   }
 
   function updateList(root) {
@@ -808,19 +788,9 @@ window.Pages.ship = (function () {
       }
     });
 
-    /* 计划发货日 / 备注 */
+    /* 备注 / 登记的发货时间。
+       计划发货日改到门店详情里维护（settings.ship[storeId].date，同一份数据） */
     root.addEventListener('change', function (e) {
-      var d = e.target.closest('[data-date]');
-      if (d && root.contains(d)) {
-        var tr = d.closest('tr[data-ship]');
-        var rid = tr && tr.getAttribute('data-ship');
-        if (!rid) return;
-        S.setShip(rid, { date: d.value });
-        repaintRow(tr, rid);
-        return;
-      }
-
-      /* 登记的发货时间：发出去以后可以改（当天忘了点，第二天补也不会错） */
       var sd = e.target.closest('[data-sentdate]');
       if (sd && root.contains(sd)) {
         var tr3 = sd.closest('tr[data-ship]');
