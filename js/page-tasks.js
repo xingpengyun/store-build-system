@@ -227,15 +227,18 @@ window.Pages.tasks = (function () {
     '</div>';
   }
 
-  /* 一行只有一个动作：没做完 → 「完成」（= 这件事做完了，门店往前推一步）；
-     做完了 → 「重开」。「开始 / 进行中」这套状态流转取消，点完成就是做完。
+  /* 一行只有一个动作：没做完 → 「完成」（= 这件事做完了，门店自动进到这条任务
+     挂的那个阶段）；做完了 → 「重开」。「开始 / 进行中」这套状态流转取消。
      （原先叫「推送」，一线反馈不好理解，2026-10-25 改成「完成」） */
   function actionHtml(t) {
     if (t.status === 'done') {
       return '<span class="tlink" data-act="reopen" data-id="' + t.id + '">重开</span>';
     }
+    var tip = C.stageSplit(t.stage || '').base
+      ? '这条做完了，门店自动进到「' + C.stageLabel(t.stage) + '」'
+      : '这条做完了';
     var push = '<span class="tlink tlink-push" data-act="push" data-id="' + t.id + '"' +
-      ' title="这条做完了，门店阶段跟着往前走一步">完成</span>';
+      ' title="' + U.esc(tip) + '">完成</span>';
     var sn = S.snoozeDaysOf(t);
 
     /* 逾期才给「+3天」：不是我们的原因 / 老板不着急，
@@ -253,22 +256,24 @@ window.Pages.tasks = (function () {
     return push;
   }
 
-  /* ================= 完成：这条做完了 + 门店往前推一步 =================
+  /* ================= 完成：这条做完了，门店自动进到这条任务的落点 =================
 
-     一线口径：筹建清单每行只剩一个「完成」。
-       点它 = 这条任务标记完成，门店阶段进入下一步；
-       下一步带二级（比如「已出图」下的 已做首批 / 未做首批）时，
-       必须顺手把这层也选掉，否则不知道这家店属于哪一支。
+     每条任务在筹建任务清单里挂一个落点（清单那列就叫「完成后进到」）。
+     点「完成」只做两件事：这条标记完成 + 门店阶段推到落点。规则就三条：
 
-     为什么目标阶段是「可选的」而不是写死下一个：
-       现实里顺序经常跳 —— 门店先给了建档资料、图纸还没设计好。
-       所以弹窗把门店当前阶段之后的阶段全列出来，默认停在下一個，想跳就跳。
-       门店阶段只代表「最新进展到哪儿」；图纸没出这种事实靠清单里那条任务
-       继续挂待办 / 逾期来提醒，不会因为跳了阶段就被抹掉。
+       ① 落点比门店当前阶段靠后（营业执照 → 建档资料，门店还在未出图）
+          → 直接推过去。并行推进没问题，门店阶段永远是「最远那一格」。
 
-     「只标记完成，阶段不动」给同一阶段有好几条清单时用：
-       做掉一条不代表这家店整段都结束了。
-     ================================================================== */
+       ② 落点就是门店当前阶段（图纸 → 未出图 而门店就在未出图）
+          → 只标记完成，阶段不动。这一格还没干完，别急着往前走。
+
+       ③ 落点比门店当前阶段靠前（门店已到广告物料，才回头补做图纸）
+          → 只标记完成，绝不往回退。
+
+     相比原来「每次弹窗让你从一堆阶段里挑」：
+       默认一下点完，只有落点带二级（「已出图」下的 已做首批 / 未做首批）
+       才问一句是哪一支，点一下就落定。推错了顶部提示条里有「撤销」。
+     ================================================================ */
 
   function stageIndex(key) {
     var idx = -1;
@@ -276,141 +281,99 @@ window.Pages.tasks = (function () {
     return idx;
   }
 
-  function openPush(task) {
-    var store = S.storeById(task.storeId);
-    if (!store) { UI.toast('这家门店已经不在了', 'error'); return; }
+  function subsOfStage(base) {
+    var map = S.stageSubsWithUsed();
+    var list = map && map[base];
+    return Array.isArray(list) ? list : [];
+  }
 
+  function completeTask(task) {
+    var store = S.storeById(task.storeId);
+
+    /* 门店被删了：别把这条卡死，标记完成就行 */
+    if (!store) {
+      S.updateTask(task.id, { status: 'done' });
+      UI.toast('「' + task.title + '」已完成', 'success');
+      App.refresh({ keep: true });
+      return;
+    }
+
+    var prev = { status: task.status, stage: store.stage, sub: S.storeSub(store) };
+    var p = C.stageSplit(task.stage || '');
+    var tIdx = stageIndex(p.base);
     var curBase = C.stageSplit(store.stage).base;
     var curIdx = stageIndex(curBase);
-    var subs = S.stageSubsWithUsed();
     var curSub = S.storeSub(store);
+    var forward = tIdx >= 0 && tIdx > curIdx;         /* 只有往前才动阶段 */
+    var subs = forward ? subsOfStage(p.base) : [];    /* 只有真的往前才需要选二级 */
+    var sub = p.sub || (forward ? '' : curSub);       /* 任务自己带二级就不用问 */
 
-    /* 目标 = 门店当前阶段之后的全部阶段（允许跳着选） */
-    var targets = C.STAGES.filter(function (st, i) { return i > curIdx; });
-    var pick = { stage: targets.length ? targets[0].key : '', sub: '' };
-
-    function subsOf(key) {
-      var list = subs[key];
-      return Array.isArray(list) ? list : [];
+    function undo() {
+      S.updateTask(task.id, { status: prev.status || 'pending' });
+      S.setStoreStage(store.id, prev.stage, prev.sub);
+      UI.toast('已撤销，门店回到「' + C.stageLabel(C.stageValue(prev.stage, prev.sub)) + '」', 'info');
+      App.refresh({ keep: true });
     }
 
-    function optHtml(st, i) {
-      var sl = subsOf(st.key);
-      return '<label class="push-opt' + (st.key === pick.stage ? ' on' : '') + '" data-opt="' + U.esc(st.key) + '">' +
-        '<input type="radio" name="pushStage" value="' + U.esc(st.key) + '"' +
-          (st.key === pick.stage ? ' checked' : '') + ' />' +
-        '<i class="push-dot" style="background:' + st.color + '"></i>' +
-        '<span class="push-opt-main">' +
-          '<span class="push-opt-name">' + U.esc(st.key) +
-            (i === 0 ? '<em class="push-tag">下一步</em>' : '') +
-            (sl.length ? '<em class="push-tag push-tag-sub">有二级</em>' : '') +
-          '</span>' +
-          '<span class="push-opt-desc">' +
-            (sl.length
-              ? '还要选：' + sl.map(function (x) { return U.esc(x); }).join(' / ')
-              : '门店阶段变成「' + U.esc(st.key) + '」') +
-          '</span>' +
-        '</span>' +
-      '</label>';
+    function commit(branch) {
+      S.updateTask(task.id, { status: 'done' });
+
+      var moved = '';
+      if (forward) {
+        S.setStoreStage(store.id, p.base, branch || '');
+        moved = C.stageLabel(C.stageValue(p.base, branch || ''));
+      }
+
+      var msg;
+      if (moved) {
+        msg = '已完成：「' + task.title + '」→ 门店进到「' + moved + '」';
+      } else if (p.base && p.base === curBase) {
+        msg = '「' + task.title + '」已完成（这条的落点就是「' + C.stageLabel(p.base) + '」，阶段不动）';
+      } else if (p.base) {
+        msg = '「' + task.title + '」已完成（门店已经在「' + C.stageLabel(store.stage) + '」，阶段不动）';
+      } else {
+        msg = '「' + task.title + '」已完成';
+      }
+
+      /* 门店往前走了，可左侧还筛着老阶段 —— 不放开筛选的话，
+         刚点完的那家会当场从列表里消失，看着像被删了 */
+      if (moved && state.stage && store.stage !== state.stage) {
+        state.stage = '';
+        state.sub = '';
+      }
+
+      UI.toast(msg, 'success', { action: { label: '撤销', onClick: undo } });
+      App.refresh({ keep: true });
     }
 
-    var body =
-      '<div class="push-top">' +
-        '<div class="push-top-l">' +
-          '<i class="push-dot" style="background:' + ((C.stageDef(store.stage) || {}).color || '#98a2b8') + '"></i>' +
-          '<b>' + U.esc(store.name) + '</b>' +
-          '<span class="push-cur">当前：' +
-            U.esc(C.stageLabel(store.stage) + (curSub ? ' · ' + curSub : '')) + '</span>' +
-        '</div>' +
-        '<div class="push-task">这条：<b>' + U.esc(task.title) + '</b></div>' +
-      '</div>' +
-      '<div class="push-sec">完成后门店进到哪一步</div>' +
-      '<div class="push-list">' +
-        (targets.length
-          ? targets.map(optHtml).join('')
-          : '<div class="push-none-tip">已经是最后一个阶段「' + U.esc(store.stage) +
-            '」了，这里只能把这条标记完成。</div>') +
-        '<label class="push-opt push-opt-none" data-opt="__none">' +
-          '<input type="radio" name="pushStage" value="__none"' + (pick.stage ? '' : ' checked') + ' />' +
-          '<i class="push-dot push-dot-none"></i>' +
-          '<span class="push-opt-main">' +
-            '<span class="push-opt-name">只标记完成，阶段不动</span>' +
-            '<span class="push-opt-desc">同一阶段还有别的清单没做完时用它</span>' +
-          '</span>' +
-        '</label>' +
-      '</div>' +
-      '<div class="push-sub-wrap" data-subwrap></div>' +
-      '<p class="push-hint">可以跳着选：门店阶段只表示「最新进展到哪儿」。' +
-        '比如门店先给了建档资料、图纸还没设计好，直接选「资料/建档」就行；' +
-        '图纸那条任务没完成，会继续挂在清单里显示待办和逾期，不会丢。</p>';
+    /* 不往前推 / 落点没有二级 / 任务自己已经带二级 → 一下点完，不弹窗 */
+    if (!forward || !subs.length || sub) { commit(forward ? sub : ''); return; }
 
+    /* 落点带二级：只问这一句，点哪个就落哪，点完就完事 */
     UI.modal({
-      title: '完成这条清单',
-      sub: '标记完成 + 让门店往前走一步',
-      body: body,
-      footer:
-        '<button class="btn" data-push-cancel>取消</button>' +
-        '<button class="btn btn-primary" data-push-ok>完成</button>',
+      title: '「' + task.title + '」已完成',
+      sub: store.name + ' 往前一步',
+      body:
+        '<div class="cm-flow">' +
+          '<span class="cm-chip">' + U.esc(C.stageLabel(C.stageValue(store.stage, curSub))) + '</span>' +
+          UI.icon('arrow') +
+          '<span class="cm-chip cm-to">' + U.esc(C.stageLabel(p.base)) + '</span>' +
+        '</div>' +
+        '<div class="push-sec">「' + U.esc(C.stageLabel(p.base)) + '」还分两支，选一个</div>' +
+        '<div class="push-chips">' + subs.map(function (s) {
+          return '<button type="button" class="push-chip" data-cm-sub="' + U.esc(s) + '">' +
+            U.esc(s) + '</button>';
+        }).join('') + '</div>' +
+        '<p class="push-hint">点一下就落定；选错了，顶部提示条里有「撤销」。</p>',
+      footer: '<button class="btn" data-cm-cancel>取消</button>',
       onMount: function (rootEl, close) {
-        var subWrap = rootEl.querySelector('[data-subwrap]');
-
-        function paintOpts() {
-          rootEl.querySelectorAll('.push-opt').forEach(function (el) {
-            var v = el.getAttribute('data-opt');
-            el.classList.toggle('on', v === '__none' ? !pick.stage : v === pick.stage);
-          });
-        }
-
-        function paintSubs() {
-          var list = pick.stage ? subsOf(pick.stage) : [];
-          if (!list.length) {
-            subWrap.innerHTML = '';
-            subWrap.classList.remove('is-on');
-            return;
-          }
-          subWrap.classList.add('is-on');
-          subWrap.innerHTML =
-            '<div class="push-sec">「' + U.esc(pick.stage) + '」现在是哪一支</div>' +
-            '<div class="push-chips">' + list.map(function (s) {
-              return '<button type="button" class="push-chip' + (pick.sub === s ? ' on' : '') +
-                '" data-sub="' + U.esc(s) + '">' + U.esc(s) + '</button>';
-            }).join('') + '</div>';
-        }
-
+        rootEl.querySelector('[data-cm-cancel]').onclick = close;
         rootEl.addEventListener('click', function (e) {
-          var chip = e.target && e.target.closest ? e.target.closest('.push-chip') : null;
+          var chip = e.target && e.target.closest ? e.target.closest('[data-cm-sub]') : null;
           if (!chip) return;
-          pick.sub = chip.getAttribute('data-sub');
-          paintSubs();
-        });
-
-        rootEl.addEventListener('change', function (e) {
-          if (!e.target || e.target.name !== 'pushStage') return;
-          var v = e.target.value;
-          pick.stage = (v === '__none') ? '' : v;
-          pick.sub = '';
-          paintOpts();
-          paintSubs();
-        });
-
-        paintOpts();
-        paintSubs();
-
-        rootEl.querySelector('[data-push-cancel]').onclick = close;
-        rootEl.querySelector('[data-push-ok]').onclick = function () {
-          var list = pick.stage ? subsOf(pick.stage) : [];
-          if (list.length && !pick.sub) {
-            UI.toast('先选一下「' + pick.stage + '」下面的状态', 'info');
-            return;
-          }
           close();
-          S.updateTask(task.id, { status: 'done' });
-          if (pick.stage) S.setStoreStage(store.id, pick.stage, pick.sub);
-          UI.toast(pick.stage
-            ? '已完成：' + store.name + ' → ' + C.stageLabel(C.stageValue(pick.stage, pick.sub))
-            : '「' + task.title + '」已标记完成', 'success');
-          App.refresh();
-        };
+          commit(chip.getAttribute('data-cm-sub'));
+        });
       }
     });
   }
@@ -493,7 +456,8 @@ window.Pages.tasks = (function () {
     }).join('');
 
     return '<table class="sk-tbl">' +
-      '<thead><tr><th>任务</th><th style="width:110px">阶段</th><th style="width:100px">负责人</th>' +
+      '<thead><tr><th>任务</th><th style="width:118px" title="这条做完，门店自动进到哪个阶段">完成后进到</th>' +
+        '<th style="width:100px">负责人</th>' +
         '<th style="width:190px">建议完成</th><th style="width:84px">状态</th><th style="width:182px;text-align:right">操作</th></tr></thead>' +
       '<tbody>' + body + '</tbody></table>';
   }
@@ -657,7 +621,7 @@ window.Pages.tasks = (function () {
         '<div class="field"><label>所属门店 <span class="req">*</span></label>' +
           '<select class="select" name="storeId">' + UI.options(stores, t.storeId || '', 'id', 'name') + '</select>' +
         '</div>' +
-        '<div class="field"><label>所属阶段</label>' +
+        '<div class="field"><label>完成后门店进到 <span class="dim">（点「完成」时自动推到这里）</span></label>' +
           '<select class="select" name="stage">' + UI.stageOptions(t.stage || defaultStage(), S.stageSubsWithUsed()) + '</select>' +
         '</div>' +
       '</div>' +
@@ -775,7 +739,7 @@ window.Pages.tasks = (function () {
             UI.toast('任务已更新', 'success');
           }
           close();
-          App.refresh();
+          App.refresh({ keep: true });
         };
       }
     });
@@ -831,17 +795,20 @@ window.Pages.tasks = (function () {
           '新建门店时如果勾选「一并派发筹建任务」，就按这里生成；截止日期 = 门店开业日往前推你填的天数。' +
           '<b>按住左侧 ⠿ 可以上下拖动调整顺序</b>（派任务时按这个顺序生成）。' +
           '<b>改动只影响之后新建的门店，已有门店的任务不会被改。</b><br />' +
-          '<b>「所属阶段」用的就是左侧那条阶段时间线</b>：点开只能选一级或二级，' +
+          '<b>「完成后进到」= 这条做完，门店自动推到这个阶段</b>：' +
+          '比如「图纸」完成后进到「已出图」，「营业执照」完成后进到「建档资料」。' +
+          '门店阶段只往前推、不往回退，所以几件事同时推进也不会打架。<br />' +
+          '<b>这一列用的就是左侧那条阶段时间线</b>：点开只能选一级或二级，' +
           '二级要加 / 改名 / 删除，请去左侧「阶段时间线」里做，那边改完这里立刻同步。<br />' +
-          '<b>「任务名称」右边的小按钮只列当前所属阶段的二级</b>：所属阶段是「未出图」，就只给' +
-          '「已做首批 / 未做首批」这类选项，挑一个，任务名和所属阶段一起填好。' +
+          '<b>「任务名称」右边的小按钮只列这个阶段的二级</b>：完成后进到是「已出图」，就只给' +
+          '「已做首批 / 未做首批」这类选项，挑一个，任务名和落点一起填好。' +
           (state.stage
             ? '<b>当前时间线选的是「' + U.esc(C.stageLabel(C.stageValue(state.stage, state.sub))) +
               '」，点「新增一条」会自动带上它。</b>'
             : '') +
         '</p>' +
         '<div class="tpl-head" id="tplHead"' + (list.length ? '' : ' hidden') + '>' +
-          '<span></span><span>任务名称</span><span>所属阶段</span><span>开业前(天)</span><span>默认模块</span><span></span>' +
+          '<span></span><span>任务名称</span><span>完成后进到</span><span>开业前(天)</span><span>默认模块</span><span></span>' +
         '</div>' +
         '<div class="tpl-rows" id="tplRows">' + list.map(tplRowHtml).join('') + '</div>' +
         '<div class="tpl-empty" id="tplEmpty"' + (list.length ? ' hidden' : '') + '>' +
@@ -1209,21 +1176,21 @@ window.Pages.tasks = (function () {
       else if (act === 'tpl') openTemplates();
       else if (act === 'edit' && task) openForm(task);
       else if (act === 'push' && task) {
-        openPush(task);
+        completeTask(task);
       } else if (act === 'snooze' && task) {
         var snDays = S.snoozeTask(task.id, 3);
         var snDue = S.suggestDateOf(task);
         UI.toast('已往后放 3 天（累计 ' + snDays + ' 天）' +
           (snDue ? '，' + U.monthDay(snDue) + ' 再提醒' : ''), 'success');
-        App.refresh();
+        App.refresh({ keep: true });
       } else if (act === 'unsnooze' && task) {
         S.unsnoozeTask(task.id);
         UI.toast('已撤销延后，回到原定日期', 'info');
-        App.refresh();
+        App.refresh({ keep: true });
       } else if (act === 'reopen' && task) {
         S.updateTask(task.id, { status: 'pending' });
         UI.toast('任务已重新打开', 'info');
-        App.refresh();
+        App.refresh({ keep: true });
       } else if (act === 'del' && task) {
         UI.confirm({
           title: '删除任务',
@@ -1233,7 +1200,7 @@ window.Pages.tasks = (function () {
           onOk: function () {
             S.removeTask(task.id);
             UI.toast('任务已删除', 'success');
-            App.refresh();
+            App.refresh({ keep: true });
           }
         });
       }

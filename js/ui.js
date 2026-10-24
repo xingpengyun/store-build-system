@@ -99,22 +99,41 @@ window.UI = (function () {
     '</div>';
   }
 
-  /* ---------------- Toast ---------------- */
-  function toast(msg, type) {
+  /* ---------------- Toast ----------------
+     opts.action = { label, onClick } → 右侧多一个按钮（比如「完成」之后的「撤销」）。
+     带按钮的默认停 6 秒：要够看清、也够点到；不带按钮还是 2.2 秒。 */
+  function toast(msg, type, opts) {
     var root = document.getElementById('toastRoot');
     if (!root) return;
+    opts = opts || {};
     var el = document.createElement('div');
     el.className = 'toast toast-' + (type || 'info');
     var ico = type === 'success' ? '<path d="M4.5 10.5l3.6 3.6L15.5 6.6"/>'
       : type === 'error' ? '<circle cx="10" cy="10" r="6.6"/><path d="M7.8 7.8l4.4 4.4M12.2 7.8l-4.4 4.4"/>'
       : '<circle cx="10" cy="10" r="6.6"/><path d="M10 9v4M10 6.6v.1"/>';
     el.innerHTML = '<svg class="ti" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9"' +
-      ' stroke-linecap="round" stroke-linejoin="round">' + ico + '</svg><span>' + U.esc(msg) + '</span>';
+      ' stroke-linecap="round" stroke-linejoin="round">' + ico + '</svg><span>' + U.esc(msg) + '</span>' +
+      (opts.action
+        ? '<button class="toast-act" type="button">' + U.esc(opts.action.label) + '</button>'
+        : '');
     root.appendChild(el);
-    setTimeout(function () {
+
+    var dismissed = false;
+    function dismiss() {
+      if (dismissed) return;
+      dismissed = true;
       el.classList.add('out');
       setTimeout(function () { el.remove(); }, 220);
-    }, 2200);
+    }
+
+    if (opts.action) {
+      el.querySelector('.toast-act').addEventListener('click', function () {
+        dismiss();
+        if (typeof opts.action.onClick === 'function') opts.action.onClick();
+      });
+    }
+
+    setTimeout(dismiss, opts.duration || (opts.action ? 6000 : 2200));
   }
 
   /* ---------------- 加载遮罩 ---------------- */

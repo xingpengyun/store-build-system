@@ -28,7 +28,11 @@ window.App = (function () {
     }
   }
 
-  function render() {
+  /* opts.keep = 原地重画：不跑 onEnter（那是「刚进这一页」的初始化），也不滚回顶部。
+     数据变了要重画时用这个 —— 否则在任务页连点几条「完成」，
+     每点一次门店就收起、页面弹回顶部，根本没法连着干。 */
+  function render(opts) {
+    var keep = !!(opts && opts.keep);
     var route = currentRoute();
     var page = window.Pages[route] || window.Pages.home;
     var host = document.getElementById('view');
@@ -41,7 +45,7 @@ window.App = (function () {
     var view = host.cloneNode(false);
     host.parentNode.replaceChild(view, host);
 
-    if (page.onEnter) page.onEnter(params);
+    if (!keep && page.onEnter) page.onEnter(params);
     params = {};
 
     view.innerHTML = page.render();
@@ -55,10 +59,10 @@ window.App = (function () {
     document.title = (page.title || '首页') + ' · ' + brand;
 
     updateChrome();
-    window.scrollTo(0, 0);
+    if (!keep) window.scrollTo(0, 0);
   }
 
-  function refresh() { render(); }
+  function refresh(opts) { render(opts); }
 
   /* ---------------- 顶栏 / 侧栏状态 ---------------- */
   function updateChrome() {
@@ -260,7 +264,7 @@ window.App = (function () {
       }
 
       S.startAutoSync(45000, function () {
-        render();
+        render({ keep: true });   /* 别人改了数据：重画但不打断当前操作 */
         window.UI.toast('检测到团队其他人的更新，已刷新', 'info');
       });
     }).catch(function (e) {
