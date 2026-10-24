@@ -12,9 +12,9 @@ window.Pages.alerts = (function () {
   var state = { tab: 'all' };
 
   var LEVELS = {
-    danger: { color: '#f04438', soft: '#feeceb', icon: 'alert', label: '严重' },
-    high:   { color: '#f79009', soft: '#fef4e6', icon: 'alert', label: '高危' },
-    warn:   { color: '#dba005', soft: '#fdf6e3', icon: 'clock', label: '提醒' }
+    danger: { color: '#e83a2f', soft: '#ffe6e3', icon: 'alert', label: '严重' },
+    high:   { color: '#e97a06', soft: '#fdecdb', icon: 'alert', label: '高危' },
+    warn:   { color: '#c18700', soft: '#fdf3d6', icon: 'clock', label: '提醒' }
   };
 
   function all() { return S.alerts(); }
@@ -84,13 +84,13 @@ window.Pages.alerts = (function () {
     '</div>' +
 
     '<section class="kpi-grid fade-up" style="grid-template-columns:repeat(4,minmax(0,1fr));animation-delay:.04s">' +
-      '<div class="kpi"><span class="kpi-icon" style="background:#feeceb;color:#f04438">' + UI.icon('alert') + '</span>' +
+      '<div class="kpi"><span class="kpi-icon" style="background:#ffe6e3;color:#e83a2f">' + UI.icon('alert') + '</span>' +
         '<div class="kpi-body"><div class="kpi-label">全部预警</div><div class="kpi-value">' + list.length + '</div>' +
         '<div class="kpi-foot">实时生成</div></div></div>' +
-      '<div class="kpi"><span class="kpi-icon" style="background:#edf2fe;color:#3f6bf5">' + UI.icon('bell') + '</span>' +
+      '<div class="kpi"><span class="kpi-icon" style="background:#e3eaff;color:#2f56f0">' + UI.icon('bell') + '</span>' +
         '<div class="kpi-body"><div class="kpi-label">未读</div><div class="kpi-value">' + unread + '</div>' +
         '<div class="kpi-foot">待查看</div></div></div>' +
-      '<div class="kpi"><span class="kpi-icon" style="background:#fef4e6;color:#f79009">' + UI.icon('alert') + '</span>' +
+      '<div class="kpi"><span class="kpi-icon" style="background:#fdecdb;color:#e97a06">' + UI.icon('alert') + '</span>' +
         '<div class="kpi-body"><div class="kpi-label">高危 / 严重</div><div class="kpi-value">' + high + '</div>' +
         '<div class="kpi-foot">需要立即处理</div></div></div>' +
       '<div class="kpi"><span class="kpi-icon" style="background:#fdf6e3;color:#dba005">' + UI.icon('clock') + '</span>' +

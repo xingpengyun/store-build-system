@@ -109,32 +109,32 @@ window.Pages.home = (function () {
     var kpis = [
       {
         label: '筹建门店', value: st.totalStores, foot: '总门店数',
-        color: '#3f6bf5', soft: '#edf2fe', icon: 'box'
+        color: '#2f56f0', soft: '#e3eaff', icon: 'box'
       },
       {
         label: '已开业', value: st.opened, foot: U.pct(st.opened, st.totalStores),
-        color: '#17b26a', soft: '#e6f8ef', icon: 'check'
+        color: '#0aa564', soft: '#dcf7ea', icon: 'check'
       },
       {
         label: '进行中', value: doingStores, foot: U.pct(doingStores, st.totalStores),
-        color: '#5b81f7', soft: '#edf2fe', icon: 'chart'
+        color: '#0190bf', soft: '#d9f3fd', icon: 'chart'
       },
       {
         label: '风险门店', value: st.riskStores, foot: U.pct(st.riskStores, st.totalStores),
-        color: '#f79009', soft: '#fef4e6', icon: 'alert',
+        color: '#e97a06', soft: '#fdecdb', icon: 'alert',
         help: '门店档案里「风险等级」标为<b>高危</b>或<b>逾期</b>的门店（占比 = 风险门店数 ÷ 门店总数）。' +
               '「关注」不算风险；等级在门店详情里手动维护。'
       },
       {
         label: '逾期任务', value: st.taskCounts.overdue, foot: U.pct(st.taskCounts.overdue, st.taskCounts.total),
-        color: '#f04438', soft: '#feeceb', icon: 'clock',
+        color: '#e83a2f', soft: '#ffe6e3', icon: 'clock',
         help: '还没做的任务里，今天已经过了<b>建议完成日</b>的：' +
               '建议完成日 = 门店计划开业日 − 该任务的开业前天数（可为单条任务延后）。' +
               '门店没填开业日的不判逾期；占比 = 逾期数 ÷ 全部任务数。'
       },
       {
         label: '7天内该通知', value: st.arrivals7, foot: U.pct(st.arrivals7, st.totalStores),
-        color: '#7a5af8', soft: '#f2effe', icon: 'truck'
+        color: '#6d3fe8', soft: '#ece5ff', icon: 'truck'
       }
     ];
 

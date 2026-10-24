@@ -64,10 +64,12 @@ window.Store = (function () {
         seen[key] = 1;
         var d = null;
         C.STAGE_BUILTIN.forEach(function (b) { if (b.key === key) d = b; });
+        /* 出厂阶段一律用内置配色：主题调色（2026-10-24 加深一档）能直接生效，
+           不用等用户把旧配色从 settings 里手工换掉；自定义阶段保留自己存的颜色 */
         out.push({
           key: key,
-          color: (x && x.color) || (d && d.color) || '#8b95aa',
-          soft: (x && x.soft) || (d && d.soft) || '#f0f2f6'
+          color: (d && d.color) || (x && x.color) || '#6d7893',
+          soft: (d && d.soft) || (x && x.soft) || '#e8ecf6'
         });
       });
       if (out.length) return out;

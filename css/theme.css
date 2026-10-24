@@ -1,0 +1,452 @@
+/* ==========================================================
+   theme.css — 2026-10-24「活泼一档」主题层
+   ----------------------------------------------------------
+   为什么单独一层：base/layout/components 是结构与老配色，
+   这里只在最后盖一层颜色 / 圆角 / 阴影 / 反馈动效，
+   不想被新主题带着走的时候，删掉 index.html 里这一行即可回滚。
+   原则：只做加法，不动布局（grid / flex / 断点一律不碰）。
+   ========================================================== */
+
+/* ---------------- 1. 色板：整体加深一档 ---------------- */
+:root {
+  /* 表面：底色压深，白卡片才跳得出来 */
+  --bg: #e8edf9;
+  --card: #ffffff;
+  --card-2: #f5f8ff;
+
+  /* 分割线 */
+  --line: #dde5f4;
+  --line-2: #edf1fa;
+
+  /* 文字：正文更黑、次要色更实，读起来不糊 */
+  --text: #0e1830;
+  --text-2: #55627d;
+  --text-3: #828da6;
+  --text-4: #a8b2c6;
+
+  /* 主色：饱和度提上来，并配一个紫调做渐变搭档 */
+  --primary: #2f56f0;
+  --primary-2: #7b5cf6;
+  --primary-soft: #e7edff;
+  --primary-grad: linear-gradient(96deg, #2f56f0 0%, #7b5cf6 100%);
+
+  /* 语义色 */
+  --green: #0aa564;
+  --green-soft: #dcf7ea;
+  --yellow: #c18700;
+  --yellow-soft: #fdf3d6;
+  --orange: #e97a06;
+  --orange-soft: #fdecdb;
+  --red: #e83a2f;
+  --red-soft: #ffe6e3;
+  --purple: #6d3fe8;
+  --purple-soft: #ece5ff;
+  --cyan: #0190bf;
+  --cyan-soft: #d9f3fd;
+  --slate: #6d7893;
+  --slate-soft: #e8ecf6;
+
+  /* 侧边栏：更深的靛蓝 */
+  --sidebar: #121a37;
+  --sidebar-2: #1b2549;
+
+  /* 圆角略放大，观感更软 */
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-xs: 7px;
+
+  /* 阴影：多一层"贴地"的浅影，卡片不再像纸片 */
+  --shadow-1: 0 1px 2px rgba(14, 24, 48, .05), 0 6px 16px -14px rgba(14, 24, 48, .45);
+  --shadow-2: 0 10px 28px -18px rgba(14, 24, 48, .5);
+  --shadow-3: 0 26px 64px -24px rgba(14, 24, 48, .42);
+  --ring: 0 0 0 3px rgba(47, 86, 240, .2);
+}
+
+/* ---------------- 2. 画布：三团彩色光晕 ---------------- */
+body {
+  background:
+    radial-gradient(1100px 520px at 6% -8%, #d5e2ff 0%, rgba(213, 226, 255, 0) 62%),
+    radial-gradient(880px 460px at 98% -4%, #e6ddff 0%, rgba(230, 221, 255, 0) 60%),
+    radial-gradient(760px 460px at 62% 106%, #d3f4e8 0%, rgba(211, 244, 232, 0) 62%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+html { scroll-behavior: smooth; }
+
+/* 细一点的滚动条，别用系统那根大白条 */
+* { scrollbar-width: thin; scrollbar-color: #c2cde4 transparent; }
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: #c9d4e8;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 9px;
+}
+*::-webkit-scrollbar-thumb:hover { background: #a8b6d2; background-clip: padding-box; }
+
+/* ---------------- 3. 顶栏 / 侧边栏 ---------------- */
+.topbar {
+  background: rgba(255, 255, 255, .82);
+  backdrop-filter: saturate(1.4) blur(12px);
+  -webkit-backdrop-filter: saturate(1.4) blur(12px);
+  border-bottom: 1px solid rgba(221, 229, 244, .9);
+  box-shadow: 0 6px 20px -18px rgba(14, 24, 48, .6);
+}
+
+.brand-mark {
+  background: linear-gradient(140deg, #3563ff 0%, #8a4ff8 100%);
+  box-shadow: 0 6px 16px -4px rgba(69, 88, 240, .6);
+}
+
+.brand-slogan {
+  background: linear-gradient(96deg, #e7edff, #ece5ff);
+  color: #4a5bd6;
+  font-weight: 500;
+}
+
+.search-box { background: #eef2fd; }
+.search-box:focus-within {
+  background: #fff;
+  border-color: #a9bdfb;
+  box-shadow: var(--ring);
+}
+
+.icon-btn {
+  background: #f7f9ff;
+  border-color: #e3eaf8;
+}
+.icon-btn:hover {
+  background: var(--primary-soft);
+  border-color: #c6d5fb;
+  color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.sidebar {
+  background:
+    radial-gradient(140% 55% at 18% -6%, #2b3a75 0%, rgba(43, 58, 117, 0) 62%),
+    linear-gradient(180deg, #18224a 0%, #141d3e 52%, #0f1734 100%);
+  box-shadow: 0 18px 44px -16px rgba(12, 20, 44, .62), inset 0 1px 0 rgba(255, 255, 255, .07);
+}
+
+.nav-item {
+  color: #adb9d8;
+  transition: background .16s, color .16s, transform .14s;
+}
+.nav-item svg { transition: transform .16s; }
+.nav-item:hover {
+  background: rgba(255, 255, 255, .085);
+  color: #f2f6ff;
+  transform: translateX(2px);
+}
+.nav-item:hover svg { transform: scale(1.08); }
+
+.nav-item.active {
+  background: linear-gradient(96deg, #3159f0 0%, #7b4df6 100%);
+  color: #fff;
+  box-shadow: 0 10px 22px -10px rgba(76, 88, 240, .95), inset 0 1px 0 rgba(255, 255, 255, .22);
+}
+.nav-item.active svg { transform: scale(1.06); }
+
+.nav-badge {
+  background: linear-gradient(180deg, #ff6b5e, #e83a2f);
+  box-shadow: 0 4px 10px -4px rgba(232, 58, 47, .9);
+}
+
+.storage-card { background: rgba(255, 255, 255, .07); }
+
+/* ---------------- 4. 卡片 / 页头 ---------------- */
+.card {
+  border-color: #e2e9f8;
+  box-shadow: var(--shadow-1);
+}
+
+/* 每张卡的标题前加一道渐变小竖条：整页有一致的视觉锚点 */
+.card-head h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-head h3::before {
+  content: '';
+  width: 3px;
+  height: 15px;
+  flex: 0 0 3px;
+  border-radius: 3px;
+  background: var(--primary-grad);
+}
+
+.page-head h1 {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+}
+.page-head h1::before {
+  content: '';
+  width: 5px;
+  height: 20px;
+  flex: 0 0 5px;
+  border-radius: 3px;
+  background: var(--primary-grad);
+}
+.page-head p { color: var(--text-2); }
+
+/* Hero 横幅：淡蓝 → 淡紫 → 淡薄荷 */
+.hero {
+  background: linear-gradient(104deg, #e6edff 0%, #ebe4ff 46%, #def6ec 100%);
+  border-color: #dbe6fb;
+  box-shadow: 0 12px 30px -24px rgba(14, 24, 48, .6);
+}
+
+/* ---------------- 5. KPI：图标带同色光晕 ---------------- */
+.kpi {
+  position: relative;
+  border-color: #e2e9f8;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fcfdff 0%, #ffffff 46%);
+  transition: box-shadow .2s, transform .2s, border-color .2s;
+}
+.kpi:hover {
+  transform: translateY(-2px);
+  border-color: #cddaf8;
+  box-shadow: 0 16px 30px -20px rgba(14, 24, 48, .55);
+}
+.kpi-icon {
+  border-radius: 12px;
+  /* currentColor 就是 JS 给的那个语义色，等于给图标配了同色投影 */
+  box-shadow: 0 10px 18px -12px currentColor, inset 0 0 0 1px rgba(255, 255, 255, .65);
+}
+.kpi-value { font-size: 22px; letter-spacing: -.4px; }
+.kpi-label { color: var(--text-2); font-weight: 500; }
+
+/* 进度条：轨道加深，填充更有光 */
+.mini-track, .sr-track, .stage-bar { background: #e6ecf8; }
+.mini-track i, .sr-track i { box-shadow: 0 0 8px -2px currentColor; }
+
+/* ---------------- 6. 按钮 / 文字链 ---------------- */
+.btn {
+  border-radius: 9px;
+  border-color: #e0e8f7;
+  transition: transform .14s, box-shadow .18s, background .18s, border-color .18s, color .18s;
+}
+.btn:hover {
+  background: #f6f9ff;
+  border-color: #cbd9f6;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px -14px rgba(14, 24, 48, .75);
+}
+.btn:active { transform: translateY(0) scale(.985); box-shadow: none; }
+
+.btn-primary {
+  background: var(--primary-grad);
+  border-color: transparent;
+  box-shadow: 0 10px 20px -12px rgba(47, 86, 240, .95);
+}
+.btn-primary:hover {
+  background: linear-gradient(96deg, #2449e2 0%, #6d49ef 100%);
+  box-shadow: 0 14px 26px -12px rgba(47, 86, 240, 1);
+}
+.btn-danger { border-color: #f7c9c3; background: #fff7f6; }
+.btn-danger:hover { background: #ffeceb; border-color: #f0a9a1; }
+
+.btn-ghost:hover { background: #eef2fd; }
+
+.tlink { transition: color .14s, background .14s; }
+.tlink:hover { background: var(--primary-soft); }
+
+/* ---------------- 7. 标签页 / 徽章 ---------------- */
+.tabs {
+  background: #e8eefb;
+  border-radius: 11px;
+  padding: 4px;
+}
+.tabs .tab { border-radius: 8px; color: #5a6783; }
+.tabs .tab:hover { background: rgba(255, 255, 255, .75); color: var(--text); }
+.tabs .tab.active {
+  background: var(--primary-grad);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 8px 16px -10px rgba(47, 86, 240, 1);
+}
+.tabs .tab .cnt { background: #dbe4f6; color: #4c5a78; }
+.tabs .tab.active .cnt { background: rgba(255, 255, 255, .26); color: #fff; }
+
+/* 徽章：JS 里带的内联底色保留，只补一圈细边和圆度，颜色看着更"实" */
+.badge {
+  border-radius: 7px;
+  box-shadow: inset 0 0 0 1px rgba(14, 24, 48, .05);
+}
+
+/* 阶段筛选小胶囊、视图切换 */
+.ship-views { background: #eef2fd; border-color: #e0e8f7; }
+
+/* ---------------- 8. 表格 ---------------- */
+.tbl thead th {
+  background: #eef3fd;
+  color: #6d7a95;
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+.tbl tbody td { border-bottom: 1px solid #eef2fa; }
+.tbl tbody tr:hover { background: #f4f8ff; }
+
+/* 发货看板表头钉住时底色必须不透明，否则滚动会透出下面的行 */
+.ship-tbl thead th {
+  background: #e9effc;
+  box-shadow: 0 1px 0 #dbe4f6, 0 6px 12px -12px rgba(14, 24, 48, .5);
+}
+.ship-tbl tbody tr.is-late { background: #fff7f6; }
+.ship-tbl tbody tr.is-arrlate { background: #fff7f6; }
+
+/* ---------------- 9. 表单 ---------------- */
+.input, .select, .textarea {
+  border-color: #dde5f4;
+  background: #fbfcff;
+}
+.input:hover, .select:hover, .textarea:hover { border-color: #c9d7f2; }
+.input:focus, .select:focus, .textarea:focus {
+  border-color: #8fa8fb;
+  background: #fff;
+  box-shadow: var(--ring);
+}
+.field > label { color: var(--text-2); font-weight: 600; }
+
+/* ---------------- 10. 交互反馈补丁 ---------------- */
+/* 键盘 Tab 走一遍时，可点的东西焦点必须看得见。
+   只给链接 / 按钮这类，输入框有自己的高亮，免得套两层框 */
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* 能点的地方统一给个"手"和过渡，别让人猜哪个是按钮 */
+.store-name, .link-more, .tlink, .nav-item, .tab, .ship-view { cursor: pointer; }
+.link-more:hover { color: var(--primary); }
+
+/* 表格里的操作按钮略收紧，避免和行高打架 */
+.tbl .btn-sm { border-radius: 8px; }
+
+/* 弹窗：圆角与投影跟着新主题走 */
+.modal { border-radius: 18px; box-shadow: var(--shadow-3); }
+
+/* 尊重系统「减少动效」设置 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------------- 11. 窄屏兜底 ---------------- */
+@media (max-width: 1180px) {
+  .nav-item:hover { transform: none; }
+  .page-head h1 { font-size: 18px; }
+}
+
+/* 侧边栏收成图标条时（861–1180px），鼠标放上去浮出文字：
+   原来这个区间只留图标，新同事根本猜不到第 4 个箱子是发货看板 */
+@media (min-width: 861px) and (max-width: 1180px) {
+  .nav-item { position: relative; }
+  .nav-item::after {
+    content: attr(data-tip);
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%) scale(.96);
+    padding: 5px 10px;
+    border-radius: 8px;
+    background: #0f1833;
+    color: #fff;
+    font-size: 11.5px;
+    line-height: 1.4;
+    white-space: nowrap;
+    box-shadow: 0 10px 24px -12px rgba(15, 24, 51, .9);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .14s, transform .14s;
+    z-index: 80;
+  }
+  .nav-item:hover::after { opacity: 1; transform: translateY(-50%) scale(1); }
+  .sidebar { overflow: visible; }
+}
+
+/* ---------------- 12. 彩色点缀：横幅 / 图例 / 时间线 ---------------- */
+/* 顶部提示条：整块给实色图标 + 同色描边，比原来淡淡一层更有"状态感" */
+.ship-banner.is-ok {
+  background: linear-gradient(100deg, #e2fbf0 0%, #d5f6e6 100%);
+  border-color: #a3e5c5;
+}
+.ship-banner.is-ok .sb-ico {
+  background: #0aa564;
+  color: #fff;
+  box-shadow: 0 8px 16px -10px rgba(10, 165, 100, .95);
+}
+.ship-banner.is-done {
+  background: linear-gradient(100deg, #d8f8e9 0%, #c6f2dd 100%);
+  border-color: #8bdcb5;
+}
+.ship-banner.is-done .sb-ico {
+  background: #0aa564;
+  color: #fff;
+  box-shadow: 0 8px 16px -10px rgba(10, 165, 100, .95);
+}
+.ship-banner.is-done .sb-body b { color: #076741; }
+.ship-banner.is-alert {
+  background: linear-gradient(100deg, #ffecea 0%, #ffded9 100%);
+  border-color: #f6b8ae;
+}
+.ship-banner.is-alert .sb-ico {
+  background: #e83a2f;
+  color: #fff;
+  box-shadow: 0 8px 16px -10px rgba(232, 58, 47, .95);
+}
+.sb-body b { font-weight: 700; }
+
+/* 阶段图例：点中就是一块渐变胶囊，不再只是淡淡一层底 */
+.stage-legend .sl-item:hover { background: #eef3fd; border-color: #d9e4f7; }
+.stage-legend .sl-item.on {
+  background: linear-gradient(96deg, #e7edff 0%, #ece5ff 100%);
+  border-color: #b9c9fb;
+  box-shadow: 0 6px 12px -10px rgba(47, 86, 240, .9);
+}
+.stage-legend .sl-dot { box-shadow: 0 0 0 2px rgba(255, 255, 255, .95); }
+
+/* 时间线：hover 更亮一档，右边的家数不再糊成一片 */
+.tl-node:hover { background: #f1f6ff; }
+.tl-node.on {
+  background: linear-gradient(96deg, #e7edff 0%, #eee9ff 100%);
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+.tl-num { color: var(--text-2); font-weight: 700; }
+
+/* 发货看板的视图切换：选中的那个给主色，范围一眼能看出 */
+.ship-view.is-on {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 6px 12px -8px rgba(47, 86, 240, 1);
+}
+.ship-view.is-on:hover { color: #fff; }
+
+/* 任务卡片展开：整行压深一档蓝 + 左边主色条（和任务页手风琴一致） */
+.sk-row:hover { border-color: #cddaf8; }
+
+/* 侧边栏切换页面时，选中的那一项轻轻弹一下 */
+@keyframes navPop {
+  from { transform: scale(.965); }
+  60% { transform: scale(1.015); }
+  to { transform: none; }
+}
+.nav-item.active { animation: navPop .3s cubic-bezier(.34, 1.4, .64, 1); }
+
+/* 空状态的图标也带点颜色，别全灰 */
+.empty svg { color: var(--primary); opacity: .32; }
+
