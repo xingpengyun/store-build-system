@@ -106,9 +106,12 @@ svg { display: block; }
 .text-orange { color: var(--orange); }
 .text-primary { color: var(--primary); }
 
-/* 淡入 */
+/* 淡入
+   用 backwards 而不是 both：both 会把结束帧（即使写成 transform:none，浏览器也会留成
+   identity matrix）一直挂在元素上，而带着 transform 的 section 会变成层叠上下文，
+   里面伸出去的浮层（KPI 的 ⓘ 气泡、下拉）就被后面的 section 盖住了 —— 2026-10-25 修 */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: none; }
 }
-.fade-up { animation: fadeUp .34s cubic-bezier(.22, .8, .3, 1) both; }
+.fade-up { animation: fadeUp .34s cubic-bezier(.22, .8, .3, 1) backwards; }

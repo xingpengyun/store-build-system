@@ -793,3 +793,39 @@ CDP 测试脚本里 `Runtime.evaluate` 是**裸表达式**，写 `var n=...; ret
 - 回归：`smoke` 8 页、`chk-complete` 33 项、`chk-board` 25 项、`chk-tl-readonly`、`chk-theme`、
   `chk-accordion`、`chk-config-safety` 全绿；真实浏览器控制台 0 错误 0 警告
 - 版本号 `?v=20261025z60`
+
+## 2026-10-25 修 KPI 判断逻辑气泡被盖住（ⓘ）
+
+用户截图：点开「风险门店」旁的 ⓘ，气泡只露出左边一条，右边被「逾期任务」卡片压着。
+
+### 一、两个叠加的原因（都是层叠上下文惹的）
+1. `.fade-up` 用的是 `animation: fadeUp .34s ... both`，结束帧 `transform: translateY(0)` 会
+   **一直挂在 section 上**（浏览器甚至会把 `none` 也留成 identity matrix）。带 transform 的
+   section 因此变成层叠上下文，气泡的 `z-index: 60` 只在 section 内部有效，后面的
+   `.home-grid-2`（DOM 在后）自然压上来。
+2. 卡片 `:hover { transform: translateY(-1px) }` —— 鼠标放在 ⓘ 上时整张卡就有了 transform，
+   气泡又被锁进卡片内部，右边那张卡（DOM 在后）直接盖住。
+
+### 二、修法
+- `css/base.css`：`.fade-up` 改 `animation ... backwards`，结束帧写 `transform: none`。
+  动画结束后元素回到自身样式（无 transform），不再创建层叠上下文。
+  这一处同时解决了所有「section 里伸出去的浮层被下一个 section 盖住」的隐患。
+- `css/components.css`：`.kpi { position: relative }`；
+  `.kpi:hover, .kpi:focus-within, .kpi.is-tip-open { z-index: 20 }`。
+- `js/page-home.js`：点开时给宿主卡片加 `.is-tip-open`（触屏点开、指针移走后仍保持抬层级），
+  收起点空白时统一由 `closeTips()` 清掉。
+
+### 三、顺手做的两件小事
+- 气泡 `max-width: calc(100vw - 32px)`，窄屏不再顶出视口。
+- `placeTip(help)`：右侧空间不足（`right > 视口 − 12`）时给气泡加 `.is-right` 翻到 ⓘ 左边，
+  箭头挪到右端；hover 与点击都会走一遍。
+  实测 820px 两列布局下，第二个 ⓘ 的气泡 `left=119 / right=373`（视口 820），已翻边。
+
+### 四、验证（`verify-kpi-tip.js`，7 项全过）
+hover 展开在最上层 1 项；点击展开可见 / 5 个点全部命中气泡本身（顶边、两边、底边都不被切）/
+不出视口 3 项；点空白收起 1 项；右侧卡不溢出 1 项；窄屏 820px 两个气泡都在视口内 1 项；
+无异常 1 项。`smoke` 8 页无回归。
+
+### 五、踩坑
+- 共用 Edge profile 会命中磁盘缓存，读到改之前的 CSS，测试结果假阴性。
+  CDP 里要先 `Network.setCacheDisabled({cacheDisabled:true})`；给用户的版本号也一起 bump。

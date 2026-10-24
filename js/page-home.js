@@ -365,6 +365,28 @@ window.Pages.home = (function () {
     paint(root);
   }
 
+  /* 判断逻辑气泡：默认从 ⓘ 往右下展开。
+     卡片靠右（或窄屏）时 254px 会顶出屏幕 → 加 is-right 翻到左边对齐。
+     hover 和点击都走一遍，触屏只有点击。 */
+  function placeTip(help) {
+    var pop = help.querySelector('.kpi-help-pop');
+    if (!pop) return;
+    pop.classList.remove('is-right');
+    var r = pop.getBoundingClientRect();
+    var vw = document.documentElement.clientWidth || window.innerWidth || 0;
+    if (r.right > vw - 12) pop.classList.add('is-right');
+  }
+
+  /* 收起所有展开的判断逻辑气泡，顺手清掉卡片的抬层级 class */
+  function closeTips(root) {
+    var list = root.querySelectorAll('.kpi-help.is-open');
+    for (var i = 0; i < list.length; i++) {
+      list[i].classList.remove('is-open');
+      var card = list[i].closest('.kpi');
+      if (card) card.classList.remove('is-tip-open');
+    }
+  }
+
   function mount(root) {
     /* 首次进首页引导一次：ⓘ 在哪、怎么用（之后不再打扰） */
     try {
@@ -385,16 +407,18 @@ window.Pages.home = (function () {
       if (help) {
         if (t.closest('.kpi-help-pop')) return;   /* 点在浮层内容上：不关，方便选中文字 */
         var wasOpen = help.classList.contains('is-open');
-        root.querySelectorAll('.kpi-help.is-open').forEach(function (el) { el.classList.remove('is-open'); });
-        if (!wasOpen) help.classList.add('is-open');
+        closeTips(root);
+        if (!wasOpen) {
+          help.classList.add('is-open');
+          var card = help.closest('.kpi');
+          if (card) card.classList.add('is-tip-open');   /* 卡片抬层级，气泡才不会被右边的卡压住 */
+          placeTip(help);
+        }
         return;
       }
 
       /* 点到别处 → 收起展开的浮层 */
-      var openOnes = root.querySelectorAll('.kpi-help.is-open');
-      if (openOnes.length) {
-        openOnes.forEach(function (el) { el.classList.remove('is-open'); });
-      }
+      closeTips(root);
 
       var view = t.closest('[data-store-view]');
       if (view) { openStore(view.getAttribute('data-store-view')); return; }
@@ -421,6 +445,12 @@ window.Pages.home = (function () {
 
       var taskEl = t.closest('[data-task]');
       if (taskEl) { App.go('tasks', { task: taskEl.getAttribute('data-task') }); }
+    });
+
+    /* hover 展开的也做一次边界判断（不用等点击） */
+    root.addEventListener('mouseover', function (e) {
+      var help = e.target && e.target.closest ? e.target.closest('.kpi-help') : null;
+      if (help) placeTip(help);
     });
 
     var sf = root.querySelector('#homeStageFilter');

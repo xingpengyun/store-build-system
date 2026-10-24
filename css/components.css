@@ -151,8 +151,14 @@
   box-shadow: var(--shadow-1);
   transition: box-shadow .18s, transform .18s;
   min-width: 0;
+  /* 气泡是绝对定位、会溢出到右边那张卡上，必须让卡片本身能参与层叠比较 */
+  position: relative;
 }
 .kpi:hover { box-shadow: var(--shadow-2); transform: translateY(-1px); }
+/* hover 的 transform 会给卡片建一个层叠上下文，把气泡的 z-index 锁在卡片里面，
+   于是右边那张卡（DOM 在后面）直接压住气泡 —— 只有左边一条缝露出来。
+   卡片自己抬到兄弟之上，气泡才能盖出去（2026-10-25 修）。 */
+.kpi:hover, .kpi:focus-within, .kpi.is-tip-open { z-index: 20; }
 
 /* KPI 判断逻辑提示：标签旁 ⓘ，hover / 键盘聚焦 / 点击都能看（2026-10-24 用户要求标注口径） */
 .kpi-help {
@@ -178,6 +184,7 @@
   top: calc(100% + 7px);
   z-index: 60;
   width: 254px;
+  max-width: calc(100vw - 32px);   /* 窄屏也不超出视口 */
   padding: 9px 11px;
   border: 1px solid var(--line);
   border-radius: 9px;
@@ -207,6 +214,10 @@
   border-top: 1px solid var(--line);
   transform: rotate(45deg);
 }
+/* 右边放不下（靠右的卡片 / 窄屏）→ 整体翻到 ⓘ 左侧对齐，箭头跟着挪到右端。
+   左边距由 js/page-home.js 的 placeTip() 按实际宽度判断后加 is-right。 */
+.kpi-help-pop.is-right { left: auto; right: -7px; }
+.kpi-help-pop.is-right::before { left: auto; right: 9px; }
 .kpi-help-pop b { color: var(--text); font-weight: 600; }
 .kpi-help:hover .kpi-help-pop,
 .kpi-help:focus .kpi-help-pop,
