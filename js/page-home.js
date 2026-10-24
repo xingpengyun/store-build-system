@@ -22,6 +22,162 @@ window.Pages.home = (function () {
     return null;
   }
 
+  function riskOf(store) {
+    return store.risk === 'high' || store.risk === 'overdue';
+  }
+
+  /* 6 张 KPI 卡片 → 点开的小窗文案。
+     口径必须跟卡片上的数字一模一样（同一份 stats 字段），否则「写 3 家，点开 4 家」 */
+  var KPI_META = {
+    all: {
+      title: '筹建门店', sub: '全部在册门店（含已开业）',
+      empty: '还没有门店', emptySub: '去门店管理添加第一家门店'
+    },
+    opened: {
+      title: '已开业', sub: '阶段停在「已开业」的门店',
+      empty: '还没有门店开业', emptySub: '门店推进到「已开业」后会自动出现在这里'
+    },
+    doing: {
+      title: '进行中', sub: '还没开业、也没标高危/逾期的门店',
+      empty: '没有正在筹建的门店', emptySub: ''
+    },
+    risk: {
+      title: '风险门店', sub: '风险等级标为「高危」或「逾期」的门店',
+      empty: '暂无风险门店', emptySub: '风险等级在门店档案里手动维护，「关注」不算风险'
+    },
+    overdue: {
+      title: '逾期任务', sub: '已过建议完成日、还没完成的任务，按门店汇总',
+      empty: '没有逾期任务', emptySub: '所有待办任务都还在建议完成日之内'
+    },
+    notify: {
+      title: '7天内该通知', sub: '7 天内要到货、还没通知供应商的物料，按门店汇总',
+      empty: '近期没有要到货的物料', emptySub: '物料登记了到货日之后才会出现在这里'
+    }
+  };
+
+  /* 把一类 KPI 展开成「门店 + 摘要」的列表。
+     返回 { title, sub, rows }，rows = [{ store, items: [{ text, late }] }] */
+  function kpiDetail(key) {
+    var s = S.getState();
+    var t0 = U.today();
+    var meta = KPI_META[key] || KPI_META.all;
+    var rows = [];
+    var unit = '';
+
+    if (key === 'overdue' || key === 'notify') {
+      /* 这两类是任务 / 物料，按门店归堆：一条一条平铺看不出是哪家店的 */
+      var bag = {};
+      if (key === 'overdue') {
+        unit = '条任务';
+        s.tasks.forEach(function (t) {
+          if (S.classify(t) !== 'overdue') return;
+          var due = S.suggestDateOf(t);
+          var text;
+          if (due) {
+            text = t.title + ' · 建议 ' + U.monthDay(due) + ' 完成，已过 ' + (-U.diffDays(t0, due)) + ' 天';
+          } else {
+            text = t.title + ' · 开业前 ' + S.taskBeforeOf(t) + ' 天该做';
+          }
+          (bag[t.storeId] = bag[t.storeId] || []).push({ text: text, late: true });
+        });
+      } else {
+        unit = '项物料';
+        var watch = Number(C.ARR_WATCH_DAYS || 7);
+        s.arrivals.forEach(function (a) {
+          if (S.arrNotified(a) || !a.etaDate) return;
+          var d = U.diffDays(t0, a.etaDate);
+          if (d < 0 || d > watch) return;
+          var when = d === 0 ? '今天到' : (d + ' 天后到');
+          (bag[a.storeId] = bag[a.storeId] || []).push({
+            text: (a.item || '未填物料名') + ' · ' + U.monthDay(a.etaDate) + '（' + when + '）'
+          });
+        });
+      }
+      Object.keys(bag).forEach(function (id) {
+        var store = S.storeById(id);
+        if (store) rows.push({ store: store, items: bag[id] });
+      });
+    } else {
+      s.stores.forEach(function (store) {
+        if (key === 'opened' && store.stage !== '已开业') return;
+        if (key === 'doing' && (store.stage === '已开业' || riskOf(store))) return;
+        if (key === 'risk' && !riskOf(store)) return;
+        rows.push({ store: store, items: [] });
+      });
+    }
+
+    /* 排序：在筹的按开业日早的在前，已开业的沉到后面（跟下面表格一个顺序）。
+       任务 / 物料类在这基础上再按件数多的排前面（sort 是稳定的，件数相同仍按开业日） */
+    rows = U.sortBy(rows, function (r) {
+      return (r.store.stage === '已开业' ? '2' : '1') + (r.store.openDate || '9999-99-99');
+    });
+    if (unit) rows = U.sortBy(rows, function (r) { return 999 - r.items.length; });
+
+    var total = 0;
+    rows.forEach(function (r) { total += r.items.length; });
+
+    var sub = '共 ' + rows.length + ' 家';
+    if (key === 'overdue') sub += ' · ' + total + ' 条任务';
+    else if (key === 'notify') sub += ' · ' + total + ' 项物料';
+    else if (key !== 'all') sub += ' · ' + meta.sub;   /* all 的「全部在册门店」跟标题重复，不写 */
+
+    return { title: meta.title, sub: sub, meta: meta, rows: rows, unit: unit };
+  }
+
+  function kpiDetailHtml(d) {
+    if (!d.rows.length) {
+      return UI.empty(d.meta.empty, d.meta.emptySub);
+    }
+
+    return '<div class="kdl">' + d.rows.map(function (r) {
+      var store = r.store;
+      var stageObj = stageObjOf(store.stage);
+      var shown = r.items.slice(0, 3);
+      var notes = shown.map(function (i) {
+        return '<div class="kdl-note' + (i.late ? ' is-late' : '') + '">' + U.esc(i.text) + '</div>';
+      }).join('');
+      var rest = r.items.length - shown.length;
+      if (rest > 0) notes += '<div class="kdl-more">还有 ' + rest + ' 条，点门店看全部</div>';
+
+      return '<div class="kdl-row" data-kdl-store="' + store.id + '" role="button" tabindex="0"' +
+          ' title="打开「' + U.esc(store.name) + '」的门店详情">' +
+        '<i class="store-dot" style="background:' + (stageObj ? stageObj.color : '#98a2b8') + '"></i>' +
+        '<div class="kdl-main">' +
+          '<div class="kdl-top">' +
+            '<span class="kdl-name">' + U.esc(store.name) + '</span>' +
+            '<span class="kdl-meta">' + U.esc(store.province || '未填省份') + ' · ' +
+              (store.openDate ? U.monthDay(store.openDate) + ' 开业' : '开业日未定') + '</span>' +
+          '</div>' + notes +
+        '</div>' +
+        '<div class="kdl-right">' +
+          (r.items.length ? '<span class="kdl-cnt">' + r.items.length + ' ' + d.unit + '</span>' : '') +
+          (d.meta.title === '风险门店' ? UI.riskBadge(store.risk) : UI.stageBadge(store.stage, S.storeSub(store))) +
+        '</div>' +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
+  function showKpiStores(key) {
+    var d = kpiDetail(key);
+    UI.modal({
+      size: 'lg',
+      title: d.title,
+      sub: d.sub,
+      body: kpiDetailHtml(d),
+      footer: '<button class="btn" data-kdl-close type="button">关闭</button>',
+      onMount: function (box, close) {
+        box.querySelectorAll('[data-kdl-store]').forEach(function (el) {
+          el.addEventListener('click', function () {
+            close();
+            openStore(el.getAttribute('data-kdl-store'));
+          });
+        });
+        var btn = box.querySelector('[data-kdl-close]');
+        if (btn) btn.addEventListener('click', close);
+      }
+    });
+  }
+
   /* 按当前筛选取门店，在筹的在前、已开业的排后面 */
   function pickedStores(s) {
     var list = s.stores.filter(function (x) {
@@ -103,38 +259,50 @@ window.Pages.home = (function () {
     var set = s.settings;
     var t0 = U.today();
 
-    var doingStores = st.totalStores - st.opened - st.riskStores;
+    var doingStores = s.stores.filter(function (x) {
+      return x.stage !== '已开业' && !riskOf(x);
+    }).length;   /* 跟「进行中」小窗同一口径：没开业、也没标风险 */
 
     /* ---- KPI ---- */
     var kpis = [
       {
-        label: '筹建门店', value: st.totalStores, foot: '总门店数',
-        color: '#2f56f0', soft: '#e3eaff', icon: 'box'
+        key: 'all', label: '筹建门店', value: st.totalStores, foot: '总门店数',
+        color: '#2f56f0', soft: '#e3eaff', icon: 'box',
+        tip: '点击查看这 ' + st.totalStores + ' 家门店'
       },
       {
-        label: '已开业', value: st.opened, foot: U.pct(st.opened, st.totalStores),
-        color: '#0aa564', soft: '#dcf7ea', icon: 'check'
+        key: 'opened', label: '已开业', value: st.opened, foot: U.pct(st.opened, st.totalStores),
+        color: '#0aa564', soft: '#dcf7ea', icon: 'check',
+        tip: '点击查看已开业的 ' + st.opened + ' 家门店'
       },
       {
-        label: '进行中', value: doingStores, foot: U.pct(doingStores, st.totalStores),
-        color: '#0190bf', soft: '#d9f3fd', icon: 'chart'
+        key: 'doing', label: '进行中', value: doingStores, foot: U.pct(doingStores, st.totalStores),
+        color: '#0190bf', soft: '#d9f3fd', icon: 'chart',
+        tip: '点击查看正在筹建的 ' + doingStores + ' 家门店',
+        help: '还没开业、也没把风险等级标成<b>高危 / 逾期</b>的门店 —— ' +
+              '风险门店单独统计，不会在这张卡里重复算一次。'
       },
       {
-        label: '风险门店', value: st.riskStores, foot: U.pct(st.riskStores, st.totalStores),
+        key: 'risk', label: '风险门店', value: st.riskStores, foot: U.pct(st.riskStores, st.totalStores),
         color: '#e97a06', soft: '#fdecdb', icon: 'alert',
+        tip: '点击查看 ' + st.riskStores + ' 家风险门店',
         help: '门店档案里「风险等级」标为<b>高危</b>或<b>逾期</b>的门店（占比 = 风险门店数 ÷ 门店总数）。' +
               '「关注」不算风险；等级在门店详情里手动维护。'
       },
       {
-        label: '逾期任务', value: st.taskCounts.overdue, foot: U.pct(st.taskCounts.overdue, st.taskCounts.total),
+        key: 'overdue', label: '逾期任务', value: st.taskCounts.overdue, foot: U.pct(st.taskCounts.overdue, st.taskCounts.total),
         color: '#e83a2f', soft: '#ffe6e3', icon: 'clock',
+        tip: '点击查看 ' + st.taskCounts.overdue + ' 条逾期任务在哪些门店',
         help: '还没做的任务里，今天已经过了<b>建议完成日</b>的：' +
               '建议完成日 = 门店计划开业日 − 该任务的开业前天数（可为单条任务延后）。' +
               '门店没填开业日的不判逾期；占比 = 逾期数 ÷ 全部任务数。'
       },
       {
-        label: '7天内该通知', value: st.arrivals7, foot: U.pct(st.arrivals7, st.totalStores),
-        color: '#6d3fe8', soft: '#ece5ff', icon: 'truck'
+        key: 'notify', label: '7天内该通知', value: st.arrivals7, foot: U.pct(st.arrivals7, st.totalStores),
+        color: '#6d3fe8', soft: '#ece5ff', icon: 'truck',
+        tip: '点击查看 ' + st.arrivals7 + ' 项该通知供应商的物料',
+        help: '登记了到货日、<b>7 天内</b>要到的物料，且还没标「已通知供应商」的。' +
+              '没填到货日的不会算进来（没法判断哪天到）。'
       }
     ];
 
@@ -147,7 +315,8 @@ window.Pages.home = (function () {
             '<span class="kpi-help-pop">' + k.help + '</span>' +
           '</span>'
         : '';
-      return '<div class="kpi">' +
+      return '<div class="kpi is-clickable" data-kpi="' + k.key + '" role="button" tabindex="0"' +
+          ' title="' + U.esc(k.tip) + '">' +
         '<span class="kpi-icon" style="background:' + k.soft + ';color:' + k.color + '">' + UI.icon(k.icon) + '</span>' +
         '<div class="kpi-body">' +
           '<div class="kpi-label">' + k.label + helpHtml + '</div>' +
@@ -420,6 +589,10 @@ window.Pages.home = (function () {
       /* 点到别处 → 收起展开的浮层 */
       closeTips(root);
 
+      /* KPI 卡片 → 弹出「这几家是谁」（ⓘ 在上面已 return，不会误触） */
+      var kpiEl = t.closest('.kpi[data-kpi]');
+      if (kpiEl) { showKpiStores(kpiEl.getAttribute('data-kpi')); return; }
+
       var view = t.closest('[data-store-view]');
       if (view) { openStore(view.getAttribute('data-store-view')); return; }
 
@@ -445,6 +618,34 @@ window.Pages.home = (function () {
 
       var taskEl = t.closest('[data-task]');
       if (taskEl) { App.go('tasks', { task: taskEl.getAttribute('data-task') }); }
+    });
+
+    /* 键盘：卡片上 Enter / 空格 = 点一下；ⓘ 上则是展开判断逻辑 */
+    root.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+      var t = e.target;
+      if (!t || !t.closest) return;
+
+      var helpEl = t.closest('.kpi-help');
+      if (helpEl) {
+        e.preventDefault();
+        var willOpen = !helpEl.classList.contains('is-open');
+        closeTips(root);
+        if (willOpen) {
+          helpEl.classList.add('is-open');
+          var card = helpEl.closest('.kpi');
+          if (card) card.classList.add('is-tip-open');
+          placeTip(helpEl);
+        }
+        return;
+      }
+
+      var kpiEl = t.closest('.kpi[data-kpi]');
+      if (kpiEl) {
+        e.preventDefault();
+        closeTips(root);
+        showKpiStores(kpiEl.getAttribute('data-kpi'));
+      }
     });
 
     /* hover 展开的也做一次边界判断（不用等点击） */

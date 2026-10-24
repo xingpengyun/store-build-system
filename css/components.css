@@ -160,6 +160,12 @@
    卡片自己抬到兄弟之上，气泡才能盖出去（2026-10-25 修）。 */
 .kpi:hover, .kpi:focus-within, .kpi.is-tip-open { z-index: 20; }
 
+/* 可点的卡片（首页 6 张）：点一下弹出「这些是谁」（2026-10-25） */
+.kpi.is-clickable { cursor: pointer; outline: none; }
+.kpi.is-clickable:hover { border-color: #c9d8f5; }
+.kpi.is-clickable:focus-visible { box-shadow: 0 0 0 3px var(--primary-soft), var(--shadow-2); }
+.kpi.is-clickable:active { transform: translateY(0); }
+
 /* KPI 判断逻辑提示：标签旁 ⓘ，hover / 键盘聚焦 / 点击都能看（2026-10-24 用户要求标注口径） */
 .kpi-help {
   position: relative;
@@ -256,6 +262,56 @@
 .kpi-foot {
   font-size: 11px;
   color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------- KPI 点开的小窗：一行一家门店 ---------------- */
+.kdl { display: flex; flex-direction: column; gap: 6px; }
+.kdl-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  background: var(--card);
+  cursor: pointer;
+  min-width: 0;
+  transition: background .14s, border-color .14s, box-shadow .14s;
+}
+.kdl-row:hover { background: #f7f9fe; border-color: #c9d8f5; }
+.kdl-row:focus-visible { outline: 0; border-color: #a9c1f9; box-shadow: 0 0 0 3px var(--primary-soft); }
+.kdl-row .store-dot { margin-top: 6px; }
+.kdl-main { flex: 1 1 auto; min-width: 0; }
+.kdl-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.kdl-name { font-size: 13px; font-weight: 650; color: var(--text); }
+.kdl-meta { font-size: 11px; color: var(--text-3); }
+.kdl-note {
+  margin-top: 3px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-2);
+  word-break: break-word;
+}
+.kdl-note.is-late { color: var(--red); }
+.kdl-more { margin-top: 2px; font-size: 11px; color: var(--text-3); }
+.kdl-right {
+  flex: 0 1 auto;
+  max-width: 46%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  padding-top: 1px;
+}
+.kdl-cnt {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: #f2f5fb;
+  font-size: 11px;
+  color: var(--text-2);
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
