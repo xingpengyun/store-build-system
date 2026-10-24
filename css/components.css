@@ -3020,30 +3020,11 @@ body.sm-sorting * { cursor: grabbing !important; user-select: none !important; }
 .th-legend i.is-soon { background: #f79009; }
 .th-legend i.is-nodate { background: #7a5af8; }
 
-/* 发出：胶囊 + 登记的发货时间 + 下一步 */
+/* 发出：胶囊 + 下一步
+   2026-10-25：已发出下面那个「登记实发日期」的输入框撤了，只留状态和下一步 */
 .ship-sent { min-width: 124px; }
-.ship-sent-date {
-  margin-top: 3px;
-  width: 100%;
-  height: 22px;
-  padding: 0 4px;
-  border: 1px dashed var(--line-2);
-  border-radius: 6px;
-  background: transparent;
-  font-family: inherit;
-  font-size: 11px;
-  color: var(--green);
-}
-.ship-sent-date:hover { border-color: #a9c1f9; background: #fff; }
-.ship-sent-date:focus {
-  border-style: solid;
-  border-color: #a9c1f9;
-  background: #fff;
-  outline: 0;
-  box-shadow: 0 0 0 3px rgba(63, 107, 245, .09);
-}
 .ship-next {
-  margin-top: 2px;
+  margin-top: 4px;
   font-size: 10.5px;
   line-height: 1.35;
   color: var(--text-3);

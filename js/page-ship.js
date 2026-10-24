@@ -93,15 +93,9 @@ window.Pages.ship = (function () {
 
   /* ---------------- 一行 ---------------- */
 
-  /* 发出/未发出的状态文案（2026-10-24：不再有「计划发货日」，
-     未发出就是还没发，不显示倒计时） */
-  function leftText(r) {
-    if (r.shipped) {
-      if (r.sentAgo == null) return '已发出';
-      return r.sentAgo <= 0 ? '今天发出' : '已发 ' + r.sentAgo + ' 天';
-    }
-    return '未发出';
-  }
+  /* 发出状态只有两态：已发出 / 未发出（2026-10-24 起没有「计划发货日」，
+     2026-10-25 起已发出的「实发日期」输入框也撤掉了 —— 点一下就是发完了，
+     日期不参与任何计算，所以这列只剩状态胶囊 + 下一步文字） */
 
   var MAT_MAX = 8;   /* 物料列宽，多铺几条 */
 
@@ -214,9 +208,7 @@ window.Pages.ship = (function () {
           '<i></i>' + (r.shipped ? '已发出' : '未发出') +
         '</button>' +
         (r.shipped
-          ? '<input class="ship-sent-date mono" type="date" data-sentdate value="' + U.esc(r.sentAt || '') +
-              '" title="登记的发货时间，点一下可以改" />' +
-            '<div class="ship-next" title="' + U.esc(nextTip(r)) + '">' + U.esc(nextText(r)) + '</div>'
+          ? '<div class="ship-next" title="' + U.esc(nextTip(r)) + '">' + U.esc(nextText(r)) + '</div>'
           : '') +
       '</td>' +
 
@@ -764,18 +756,8 @@ window.Pages.ship = (function () {
       }
     });
 
-    /* 备注 / 登记的发货时间（2026-10-24：计划发货日已整套去掉，只剩这两个） */
+    /* 备注（2026-10-25：登记实发日期的输入框已撤掉，这一列只剩备注） */
     root.addEventListener('change', function (e) {
-      var sd = e.target.closest('[data-sentdate]');
-      if (sd && root.contains(sd)) {
-        var tr3 = sd.closest('tr[data-ship]');
-        if (!tr3) return;
-        S.setShip(tr3.getAttribute('data-ship'), { sentAt: sd.value });
-        UI.toast(sd.value ? '实发日期已登记为 ' + U.monthDay(sd.value) : '已清掉实发日期', 'success');
-        App.refresh();
-        return;
-      }
-
       var n = e.target.closest('[data-note]');
       if (n && root.contains(n)) {
         var tr2 = n.closest('tr[data-ship]');

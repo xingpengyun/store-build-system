@@ -829,3 +829,18 @@ hover 展开在最上层 1 项；点击展开可见 / 5 个点全部命中气泡
 ### 五、踩坑
 - 共用 Edge profile 会命中磁盘缓存，读到改之前的 CSS，测试结果假阴性。
   CDP 里要先 `Network.setCacheDisabled({cacheDisabled:true})`；给用户的版本号也一起 bump。
+
+## 2026-10-25 发货看板撤掉「实发日期」输入框
+
+用户截图圈了「已发出」下面那个 `2026/10/25` 的 date 框，说「这个取消」。
+
+- `js/page-ship.js`：`rowHtml` 里已发出的行不再渲染 `input[data-sentdate]`，
+  「发出 / 下一步」这列只剩 状态胶囊 + 下一步文字（`31 天后开业` / `物料 11-05 到`）；
+  `change` 监听里对应的 `[data-sentdate]` 分支一起删掉（现在只剩备注）；
+  顺手删掉从未被调用的死函数 `leftText()`。
+- `css/components.css`：删 `.ship-sent-date` / `:hover` / `:focus` 三条样式，`.ship-next` 上边距 2px → 4px。
+- 数据层不动：`settings.ship[id].sentAt` 仍会在「点已发出」时自动记今天（`store.js`），
+  只做留痕、不参与计算、界面上不展示；老数据里的 sentAt 保留，不迁移、不清洗。
+- 验证：`chk-ship2.js` 打印「实发日期框(应为 false): false / 下一步: 10 天后开业」；
+  真实浏览器截图（1552px 宽）「已发出 + 31 天后开业」两行，列高 55px，0 报错；
+  `smoke.js` 8 页全 OK。版本 `?v=20261025z62`。
