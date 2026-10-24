@@ -1054,6 +1054,21 @@ window.Store = (function () {
       pushSettings();
     }
 
+    /* 这家店的任务在 settings 里留下的键也一起清：
+       reopenLog（回退点）/ taskGateSub（落点二级）/ taskBefore（开业前天数）/ taskSnooze（延后天数）。
+       不清的话删完门店 settings 里会挂一堆指向不存在任务的死键（2026-10-25 发现）。 */
+    var s2 = state.settings || {};
+    var dirty = false;
+    taskIds.forEach(function (tid) {
+      ['reopenLog', 'taskGateSub', 'taskBefore', 'taskSnooze'].forEach(function (k) {
+        if (s2[k] && Object.prototype.hasOwnProperty.call(s2[k], tid)) {
+          delete s2[k][tid];
+          dirty = true;
+        }
+      });
+    });
+    if (dirty) pushSettings();
+
     cacheLocal();
   }
 

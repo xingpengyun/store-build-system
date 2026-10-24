@@ -1072,4 +1072,10 @@ function onEnter() { state.tab = 'all'; state.dtab = 'all'; state.q = ''; }
 - 阶段没有「按日期自动推进」的机制（每个阶段没有计划日期字段，任务表也只存落点不存所属阶段），
   所以「按时间走」这一步仍然靠人在门店编辑里改阶段；改的那一刻系统才越过、才弹卡片。
 
-版本 `?v=20261025z70`。
+### 七、顺手修掉的老毛病：删门店不清 settings 里的任务键
+`removeStore()` 原来只清 `storeSubs` / `ship`，这家店任务的 `settings.reopenLog`（回退点）、
+`taskGateSub`（落点二级）、`taskBefore` / `taskSnooze` 全留在配置包里，指向已经不存在的任务。
+跑测试建 / 删临时门店时暴露出来（云端留了一条 `task_mvmq5aw6_3` 的死键）。
+现在删门店会把这些键一并删掉，`chk-gate.js` 加了 2 项断言。
+
+版本 `?v=20261025z71`。
