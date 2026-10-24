@@ -1931,7 +1931,7 @@
 .tl-nodes::before {
   content: '';
   position: absolute;
-  left: 8px;
+  left: 14px;
   top: 18px;
   bottom: 20px;
   width: 2px;
@@ -1939,13 +1939,14 @@
   background: #dae3f1;
 }
 
-/* 每个阶段之间留出明显间隔，一眼能分清有几级 */
+/* 每个阶段之间留出明显间隔，一眼能分清有几级
+   左边留 7px 让圆点和它的光圈整个落在行内，否则会压住选中态那条主色竖条 */
 .tl-node {
   position: relative;
   display: grid;
-  grid-template-columns: 14px minmax(0, 1fr);
-  gap: 10px;
-  padding: 12px 9px 13px 1px;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 9px;
+  padding: 12px 9px 13px 7px;
   border-radius: 9px;
   cursor: pointer;
   transition: background .14s;
@@ -1956,16 +1957,20 @@
 .tl-node.on .tl-name { color: var(--primary); font-weight: 650; }
 
 .tl-dot {
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
   margin-top: 4px;
   justify-self: center;
   border-radius: 50%;
   position: relative;
   z-index: 1;
-  box-shadow: 0 0 0 3px var(--card);
-  transition: transform .2s cubic-bezier(.2, .8, .3, 1), opacity .18s;
+  box-shadow: 0 0 0 2.5px var(--card);
+  transition: transform .2s cubic-bezier(.2, .8, .3, 1), opacity .18s, box-shadow .14s;
 }
+/* 光圈要跟着行底色走：白圈压在白行上没事，压到浅蓝的选中行 / hover 行上就成了「戳了个洞」 */
+.tl-node:hover .tl-dot { box-shadow: 0 0 0 2.5px #f5f8fd; }
+.tl-node.on .tl-dot { box-shadow: 0 0 0 2.5px #e7edff; }
+.tl-node.on:hover .tl-dot { box-shadow: 0 0 0 2.5px #e7edff; }
 .tl-node.is-empty .tl-dot { opacity: .42; }
 
 .tl-line { display: flex; align-items: baseline; gap: 6px; }

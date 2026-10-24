@@ -70,15 +70,10 @@ window.Pages.team = (function () {
             '<thead><tr><th>任务</th><th>门店</th><th>截止</th><th>状态</th></tr></thead>' +
             '<tbody>' + rows + '</tbody></table></div>'
         : UI.empty('还没有分配任务'),
-      footer:
-        '<button class="btn" data-act="close">关闭</button>' +
-        '<button class="btn btn-primary" data-act="assign">给他派任务</button>',
+      /* 只留关闭：任务状态一目了然，大家都在跟，不需要「派任务」这个动作 */
+      footer: '<button class="btn" data-act="close">关闭</button>',
       onMount: function (rootEl, close) {
         rootEl.querySelector('[data-act="close"]').onclick = close;
-        rootEl.querySelector('[data-act="assign"]').onclick = function () {
-          close();
-          App.go('tasks');
-        };
       }
     });
   }
