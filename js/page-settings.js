@@ -84,6 +84,8 @@ window.Pages.settings = (function () {
 
     configCard() +
 
+    stageCard() +
+
     '<div class="card fade-up" style="animation-delay:.08s">' +
       '<div class="card-head"><h3>到货物料清单</h3>' +
         '<span class="card-sub">门店详情里「物料到货」的快捷按钮，共 <b id="arrItemsCount">' + S.items().length + '</b> 个</span></div>' +
@@ -147,7 +149,7 @@ window.Pages.settings = (function () {
 
       '<div class="mini-stats cfg-stats">' +
         box('阶段时间线', stages.length + ' 个', subCount + ' 个二级阶段', 'stages',
-          '去「任务管理」左侧的阶段时间线：可加一级 / 二级、改名、删除、按住行拖排序') +
+          '就在本页下面「阶段与子阶段」：加一级 / 二级、改名、删除、按住手柄拖排序') +
         box('筹建任务清单', tpls.length + ' 条', tpls.length ? '新门店按它派活' : '没有任务可派', 'tpl',
           '打开筹建任务清单：增删改每条任务的名称、所属阶段、开业前天数') +
         box('到货物料清单', items.length + ' 项', items.length ? '门店里点一下就能选' : '门店里只能手填', 'items',
@@ -172,6 +174,100 @@ window.Pages.settings = (function () {
             '<span class="lead-foot-tip">只改配置，不动已建的门店和任务；恢复前会再存一份现在的配置。</span>' +
           '</div>'
         : '') +
+    '</div>';
+  }
+
+  /* ================= 阶段与子阶段（2026-10-24 从任务页时间线搬到设置） ================= */
+
+  /* 新建状态不落库：加一级 / 给某个一级加二级的输入行开着就开着，刷新自然没 */
+  var smState = { addStage: false, addSub: '' };
+
+  /* 一级阶段用量：门店 / 任务 / 筹建清单各几个 */
+  function smStageUse(name) {
+    var u = S.stageUsage(name);
+    var bits = [];
+    if (u.stores) bits.push(u.stores + ' 家门店');
+    if (u.tasks) bits.push(u.tasks + ' 条任务');
+    if (u.templates) bits.push(u.templates + ' 条清单');
+    return bits.length ? bits.join(' · ') : '还没用到';
+  }
+
+  /* 二级用量：任务 / 筹建清单 */
+  function smSubUse(base, name) {
+    var u = S.stageSubUsage(base, name);
+    var bits = [];
+    if (u.tasks) bits.push(u.tasks + ' 条任务');
+    if (u.templates) bits.push(u.templates + ' 条清单');
+    return bits.length ? bits.join(' · ') : '还没用到';
+  }
+
+  /* 二级用三源并集：设置里手填的 + 筹建清单里用到的 + 已有任务里用到的，
+     和任务页时间线看到的是同一套（stageSubsWithUsed） */
+  function smListHtml() {
+    var subs = S.stageSubsWithUsed() || {};
+
+    var rows = (S.stages() || []).map(function (st) {
+      var list = subs[st.key] || [];
+
+      var html = '<div class="sm-row" data-sm-stage="' + U.esc(st.key) + '">' +
+          '<span class="sm-grip" title="按住上下拖排序">' + UI.icon('grip') + '</span>' +
+          '<i class="sm-dot" style="background:' + st.color + '"></i>' +
+          '<span class="sm-name">' + U.esc(st.key) + '</span>' +
+          '<span class="sm-use">' + smStageUse(st.key) + '</span>' +
+          '<span class="sm-tools">' +
+            '<i data-sm-ren="' + U.esc(st.key) + '" title="给「' + U.esc(st.key) + '」改名">' + UI.icon('edit') + '</i>' +
+            '<i data-sm-del="' + U.esc(st.key) + '" title="删除「' + U.esc(st.key) + '」">' + UI.icon('close') + '</i>' +
+            '<button type="button" data-sm-subadd="' + U.esc(st.key) + '"' +
+              ' title="给「' + U.esc(st.key) + '」加一个二级">' + UI.icon('plus') + '</button>' +
+          '</span>' +
+        '</div>';
+
+      if (list.length || smState.addSub === st.key) {
+        html += '<div class="sm-subs">' + list.map(function (sub) {
+          return '<div class="sm-sub" data-sm-base="' + U.esc(st.key) + '" data-sm-sub="' + U.esc(sub) + '">' +
+            '<i class="sm-sub-dot"></i>' +
+            '<span class="sm-sub-name">' + U.esc(sub) + '</span>' +
+            '<span class="sm-use">' + smSubUse(st.key, sub) + '</span>' +
+            '<span class="sm-tools">' +
+              '<i data-sm-subren="' + U.esc(sub) + '" title="给「' + U.esc(sub) + '」改名">' + UI.icon('edit') + '</i>' +
+              '<i data-sm-subdel="' + U.esc(sub) + '" title="删除「' + U.esc(sub) + '」">' + UI.icon('close') + '</i>' +
+            '</span>' +
+          '</div>';
+        }).join('') +
+          (smState.addSub === st.key
+            ? '<div class="sm-sub-add">' +
+                '<input class="input" data-sm-subinp="' + U.esc(st.key) + '" maxlength="20" autocomplete="off"' +
+                  ' placeholder="二级名称，回车确定" />' +
+                '<button class="btn btn-primary btn-sm" type="button" data-sm-subok="' + U.esc(st.key) + '">添加</button>' +
+              '</div>'
+            : '') +
+        '</div>';
+      }
+
+      return html;
+    }).join('');
+
+    return rows +
+      (smState.addStage
+        ? '<div class="sm-top-add">' +
+            '<input class="input" id="smStageInp" maxlength="20" autocomplete="off"' +
+              ' placeholder="新阶段名称，回车确定" />' +
+            '<button class="btn btn-primary btn-sm" type="button" data-sm-stageok>添加</button>' +
+          '</div>'
+        : '');
+  }
+
+  function stageCard() {
+    return '<div class="card fade-up" style="animation-delay:.075s">' +
+      '<div class="card-head"><h3>阶段与子阶段</h3>' +
+        '<span class="card-sub">任务管理左侧的时间线按这里显示，共 <b id="smStageCount">' +
+          (S.stages() || []).length + '</b> 个一级阶段</span></div>' +
+      '<div class="sm-list" id="smList">' + smListHtml() + '</div>' +
+      '<div class="sm-addbar">' +
+        '<button class="btn" type="button" data-sm-add>' + UI.icon('plus') + '添加一级阶段</button>' +
+      '</div>' +
+      '<p class="item-hint">一级阶段：<b>✎</b> 改名、<b>✕</b> 删除、<b>＋</b> 加二级；按住行首 <b>⠿</b> 手柄上下拖排序。' +
+        '改名 / 删除会同步改掉门店、任务和筹建任务清单里的阶段，不会新旧两个名字并存。</p>' +
     '</div>';
   }
 
@@ -277,8 +373,16 @@ window.Pages.settings = (function () {
       if (cfg) {
         var k = cfg.getAttribute('data-cfg');
         if (k === 'stages') {
-          App.go('tasks');
-          UI.toast('左边就是阶段时间线：悬停阶段可改名 / 加二级 / 删除，按住行上下拖排序', 'info', 4000);
+          var smb = root.querySelector('#smList');
+          if (smb) {
+            if (smb.scrollIntoView) smb.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            var smCard = smb.closest('.card');
+            if (smCard) {
+              smCard.classList.remove('cfg-flash');
+              void smCard.offsetWidth;   /* 强制重排，让动画能重新触发 */
+              smCard.classList.add('cfg-flash');
+            }
+          }
         } else if (k === 'tpl') {
           App.go('tasks');
           /* 等任务管理页渲染出来，再点它顶部的「筹建任务清单」按钮把弹窗打开 */
@@ -301,6 +405,50 @@ window.Pages.settings = (function () {
             }
           }
         }
+        return;
+      }
+
+      /* ---- 阶段与子阶段管理（2026-10-24 从任务页时间线搬来） ---- */
+      var smAdd = e.target.closest('[data-sm-add]');
+      if (smAdd) {
+        smState.addStage = true;
+        smState.addSub = '';
+        paintSm();
+        return;
+      }
+
+      var smStageOk = e.target.closest('[data-sm-stageok]');
+      if (smStageOk) { commitSmStage(); return; }
+
+      var smRen = e.target.closest('[data-sm-ren]');
+      if (smRen) { renameStageDlg(smRen.getAttribute('data-sm-ren')); return; }
+
+      var smDel = e.target.closest('[data-sm-del]');
+      if (smDel) { removeStageDlg(smDel.getAttribute('data-sm-del')); return; }
+
+      var smSubAdd = e.target.closest('[data-sm-subadd]');
+      if (smSubAdd) {
+        var smBase = smSubAdd.getAttribute('data-sm-subadd');
+        smState.addSub = (smState.addSub === smBase) ? '' : smBase;
+        smState.addStage = false;
+        paintSm();
+        return;
+      }
+
+      var smSubOk = e.target.closest('[data-sm-subok]');
+      if (smSubOk) { commitSmSub(smSubOk.getAttribute('data-sm-subok')); return; }
+
+      var smSubRen = e.target.closest('[data-sm-subren]');
+      if (smSubRen) {
+        var smRenRow = smSubRen.closest('.sm-sub');
+        renameSubDlg(smRenRow.getAttribute('data-sm-base'), smRenRow.getAttribute('data-sm-sub'));
+        return;
+      }
+
+      var smSubDel = e.target.closest('[data-sm-subdel]');
+      if (smSubDel) {
+        var smDelRow = smSubDel.closest('.sm-sub');
+        removeSubDlg(smDelRow.getAttribute('data-sm-base'), smDelRow.getAttribute('data-sm-sub'));
         return;
       }
 
@@ -416,6 +564,385 @@ window.Pages.settings = (function () {
          物料清单全在里面，用户真实的工作流就是这么被一起删掉的。
          现在拆成「添加演示门店（addDemo）」和「清空门店（clearStores）」两步，
          都不碰配置。需要彻底重置，用「从备份文件导入」或手动清库。 */
+    });
+
+    /* ---------------- 阶段与子阶段管理（2026-10-24 从任务页时间线搬来） ----------------
+       Store 的 API 都是现成的（addStage / renameStage / removeStage / saveStageOrder /
+       saveStageSubs / renameStageSub / removeStageSub），页面只负责收集输入和确认。
+       弹窗逻辑照搬任务页原来那套，只是 updateList(root) 换成 paintSm()。 */
+    var smBox = root.querySelector('#smList');
+
+    function paintSm() {
+      if (!smBox) return;
+      smBox.innerHTML = smListHtml();
+      var cnt = root.querySelector('#smStageCount');
+      if (cnt) cnt.textContent = (S.stages() || []).length;
+      /* 新建行出现后直接聚焦，省一次点击 */
+      if (smState.addSub) {
+        var i1 = smBox.querySelector('[data-sm-subinp]');
+        if (i1) i1.focus();
+      } else if (smState.addStage) {
+        var i2 = smBox.querySelector('#smStageInp');
+        if (i2) i2.focus();
+      }
+    }
+
+    function commitSmStage() {
+      var inp = root.querySelector('#smStageInp');
+      if (!inp) return false;
+
+      var v = String(inp.value || '').trim().replace(/\s+/g, ' ');
+      if (!v) { smState.addStage = false; paintSm(); return false; }
+
+      var r = S.addStage(v, '');
+      if (!r.ok) {
+        UI.toast(r.error, 'error');
+        inp.focus();
+        inp.select();
+        return false;
+      }
+
+      smState.addStage = false;
+      paintSm();
+      UI.toast('已添加一级阶段「' + v + '」', 'success', 2400);
+      return true;
+    }
+
+    function commitSmSub(base) {
+      var inp = smBox.querySelector('[data-sm-subinp]');
+      if (!inp) return false;
+
+      var v = String(inp.value || '').trim().replace(/\s+/g, ' ');
+      if (!v) { smState.addSub = ''; paintSm(); return false; }
+
+      if (v.indexOf('/') >= 0) {
+        UI.toast('二级名称里不要带斜杠（斜杠是阶段名专用）', 'error');
+        inp.focus();
+        return false;
+      }
+
+      if ((S.stageSubsWithUsed()[base] || []).indexOf(v) >= 0) {
+        UI.toast('「' + base + ' · ' + v + '」已经有了', 'info');
+        inp.focus();
+        inp.select();
+        return false;
+      }
+
+      var map = S.stageSubs();
+      var list = (map[base] || []).slice();
+      list.push(v);
+      map[base] = list;
+      S.saveStageSubs(map);
+
+      smState.addSub = '';
+      paintSm();
+      UI.toast('已添加二级「' + base + ' · ' + v + '」', 'success', 2400);
+      return true;
+    }
+
+    function renameStageDlg(from) {
+      var use = S.stageUsage(from);
+
+      UI.modal({
+        title: '给阶段改名',
+        sub: from,
+        body:
+          '<div class="form-row">' +
+            '<label class="form-label">新名称</label>' +
+            '<input class="input" id="smStageNew" maxlength="20" autocomplete="off" value="' + U.esc(from) + '" />' +
+          '</div>' +
+          '<p class="item-hint">' +
+            (use.stores || use.tasks || use.templates
+              ? '会同时改掉 <b>' + use.stores + '</b> 家门店、<b>' + use.tasks + '</b> 条任务、' +
+                '<b>' + use.templates + '</b> 条筹建清单里的这个阶段。'
+              : '目前还没有门店 / 任务用这个阶段。') +
+            '阶段下的二级保持不变。</p>',
+        footer:
+          '<button class="btn" type="button" data-x="cancel">取消</button>' +
+          '<button class="btn btn-primary" type="button" data-x="ok">保存</button>',
+        onMount: function (m, close) {
+          var inp = m.querySelector('#smStageNew');
+          if (inp) { inp.focus(); inp.select(); }
+
+          function doSave() {
+            var v = String(inp.value || '').trim().replace(/\s+/g, ' ');
+            if (!v) { inp.focus(); return; }
+
+            var r = S.renameStage(from, v);
+            if (!r.ok) { UI.toast(r.error, 'error'); inp.focus(); return; }
+
+            close();
+            if (smState.addSub === from) smState.addSub = v;
+            paintSm();
+            UI.toast('「' + from + '」已改名为「' + v + '」' +
+              (r.hit ? '，同步了 ' + r.hit + ' 条数据' : ''), 'success', 2600);
+          }
+
+          m.addEventListener('click', function (e) {
+            if (e.target.closest('[data-x="ok"]')) doSave();
+            if (e.target.closest('[data-x="cancel"]')) close();
+          });
+          if (inp) {
+            inp.addEventListener('keydown', function (e) {
+              if (e.key === 'Enter') { e.preventDefault(); doSave(); }
+            });
+          }
+        }
+      });
+    }
+
+    function removeStageDlg(name) {
+      var use = S.stageUsage(name);
+
+      /* 还有门店在这个阶段 → 不能删，否则门店会变成「找不到阶段」 */
+      if (use.stores) {
+        UI.confirm({
+          title: '先别删「' + name + '」',
+          text: '还有 <b>' + use.stores + '</b> 家门店停在这个阶段。',
+          warn: '把它们改到别的阶段之后再删。删除阶段不会删门店，但门店必须有阶段。',
+          okText: '知道了',
+          onOk: function () {}
+        });
+        return;
+      }
+
+      var doRemove = function () {
+        var r = S.removeStage(name);
+        if (!r.ok) { UI.toast(r.error, 'error'); return; }
+        if (smState.addSub === name) smState.addSub = '';
+        paintSm();
+        UI.toast('已删除阶段「' + name + '」' +
+          (r.moved ? '，' + r.moved + ' 条任务挪到「' + r.to + '」' : ''), 'info', 2800);
+      };
+
+      if (use.tasks || use.templates) {
+        UI.confirm({
+          title: '删除阶段「' + name + '」',
+          text: '这个阶段下没有门店，但还有 <b>' + use.tasks + '</b> 条任务、' +
+            '<b>' + use.templates + '</b> 条筹建清单挂着。',
+          warn: '它们会被挪到「' + (S.stages()[0] || {}).key + '」，不会被删掉。阶段下面的二级定义一起消失。',
+          danger: true,
+          okText: '确认删除',
+          onOk: doRemove
+        });
+        return;
+      }
+
+      UI.confirm({
+        title: '删除阶段「' + name + '」',
+        text: '这个阶段下没有门店，也没有任务。',
+        danger: true,
+        okText: '确认删除',
+        onOk: doRemove
+      });
+    }
+
+    function renameSubDlg(base, name) {
+      UI.modal({
+        title: '给二级改名',
+        sub: base + ' · ' + name,
+        body:
+          '<div class="form-row">' +
+            '<label class="form-label">新名称</label>' +
+            '<input class="input" id="smSubNew" maxlength="20" autocomplete="off" value="' + U.esc(name) + '" />' +
+          '</div>' +
+          '<p class="item-hint">改名会同时改掉<b>筹建任务清单</b>和<b>已派到门店的任务</b>里的这个二级，' +
+            '阶段时间线立刻同步，不会新旧两个名字并存。</p>',
+        footer:
+          '<button class="btn" type="button" data-x="cancel">取消</button>' +
+          '<button class="btn btn-primary" type="button" data-x="ok">保存</button>',
+        onMount: function (m, close) {
+          var inp = m.querySelector('#smSubNew');
+          if (inp) { inp.focus(); inp.select(); }
+
+          function doSave() {
+            var v = String(inp.value || '').trim().replace(/\s+/g, ' ');
+            if (!v) { inp.focus(); return; }
+            if (v === name) { close(); return; }
+            if (v.indexOf('/') >= 0) { UI.toast('二级名称里不要带斜杠', 'error'); return; }
+
+            var hit = S.renameStageSub(base, name, v);
+            close();
+            if (smState.addSub === name) smState.addSub = v;
+            paintSm();
+            UI.toast('「' + name + '」已改名为「' + v + '」' + (hit ? '，同步了 ' + hit + ' 条任务' : ''), 'success', 2600);
+          }
+
+          m.addEventListener('click', function (e) {
+            if (e.target.closest('[data-x="ok"]')) doSave();
+            if (e.target.closest('[data-x="cancel"]')) close();
+          });
+          if (inp) {
+            inp.addEventListener('keydown', function (e) {
+              if (e.key === 'Enter') { e.preventDefault(); doSave(); }
+            });
+          }
+        }
+      });
+    }
+
+    function removeSubDlg(base, name) {
+      var use = S.stageSubUsage(base, name);
+
+      var doRemove = function () {
+        S.removeStageSub(base, name);
+        if (smState.addSub === name) smState.addSub = '';
+        paintSm();
+        UI.toast('已删除「' + base + ' · ' + name + '」' +
+          (use.templates + use.tasks ? '，' + (use.templates + use.tasks) + ' 条任务退回一级' : ''),
+          'info', 2600);
+      };
+
+      if (use.templates || use.tasks) {
+        UI.confirm({
+          title: '删除二级「' + name + '」',
+          text: (use.templates ? '筹建任务清单里有 <b>' + use.templates + '</b> 条、' : '') +
+            (use.tasks ? '门店任务里有 <b>' + use.tasks + '</b> 条' : '') +
+            '挂在「' + base + ' · ' + name + '」上。',
+          warn: '它们的阶段会退回一级「' + base + '」，任务本身不删。改动立刻同步到阶段时间线。',
+          danger: true,
+          okText: '确认删除',
+          onOk: doRemove
+        });
+        return;
+      }
+
+      doRemove();
+    }
+
+    /* 按住行首手柄上下拖 → 调一级阶段顺序（逻辑照搬任务页原来那套） */
+    (function bindSmDrag() {
+      var drag = null;
+
+      function pairOf(node) {
+        var sib = node.nextElementSibling;
+        return (sib && sib.classList && sib.classList.contains('sm-subs')) ? sib : null;
+      }
+
+      smBox.addEventListener('pointerdown', function (e) {
+        if (e.button !== 0) return;
+        var grip = e.target.closest('.sm-grip');
+        if (!grip || !smBox.contains(grip)) return;
+        var node = grip.closest('.sm-row');
+        if (!node) return;
+
+        drag = {
+          node: node,
+          key: node.getAttribute('data-sm-stage'),
+          startY: e.clientY,
+          moved: false
+        };
+      });
+
+      document.addEventListener('pointermove', function (e) {
+        if (!drag) return;
+
+        if (!drag.moved) {
+          if (Math.abs(e.clientY - drag.startY) < 6) return;
+          drag.moved = true;
+          drag.node.classList.add('sm-dragging');
+          document.body.classList.add('sm-sorting');
+        }
+
+        var list = [].slice.call(smBox.querySelectorAll('.sm-row'));
+        var before = null;
+        for (var i = 0; i < list.length; i++) {
+          var n = list[i];
+          if (n === drag.node) continue;
+          var r = n.getBoundingClientRect();
+          if (e.clientY < r.top + r.height / 2) { before = n; break; }
+        }
+
+        if (before === drag.node) return;
+
+        var pair = pairOf(drag.node);
+
+        if (before) {
+          if (drag.node.nextElementSibling === before) return;   /* 已经在这个位置 */
+          smBox.insertBefore(drag.node, before);
+          if (pair) smBox.insertBefore(pair, drag.node.nextSibling);
+          return;
+        }
+
+        /* 光标在所有行下面 → 挪到最后 */
+        var last = list[list.length - 1];
+        if (last === drag.node) return;
+        smBox.appendChild(drag.node);
+        if (pair) smBox.appendChild(pair);
+      });
+
+      document.addEventListener('pointerup', function () {
+        if (!drag) return;
+        var d = drag;
+        drag = null;
+
+        d.node.classList.remove('sm-dragging');
+        document.body.classList.remove('sm-sorting');
+
+        if (!d.moved) return;
+
+        var keys = [].slice.call(smBox.querySelectorAll('.sm-row')).map(function (n) {
+          return n.getAttribute('data-sm-stage');
+        });
+
+        S.saveStageOrder(keys);
+        paintSm();
+        UI.toast('阶段顺序已保存', 'success', 1600);
+      });
+    })();
+
+    /* 新建行：回车存、Esc 收起、点别处（有内容）自动存 */
+    smBox.addEventListener('keydown', function (e) {
+      var t = e.target;
+      if (!t.getAttribute) return;
+
+      if (t.id === 'smStageInp') {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          commitSmStage();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          smState.addStage = false;
+          paintSm();
+        }
+        return;
+      }
+
+      if (t.hasAttribute('data-sm-subinp')) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          commitSmSub(t.getAttribute('data-sm-subinp'));
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          smState.addSub = '';
+          paintSm();
+        }
+      }
+    });
+
+    smBox.addEventListener('focusout', function (e) {
+      var t = e.target;
+      if (!t.getAttribute) return;
+
+      var isStage = t.id === 'smStageInp';
+      var isSub = t.hasAttribute('data-sm-subinp');
+      if (!isStage && !isSub) return;
+
+      /* 等一下：如果是点了「添加」按钮，click 会先把这件事做完 */
+      setTimeout(function () {
+        if (isStage) {
+          if (!smState.addStage) return;
+          var cur = root.querySelector('#smStageInp');
+          if (cur && String(cur.value || '').trim()) commitSmStage();
+          else { smState.addStage = false; paintSm(); }
+        } else {
+          var base = t.getAttribute('data-sm-subinp');
+          if (smState.addSub !== base) return;
+          var cur2 = smBox.querySelector('[data-sm-subinp]');
+          if (cur2 && String(cur2.value || '').trim()) commitSmSub(base);
+          else { smState.addSub = ''; paintSm(); }
+        }
+      }, 170);
     });
 
     var file = root.querySelector('#importFile');

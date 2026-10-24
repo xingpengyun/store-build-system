@@ -151,6 +151,17 @@ window.Store = (function () {
 
     var hit = 0;
 
+    /* 二级 map 的 key 要赶在 applyStages 之前取：stageSubs() 按当前 C.STAGES 过滤，
+       旧名一换掉就取不到这个 key，二级会被孤立成看不见的旧名 */
+    var oldSubs = stageSubs();
+    var reSubs = null;
+    if (oldSubs[from]) {
+      reSubs = {};
+      Object.keys(oldSubs).forEach(function (k) {
+        reSubs[k === from ? to : k] = oldSubs[k];
+      });
+    }
+
     /* 1) 阶段列表（原地换名，位置不变） */
     var list = C.STAGES.map(function (x) {
       return x.key === from
@@ -160,15 +171,8 @@ window.Store = (function () {
     setSetting('stages', list);
     applyStages(list);
 
-    /* 2) 二级 map 的 key */
-    var subs = stageSubs();
-    if (subs[from]) {
-      var next = {};
-      Object.keys(subs).forEach(function (k) {
-        next[k === from ? to : k] = subs[k];
-      });
-      saveStageSubs(next);
-    }
+    /* 2) 二级 map 的 key（saveStageSubs 的清洗按 C.STAGES 过滤，必须等新名生效后再存） */
+    if (reSubs) saveStageSubs(reSubs);
 
     /* 3) 筹建任务清单 */
     var tpls = templates();
@@ -220,6 +224,10 @@ window.Store = (function () {
       };
     }
 
+    /* 二级定义也要赶在 applyStages 之前取，理由同 renameStage：
+       stageSubs() 按 C.STAGES 过滤，阶段一删旧 key 就取不到了 */
+    var oldSubs = stageSubs();
+
     var rest = C.STAGES.filter(function (x) { return x.key !== name; })
       .map(function (x) { return { key: x.key, color: x.color, soft: x.soft }; });
     var fallback = rest[0].key;
@@ -227,11 +235,10 @@ window.Store = (function () {
     setSetting('stages', rest);
     applyStages(rest);
 
-    /* 二级定义 */
-    var subs = stageSubs();
-    if (subs[name]) {
-      delete subs[name];
-      saveStageSubs(subs);
+    /* 二级定义：连 key 一起删掉 */
+    if (oldSubs[name]) {
+      delete oldSubs[name];
+      saveStageSubs(oldSubs);
     }
 
     /* 任务 / 清单退回第一个阶段（不是删掉它们） */

@@ -2305,156 +2305,148 @@ body.tpl-drag * { cursor: grabbing !important; user-select: none !important; }
 .tl-sub .tl-num { margin-left: auto; }
 .tl-sub .tl-num b { color: var(--red); font-weight: 600; }
 
-/* ---- 时间线里就地管理二级：一级的 ＋、二级的 ✎ ✕、新建输入行 ---- */
-.tl-line { position: relative; }
+/* 一级 / 二级的新建、改名、删除、拖排序 2026-10-24 搬到「设置 → 阶段与子阶段」，
+   样式见下面 .sm-* 一节；任务页时间线只留展示 + 点击筛选 */
 
-.tl-add {
-  flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
-  margin-left: 1px;
+/* ---------------- 设置页：阶段与子阶段管理 ---------------- */
+.sm-list { display: flex; flex-direction: column; }
+
+.sm-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  transition: background .14s;
+}
+.sm-row:hover { background: #f5f8fd; }
+
+.sm-grip {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #d8e2f4;
-  border-radius: 4px;
-  background: #fff;
-  color: var(--primary);
-  cursor: pointer;
-  padding: 0;
-  opacity: .55;
+  width: 18px;
+  height: 22px;
+  flex: 0 0 auto;
+  color: #c5cedd;
+  border-radius: 5px;
+  cursor: grab;
+  touch-action: none;
   transition: .14s;
 }
-.tl-add svg { width: 9px; height: 9px; }
-.tl-node:hover .tl-add,
-.tl-node.on .tl-add { opacity: 1; }
-.tl-add:hover { background: var(--primary); border-color: var(--primary); color: #fff; opacity: 1; }
+.sm-grip:hover { color: var(--primary); background: var(--primary-soft); }
+.sm-grip svg { width: 13px; height: 13px; }
 
-.tl-sub { position: relative; }
-.tl-op {
+.sm-dot {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+.sm-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.sm-use {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: #8894a8;
+  white-space: nowrap;
+}
+.sm-row:hover .sm-use,
+.sm-sub:hover .sm-use { visibility: hidden; }
+
+/* 操作条：hover 时浮在右侧，绝对定位不挤文字 */
+.sm-tools {
   position: absolute;
-  right: 5px;
+  right: 8px;
   top: 50%;
   transform: translateY(-50%);
   display: none;
   align-items: center;
-  gap: 1px;
-  padding-left: 8px;
-  background: linear-gradient(to right, rgba(242, 246, 253, 0), #f2f6fd 9px);
-}
-.tl-sub:hover .tl-op { display: flex; }
-.tl-sub.on .tl-op { background: linear-gradient(to right, rgba(255, 255, 255, 0), #fff 9px); }
-.tl-sub:hover .tl-num { visibility: hidden; }
-.tl-sub .tl-op i {
-  width: 19px;
-  height: 19px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  color: #94a1b8;
-  cursor: pointer;
-  transition: .13s;
-}
-.tl-sub .tl-op i:hover { background: #fff; color: var(--primary); box-shadow: 0 0 0 1px #dbe5f6; }
-.tl-sub .tl-op i[data-sub-del]:hover { color: var(--red); box-shadow: 0 0 0 1px #f4d4d4; }
-.tl-sub .tl-op svg { width: 11px; height: 11px; }
-
-/* 新建二级的输入行 */
-.tl-sub-add {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 2px 0 2px 7px;
-}
-.tl-sub-inp {
-  flex: 1 1 auto;
-  min-width: 0;
-  height: 25px;
-  padding: 0 7px;
-  border: 1px solid #cfdcfa;
-  border-radius: 6px;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 7px;
   background: #fff;
-  color: var(--text);
-  font-size: 11.6px;
-  font-family: inherit;
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(70, 116, 245, .1);
+  box-shadow: 0 1px 6px rgba(23, 43, 77, .14);
 }
-.tl-sub-inp::placeholder { color: #b3bccd; }
-.tl-sub-ok {
-  flex: 0 0 auto;
-  height: 25px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: 6px;
-  background: var(--primary);
-  color: #fff;
-  font-size: 11px;
-  font-family: inherit;
-  cursor: pointer;
-}
-.tl-sub-ok:hover { filter: brightness(1.06); }
+.sm-row:hover .sm-tools,
+.sm-sub:hover .sm-tools { display: flex; }
 
-/* ---- 一级阶段：hover 出改名 / 删除，「全部阶段」右边是「加阶段」 ---- */
-.tl-all .tl-num { margin-left: auto; margin-right: 4px; }
-.tl-add-top { opacity: .5; }
-.tl-all:hover .tl-add-top { opacity: 1; }
-
-.tl-top-add {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 1px 2px 7px;
-}
-
-/* 一级阶段的操作条：hover 时浮在右上角，绝对定位不占文字的位置，也不会和别的按钮叠 */
-.tl-tools {
-  position: absolute;
-  right: 2px;
-  top: 2px;
-  z-index: 2;
-  display: none;
-  align-items: center;
-  gap: 1px;
-  padding: 1px 2px;
-  border-radius: 6px;
-  background: #fff;
-  box-shadow: 0 1px 5px rgba(23, 43, 77, .12);
-}
-.tl-node:hover .tl-tools { display: flex; }
-.tl-node:hover .tl-line > .tl-num { visibility: hidden; }
-
-.tl-tools i,
-.tl-tools .tl-add {
-  width: 18px;
-  height: 18px;
+.sm-tools i,
+.sm-tools button {
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
   border: 0;
-  border-radius: 4px;
+  border-radius: 5px;
   background: transparent;
   color: #94a1b8;
   cursor: pointer;
-  opacity: 1;
   transition: .13s;
 }
-.tl-tools svg { width: 11px; height: 11px; }
-.tl-tools i:hover { background: #f2f6fd; color: var(--primary); }
-.tl-tools i[data-stage-del]:hover { background: var(--red-soft); color: var(--red); }
-.tl-tools .tl-add { color: var(--primary); }
-.tl-tools .tl-add:hover { background: var(--primary); color: #fff; }
+.sm-tools svg { width: 11px; height: 11px; }
+.sm-tools i:hover { background: var(--primary); color: #fff; }
+.sm-tools i[data-sm-del]:hover,
+.sm-tools i[data-sm-subdel]:hover { background: var(--red); color: #fff; }
+.sm-tools button:hover { background: var(--primary); color: #fff; }
 
-/* 拖动排序 */
-.tl-node.tl-dragging {
+/* 二级：缩进列表 */
+.sm-subs {
+  margin: 1px 0 6px 26px;
+  padding: 3px 0 3px 10px;
+  border-left: 1px dashed #dde5f1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.sm-sub {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  transition: background .14s;
+}
+.sm-sub:hover { background: #f5f8fd; }
+.sm-sub-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #c5cedd;
+}
+.sm-sub-name { font-size: 12.2px; color: var(--text-2); }
+.sm-sub .sm-use { font-size: 11px; }
+
+/* 新建输入行 */
+.sm-sub-add,
+.sm-top-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+}
+.sm-top-add { padding: 8px 2px 2px; }
+.sm-sub-add .input,
+.sm-top-add .input { max-width: 220px; height: 28px; font-size: 12px; }
+
+.sm-addbar {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line-2);
+}
+
+/* 拖排序 */
+.sm-row.sm-dragging {
   background: #fff;
   box-shadow: 0 0 0 1px #b9cdf5, 0 8px 20px rgba(23, 43, 77, .14);
   cursor: grabbing;
 }
-body.tl-sorting,
-body.tl-sorting * { cursor: grabbing !important; user-select: none !important; }
+body.sm-sorting,
+body.sm-sorting * { cursor: grabbing !important; user-select: none !important; }
 
 /* ================= 推送弹窗（筹建清单 → 门店阶段） ================= */
 .tlink-push { font-weight: 600; }

@@ -409,3 +409,26 @@
 - **配套**：`page-stores.js` 门店详情物料区（arr-sum 上方）新增「计划发货日」行（`.arr-ship-row`）：date 输入 + 状态提示（已过 N 天/今天该发/还有 N 天/还没排/已发出），写同一份 `settings.ship[storeId].date`（`S.setShip`），看板排序/逾期预警/「按发货日重排」全部照旧
 - 页脚「N 家还没填发货日」补了「（发货日在门店详情的物料区改）」的指引
 - 验证 21 项 PASS / 0 报错（6 列对齐、物料列宽 745>168、无 ship-plan/data-date、详情弹窗回填+改期落库+提示更新、看板/预警无回归）
+
+## 2026-10-24 阶段编辑功能搬到设置页（?v=20261024z42）
+用户：「这个帮我改到设置里面吧， 在这看着太乱了， 都挡住多少家的显示了」
+（指任务管理页左侧阶段时间线 hover 出的 ✎ 改名 / ✕ 删除 / ＋ 加二级 工具条和按住行的拖排序把手。
+ 图2 空白，用户说重新发图——「任务列表也加备注」的需求还等着，未实现。）
+
+- `page-tasks.js`：时间线变成纯展示 + 点击筛选。删掉 `state.editing`/`editingStage`、
+  `subAddRowHtml()`/`stageAddRowHtml()`、一级/二级的全部编辑 UI（`tl-tools`/`tl-op`/`tl-add-top`）、
+  6 个管理函数（`commitStage`/`renameStageDlg`/`removeStageDlg`/`commitSub`/`renameSub`/`removeSub`）、
+  `bindStageDrag()` 拖排序、mount 里对应的 9 个 click 分支和 keydown/focusout 两个监听器。
+  `tl-hint` 改为「点阶段看门店…要加 / 改 / 删阶段，去系统设置 → 阶段与子阶段」。
+- `page-settings.js`：新增「阶段与子阶段」管理卡（`stageCard()`，位于「我的工作流配置」和「到货物料清单」之间）：
+  - 一级阶段行：`.sm-grip` 拖手柄 + 阶段色点 + 名称 + 用量（几家门店/几条任务/几条清单）+ hover 工具条 `.sm-tools`（✎ ✕ ＋）
+  - 二级缩进在 `.sm-subs` 里，hover 出 ✎/✕；二级列表用 `Store.stageSubsWithUsed()`（和任务页时间线同一套三源并集）
+  - 底部「添加一级阶段」；行内新建用 `smState.addStage`/`addSub` 两个开关，回车存、Esc 收起、失焦有值自动存
+  - 改名/删除弹窗、指针拖排序逻辑从任务页原样搬来（`S.saveStageOrder` 落库）
+  - 「我的工作流配置」卡里的「阶段时间线」卡牌改为滚动到本卡 + 高亮闪烁（不再跳任务页）
+- `components.css`：删 `.tl-tools`/`.tl-add`/`.tl-op`/`.tl-sub-add`/`.tl-sub-inp`/`.tl-sub-ok`/`.tl-add-top`/`.tl-top-add`/`.tl-dragging`/`body.tl-sorting` 全套；新增 `.sm-*` 一节
+- `store.js` **修了一个既有 bug**：`renameStage()` 迁移二级 key 时，`stageSubs()` 是按当前 `C.STAGES` 过滤的，
+  而 `applyStages()` 已经先把旧名换掉了 → 旧 key 读不到 → 该阶段下的二级被孤立成看不见的旧名（改名后二级从时间线上消失）。
+  改成「applyStages 之前读、之后存」（`saveStageSubs` 的清洗同样按 `C.STAGES` 过滤，新 key 必须等生效后再落盘）。
+  `removeStage()` 删二级定义的同一处时序问题一并修掉。
+- 验证 41 项 PASS / 0 页面报错（任务页无任何编辑按钮/输入框且筛选照旧；设置页加一级/加二级/一级改名带二级同步/二级改名/删二级两条路径/删一级/拖排序；其余 6 个页面无回归）
