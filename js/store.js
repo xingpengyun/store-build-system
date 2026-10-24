@@ -1886,12 +1886,14 @@ window.Store = (function () {
      所以点「完成」只做一件事：这条任务标记完成。门店阶段一动不动 ——
      阶段反映的是门店实际到了哪一步，不该被一条任务一夜之间拽到最前面。
 
-     完成时记下的落点（任务自己那个「完成后进到」）攒在 gate 里：
-       ① 门店阶段往前挪时（门店表单改阶段）调 advanceStore()：
-          从当前格往后找，一直越过那些「活已经做完」的格子，落到最远的那一格；
-       ② 越过时写一条 reopenLog，之后对那条任务点「重开」还能退回原来那一格。
+     任务落点（「完成后进到」）= 这条做完就算「完成」的那个阶段。做完了，那一格
+     就等于是「活已经干完」，等门店实际推进到那一格时（门店表单把阶段往前改），
+     advanceStore() 把这一格（以及后面连续几格已经做完的）一起跳过，落到第一格还没
+     做完的阶段 —— 这就是用户说的「走到了建档资料、因为已完成了才跳过去往下一阶段」。
 
-     gateOfTask / gatesOf / gateOf 都是现算的（没有任何新表），
+     越过时给每条被越过的任务写一条 reopenLog，之后对那条任务点「重开」能退回那一格。
+
+     gateOfTask / gatesOf / gateOf / doneLodges 都是现算的（没有任何新表），
      唯一要存的是「落点带二级时选的那一支」→ settings.taskGateSub。
      ------------------------------------------------------------------ */
 
@@ -1939,7 +1941,7 @@ window.Store = (function () {
     };
   }
 
-  /* 这家店「已完成、落点比现在更靠后」的格子，从近到远 */
+  /* 这家店「已完成、落点比现在更靠后」的格子，从近到远（供「待越过」小标 / 行头提示用） */
   function gatesOf(storeId) {
     var store = storeById(storeId);
     if (!store) return [];
@@ -1955,33 +1957,64 @@ window.Store = (function () {
     return out;
   }
 
-  /* 最远那一格 —— 门店推进时落在这里 */
+  /* 最远那一格 —— 门店推进时可能走到的最远位置（行头「→ X」提示用） */
   function gateOf(storeId) {
     var list = gatesOf(storeId);
     return list.length ? list[list.length - 1] : null;
   }
 
-  /* 门店阶段往前挪：把「已完成任务的落点」一次性越过去
+  /* 这家店所有「已完成」任务的落点，按一级阶段归类：
+     { 阶段名: { taskId, title, base, sub, value } }
+     advanceStore 用它判断「这一格是不是已经做完了」。 */
+  function doneLodges(storeId) {
+    var out = {};
+    state.tasks.forEach(function (t) {
+      if (t.storeId !== storeId) return;
+      var g = gateOfTask(t);
+      if (g && !out[g.base]) out[g.base] = g;
+    });
+    return out;
+  }
+
+  /* 门店阶段往前挪：从「要改到的这一格」起，把已经做完的格子越过去。
+     任务落点 = 这条做完就算「完成」的那个阶段；门店推进到这一格、发现它已经做完，
+     就跳过它落到下一格；连续几格都做完就连着跳，直到第一格还没做完的。
+
      返回 { from, to, skipped:[被越过的阶段名], gate, store } / null（没得越就不动） */
-  function advanceStore(storeId) {
+  function advanceStore(storeId, targetBase) {
     var store = storeById(storeId);
     if (!store) return null;
 
-    var gate = gateOf(storeId);
-    if (!gate) return null;
+    var from = C.stageValue(targetBase || store.stage, '');
+    var idx = stageOrder(targetBase || store.stage);
+    if (idx < 0) return null;
 
-    var curBase = C.stageSplit(store.stage).base;
-    var from = C.stageValue(curBase, storeSub(store));
-    var curIdx = stageOrder(curBase);
-    var toIdx = stageOrder(gate.base);
+    var lodges = doneLodges(storeId);
 
     var skipped = [];
-    for (var i = curIdx + 1; i < toIdx; i++) skipped.push(C.STAGES[i].key);
+    var gate = null;
+    while (idx >= 0 && idx < C.STAGES.length && lodges[C.STAGES[idx].key]) {
+      gate = gate || lodges[C.STAGES[idx].key];
+      skipped.push(C.STAGES[idx].key);
+      idx++;
+    }
 
-    setStoreStage(storeId, gate.base, gate.sub);
-    setReopenPoint(gate.taskId, from, gate.value);
+    if (!skipped.length) return null;
 
-    return { from: from, to: gate.value, skipped: skipped, gate: gate, store: storeById(storeId) };
+    /* 一路跳到尾巴（后面全做完了）就停在最后一个阶段，不越界 */
+    if (idx >= C.STAGES.length) idx = C.STAGES.length - 1;
+    var toKey = C.STAGES[idx].key;
+    var toVal = C.stageValue(toKey, '');
+
+    setStoreStage(store.id, toKey, '');
+
+    /* 每个被越过的格子记一条回退点：之后对那条任务点「重开」就退回那一格 */
+    skipped.forEach(function (base) {
+      var g = lodges[base];
+      if (g) setReopenPoint(g.taskId, C.stageValue(base, ''), toVal);
+    });
+
+    return { from: from, to: toVal, skipped: skipped, gate: gate, store: storeById(storeId) };
   }
 
   /* ---------------- 门店进度 ----------------
@@ -2637,6 +2670,7 @@ window.Store = (function () {
     gateOfTask: gateOfTask,
     gatesOf: gatesOf,
     gateOf: gateOf,
+    doneLodges: doneLodges,
     advanceStore: advanceStore,
     progressStages: progressStages,
     progressPlan: progressPlan,
