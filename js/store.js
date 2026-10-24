@@ -308,6 +308,17 @@ window.Store = (function () {
     var gs = data.settings.taskGateSub;
     if (!gs || typeof gs !== 'object' || Array.isArray(gs)) data.settings.taskGateSub = {};
 
+    /* 自愈：早期版本删任务不清这两个包，云端留下指向已删任务的死键。
+       载入时把不存在的任务 id 对应的键丢掉（顺带省流量）。 */
+    var taskIds = {};
+    data.tasks.forEach(function (t) { taskIds[t.id] = 1; });
+    Object.keys(data.settings.reopenLog).forEach(function (k) {
+      if (!taskIds[k]) delete data.settings.reopenLog[k];
+    });
+    Object.keys(data.settings.taskGateSub).forEach(function (k) {
+      if (!taskIds[k]) delete data.settings.taskGateSub[k];
+    });
+
     if (!data.settings.brand) data.settings.brand = '门店筹建管理系统';
     if (!data.settings.slogan) data.settings.slogan = '让每一家门店，按时开业！';
     if (data.settings.warnDays == null) data.settings.warnDays = 3;

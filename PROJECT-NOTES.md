@@ -1112,3 +1112,26 @@ function onEnter() { state.tab = 'all'; state.dtab = 'all'; state.q = ''; }
   smoke 8 页 / board / theme 回归全绿
 
 版本 `?v=20261025z72`。
+
+---
+
+## 2026-10-25 门禁四修：相邻格点「完成」直接走（用户截图问「图纸已出为什么不往下走」）
+
+### 一、需求确认
+用户截图：门店「aaaa」在设计阶段，点「图纸已出」（落点=首批阶段，正好是下一格）完成，门店不动。
+按上一版「全部只记账」的规则这是对的，但用户预期相邻格要走。确认后的最终规则：
+- **落点 = 门店下一格** → 点「完成」直接推进：advanceStore() 越过这一格（刚做完），落到第一格还没做完的阶段，右下角弹卡片
+- **落点更远** → 只记账「待越过」，门店推进到那格时才越过（保持上一版行为）
+
+### 二、改动
+- `page-tasks.js completeTask`：新增 `adjacent = tIdx === curIdx + 1`；commit 里相邻时调
+  `S.advanceStore(store.id, p.base)` 并 `UI.stagePop`；toast 改「门店进到「X」」
+- 撤销升级：相邻推进过的，点提示条「撤销」把门店也退回原格（还停在推到的格子才退），并清回退点
+- 落点带二级的弹窗文案随 adjacent 变（「选完支就推进」/「阶段不跟着跳」）
+- `store.js normalized()` 自愈：载入时丢掉 reopenLog / taskGateSub 里指向已删任务的死键
+  （云端实测有 2 条 demo 期死键，载入一次即清）
+- 测试：chk-gate-ui 加「相邻格自动走」整段（推进+卡片+撤销回退，8 项）；
+  chk-reopen 场景①改为相邻自动走、场景②改为隔格只记账（先把门店拨回设计阶段）；
+  chk-gate 31 / chk-gate-ui 40 / chk-reopen 31 / smoke 8 页 / board / theme 全过
+
+版本 `?v=20261025z74`。

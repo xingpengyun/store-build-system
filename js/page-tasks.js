@@ -257,22 +257,21 @@ window.Pages.tasks = (function () {
     return push;
   }
 
-  /* ================= 完成：只记账，阶段照样按门店实际进度走 =================
+  /* ================= 完成：相邻格自动走，更远的只记账 =================
 
      每条任务在筹建任务清单里挂一个落点（清单那列就叫「完成后进到」）。
-     点「完成」现在只做一件事：这条标记完成。门店阶段一动不动 ——
-     阶段反映的是门店实际到了哪一步，不该被一条任务一夜之间拽到最前面。
+     落点 = 这条做完就算「完成」的那个阶段。规则按远近分两档（2026-10-25 三定）：
 
-     落点 = 这条做完就算「完成」的那个阶段。做完了，那一格就等于是「活已经干完」；
-     等门店实际推进到那一格时（门店编辑里把阶段往前改），Store.advanceStore() 会把
-     这一格（以及后面连续几格已经做完的）跳过，落到第一格还没做完的阶段，右下角弹卡。
+       ① 落点正好是门店的下一格（设计 → 首批）：
+          点「完成」直接推进 —— 那一格的活刚做完，Store.advanceStore() 把它
+          （和后面连续做完的格子）越过去，落到第一格还没做完的阶段，
+          右下角弹小卡片「门店已转入下一阶段」。
 
-     举个常见的：
-       门店在「设计阶段」，点「营业执照」完成 → 门店还是「设计阶段」；
-       门店推进到「建档资料」时，发现这格已经做完，于是跳过，落到「发货阶段」。
+       ② 落点比下一格更远（设计 → 建档资料）：
+          只标记完成、阶段不动，落点记成「待越过」；
+          等门店实际推进到那一格时才自动越过。
 
-     落点带二级（「已出图」下的 已做首批 / 未做首批）仍然问一句落到哪一支，
-     只是问完也不动阶段，只把那一支记下来。
+     落点带二级（已做首批 / 未做首批）仍然先问一句落到哪一支，再按上面两档走。
      ==================================================================== */
 
   function stageIndex(key) {
@@ -298,28 +297,45 @@ window.Pages.tasks = (function () {
       return;
     }
 
-    var prev = { status: task.status };
+    var prev = { status: task.status, stage: store.stage, sub: S.storeSub(store) };
     var p = C.stageSplit(task.stage || '');
     var tIdx = stageIndex(p.base);
     var curIdx = stageIndex(C.stageSplit(store.stage).base);
-    var ahead = tIdx >= 0 && tIdx > curIdx;   /* 落点在门店前面 → 记成「待越过」 */
+    var ahead = tIdx >= 0 && tIdx > curIdx;   /* 落点在门店前面 */
+    var adjacent = ahead && tIdx === curIdx + 1;   /* 落点正好是下一格 → 点完成直接走 */
     var subs = ahead ? subsOfStage(p.base) : [];
     var sub = p.sub || '';
 
-    function undo() {
+    function undo(jumped) {
       S.updateTask(task.id, { status: prev.status || 'pending' });
       S.clearGateSub(task.id);
-      UI.toast('已撤销：「' + task.title + '」改回未完成', 'info');
+      /* 相邻格推进过的：撤销时把门店也退回去（门店还停在被推到的格子才退） */
+      if (jumped && store) {
+        var now = C.stageValue(store.stage, S.storeSub(store));
+        if (!jumped.to || C.stageSplit(now).base === C.stageSplit(jumped.to).base) {
+          S.setStoreStage(store.id, C.stageSplit(prev.stage).base, prev.sub);
+        }
+        S.clearReopenPoint(task.id);
+      }
+      UI.toast('已撤销：「' + task.title + '」改回未完成，门店退回「' +
+        C.stageLabel(C.stageValue(prev.stage, prev.sub)) + '」', 'info');
       App.refresh({ keep: true });
     }
 
     function commit(branch) {
+      var jumped = null;
       S.updateTask(task.id, { status: 'done' });
       if (branch) S.setGateSub(task.id, C.stageValue(p.base, branch));
       else S.clearGateSub(task.id);
 
+      /* 相邻格：这一格的活刚做完，直接推进并越过（advanceStore 会记回退点） */
+      if (adjacent) jumped = S.advanceStore(store.id, p.base);
+
       var msg;
-      if (ahead) {
+      if (jumped) {
+        msg = '「' + task.title + '」已完成 · 门店进到「' + C.stageLabel(jumped.to) + '」' +
+          (jumped.skipped.length > 1 ? '（越过 ' + jumped.skipped.length + ' 格）' : '');
+      } else if (ahead) {
         msg = '「' + task.title + '」已完成 · 门店仍在「' + C.stageLabel(store.stage) +
           '」，推进到「' + C.stageLabel(p.base) + '」时会自动越过这一格';
       } else if (p.base) {
@@ -328,17 +344,30 @@ window.Pages.tasks = (function () {
         msg = '「' + task.title + '」已完成';
       }
 
-      UI.toast(msg, 'success', { action: { label: '撤销', onClick: undo } });
+      UI.toast(msg, 'success', { action: { label: '撤销', onClick: function () { undo(jumped); } } });
+
+      if (jumped) {
+        UI.stagePop({
+          store: (S.storeById(store.id) || store).name,
+          from: C.stageLabel(jumped.from),
+          to: C.stageLabel(jumped.to),
+          note: '「' + task.title + '」已完成' +
+            (jumped.skipped.length > 1 ? ' · 越过 ' + jumped.skipped.length + ' 格' : '')
+        });
+      }
+
       App.refresh({ keep: true });
     }
 
     /* 落点不在前面 / 落点没有二级 / 任务自己已经带二级 → 一下点完，不弹窗 */
     if (!ahead || !subs.length || sub) { commit(''); return; }
 
-    /* 落点带二级：只问这一句落到哪一支（不动阶段） */
+    /* 落点带二级：只问这一句落到哪一支，选完按相邻 / 更远两档走 */
     UI.modal({
       title: '「' + task.title + '」已完成',
-      sub: store.name + ' · 先记下落点，阶段不跟着跳',
+      sub: adjacent
+        ? store.name + ' · 落点是下一格，选完支就推进'
+        : store.name + ' · 先记下落点，阶段不跟着跳',
       body:
         '<div class="cm-flow">' +
           '<span class="cm-chip">' + U.esc(C.stageLabel(C.stageValue(store.stage, S.storeSub(store)))) + '</span>' +
@@ -350,7 +379,9 @@ window.Pages.tasks = (function () {
           return '<button type="button" class="push-chip" data-cm-sub="' + U.esc(s) + '">' +
             U.esc(s) + '</button>';
         }).join('') + '</div>' +
-        '<p class="push-hint">选完只记下来；等门店阶段推进到这一格，会自动越过这一格。选错了顶部有「撤销」。</p>',
+        '<p class="push-hint">' + (adjacent
+          ? '选完支门店就进到下一格（这格刚做完，会直接越过去）。选错了顶部有「撤销」。'
+          : '选完只记下来；等门店阶段推进到这一格，会自动越过这一格。选错了顶部有「撤销」。') + '</p>',
       footer: '<button class="btn" data-cm-cancel>取消</button>',
       onMount: function (rootEl, close) {
         rootEl.querySelector('[data-cm-cancel]').onclick = close;
