@@ -159,11 +159,16 @@ window.Pages.home = (function () {
       },
       {
         label: '风险门店', value: st.riskStores, foot: U.pct(st.riskStores, st.totalStores),
-        color: '#f79009', soft: '#fef4e6', icon: 'alert'
+        color: '#f79009', soft: '#fef4e6', icon: 'alert',
+        help: '门店档案里「风险等级」标为<b>高危</b>或<b>逾期</b>的门店（占比 = 风险门店数 ÷ 门店总数）。' +
+              '「关注」不算风险；等级在门店详情里手动维护。'
       },
       {
         label: '逾期任务', value: st.taskCounts.overdue, foot: U.pct(st.taskCounts.overdue, st.taskCounts.total),
-        color: '#f04438', soft: '#feeceb', icon: 'clock'
+        color: '#f04438', soft: '#feeceb', icon: 'clock',
+        help: '还没做的任务里，今天已经过了<b>建议完成日</b>的：' +
+              '建议完成日 = 门店计划开业日 − 该任务的开业前天数（可为单条任务延后）。' +
+              '门店没填开业日的不判逾期；占比 = 逾期数 ÷ 全部任务数。'
       },
       {
         label: '7天内该通知', value: st.arrivals7, foot: U.pct(st.arrivals7, st.totalStores),
@@ -172,10 +177,17 @@ window.Pages.home = (function () {
     ];
 
     var kpiHtml = kpis.map(function (k) {
+      /* 有 help 的卡片：标签旁加 ⓘ，hover / 键盘聚焦时弹出判断逻辑 */
+      var helpHtml = k.help
+        ? '<span class="kpi-help" tabindex="0" role="button" aria-label="查看「' + k.label + '」的判断逻辑">' +
+            UI.icon('info') +
+            '<span class="kpi-help-pop">' + k.help + '</span>' +
+          '</span>'
+        : '';
       return '<div class="kpi">' +
         '<span class="kpi-icon" style="background:' + k.soft + ';color:' + k.color + '">' + UI.icon(k.icon) + '</span>' +
         '<div class="kpi-body">' +
-          '<div class="kpi-label">' + k.label + '</div>' +
+          '<div class="kpi-label">' + k.label + helpHtml + '</div>' +
           '<div class="kpi-value">' + k.value + '</div>' +
           '<div class="kpi-foot">' + k.foot + '</div>' +
         '</div>' +

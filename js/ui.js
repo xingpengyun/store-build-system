@@ -14,6 +14,7 @@ window.UI = (function () {
     check: '<path d="M4.5 10.5l3.6 3.6L15.5 6.6"/>',
     clock: '<circle cx="10" cy="10" r="6.6"/><path d="M10 6.4V10l2.6 1.6"/>',
     alert: '<path d="M10 3.6l7 12.2H3z"/><path d="M10 8.4v3.2M10 13.7v.1"/>',
+    info: '<circle cx="10" cy="10" r="6.6"/><path d="M10 9v4.4M10 6.6v.1"/>',
     trash: '<path d="M4 6h12M8 6V4.4h4V6M6.4 6l.7 10.2h5.8L13.6 6"/>',
     edit: '<path d="M12.4 4l3.6 3.6-7.8 7.8H4.6v-3.6L12.4 4z"/>',
     close: '<path d="M5.5 5.5l9 9M14.5 5.5l-9 9"/>',
