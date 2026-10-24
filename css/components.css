@@ -1526,7 +1526,6 @@
 }
 .arr-in::placeholder { color: #b6c0d2; }
 .arr-in[type="number"] { text-align: center; padding: 0 2px; }
-.arr-in[type="date"] { padding: 0 3px; font-size: 11.5px; }
 
 /* 日期 + 倒计时同一行，倒计时不占额外高度 */
 .arr-eta { display: flex; align-items: center; gap: 5px; }

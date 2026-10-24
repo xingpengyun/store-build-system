@@ -116,6 +116,12 @@
   - 历史数据 `status='arrived'`（旧版「已到货」）用 `Store.arrNotified()` 统一按「已通知」处理，不需要迁移
   - 已通知的条目不再进「漏通知 / 该通知供应商」统计，也不占用看板「登记到货（最早）」
 - 排序：未到的在前（按到货日升序，过期和快到的自然浮上来）→ 没填日期的 → 已到的沉底
+- **到货时间直接打字，不再用日期选择器**（2026-10-24）
+  - 输入框从 `type="date"` 换成普通文本框，`10/25`、`10-25`、`10.25`、`10月25`、`1025`、
+    `2026/10/25`、`20261025`、`26/10/25` 都能认（`Utils.parseDateLoose()`）
+  - 不带年份 → 补当年；算出来比今天早超过半年（1 月录入 10/25）→ 自动当明年的
+  - 失焦 / 回车才解析落库，打到一半的「10/」不会写进数据；认不出来弹提示并恢复原值
+  - 显示：当年的只显示「10-25」，跨年的带年份「2027-01-05」；底层永远存完整 `YYYY-MM-DD`
 - 排版：一行 30px（输入框 26px、表头 11px、按钮 24px），日期 + 倒计时同一行（`.arr-eta`）
 - 入口：`js/constants.js` → `ARR_WATCH_DAYS`；`js/page-stores.js` → `arrList / arrDays / arrWatch / arrBody`；
   `js/store.js` → `arrNotified / addArrival / alerts()` 里的 `arrlate / arrsoon`；`css/components.css` → `.arr-tbl / .arr-tag / .arr-sum`

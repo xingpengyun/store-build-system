@@ -53,6 +53,43 @@ window.Utils = (function () {
     return (d.getMonth() + 1) + '.' + d.getDate();
   }
 
+  /* ---------------- 宽松日期解析（到货时间手动输入用） ----------------
+     这些写法都能认出来：
+       10/25   10-25   10.25   10月25   10月25日   1025
+       2026/10/25   2026-10-25   2026.10.25   20261025   26/10/25（两位年）
+     不带年份 → 补当年；算出来比今天早超过半年（1 月录入 10/25 这种）
+     → 自动当明年的。认不出来返回 ''，让调用方提示，绝不瞎猜。 */
+  function parseDateLoose(str) {
+    var s = String(str == null ? '' : str).trim();
+    if (!s) return '';
+    s = s.replace(/年/g, '-').replace(/月/g, '-').replace(/日|号/g, '')
+         .replace(/／/g, '/').replace(/。/g, '.');
+
+    var y = null, m = 0, d = 0, hadYear = false, mm;
+    if ((mm = s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/))) {
+      y = +mm[1]; m = +mm[2]; d = +mm[3]; hadYear = true;
+    } else if ((mm = s.match(/^(\d{2})[-\/.](\d{1,2})[-\/.](\d{1,2})$/))) {
+      y = 2000 + +mm[1]; m = +mm[2]; d = +mm[3]; hadYear = true;
+    } else if ((mm = s.match(/^(\d{1,2})[-\/.](\d{1,2})$/))) {
+      m = +mm[1]; d = +mm[2];
+    } else if ((mm = s.match(/^(\d{4})$/))) {
+      m = Math.floor(+mm[1] / 100); d = +mm[1] % 100;
+    } else if ((mm = s.match(/^(\d{8})$/))) {
+      y = +mm[1].slice(0, 4); m = +mm[1].slice(4, 6); d = +mm[1].slice(6, 8); hadYear = true;
+    } else {
+      return '';
+    }
+
+    if (m < 1 || m > 12 || d < 1 || d > 31) return '';
+    if (!hadYear) y = new Date().getFullYear();
+    var probe = new Date(y, m - 1, d);
+    if (probe.getMonth() !== m - 1 || probe.getDate() !== d) return '';   /* 2/30 这类 */
+
+    var iso = y + '-' + pad2(m) + '-' + pad2(d);
+    if (!hadYear && diffDays(today(), iso) < -180) iso = (y + 1) + '-' + pad2(m) + '-' + pad2(d);
+    return iso;
+  }
+
   var WEEK = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
   function weekdayCn(iso) {
     var d = parseDate(iso);
@@ -136,6 +173,7 @@ window.Utils = (function () {
     monthDay: monthDay,
     cnDate: cnDate,
     dateDot: dateDot,
+    parseDateLoose: parseDateLoose,
     weekdayCn: weekdayCn,
     greeting: greeting,
     esc: esc,

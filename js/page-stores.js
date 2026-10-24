@@ -270,6 +270,14 @@ window.Pages.stores = (function () {
     return d <= Number(C.ARR_WATCH_DAYS || 7) ? 'soon' : null;
   }
 
+  /* 到货输入框里的显示：今年的只显示「10-25」，跨年的才带年份「2027-01-05」
+     （底层存的还是完整 YYYY-MM-DD，只是输入框里不啰嗦） */
+  function etaDisplay(iso) {
+    var s = String(iso || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    return s.slice(0, 4) === String(new Date().getFullYear()) ? s.slice(5) : s;
+  }
+
   /* 清单里还没加进这家门店的物料 */
   function arrMissing(storeId) {
     var have = {};
@@ -336,7 +344,9 @@ window.Pages.stores = (function () {
               '<td><input class="arr-in" list="arrItems" data-arr-field="item" value="' + U.esc(a.item) + '" placeholder="填物料或供应商名字" /></td>' +
               '<td><input class="arr-in mono" type="number" min="0" step="1" data-arr-field="qty" value="' + (a.qty ? a.qty : '') + '" placeholder="—" title="数量可以不填" /></td>' +
               '<td><div class="arr-eta">' +
-                '<input class="arr-in mono" type="date" data-arr-field="etaDate" value="' + U.esc(a.etaDate || '') + '" title="门店 / 供应商给的到货日；改日期 = 对方给了新承诺" />' +
+                '<input class="arr-in mono" type="text" inputmode="numeric" autocomplete="off" ' +
+                  'data-arr-field="etaDate" value="' + U.esc(etaDisplay(a.etaDate)) + '" placeholder="如 10/25" ' +
+                  'title="到货日直接打字就行：10/25、10-25、10月25、1025、2026/10/25 都认；不带年份按今年算。改日期 = 对方给了新承诺" />' +
                 tag +
               '</div></td>' +
               '<td><button type="button" class="arr-btn' + (done ? ' done' : '') + '" data-arr-done title="' +
@@ -493,8 +503,46 @@ window.Pages.stores = (function () {
             var digits = String(el.value).replace(/[^\d]/g, '');
             S.updateArrival(aid, { qty: digits === '' ? 0 : Math.max(1, parseInt(digits, 10)) });
           }
-          else if (field === 'etaDate') S.updateArrival(aid, { etaDate: el.value });
-          else S.updateArrival(aid, { item: el.value });
+          /* etaDate 不在这里存：打到一半的「10/」没法认，等失焦 / 回车时统一解析 */
+          else if (field !== 'etaDate') S.updateArrival(aid, { item: el.value });
+        });
+
+        /* 到货日期：失焦 / 回车时解析「10/25」这类写法，认出来才落库 */
+        arrWrap.addEventListener('change', function (e) {
+          var el = e.target;
+          if (el.getAttribute('data-arr-field') !== 'etaDate') return;
+          var tr = el.closest('tr[data-arr]');
+          if (!tr) return;
+          var aid = tr.getAttribute('data-arr');
+          var rec = null;
+          S.getState().arrivals.forEach(function (x) { if (x.id === aid) rec = x; });
+          if (!rec) return;
+
+          var raw = String(el.value || '').trim();
+          if (!raw) {
+            /* 清空 = 不登记时间 */
+            if (rec.etaDate) S.updateArrival(aid, { etaDate: '' });
+            el.value = '';
+            return;
+          }
+
+          var iso = U.parseDateLoose(raw);
+          if (!iso) {
+            el.value = etaDisplay(rec.etaDate);
+            UI.toast('「' + raw + '」没认出来，试试 10/25 或 2026/10/25', 'error');
+            return;
+          }
+          S.updateArrival(aid, { etaDate: iso });
+          el.value = etaDisplay(iso);
+        });
+
+        /* 回车 = 确认这条日期（text 输入框按回车不会自动失焦） */
+        arrWrap.addEventListener('keydown', function (e) {
+          var el = e.target;
+          if (el.getAttribute && el.getAttribute('data-arr-field') === 'etaDate' && e.key === 'Enter') {
+            e.preventDefault();
+            el.blur();
+          }
         });
 
         arrWrap.addEventListener('click', function (e) {
