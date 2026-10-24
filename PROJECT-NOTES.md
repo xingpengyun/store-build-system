@@ -459,6 +459,8 @@
   删二级；删一级；点阶段名仍是筛选不误触）；`chk-accordion` / `smoke` / `chk-config-safety` 无回归
   （后者的 `restoreWorkflow` 断言按新版删除该入口跳过，快照断言改成实际的 3 条清单 / 2 项物料）
 
+> **⚠️ 已被 z54 撤销**：用户认为编辑只该在设置页，任务页时间线恢复为纯筛选（见文末「时间线回归纯筛选」）。
+
 ## 2026-10-24 导航对调 + 「活泼一档」主题层（?v=20261024z53）
 
 用户原话：「任务管理和发货看板对调一下；整体风格我希望更活泼一些，现在颜色都有点淡，交互逻辑也提升一下吧」
@@ -547,4 +549,38 @@
 - GitHub 推送：`git ls-remote origin main` 仍是 `CONNECT tunnel failed, response 502`（代理挡了 github.com:443）。
   本地已领先 3 个提交，网络恢复后执行：
   `git fetch origin && git rebase --onto origin/main c8444c7 && git push origin main`
+
+---
+
+## 2026-10-24 时间线回归纯筛选（?v=20261024z54）
+
+用户原话：「阶段时间线里面的添加和二级添加怎么还在呢，不是已经转移到设置里面了吗」。
+即：阶段维护的**唯一入口**是「系统设置 → 阶段与子阶段」，任务页时间线只做筛选，不留任何编辑痕迹。
+
+### 一、任务页删掉的（`js/page-tasks.js`）
+- `state.addStage` / `state.addSub` 两个状态位
+- `stageAddRowHtml()` / `subAddRowHtml()` 两段输入行
+- 一级行 `.tl-tools`（✎ 改名 / ✕ 删除 / ＋ 加二级）、二级行 `.tl-op`（✎ / ✕）
+- 「全部阶段」右边的常显 ＋（`data-stage-row`）
+- `focusIn / commitStageInput / commitSubInput / nameDlg / renameStageDlg / removeStageDlg / renameSubDlg / removeSubDlg`
+  整块函数（约 180 行）
+- `mount()` 里 `[data-stage-row] / [data-stage-ok] / [data-stage-edit|del] / [data-sub-add|ok|edit|del]` 七个 click 分支
+- 整段 `keydown` 监听（只为那两个输入行的回车 / Esc 存在）
+- 提示文案改为「阶段与二级阶段在这里只做筛选，增删改在「系统设置 → 阶段与子阶段」里维护」
+
+### 二、CSS 同步清理（`css/components.css`）
+- 删掉 `.tl-tools` / `.tl-add` / `.tl-add-top` / `.tl-op` / `.tl-top-add` / `.tl-sub-add` / `.tl-sub-inp` / `.tl-sub-ok`
+  一整段（约 155 行），以及只为绝对定位服务的 `.tl-line{position:relative}`、`.tl-sub{position:relative}`
+- 保留 `.tl-line` 的 flex 基础样式（时间线的排版还靠它）
+
+### 三、验证（新增 `chk-tl-readonly.js`，真实浏览器里点）
+26 项全过：11 项确认编辑入口已消失（`[data-stage-row]`/`[data-sub-add]`/`[data-stage-edit]`/`[data-stage-del]`/
+`[data-sub-edit]`/`[data-sub-del]`/`.tl-add`/`.tl-tools`/`.tl-op`/输入行 全为 0）、提示文案指向设置页、
+点阶段筛选与再点取消、二级展开与二级筛选、门店手风琴默认收起与点开、
+设置页仍有 8 个阶段行 + 「添加一级阶段」+ 改名 / 删除 / 加二级。
+`smoke.js` 8 页、`chk-accordion.js`、`chk-config-safety.js`、`chk-theme.js` 无回归。
+旧的 `chk-tl-edit.js` 断言的是 z51 的行为，已改名为 `chk-tl-edit.retired.js` 退役，不再跑。
+
+### 四、注意
+设置页那张卡默认是**展开**的（`smState.collapsed` 默认 false），用户进去直接就能加，不用先点开。
 

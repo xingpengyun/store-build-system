@@ -15,11 +15,9 @@ window.Pages.tasks = (function () {
             只允许开一家：默认全收着，点开一家自动把别家收回去，页面不会被撑得很长 */
   var state = {
     tab: 'all', q: '', owner: '', stage: '', sub: '',
-    page: 1, per: 12, open: '',
-    /* 时间线上正在新建的输入行：addStage = 加一级阶段开着没；
-       addSub = 给哪个一级阶段加二级（存阶段名，'' = 没开） */
-    addStage: false, addSub: ''
+    page: 1, per: 12, open: ''
   };
+
 
   /* 这排是「按门店里任务的状态筛门店」，计数是门店数。
      流程固定 → 只有「逾期 / 已完成」有意义：待办、进行中不再单独列。 */
@@ -138,24 +136,6 @@ window.Pages.tasks = (function () {
     return { open: open, late: late };
   }
 
-  /* 时间线里就地新建：一级阶段 / 二级阶段的输入行
-     （2026-10-24 从设置页搬回时间线：编辑要贴着阶段本身，不用来回跳页） */
-  function stageAddRowHtml() {
-    return '<div class="tl-top-add">' +
-      '<input class="tl-sub-inp" type="text" maxlength="20" autocomplete="off"' +
-        ' data-stage-inp placeholder="新阶段名称，回车确定" />' +
-      '<button class="tl-sub-ok" type="button" data-stage-ok>添加</button>' +
-    '</div>';
-  }
-
-  function subAddRowHtml(base) {
-    return '<div class="tl-sub-add">' +
-      '<input class="tl-sub-inp" type="text" maxlength="20" autocomplete="off"' +
-        ' data-sub-inp="' + U.esc(base) + '" placeholder="二级名称，回车确定" />' +
-      '<button class="tl-sub-ok" type="button" data-sub-ok="' + U.esc(base) + '">添加</button>' +
-    '</div>';
-  }
-
   function railHtml() {
     var stores = S.getState().stores;
     var subs = S.stageSubsWithUsed();
@@ -184,21 +164,11 @@ window.Pages.tasks = (function () {
             '</div>' +
             '<div class="tl-meta">' + meta + '</div>' +
           '</div>' +
-          /* 操作条绝对定位在右上角：鼠标移上去才出现，不挤名字和「N 家」 */
-          '<span class="tl-tools">' +
-            '<i data-stage-edit="' + U.esc(st.key) + '" title="给「' + U.esc(st.key) + '」改名">' + UI.icon('edit') + '</i>' +
-            '<i data-stage-del="' + U.esc(st.key) + '" title="删除「' + U.esc(st.key) + '」">' + UI.icon('close') + '</i>' +
-            '<button class="tl-add" type="button" data-sub-add="' + U.esc(st.key) + '"' +
-              ' title="给「' + U.esc(st.key) + '」加一个二级">' + UI.icon('plus') + '</button>' +
-          '</span>' +
         '</div>';
 
-      /* 正在给这个阶段加二级：即使没选中也要展开，不然输入框没地方显示 */
-      var adding = state.addSub === st.key;
-      if (!on && !adding) return html;
-
       /* 展开：只列二级阶段（门店已经在右边列表里了） */
-      if (subList.length || adding) {
+      if (!on) return html;
+      if (subList.length) {
         html += '<div class="tl-subs">' + subList.map(function (sub) {
           var m = statOfSub(ids, st.key, sub);
           var subOn = state.sub === sub;
@@ -216,15 +186,8 @@ window.Pages.tasks = (function () {
             '<i class="tl-sub-dot" style="background:' + st.color + '"></i>' +
             '<span class="tl-sub-name">' + U.esc(sub) + '</span>' +
             '<span class="tl-num">' + right + '</span>' +
-            '<span class="tl-op">' +
-              '<i data-sub-edit="' + U.esc(sub) + '" data-base="' + U.esc(st.key) + '"' +
-                ' title="给「' + U.esc(sub) + '」改名">' + UI.icon('edit') + '</i>' +
-              '<i data-sub-del="' + U.esc(sub) + '" data-base="' + U.esc(st.key) + '"' +
-                ' title="删除「' + U.esc(sub) + '」">' + UI.icon('close') + '</i>' +
-            '</span>' +
           '</div>';
         }).join('') +
-        (adding ? subAddRowHtml(st.key) : '') +
         '</div>';
       }
 
@@ -236,14 +199,10 @@ window.Pages.tasks = (function () {
       '</div>' +
       '<div class="tl-all' + (!state.stage ? ' on' : '') + '" data-stage-all>' +
         '<span>全部阶段</span><span class="tl-num">' + stores.length + ' 家</span>' +
-        '<button class="tl-add tl-add-top" type="button" data-stage-row' +
-          ' title="加一个一级阶段">' + UI.icon('plus') + '</button>' +
       '</div>' +
-      (state.addStage ? stageAddRowHtml() : '') +
       '<div class="tl-nodes">' + nodes + '</div>' +
       '<p class="tl-hint">点阶段看门店，点门店展开清单；再点一次取消筛选。' +
-        '<br />鼠标移到阶段上：<b>✎</b> 改名 · <b>✕</b> 删除 · <b>＋</b> 加二级；' +
-        '「全部阶段」右边的 <b>＋</b> 是加一级阶段。</p>';
+        '<br />阶段与二级阶段在这里只做筛选，增删改在「系统设置 → 阶段与子阶段」里维护。</p>';
   }
 
   /* ---------------- 当前筛选条件条 ---------------- */
@@ -1170,231 +1129,8 @@ window.Pages.tasks = (function () {
     updateList(root);
   }, 240);
 
-  /* ---------------- 时间线上直接改阶段：加 / 改名 / 删 / 加二级 ----------------
-     全部走 Store 里现成的接口（和「设置 → 阶段与子阶段」是同一套），
-     改完立刻 updateList()，左边时间线和右边门店列表一起刷新。 */
-
-  function focusIn(root, sel) {
-    var el = root.querySelector(sel);
-    if (el) { el.focus(); if (el.select) el.select(); }
-  }
-
-  function commitStageInput(root) {
-    var inp = root.querySelector('[data-stage-inp]');
-    if (!inp) return;
-
-    var v = String(inp.value || '').trim().replace(/\s+/g, ' ');
-    if (!v) { state.addStage = false; updateList(root); return; }
-
-    var r = S.addStage(v, '');
-    if (!r.ok) { UI.toast(r.error || '加不上', 'error'); focusIn(root, '[data-stage-inp]'); return; }
-
-    state.addStage = false;
-    updateList(root);
-    UI.toast('已加一级阶段「' + v + '」', 'success', 2200);
-  }
-
-  function commitSubInput(root, base) {
-    var inp = root.querySelector('[data-sub-inp]');
-    if (!inp) return;
-
-    var v = String(inp.value || '').trim().replace(/\s+/g, ' ');
-    if (!v) { state.addSub = ''; updateList(root); return; }
-    if (v.indexOf('/') >= 0) {
-      UI.toast('二级名称里不要带斜杠', 'error');
-      focusIn(root, '[data-sub-inp]');
-      return;
-    }
-
-    var map = S.stageSubs() || {};
-    var list = (map[base] || []).slice();
-    if (list.indexOf(v) >= 0) {
-      UI.toast('「' + base + '」下面已经有「' + v + '」了', 'error');
-      focusIn(root, '[data-sub-inp]');
-      return;
-    }
-
-    list.push(v);
-    map[base] = list;
-    S.saveStageSubs(map);
-
-    state.addSub = '';
-    updateList(root);
-    UI.toast('已给「' + base + '」加二级「' + v + '」', 'success', 2200);
-  }
-
-  /* 一个共用的小弹窗：输入新名字 → 回车 / 保存 */
-  function nameDlg(opts) {
-    UI.modal({
-      title: opts.title,
-      sub: opts.sub,
-      body:
-        '<div class="form-row">' +
-          '<label class="form-label">新名称</label>' +
-          '<input class="input" id="tlNameInp" maxlength="20" autocomplete="off"' +
-            ' value="' + U.esc(opts.value) + '" />' +
-        '</div>' +
-        '<p class="item-hint">' + opts.hint + '</p>',
-      footer:
-        '<button class="btn" type="button" data-x="cancel">取消</button>' +
-        '<button class="btn btn-primary" type="button" data-x="ok">保存</button>',
-      onMount: function (m, close) {
-        var inp = m.querySelector('#tlNameInp');
-        if (inp) { inp.focus(); inp.select(); }
-
-        function save() {
-          var v = String(inp.value || '').trim().replace(/\s+/g, ' ');
-          if (!v) { inp.focus(); return; }
-          if (v === opts.value) { close(); return; }
-          var r = opts.onSave(v);
-          if (r && r.ok === false) { UI.toast(r.error || '改不了', 'error'); inp.focus(); return; }
-          close();
-        }
-
-        m.addEventListener('click', function (e) {
-          if (e.target.closest('[data-x="ok"]')) save();
-          if (e.target.closest('[data-x="cancel"]')) close();
-        });
-        if (inp) {
-          inp.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') { e.preventDefault(); save(); }
-          });
-        }
-      }
-    });
-  }
-
-  function renameStageDlg(from, root) {
-    var use = S.stageUsage(from);
-
-    nameDlg({
-      title: '给阶段改名',
-      sub: from,
-      value: from,
-      hint:
-        (use.stores || use.tasks || use.templates
-          ? '会同时改掉 <b>' + use.stores + '</b> 家门店、<b>' + use.tasks + '</b> 条任务、' +
-            '<b>' + use.templates + '</b> 条筹建清单里的这个阶段。'
-          : '目前还没有门店 / 任务用这个阶段。') +
-        '阶段下的二级保持不变。',
-      onSave: function (v) {
-        var r = S.renameStage(from, v);
-        if (!r.ok) return r;
-        if (state.stage === from) state.stage = v;
-        if (state.addSub === from) state.addSub = v;
-        updateList(root);
-        UI.toast('「' + from + '」已改名为「' + v + '」' +
-          (r.hit ? '，同步了 ' + r.hit + ' 条数据' : ''), 'success', 2600);
-        return r;
-      }
-    });
-  }
-
-  function removeStageDlg(key, root) {
-    var use = S.stageUsage(key);
-
-    UI.confirm({
-      title: '删除阶段「' + key + '」',
-      text: (use.stores || use.tasks || use.templates)
-        ? '现在有 ' + use.stores + ' 家门店、' + use.tasks + ' 条任务、' +
-          use.templates + ' 条筹建清单用着它。'
-        : '目前没有门店 / 任务用这个阶段。',
-      warn: '删掉后这些任务和筹建清单会退回第一个阶段，任务本身不删。',
-      danger: true,
-      okText: '确认删除',
-      onOk: function () {
-        var r = S.removeStage(key);
-        if (r && r.ok === false) { UI.toast(r.error || '删不掉', 'error'); return; }
-        if (state.stage === key) { state.stage = ''; state.sub = ''; }
-        if (state.addSub === key) state.addSub = '';
-        updateList(root);
-        UI.toast('已删除阶段「' + key + '」', 'success', 2200);
-      }
-    });
-  }
-
-  function renameSubDlg(base, name, root) {
-    nameDlg({
-      title: '给二级阶段改名',
-      sub: base + ' · ' + name,
-      value: name,
-      hint: '会同时改掉筹建任务清单和已派到门店的任务里的这个二级，时间线立刻同步。',
-      onSave: function (v) {
-        if (v.indexOf('/') >= 0) return { ok: false, error: '二级名称里不要带斜杠' };
-        var hit = S.renameStageSub(base, name, v);
-        if (state.sub === name) state.sub = v;
-        updateList(root);
-        UI.toast('「' + name + '」已改名为「' + v + '」' +
-          (hit ? '，同步了 ' + hit + ' 条任务' : ''), 'success', 2600);
-        return { ok: true };
-      }
-    });
-  }
-
-  function removeSubDlg(base, name, root) {
-    var u = S.stageSubUsage(base, name);
-
-    UI.confirm({
-      title: '删除二级「' + base + ' · ' + name + '」',
-      text: (u.tasks || u.templates)
-        ? '现在有 ' + u.tasks + ' 条任务、' + u.templates + ' 条筹建清单用着它。'
-        : '目前没有任务用这个二级。',
-      warn: '删掉后这些任务会退回一级「' + base + '」，任务本身不删。',
-      danger: true,
-      okText: '确认删除',
-      onOk: function () {
-        S.removeStageSub(base, name);
-        if (state.sub === name) state.sub = '';
-        updateList(root);
-        UI.toast('已删除二级「' + name + '」', 'success', 2200);
-      }
-    });
-  }
-
   function mount(root) {
     root.addEventListener('click', function (e) {
-      /* ---- 时间线上的阶段操作：必须排在「点阶段」前面，
-             否则点 ✎ / ✕ / ＋ 会顺手把阶段筛选也切了 ---- */
-      if (e.target.closest('[data-stage-row]')) {
-        state.addStage = !state.addStage;
-        state.addSub = '';
-        updateList(root);
-        if (state.addStage) focusIn(root, '[data-stage-inp]');
-        return;
-      }
-      if (e.target.closest('[data-stage-ok]')) { commitStageInput(root); return; }
-
-      var stEdit = e.target.closest('[data-stage-edit]');
-      if (stEdit) { renameStageDlg(stEdit.getAttribute('data-stage-edit'), root); return; }
-
-      var stDel = e.target.closest('[data-stage-del]');
-      if (stDel) { removeStageDlg(stDel.getAttribute('data-stage-del'), root); return; }
-
-      var subAdd = e.target.closest('[data-sub-add]');
-      if (subAdd) {
-        var addBase = subAdd.getAttribute('data-sub-add');
-        state.stage = addBase;      /* 顺带选中它，二级才展开得出来 */
-        state.sub = '';
-        state.addStage = false;
-        state.addSub = addBase;
-        updateList(root);
-        focusIn(root, '[data-sub-inp]');
-        return;
-      }
-      var subOk = e.target.closest('[data-sub-ok]');
-      if (subOk) { commitSubInput(root, subOk.getAttribute('data-sub-ok')); return; }
-
-      var subEdit = e.target.closest('[data-sub-edit]');
-      if (subEdit) {
-        renameSubDlg(subEdit.getAttribute('data-base'), subEdit.getAttribute('data-sub-edit'), root);
-        return;
-      }
-      var subDel = e.target.closest('[data-sub-del]');
-      if (subDel) {
-        removeSubDlg(subDel.getAttribute('data-base'), subDel.getAttribute('data-sub-del'), root);
-        return;
-      }
-
       /* ---- 左侧时间线：二级阶段 / 阶段 ---- */
       var subEl = e.target.closest('[data-sub]');
       if (subEl && root.contains(subEl)) {
@@ -1503,27 +1239,6 @@ window.Pages.tasks = (function () {
 
     root.addEventListener('input', function (e) {
       if (e.target.id === 'tkSearch') debouncedSearch(root, e.target.value.trim());
-    });
-
-    /* 时间线上的新建输入行：回车存、Esc 收起 */
-    root.addEventListener('keydown', function (e) {
-      var el = e.target;
-      if (!el || el.tagName !== 'INPUT') return;
-
-      var isStage = el.hasAttribute('data-stage-inp');
-      var isSub = el.hasAttribute('data-sub-inp');
-      if (!isStage && !isSub) return;
-
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        if (isStage) commitStageInput(root);
-        else commitSubInput(root, el.getAttribute('data-sub-inp'));
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        if (isStage) state.addStage = false;
-        else state.addSub = '';
-        updateList(root);
-      }
     });
 
     root.addEventListener('change', function (e) {
