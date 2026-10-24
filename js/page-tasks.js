@@ -227,13 +227,15 @@ window.Pages.tasks = (function () {
     '</div>';
   }
 
-  /* 一行只有一个动作：没做完 → 推送（= 这件事做完了，门店往前推一步）；
-     做完了 → 重开。「开始 / 进行中」这套状态流转取消，点推送就是完成。 */
+  /* 一行只有一个动作：没做完 → 「完成」（= 这件事做完了，门店往前推一步）；
+     做完了 → 「重开」。「开始 / 进行中」这套状态流转取消，点完成就是做完。
+     （原先叫「推送」，一线反馈不好理解，2026-10-25 改成「完成」） */
   function actionHtml(t) {
     if (t.status === 'done') {
       return '<span class="tlink" data-act="reopen" data-id="' + t.id + '">重开</span>';
     }
-    var push = '<span class="tlink tlink-push" data-act="push" data-id="' + t.id + '">推送</span>';
+    var push = '<span class="tlink tlink-push" data-act="push" data-id="' + t.id + '"' +
+      ' title="这条做完了，门店阶段跟着往前走一步">完成</span>';
     var sn = S.snoozeDaysOf(t);
 
     /* 逾期才给「+3天」：不是我们的原因 / 老板不着急，
@@ -251,9 +253,9 @@ window.Pages.tasks = (function () {
     return push;
   }
 
-  /* ================= 推送：这条做完了 + 门店往前推一步 =================
+  /* ================= 完成：这条做完了 + 门店往前推一步 =================
 
-     一线口径：筹建清单每行只剩一个「推送」。
+     一线口径：筹建清单每行只剩一个「完成」。
        点它 = 这条任务标记完成，门店阶段进入下一步；
        下一步带二级（比如「已出图」下的 已做首批 / 未做首批）时，
        必须顺手把这层也选掉，否则不知道这家店属于哪一支。
@@ -322,7 +324,7 @@ window.Pages.tasks = (function () {
         '</div>' +
         '<div class="push-task">这条：<b>' + U.esc(task.title) + '</b></div>' +
       '</div>' +
-      '<div class="push-sec">推送到哪一步</div>' +
+      '<div class="push-sec">完成后门店进到哪一步</div>' +
       '<div class="push-list">' +
         (targets.length
           ? targets.map(optHtml).join('')
@@ -343,12 +345,12 @@ window.Pages.tasks = (function () {
         '图纸那条任务没完成，会继续挂在清单里显示待办和逾期，不会丢。</p>';
 
     UI.modal({
-      title: '推送这条清单',
-      sub: '完成 + 把门店往前推一步',
+      title: '完成这条清单',
+      sub: '标记完成 + 让门店往前走一步',
       body: body,
       footer:
         '<button class="btn" data-push-cancel>取消</button>' +
-        '<button class="btn btn-primary" data-push-ok>推送</button>',
+        '<button class="btn btn-primary" data-push-ok>完成</button>',
       onMount: function (rootEl, close) {
         var subWrap = rootEl.querySelector('[data-subwrap]');
 
@@ -405,7 +407,7 @@ window.Pages.tasks = (function () {
           S.updateTask(task.id, { status: 'done' });
           if (pick.stage) S.setStoreStage(store.id, pick.stage, pick.sub);
           UI.toast(pick.stage
-            ? '已推送：' + store.name + ' → ' + C.stageLabel(C.stageValue(pick.stage, pick.sub))
+            ? '已完成：' + store.name + ' → ' + C.stageLabel(C.stageValue(pick.stage, pick.sub))
             : '「' + task.title + '」已标记完成', 'success');
           App.refresh();
         };
