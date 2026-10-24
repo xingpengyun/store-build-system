@@ -503,3 +503,48 @@
   常量已换新色 / 旧 settings 的淡色被新配色覆盖 / 自定义阶段颜色保留
 - `smoke.js` 八个页面全部渲染、`chk-accordion.js`、`chk-tl-edit.js`、`chk-config-safety.js` 无回归
 - 真实浏览器截图：首页改前改后对比、发货看板、任务管理、门店、报表、窄屏（1040 图标条）、登录页
+
+---
+
+## 2026-10-24（续）「无法访问此网页」——启动方式改成零依赖
+
+### 一、现场诊断（真实浏览器，不是静态检查）
+用 Edge headless + CDP 逐页跑：`home / stores / tasks / ship / team / alerts / reports / settings` **8 页全部 PASS**，
+控制台零报错；任务页 `.sk-row` 1 行默认收起、`.tl-tools` 8 个编辑入口都在。
+直接双击 `index.html`（`file://`）也能进首页，admin / 123 进去后正常渲染 —— **代码本身没问题**。
+
+问题出在启动方式：
+
+| 现象 | 原因 |
+|---|---|
+| 浏览器报「无法访问此网页 / 拒绝连接」 | `start-server.bat` 里 `where python` 失败 → 窗口一闪而过 → 服务根本没起来 |
+| 这台机器的真实 PATH | 只有 `C:\Windows\system32` 等系统目录加一个 WindowsApps，**python 和 node 都不在** |
+| 旧版兜底 | `start "" index.html` 打开的是 `file://`，地址栏不是 `127.0.0.1:8765`，再按 F5 就是拒绝连接 |
+
+### 二、改法：四级兜底，一级比一级更不依赖环境
+`start-server.bat` 重写（纯 ASCII，避免代码页把中文路径搞乱）：
+1. `python -m http.server` —— 有 python 就用
+2. `py -m http.server` —— 有 py launcher 就用
+3. `node -e "...单行 http 服务..."` —— 有 node 就用
+4. **`serve.ps1`（新增）** —— 三样都没有时，用 Windows 自带的 PowerShell `HttpListener` 起静态服务
+
+`serve.ps1` 的关键点：
+- 端口被占自动往后顺延 20 个（8765 → 8766 → …）；**服务起成功之后**才开浏览器，不再有「浏览器先开、服务还没好」的竞态
+- 正确 MIME（css / js / svg / woff2 …）+ `Cache-Control: no-store`，改完刷新就能看到新样式
+- 路径穿越防护：`GetFullPath` 之后必须仍在项目目录内，否则 403
+- 监听失败 `exit 2`，bat 接住后打印提示并打开 `index.html` 兜底；正常退出才 `pause`
+- 支持 `start-server.bat nobrowser`：只起服务、不开窗口（自测用）
+
+### 三、顺手修掉
+- `index.html` 加了内联 SVG favicon（`rel="icon"` 用 data URI），控制台最后那条 favicon 404 消失
+
+### 四、验证
+- `serve.ps1` 在 8766、8767（8765/8766 被占时自动顺延）均返回 200，MIME 正确，不存在的路径返回 404
+- 在 `serve.ps1` 起的服务上把 8 个页面重跑一遍，全部 PASS
+- 干净 PATH（`C:\Windows\system32;C:\Windows`）下确认 python / py / node 三者全部 NOT FOUND，即必然走第 4 级
+
+### 五、仍未完成
+- GitHub 推送：`git ls-remote origin main` 仍是 `CONNECT tunnel failed, response 502`（代理挡了 github.com:443）。
+  本地已领先 3 个提交，网络恢复后执行：
+  `git fetch origin && git rebase --onto origin/main c8444c7 && git push origin main`
+
