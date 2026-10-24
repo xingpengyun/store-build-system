@@ -177,9 +177,10 @@ window.Pages.home = (function () {
     ];
 
     var kpiHtml = kpis.map(function (k) {
-      /* 有 help 的卡片：标签旁加 ⓘ，hover / 键盘聚焦时弹出判断逻辑 */
+      /* 有 help 的卡片：标签旁加 ⓘ，hover / 键盘聚焦 / 点击都能看判断逻辑 */
       var helpHtml = k.help
-        ? '<span class="kpi-help" tabindex="0" role="button" aria-label="查看「' + k.label + '」的判断逻辑">' +
+        ? '<span class="kpi-help" tabindex="0" role="button" aria-label="查看「' + k.label + '」的判断逻辑"' +
+            ' style="color:' + k.color + '">' +
             UI.icon('info') +
             '<span class="kpi-help-pop">' + k.help + '</span>' +
           '</span>'
@@ -405,9 +406,35 @@ window.Pages.home = (function () {
   }
 
   function mount(root) {
+    /* 首次进首页引导一次：ⓘ 在哪、怎么用（之后不再打扰） */
+    try {
+      if (!localStorage.getItem('sbs.kpiHelpTip')) {
+        localStorage.setItem('sbs.kpiHelpTip', '1');
+        setTimeout(function () {
+          UI.toast('提示：KPI 标签旁的 ⓘ 点一下（或鼠标放上去）能查看判断逻辑', 'info');
+        }, 900);
+      }
+    } catch (e) {}
+
     /* 统一用事件委托：表格行会被重新渲染，直接绑在行上会失效 */
     root.addEventListener('click', function (e) {
       var t = e.target;
+
+      /* ⓘ 判断逻辑：点一下固定展开 / 收起（触屏和懒得 hover 时用） */
+      var help = t.closest('.kpi-help');
+      if (help) {
+        if (t.closest('.kpi-help-pop')) return;   /* 点在浮层内容上：不关，方便选中文字 */
+        var wasOpen = help.classList.contains('is-open');
+        root.querySelectorAll('.kpi-help.is-open').forEach(function (el) { el.classList.remove('is-open'); });
+        if (!wasOpen) help.classList.add('is-open');
+        return;
+      }
+
+      /* 点到别处 → 收起展开的浮层 */
+      var openOnes = root.querySelectorAll('.kpi-help.is-open');
+      if (openOnes.length) {
+        openOnes.forEach(function (el) { el.classList.remove('is-open'); });
+      }
 
       var view = t.closest('[data-store-view]');
       if (view) { openStore(view.getAttribute('data-store-view')); return; }

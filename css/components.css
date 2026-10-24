@@ -154,20 +154,24 @@
 }
 .kpi:hover { box-shadow: var(--shadow-2); transform: translateY(-1px); }
 
-/* KPI 判断逻辑提示：标签旁 ⓘ，hover / 键盘聚焦弹出（2026-10-24 用户要求标注口径） */
+/* KPI 判断逻辑提示：标签旁 ⓘ，hover / 键盘聚焦 / 点击都能看（2026-10-24 用户要求标注口径） */
 .kpi-help {
   position: relative;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   margin-left: 4px;
+  padding: 2px;
   color: var(--text-3);
-  cursor: help;
+  cursor: pointer;   /* 可点击固定展开，不只是 hover */
   vertical-align: -1px;
   border-radius: 50%;
   outline: none;
+  transition: background .14s;
 }
-.kpi-help svg { width: 12px; height: 12px; display: block; }
-.kpi-help:hover, .kpi-help:focus-visible { color: var(--primary); }
+.kpi-help svg { width: 13px; height: 13px; display: block; }
+.kpi-help:hover, .kpi-help.is-open { background: rgba(31, 53, 102, .07); }
+.kpi-help:focus-visible { background: rgba(31, 53, 102, .07); box-shadow: 0 0 0 2px var(--primary-soft); }
 .kpi-help-pop {
   position: absolute;
   left: -7px;
@@ -206,7 +210,8 @@
 .kpi-help-pop b { color: var(--text); font-weight: 600; }
 .kpi-help:hover .kpi-help-pop,
 .kpi-help:focus .kpi-help-pop,
-.kpi-help:focus-visible .kpi-help-pop {
+.kpi-help:focus-visible .kpi-help-pop,
+.kpi-help.is-open .kpi-help-pop {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
