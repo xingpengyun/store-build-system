@@ -1987,59 +1987,41 @@ window.Store = (function () {
     return out;
   }
 
-  /* 门店阶段往前挪：从「要改到的这一格」起，把已经做完的格子越过去。
-     任务落点 = 这条做完就算「完成」的那个阶段；门店推进到这一格、发现它已经做完，
-     就跳过它落到下一格；连续几格都做完就连着跳，直到第一格还没做完的。
+  /* 门店阶段往前挪：沿「已完成任务」的落点链，连续前进到最远。
+     任务落点 = 这条做完、门店就「到达」的那个阶段；所以 done 任务的落点
+     连在一起，等于一串「已经走到」的格子。推进时从门店当前格出发，只要
+     下一格有已完成的落点就继续走，停在最后一个「下一格还没完成」的格。
 
-     返回 { from, to, skipped:[被越过的阶段名], gate, store } / null（没得越就不动） */
-  function advanceStore(storeId, targetBase) {
+     举例（用户真实数据）：
+       首批已做→建档资料（done）、建档资料→到货时间（done）、到货时间给到→发货阶段（done）
+       门店在「首批阶段」→ 推进后直接落到「发货阶段」，中间「建档、到货」被连跳。
+
+     返回 { from, to, skipped:[中间跨过的格], gate, store } / null（原地不动）。
+     回退点不在这里记 —— 由完成任务（completeTask）记。 */
+  function advanceStore(storeId) {
     var store = storeById(storeId);
     if (!store) return null;
 
-    var from = C.stageValue(targetBase || store.stage, '');
-    var idx = stageOrder(targetBase || store.stage);
-    if (idx < 0) return null;
-
+    var cur = stageOrder(store.stage);
+    if (cur < 0) return null;
+    var from = C.stageValue(store.stage, storeSub(store));
     var lodges = doneLodges(storeId);
 
+    var end = cur;
+    while (end + 1 < C.STAGES.length && lodges[C.STAGES[end + 1].key]) end++;
+    if (end === cur) return null;
+
     var skipped = [];
-    var gate = null;
-    while (idx >= 0 && idx < C.STAGES.length && lodges[C.STAGES[idx].key]) {
-      gate = gate || lodges[C.STAGES[idx].key];
-      skipped.push(C.STAGES[idx].key);
-      idx++;
-    }
+    for (var i = cur + 1; i < end; i++) skipped.push(C.STAGES[i].key);
 
-    if (!skipped.length) return null;
-
-    /* 一路跳到尾巴（后面全做完了）就停在最后一个阶段，不越界 */
-    if (idx >= C.STAGES.length) idx = C.STAGES.length - 1;
-    var toKey = C.STAGES[idx].key;
+    var toKey = C.STAGES[end].key;
     var toVal = C.stageValue(toKey, '');
-
     setStoreStage(store.id, toKey, '');
 
-    /* 每个被越过的格子记一条回退点：之后对那条任务点「重开」就退回那一格 */
-    skipped.forEach(function (base) {
-      var g = lodges[base];
-      if (g) setReopenPoint(g.taskId, C.stageValue(base, ''), toVal);
-    });
-
-    return { from: from, to: toVal, skipped: skipped, gate: gate, store: storeById(storeId) };
-  }
-
-  /* 相邻格推进：门店直接「到达」目标格就停，不跳过目标格。
-     用于点「完成」时落点正好是下一格 —— 图纸出了，门店就进「首批阶段」，
-     而不是把「首批阶段」当已做完再越过去。回退点由调用方记。
-     返回 { from, to, skipped:[], gate:null, store } 与 advanceStore 同构。 */
-  function landStore(storeId, targetBase, sub) {
-    var store = storeById(storeId);
-    if (!store) return null;
-    if (stageOrder(targetBase) < 0) return null;
-    var from = C.stageValue(store.stage, storeSub(store));
-    var to = C.stageValue(targetBase, sub || '');
-    setStoreStage(storeId, targetBase, sub || '');
-    return { from: from, to: to, skipped: [], gate: null, store: storeById(storeId) };
+    return {
+      from: from, to: toVal, skipped: skipped,
+      gate: lodges[toKey] || null, store: storeById(storeId)
+    };
   }
 
   /* ---------------- 门店进度 ----------------
@@ -2697,7 +2679,6 @@ window.Store = (function () {
     gateOf: gateOf,
     doneLodges: doneLodges,
     advanceStore: advanceStore,
-    landStore: landStore,
     progressStages: progressStages,
     progressPlan: progressPlan,
     leadDaysOf: leadDaysOf,

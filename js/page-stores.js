@@ -226,9 +226,9 @@ window.Pages.stores = (function () {
             var forward = S.stageOrder(payload.stage) > S.stageOrder(before);
             S.updateStore(store.id, payload);
 
-            /* 阶段往前挪了：把「已经做完」的格子越过（任务落点 = 做完的那个阶段，
-               门店推进到那一格发现已做完 → 跳过它到下一格）。越过了就右下角弹小卡片。 */
-            var jumped = forward ? S.advanceStore(store.id, payload.stage) : null;
+            /* 阶段往前挪了：沿「已完成任务」落点连续推进，把已经做完的格子越过去
+               （推进到某一格、发现它已做完 → 继续跳到下一格）。越过了就右下角弹小卡片。 */
+            var jumped = forward ? S.advanceStore(store.id) : null;
 
             UI.toast('门店信息已更新', 'success');
             if (jumped) {

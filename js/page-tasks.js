@@ -260,11 +260,11 @@ window.Pages.tasks = (function () {
   /* ================= 完成：相邻格自动走，更远的只记账 =================
 
      每条任务在筹建任务清单里挂一个落点（清单那列就叫「完成后进到」）。
-     落点 = 这条做完就算「完成」的那个阶段。规则按远近分两档（2026-10-25 三定）：
+     落点 = 这条做完、门店就「到达」的那个阶段。规则按远近分两档（2026-10-25 四定）：
 
-       ① 落点正好是门店的下一格（设计 → 首批）：
-          点「完成」直接推进 —— 那一格的活刚做完，Store.advanceStore() 把它
-          （和后面连续做完的格子）越过去，落到第一格还没做完的阶段，
+       ① 落点正好是门店的下一格（首批 → 建档）：
+          点「完成」门店就推进；如果后面还有连续已经做完的格子（比如建档、
+          到货都提前做完了），会一起越过去，停在最后一个「下一格还没做完」的格，
           右下角弹小卡片「门店已转入下一阶段」。
 
        ② 落点比下一格更远（设计 → 建档资料）：
@@ -328,12 +328,11 @@ window.Pages.tasks = (function () {
       if (branch) S.setGateSub(task.id, C.stageValue(p.base, branch));
       else S.clearGateSub(task.id);
 
-      /* 相邻格：落点就是下一格，门店「到达」这一格就停，不跳过。
-         （图纸出了 → 进「首批阶段」；不是把「首批阶段」当已做完再越过去） */
+      /* 相邻格：落点就是下一格，门店推进；若后面还有连续已完成的格也一并越过去
+         （首批已做 → 建档资料，而建档/到货都已提前完成 → 直接落到发货阶段） */
       if (adjacent) {
-        var sub2 = branch || sub || '';
-        jumped = S.landStore(store.id, p.base, sub2);
-        S.setReopenPoint(task.id, C.stageValue(prev.stage, prev.sub), C.stageValue(p.base, sub2));
+        jumped = S.advanceStore(store.id);
+        if (jumped) S.setReopenPoint(task.id, jumped.from, jumped.to);
       }
 
       var msg;
