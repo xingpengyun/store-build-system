@@ -22,16 +22,17 @@ window.Pages.ship = (function () {
 
   /* 顶部这排既能看数，也能点进去只看这一类 */
   var TABS = [
-    { key: 'all', label: '全部' },
-    { key: 'todo', label: '未发出' },
-    { key: 'notify', label: '该通知供应商' },
-    { key: 'arrlate', label: '漏通知' },
-    { key: 'sent', label: '已发出' }
+    { key: 'all', label: '全部', tip: '所有门店，含已发出的' },
+    { key: 'todo', label: '未发出', tip: '还没点「已发出」的门店' },
+    { key: 'notify', label: '该通知供应商', tip: '有物料 7 天内到、还没通知供应商；已经有过了到货日的算进「漏通知」，不重复算' },
+    { key: 'arrlate', label: '漏通知', tip: '有物料已经过了到货日还没通知供应商，最急' },
+    { key: 'sent', label: '已发出', tip: '已经点过「已发出」的门店（物料照样要盯）' }
   ];
 
   /* 「按到货日」视图的分类：一条物料一条记录，日期各店不同也能一眼看完 */
   var DTABS = [
     { key: 'all', label: '全部' },
+    { key: 'pending', label: '待通知' },
     { key: 'late', label: '漏通知' },
     { key: 'today', label: '今天到' },
     { key: 'soon', label: '7 天内到' },
@@ -41,6 +42,7 @@ window.Pages.ship = (function () {
 
   function hitD(r, key) {
     if (!key || key === 'all') return true;
+    if (key === 'pending') return !r.notified;
     if (key === 'late') return r.late;
     if (key === 'today') return r.today;
     if (key === 'soon') return r.soon;
@@ -50,16 +52,19 @@ window.Pages.ship = (function () {
   }
 
   function dStats(rows) {
-    var s = { all: rows.length, late: 0, today: 0, soon: 0, noeta: 0, notified: 0, stores: {} };
+    var s = { all: rows.length, late: 0, today: 0, soon: 0, noeta: 0, notified: 0, pending: 0, stores: {}, pendingStores: {} };
     rows.forEach(function (r) {
       s.stores[r.storeId] = 1;
       if (r.notified) { s.notified += 1; return; }
+      s.pending += 1;
+      s.pendingStores[r.storeId] = 1;
       if (r.late) s.late += 1;
       if (r.today) s.today += 1;
       if (r.soon) s.soon += 1;
       if (!r.hasEta) s.noeta += 1;
     });
     s.storeCount = Object.keys(s.stores).length;
+    s.pendingCount = Object.keys(s.pendingStores).length;
     return s;
   }
 
@@ -304,14 +309,17 @@ window.Pages.ship = (function () {
 
   function kpiHtml(rows, s) {
     var items = [
-      { k: 'todo', label: '未发出', v: s.todo, foot: '要跟的门店', color: '#3f6bf5', soft: '#edf2fe', icon: 'truck' },
-      { k: 'notify', label: '该通知供应商', v: s.notify, foot: '到货日在 7 天内', color: '#7a5af8', soft: '#f2eefe', icon: 'bell' },
-      { k: 'arrlate', label: '漏通知', v: s.arrLate, foot: '过了到货日还没通知', color: '#d92d20', soft: '#fdedeb', icon: 'box' }
+      { k: 'todo', label: '未发出', v: s.todo, foot: '还没点发出的门店', color: '#3f6bf5', soft: '#edf2fe', icon: 'truck',
+        tip: '还没点「已发出」的门店。点这张卡只看这几家，再点一下取消' },
+      { k: 'notify', label: '该通知供应商', v: s.notify, foot: '7 天内到，可以先通知', color: '#7a5af8', soft: '#f2eefe', icon: 'bell',
+        tip: '有物料 7 天内到（含今天）、还没通知供应商。已经过了到货日的不算在这里，算进「漏通知」' },
+      { k: 'arrlate', label: '漏通知', v: s.arrLate, foot: '过了到货日还没通知', color: '#d92d20', soft: '#fdedeb', icon: 'box',
+        tip: '有物料已经过了到货日还没通知供应商 —— 最急，先去处理这几家' }
     ];
 
     return '<section class="kpi-grid fade-up" style="grid-template-columns:repeat(3,minmax(0,1fr));animation-delay:.04s">' +
       items.map(function (i) {
-        return '<div class="kpi ship-kpi' + (state.tab === i.k ? ' is-on' : '') + '" data-kpi="' + i.k + '">' +
+        return '<div class="kpi ship-kpi' + (state.tab === i.k ? ' is-on' : '') + '" data-kpi="' + i.k + '" title="' + U.esc(i.tip) + '">' +
           '<span class="kpi-icon" style="background:' + i.soft + ';color:' + i.color + '">' + UI.icon(i.icon) + '</span>' +
           '<div class="kpi-body">' +
             '<div class="kpi-label">' + i.label + '</div>' +
@@ -329,7 +337,8 @@ window.Pages.ship = (function () {
       notify: s.notify, arrlate: s.arrLate, sent: s.sent
     };
     return TABS.map(function (t) {
-      return '<div class="tab' + (state.tab === t.key ? ' active' : '') + '" data-tab="' + t.key + '">' +
+      return '<div class="tab' + (state.tab === t.key ? ' active' : '') + '" data-tab="' + t.key + '"' +
+          ' title="' + U.esc(t.tip + '（' + (n[t.key] || 0) + ' 家）') + '">' +
         t.label + '<span class="cnt">' + (n[t.key] || 0) + '</span></div>';
     }).join('');
   }
@@ -455,7 +464,7 @@ window.Pages.ship = (function () {
 
   function dateKpiHtml(s) {
     var items = [
-      { k: 'all', label: '待通知', v: s.all - s.notified, foot: '共 ' + s.storeCount + ' 家店', color: '#3f6bf5', soft: '#edf2fe', icon: 'box' },
+      { k: 'pending', label: '待通知', v: s.pending, foot: '分布在 ' + s.pendingCount + ' 家店', color: '#3f6bf5', soft: '#edf2fe', icon: 'box' },
       { k: 'late', label: '漏通知', v: s.late, foot: '过了到货日还没通知', color: '#d92d20', soft: '#fdedeb', icon: 'alert' },
       { k: 'today', label: '今天到', v: s.today, foot: '今天该到的', color: '#f79009', soft: '#fef4e6', icon: 'clock' },
       { k: 'soon', label: '7 天内到', v: s.soon, foot: '该通知供应商发货', color: '#7a5af8', soft: '#f2eefe', icon: 'bell' },
@@ -477,7 +486,7 @@ window.Pages.ship = (function () {
   }
 
   function dateTabsHtml(s) {
-    var n = { all: s.all, late: s.late, today: s.today, soon: s.soon, noeta: s.noeta, notified: s.notified };
+    var n = { all: s.all, pending: s.pending, late: s.late, today: s.today, soon: s.soon, noeta: s.noeta, notified: s.notified };
     return DTABS.map(function (t) {
       return '<div class="tab' + (state.dtab === t.key ? ' active' : '') + '" data-dtab="' + t.key + '">' +
         t.label + '<span class="cnt">' + (n[t.key] || 0) + '</span></div>';
@@ -569,8 +578,9 @@ window.Pages.ship = (function () {
     '<div class="page-head fade-up">' +
       '<div>' +
         '<h1>发货看板</h1>' +
-        '<p>' + U.cnDate(today) + ' · 共 ' + rows.length + ' 家门店要跟' +
-          (s.arrLate ? '，<b class="text-red">' + s.arrLate + ' 家漏通知供应商</b>' : '') + '</p>' +
+        '<p>' + U.cnDate(today) + ' · 共 ' + rows.length + ' 家门店：<b>' + s.todo + '</b> 家待发出' +
+          (s.sent ? '、' + s.sent + ' 家已发出' : '') +
+          (s.arrLate ? '；其中 <b class="text-red">' + s.arrLate + '</b> 家漏通知供应商' : '') + '</p>' +
       '</div>' +
       '<div style="display:flex;gap:8px;align-items:center">' +
         viewSwitchHtml() +
@@ -636,7 +646,7 @@ window.Pages.ship = (function () {
     }
 
     root.addEventListener('click', function (e) {
-      /* 两个视图切换 */
+      /* 两个视图切换：这里要回到页首看标题，所以 keep 之后自己补一次 scrollTo */
       var vw = e.target.closest('[data-view]');
       if (vw && root.contains(vw)) {
         var nextView = vw.getAttribute('data-view');
@@ -645,16 +655,22 @@ window.Pages.ship = (function () {
           state.q = '';
           state.tab = 'all';
           state.dtab = 'all';
-          App.refresh();
+          App.refresh({ keep: true });
+          window.scrollTo(0, 0);
         }
         return;
       }
+
+      /* ★ 下面这些筛选一律用 App.refresh({ keep: true })：
+         普通 refresh 会跑 onEnter，而 onEnter 是「刚进这一页」的初始化，
+         会把 tab / dtab / q 全部复位成「全部」—— 结果就是点哪个分类都弹回全部，
+         看着像筛选坏了（2026-10-25 修）。keep 只重画，不动这页的筛选状态。 */
 
       /* 「按到货日」的分类 / KPI */
       var dtab = e.target.closest('[data-dtab]');
       if (dtab && root.contains(dtab)) {
         state.dtab = dtab.getAttribute('data-dtab');
-        App.refresh();
+        App.refresh({ keep: true });
         return;
       }
 
@@ -662,14 +678,14 @@ window.Pages.ship = (function () {
       if (dkpi && root.contains(dkpi)) {
         var dk = dkpi.getAttribute('data-dkpi');
         state.dtab = (state.dtab === dk) ? 'all' : dk;
-        App.refresh();
+        App.refresh({ keep: true });
         return;
       }
 
       var tab = e.target.closest('[data-tab]');
       if (tab && root.contains(tab)) {
         state.tab = tab.getAttribute('data-tab');
-        App.refresh();
+        App.refresh({ keep: true });
         return;
       }
 
@@ -677,7 +693,7 @@ window.Pages.ship = (function () {
       if (kpi && root.contains(kpi)) {
         var k = kpi.getAttribute('data-kpi');
         state.tab = (state.tab === k) ? 'all' : k;
-        App.refresh();
+        App.refresh({ keep: true });
         return;
       }
 
@@ -687,7 +703,10 @@ window.Pages.ship = (function () {
         if (act === 'toStores') { App.go('stores'); return; }
         if (act === 'focus') {
           state.tab = 'arrlate';
-          App.refresh();
+          App.refresh({ keep: true });
+          /* 重画后 root 已被换掉，从文档里重新取表格，滚到眼前 */
+          var tbl = document.querySelector('#shipTable');
+          if (tbl && tbl.scrollIntoView) tbl.scrollIntoView({ block: 'start', behavior: 'smooth' });
           return;
         }
       }
@@ -709,7 +728,8 @@ window.Pages.ship = (function () {
           UI.toast(was
             ? '已改回「待通知」，这条重新进提醒'
             : (rec.item || '该物料') + ' 已记为通知过供应商', 'success');
-          updateList(root);
+          /* 整页原地重画：分类数字、KPI、横幅都跟着这条一起变 */
+          App.refresh({ keep: true });
           return;
         }
         return;
@@ -725,7 +745,7 @@ window.Pages.ship = (function () {
       if (e.target.closest('[data-pin]')) {
         var on = S.toggleShipPin(id);
         UI.toast(on ? '已标记为先发，排到最前面' : '已取消先发', on ? 'success' : 'info');
-        App.refresh();
+        App.refresh({ keep: true });
         return;
       }
 
@@ -734,7 +754,7 @@ window.Pages.ship = (function () {
       if (mv) {
         var ok = S.moveShip(id, Number(mv.getAttribute('data-move')));
         if (!ok) UI.toast('已经在最前 / 最后了', 'info');
-        else App.refresh();
+        else App.refresh({ keep: true });
         return;
       }
 
@@ -745,7 +765,8 @@ window.Pages.ship = (function () {
           ? hit.row.name + ' 已标记发出，沉到列表最后'
           : hit.row.name + ' 改回「未发出」，重新回到要跟的队列',
           next === 'sent' ? 'success' : 'info');
-        App.refresh();
+        /* keep：在「未发出」里点发出，这行消失但还停在这一类，不被弹回「全部」 */
+        App.refresh({ keep: true });
         return;
       }
 

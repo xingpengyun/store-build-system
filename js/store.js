@@ -1569,9 +1569,12 @@ window.Store = (function () {
         noEta: noEta,
         openLeft: openLeft,
         openDate: s.openDate || '',
-        /* 到货这块也只有两件事：漏通知（过了到货日还没通知）/ 7 天内到该通知供应商 */
+        /* 到货这块只有两件事：漏通知（过了到货日还没通知）/ 7 天内到该通知供应商。
+           两者按门店互斥：只要这家有过期没通知的物料，就整家算「漏通知」，
+           不再重复算进「该通知」—— 否则同一家会同时出现在两个分类里，
+           两个数一加比实际要通知的门店还多，看着就是错的（2026-10-25 修）。 */
         arrLate: lateArr > 0,
-        needNotify: notify > 0
+        needNotify: lateArr === 0 && notify > 0
       };
     });
 
