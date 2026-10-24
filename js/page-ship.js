@@ -1,10 +1,12 @@
 /* ==========================================================
    page-ship.js — 发货看板
-   几十家门店待发货，每天早上打开这一页：
-   谁今天就该发、谁已经逾期、谁排在最前面要发，一眼看完。
+   2026-10-24：用户确认「不安排发货，我们通知就行了」——
+   计划发货日整套去掉（不排期、不看谁该发、没有逾期未发），
+   看板只盯一件事：物料登记的到货时间，该通知供应商了就通知，
+   通知完点一下「已通知」，其他同事看到状态就知道办过了。
 
    只看两件事：
-   1) 发了没发（一次点击翻过来，在途 / 到店不记）
+   1) 发了没发（实际发出后点一下记录，这家就不再催）
    2) 物料登记的到货时间（到货日 − 7 天就该通知供应商，通知完点「已通知」）
    ========================================================== */
 window.Pages = window.Pages || {};
@@ -22,8 +24,6 @@ window.Pages.ship = (function () {
   var TABS = [
     { key: 'all', label: '全部' },
     { key: 'todo', label: '未发出' },
-    { key: 'late', label: '逾期未发' },
-    { key: 'today', label: '今天该发' },
     { key: 'notify', label: '该通知供应商' },
     { key: 'arrlate', label: '漏通知' },
     { key: 'sent', label: '已发出' }
@@ -76,8 +76,6 @@ window.Pages.ship = (function () {
   function hitTab(r, key) {
     if (!key || key === 'all') return true;
     if (key === 'todo') return !r.shipped;
-    if (key === 'late') return r.late;
-    if (key === 'today') return r.dueToday;
     if (key === 'notify') return r.needNotify;
     if (key === 'arrlate') return r.arrLate;
     if (key === 'sent') return r.shipped;
@@ -95,18 +93,17 @@ window.Pages.ship = (function () {
 
   /* ---------------- 一行 ---------------- */
 
+  /* 发出/未发出的状态文案（2026-10-24：不再有「计划发货日」，
+     未发出就是还没发，不显示倒计时） */
   function leftText(r) {
     if (r.shipped) {
       if (r.sentAgo == null) return '已发出';
       return r.sentAgo <= 0 ? '今天发出' : '已发 ' + r.sentAgo + ' 天';
     }
-    if (r.left == null) return '还没排发货日';
-    if (r.left < 0) return '逾期 ' + Math.abs(r.left) + ' 天';
-    if (r.left === 0) return '今天必须发';
-    return '还有 ' + r.left + ' 天';
+    return '未发出';
   }
 
-  var MAT_MAX = 8;   /* 删掉「计划发货」列后物料列宽多了，多铺几条 */
+  var MAT_MAX = 8;   /* 物料列宽，多铺几条 */
 
   /* 一家店还要催的物料 + 登记的到货时间，全部铺在这一行里 ——
      不用点进门店也知道这家哪天到货、哪条漏通知了。
@@ -180,9 +177,7 @@ window.Pages.ship = (function () {
 
   function rowHtml(r, idx) {
     var cls = [];
-    if (r.late) cls.push('is-late');
-    else if (r.arrLate) cls.push('is-arrlate');   /* 物料过了到货日还没通知 → 整行淡红底 */
-    else if (r.dueToday) cls.push('is-today');
+    if (r.arrLate) cls.push('is-arrlate');   /* 物料过了到货日还没通知 → 整行淡红底 */
     if (r.shipped) cls.push('is-sent');
     if (r.pin) cls.push('is-pin');
 
@@ -262,10 +257,9 @@ window.Pages.ship = (function () {
 
   /* ---------------- 顶部 ---------------- */
 
+  /* 横幅「最急」那句话的理由：现在只有到货漏通知一种 */
   function reasonText(r) {
-    if (r.late) return leftText(r) + '，计划 ' + U.dateDot(r.date) + ' 发';
     if (r.arrLate) return r.lateArr + ' 项物料过了到货日还没通知供应商';
-    if (r.dueToday) return '计划今天发出';
     return '';
   }
 
@@ -291,31 +285,25 @@ window.Pages.ship = (function () {
       '</div>';
     }
 
-    var late = rows.filter(function (r) { return r.late; });
     var arrLate = rows.filter(function (r) { return r.arrLate; });
-    var today = rows.filter(function (r) { return r.dueToday; });
     var notify = rows.filter(function (r) { return r.needNotify; });
 
-    if (!late.length && !arrLate.length && !today.length) {
+    if (!arrLate.length) {
       return '<div class="ship-banner is-ok">' +
         '<span class="sb-ico">' + UI.icon('check') + '</span>' +
-        '<div class="sb-body"><b>今天没有该发没发的门店</b>' +
-          '<span>' + (s.active ? '还没发出的 ' + s.active + ' 家都在排期里' : '所有门店都已发出') +
+        '<div class="sb-body"><b>没有漏通知的物料</b>' +
+          '<span>' + (s.active ? '还有 ' + s.active + ' 家没发出' : '所有门店都已发出') +
           (notify.length ? '；' + notify.length + ' 家物料 7 天内到，今天该通知供应商发货' : '') +
           '</span></div>' +
       '</div>';
     }
 
-    var first = late[0] || arrLate[0] || today[0];
-    var txt = [];
-    if (late.length) txt.push('<b>' + late.length + '</b> 家过了计划发货日还没发');
-    if (arrLate.length) txt.push('<b>' + arrLate.length + '</b> 家物料过了到货日还没通知供应商');
-    if (today.length) txt.push('<b>' + today.length + '</b> 家今天就该发');
+    var first = arrLate[0];
 
     return '<div class="ship-banner is-alert">' +
       '<span class="sb-ico">' + UI.icon('alert') + '</span>' +
       '<div class="sb-body">' +
-        '<b>' + txt.join('，') + '</b>' +
+        '<b><b>' + arrLate.length + '</b> 家物料过了到货日还没通知供应商</b>' +
         '<span>最急：' + U.esc(first.name) + '（' + U.esc(reasonText(first)) + '）　·　先去处理这几家</span>' +
       '</div>' +
       '<button type="button" class="btn btn-sm" data-act="focus">只看这几家</button>' +
@@ -325,13 +313,11 @@ window.Pages.ship = (function () {
   function kpiHtml(rows, s) {
     var items = [
       { k: 'todo', label: '未发出', v: s.todo, foot: '要跟的门店', color: '#3f6bf5', soft: '#edf2fe', icon: 'truck' },
-      { k: 'late', label: '逾期未发', v: s.late, foot: '已经过了发货日', color: '#f04438', soft: '#feeceb', icon: 'alert' },
-      { k: 'today', label: '今天该发', v: s.today, foot: '今天必须发出去', color: '#f79009', soft: '#fef4e6', icon: 'clock' },
       { k: 'notify', label: '该通知供应商', v: s.notify, foot: '到货日在 7 天内', color: '#7a5af8', soft: '#f2eefe', icon: 'bell' },
       { k: 'arrlate', label: '漏通知', v: s.arrLate, foot: '过了到货日还没通知', color: '#d92d20', soft: '#fdedeb', icon: 'box' }
     ];
 
-    return '<section class="kpi-grid fade-up" style="grid-template-columns:repeat(5,minmax(0,1fr));animation-delay:.04s">' +
+    return '<section class="kpi-grid fade-up" style="grid-template-columns:repeat(3,minmax(0,1fr));animation-delay:.04s">' +
       items.map(function (i) {
         return '<div class="kpi ship-kpi' + (state.tab === i.k ? ' is-on' : '') + '" data-kpi="' + i.k + '">' +
           '<span class="kpi-icon" style="background:' + i.soft + ';color:' + i.color + '">' + UI.icon(i.icon) + '</span>' +
@@ -347,7 +333,7 @@ window.Pages.ship = (function () {
 
   function tabsHtml(rows, s) {
     var n = {
-      all: rows.length, todo: s.todo, late: s.late, today: s.today,
+      all: rows.length, todo: s.todo,
       notify: s.notify, arrlate: s.arrLate, sent: s.sent
     };
     return TABS.map(function (t) {
@@ -592,13 +578,10 @@ window.Pages.ship = (function () {
       '<div>' +
         '<h1>发货看板</h1>' +
         '<p>' + U.cnDate(today) + ' · 共 ' + rows.length + ' 家门店要跟' +
-          (s.late ? '，<b class="text-red">' + s.late + ' 家逾期未发</b>' : '') +
-          (s.arrLate ? '，<b class="text-red">' + s.arrLate + ' 家漏通知供应商</b>' : '') +
-          (s.today ? '，' + s.today + ' 家今天就该发' : '') + '</p>' +
+          (s.arrLate ? '，<b class="text-red">' + s.arrLate + ' 家漏通知供应商</b>' : '') + '</p>' +
       '</div>' +
       '<div style="display:flex;gap:8px;align-items:center">' +
         viewSwitchHtml() +
-        '<button class="btn" data-act="autoOrder" title="清掉手动顺序，回到按计划发货日自动排">' + UI.icon('refresh') + '按发货日重排</button>' +
         '<button class="btn btn-primary" data-act="toStores">' + UI.icon('box') + '门店物料</button>' +
       '</div>' +
     '</div>' +
@@ -618,8 +601,7 @@ window.Pages.ship = (function () {
       '<div id="shipTable">' + tableHtml(list) + '</div>' +
       '<div class="ship-foot">' +
         '<span>每行只铺还没通知供应商的物料，通知过的不再占地方；历史记录去「按到货日」视图的「已通知」</span>' +
-        '<span>' + (s.noPlan ? '<b class="text-red">' + s.noPlan + ' 家还没填发货日</b>（发货日在门店详情的物料区改）　·　' : '') +
-          '到货时间以门店 / 供应商登记的为准，改日期就是新承诺</span>' +
+        '<span>到货时间以门店 / 供应商登记的为准，改日期就是新承诺</span>' +
       '</div>' +
     '</div>';
   }
@@ -710,15 +692,9 @@ window.Pages.ship = (function () {
       var actEl = e.target.closest('[data-act]');
       if (actEl && root.contains(actEl)) {
         var act = actEl.getAttribute('data-act');
-        if (act === 'autoOrder') {
-          S.clearShipSeq();
-          UI.toast('已按计划发货日重新排好', 'success');
-          App.refresh();
-          return;
-        }
         if (act === 'toStores') { App.go('stores'); return; }
         if (act === 'focus') {
-          state.tab = 'late';
+          state.tab = 'arrlate';
           App.refresh();
           return;
         }
@@ -788,8 +764,7 @@ window.Pages.ship = (function () {
       }
     });
 
-    /* 备注 / 登记的发货时间。
-       计划发货日改到门店详情里维护（settings.ship[storeId].date，同一份数据） */
+    /* 备注 / 登记的发货时间（2026-10-24：计划发货日已整套去掉，只剩这两个） */
     root.addEventListener('change', function (e) {
       var sd = e.target.closest('[data-sentdate]');
       if (sd && root.contains(sd)) {

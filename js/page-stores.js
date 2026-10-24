@@ -291,26 +291,6 @@ window.Pages.stores = (function () {
     var missing = arrMissing(storeId);
     var watchDays = Number(C.ARR_WATCH_DAYS || 7);
 
-    /* 计划发货日：发货看板那一列删了（每项物料的到货时间本表就有，不再重复摆），
-       维护入口搬到这里 —— 还是同一份 settings.ship[storeId].date，看板排序和预警跟着变 */
-    var ship = S.shipOf(storeId);
-    var shipTip = '还没排', shipCls = '';
-    if (ship.status === 'sent') {
-      shipTip = '已发出' + (ship.sentAt ? '（' + U.monthDay(ship.sentAt) + '）' : '');
-      shipCls = 'is-ok';
-    } else if (ship.date) {
-      var sd = U.diffDays(U.today(), ship.date);
-      if (sd < 0) { shipTip = '已过 ' + (-sd) + ' 天'; shipCls = 'is-late'; }
-      else if (sd === 0) { shipTip = '今天该发'; shipCls = 'is-today'; }
-      else { shipTip = '还有 ' + sd + ' 天'; }
-    }
-    var shipRow = '<div class="arr-ship-row">' +
-      '<span class="asr-label">计划发货日</span>' +
-      '<input class="asr-date mono' + (ship.date ? '' : ' is-empty') + '" type="date" data-ship-date' +
-        ' value="' + U.esc(ship.date) + '"' +
-        ' title="发货看板按这个日期排；改了看板排序和预警跟着变" />' +
-      '<span class="asr-tip ' + shipCls + '">' + shipTip + '</span>' +
-    '</div>';
 
     /* 顶部小结：一眼看出有几项要盯 */
     var late = 0, soon = 0, wait = 0, ok = 0;
@@ -390,7 +370,7 @@ window.Pages.stores = (function () {
 
     var bulkLabel = list.length ? '补齐剩余 ' + missing.length + ' 项' : '一键添加全部 ' + preset.length + ' 项';
 
-    return shipRow + empty +
+    return empty +
       '<div class="arr-actions">' +
         (preset.length && missing.length
           ? '<button type="button" class="arr-bulk" data-arr-bulk>' + UI.icon('plus') + bulkLabel + '</button>'
@@ -536,13 +516,6 @@ window.Pages.stores = (function () {
         arrWrap.addEventListener('change', function (e) {
           var el = e.target;
 
-          /* 计划发货日：落到 settings.ship，发货看板的排序 / 逾期预警跟着更新 */
-          if (el.hasAttribute('data-ship-date')) {
-            S.setShip(store.id, { date: el.value || '' });
-            repaintArr();
-            UI.toast(el.value ? '计划发货日已更新' : '已清除计划发货日', 'success', 2000);
-            return;
-          }
 
           var field = el.getAttribute('data-arr-field');
           if (field !== 'item' && field !== 'etaDate' && field !== 'remark') return;

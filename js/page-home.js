@@ -97,44 +97,6 @@ window.Pages.home = (function () {
       '</svg></div>';
   }
 
-  /* 首页顶部那条「今日发货」：几十家店的发货状态，一进来就能看到 */
-  function shipBarHtml() {
-    if (!S.shipRows) return '';
-    var rows = S.shipRows();
-    if (!rows.length) return '';
-
-    var s = S.shipStats(rows);
-    var cls = s.late ? 'is-alert' : (s.today ? 'is-warn' : 'is-ok');
-
-    var head = s.late
-      ? '<b class="text-red">' + s.late + '</b> 家已经过了计划发货日还没发'
-      : (s.arrLate
-        ? '<b class="text-red">' + s.arrLate + '</b> 家物料过了到货日还没通知供应商'
-        : (s.today
-          ? '<b class="sb-num">' + s.today + '</b> 家今天该发货'
-          : '今天没有该发没发的门店'));
-
-    var chips = [
-      s.late ? { k: '逾期未发', v: s.late, cls: 'late' } : null,
-      s.arrLate ? { k: '漏通知', v: s.arrLate, cls: 'late' } : null,
-      s.today ? { k: '今天该发', v: s.today, cls: 'today' } : null,
-      s.notify ? { k: '该通知供应商', v: s.notify, cls: 'today' } : null,
-      { k: '还没发出', v: s.active, cls: '' },
-      { k: '已发出', v: s.sent, cls: 'ok' }
-    ].filter(Boolean).map(function (c) {
-      return '<span class="hs-chip ' + c.cls + '">' + c.k + ' <b>' + c.v + '</b></span>';
-    }).join('');
-
-    return '<section class="home-ship ' + cls + ' fade-up" style="animation-delay:.02s">' +
-      '<span class="hs-ico">' + UI.icon('truck') + '</span>' +
-      '<div class="hs-body">' +
-        '<div class="hs-title">发货：' + head + '</div>' +
-        '<div class="hs-chips">' + chips + '</div>' +
-      '</div>' +
-      '<span class="link-more" data-go="ship">发货看板 →</span>' +
-    '</section>';
-  }
-
   function render() {
     var s = S.getState();
     var st = S.stats();
@@ -297,8 +259,6 @@ window.Pages.home = (function () {
       '</div>' +
     '</section>' +
 
-    /* 今日发货：每天早上先看这一条（谁该发、谁逾期、谁该通知供应商） */
-    shipBarHtml() +
 
     /* KPI */
     '<section class="kpi-grid fade-up" style="animation-delay:.04s">' + kpiHtml + '</section>' +

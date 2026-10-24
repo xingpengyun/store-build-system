@@ -1535,37 +1535,6 @@
 
 /* ---------------- 物料到货：门店详情里可直接填写 ---------------- */
 
-/* 计划发货日：从发货看板那一列搬到这里维护（2026-10-24 用户要求删看板列） */
-.arr-ship-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 9px;
-  font-size: 11.5px;
-  color: var(--text-3);
-}
-.asr-label { white-space: nowrap; }
-.asr-date {
-  width: 132px;
-  height: 26px;
-  padding: 0 6px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--card);
-  font-family: inherit;
-  font-size: 12px;
-  color: var(--text);
-  outline: 0;
-  transition: .14s;
-}
-.asr-date:hover { border-color: #dfe7f4; }
-.asr-date:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
-.asr-date.is-empty { color: #c2cbdb; }
-.asr-tip { white-space: nowrap; color: var(--text-3); }
-.asr-tip.is-late { color: var(--red); font-weight: 600; }
-.asr-tip.is-today { color: var(--orange); font-weight: 600; }
-.asr-tip.is-ok { color: var(--green); }
-
 /* 顶部小结：一眼看出有几项要盯 */
 .arr-sum {
   display: flex;
@@ -2468,6 +2437,23 @@ body.tpl-drag * { cursor: grabbing !important; user-select: none !important; }
 .sm-sub-add .input,
 .sm-top-add .input { max-width: 220px; height: 28px; font-size: 12px; }
 
+/* 「阶段与子阶段」卡：默认收起，点标题展开（2026-10-24 用户要求「点击展开」） */
+.sm-toggle { cursor: pointer; user-select: none; border-radius: 8px; }
+.sm-toggle:hover h3 { color: var(--primary); }
+.sm-toggle:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.sm-caret {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  margin-left: 4px;
+  border-right: 1.6px solid #8b98ad;
+  border-bottom: 1.6px solid #8b98ad;
+  transform: rotate(-45deg);
+  transition: transform .18s;
+}
+.sm-caret.open { transform: rotate(45deg) translate(-1px, -1px); }
+.sm-collapse[hidden] { display: none; }
+
 .sm-addbar {
   margin-top: 10px;
   padding-top: 10px;
@@ -2851,9 +2837,6 @@ body.sm-sorting * { cursor: grabbing !important; user-select: none !important; }
   max-width: 230px;
 }
 
-/* 计划发货日 */
-
-
 /* 发出：一个胶囊，点一下就翻过来 */
 .ship-st {
   height: 25px;
@@ -3037,47 +3020,3 @@ body.sm-sorting * { cursor: grabbing !important; user-select: none !important; }
 }
 
 /* ---------------- 首页顶部「今日发货」条 ---------------- */
-.home-ship {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 10px 14px;
-  margin-bottom: 12px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-}
-.home-ship.is-alert { border-color: #fbd6d2; background: linear-gradient(180deg, #fff9f8, #fff); }
-.home-ship.is-warn { border-color: #fbe3bd; background: linear-gradient(180deg, #fffcf5, #fff); }
-.hs-ico {
-  width: 30px;
-  height: 30px;
-  flex: 0 0 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 9px;
-  background: var(--primary-soft);
-  color: var(--primary);
-}
-.home-ship.is-alert .hs-ico { background: var(--red-soft); color: var(--red); }
-.home-ship.is-warn .hs-ico { background: var(--orange-soft); color: var(--orange); }
-.hs-ico svg { width: 16px; height: 16px; }
-.hs-body { flex: 1; min-width: 0; }
-.hs-title { font-size: 12.8px; color: var(--text-2); }
-.hs-title b { font-size: 14px; color: var(--text); }
-.hs-chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
-.hs-chip {
-  font-size: 11px;
-  color: var(--text-2);
-  background: var(--card-2);
-  border: 1px solid var(--line-2);
-  border-radius: 6px;
-  padding: 1px 7px;
-}
-.hs-chip b { color: var(--text); font-weight: 600; }
-.hs-chip.late { color: #b42318; background: var(--red-soft); border-color: #fbd6d2; }
-.hs-chip.late b { color: var(--red); }
-.hs-chip.today { color: #b25c00; background: var(--orange-soft); border-color: #fbe3bd; }
-.hs-chip.today b { color: var(--orange); }
-.hs-chip.ok b { color: var(--green); }

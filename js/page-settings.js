@@ -180,7 +180,7 @@ window.Pages.settings = (function () {
   /* ================= 阶段与子阶段（2026-10-24 从任务页时间线搬到设置） ================= */
 
   /* 新建状态不落库：加一级 / 给某个一级加二级的输入行开着就开着，刷新自然没 */
-  var smState = { addStage: false, addSub: '' };
+  var smState = { addStage: false, addSub: '', collapsed: true };   /* collapsed: 卡默认收起，点标题展开 */
 
   /* 一级阶段用量：门店 / 任务 / 筹建清单各几个 */
   function smStageUse(name) {
@@ -258,17 +258,40 @@ window.Pages.settings = (function () {
   }
 
   function stageCard() {
+    var open = !smState.collapsed;
     return '<div class="card fade-up" style="animation-delay:.075s">' +
-      '<div class="card-head"><h3>阶段与子阶段</h3>' +
+      '<div class="card-head sm-toggle" data-sm-toggle role="button" tabindex="0"' +
+        ' aria-expanded="' + open + '" title="' + (open ? '收起' : '展开') + '">' +
+        '<h3>阶段与子阶段</h3>' +
         '<span class="card-sub">任务管理左侧的时间线按这里显示，共 <b id="smStageCount">' +
-          (S.stages() || []).length + '</b> 个一级阶段</span></div>' +
-      '<div class="sm-list" id="smList">' + smListHtml() + '</div>' +
-      '<div class="sm-addbar">' +
-        '<button class="btn" type="button" data-sm-add>' + UI.icon('plus') + '添加一级阶段</button>' +
+          (S.stages() || []).length + '</b> 个一级阶段</span>' +
+        '<span class="sm-caret' + (open ? ' open' : '') + '"></span>' +
       '</div>' +
-      '<p class="item-hint">一级阶段：<b>✎</b> 改名、<b>✕</b> 删除、<b>＋</b> 加二级；按住行首 <b>⠿</b> 手柄上下拖排序。' +
-        '改名 / 删除会同步改掉门店、任务和筹建任务清单里的阶段，不会新旧两个名字并存。</p>' +
+      '<div class="sm-collapse"' + (open ? '' : ' hidden') + '>' +
+        '<div class="sm-list" id="smList">' + smListHtml() + '</div>' +
+        '<div class="sm-addbar">' +
+          '<button class="btn" type="button" data-sm-add>' + UI.icon('plus') + '添加一级阶段</button>' +
+        '</div>' +
+        '<p class="item-hint">一级阶段：<b>✎</b> 改名、<b>✕</b> 删除、<b>＋</b> 加二级；按住行首 <b>⠿</b> 手柄上下拖排序。' +
+          '改名 / 删除会同步改掉门店、任务和筹建任务清单里的阶段，不会新旧两个名字并存。</p>' +
+      '</div>' +
     '</div>';
+  }
+
+  /* 展开 / 收起「阶段与子阶段」卡（直接切 DOM，不重绘，保住正在输入的行） */
+  function toggleSmCard(root, forceOpen) {
+    var head = root.querySelector('[data-sm-toggle]');
+    if (!head) return false;
+    var body = head.parentNode.querySelector('.sm-collapse');
+    if (!body) return false;
+
+    var willOpen = forceOpen === true ? true : body.hidden;   /* forceOpen 只展开；不传就切换 */
+    body.hidden = !willOpen;
+    head.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    head.title = willOpen ? '收起' : '展开';
+    var caret = head.querySelector('.sm-caret');
+    if (caret) caret.classList.toggle('open', willOpen);
+    return willOpen;
   }
 
   /* 2026-10-24：原来的「逾期倒推口径」（按阶段配默认天数）整块删掉了。
@@ -368,6 +391,13 @@ window.Pages.settings = (function () {
     });
 
     root.addEventListener('click', function (e) {
+      /* 「阶段与子阶段」卡标题：展开 / 收起（放在最前，别落到别的分支里） */
+      var smToggle = e.target.closest('[data-sm-toggle]');
+      if (smToggle && root.contains(smToggle)) {
+        toggleSmCard(root);
+        return;
+      }
+
       /* 工作流配置卡：点一下直接去能调整它的地方（2026-10-24 用户要求） */
       var cfg = e.target.closest('[data-cfg]');
       if (cfg) {
@@ -375,6 +405,8 @@ window.Pages.settings = (function () {
         if (k === 'stages') {
           var smb = root.querySelector('#smList');
           if (smb) {
+            /* 卡是收起的就先展开（forceOpen，不切换） */
+            toggleSmCard(root, true);
             if (smb.scrollIntoView) smb.scrollIntoView({ behavior: 'smooth', block: 'center' });
             var smCard = smb.closest('.card');
             if (smCard) {
@@ -890,6 +922,16 @@ window.Pages.settings = (function () {
         UI.toast('阶段顺序已保存', 'success', 1600);
       });
     })();
+
+    /* 卡标题键盘可达：Enter / 空格 切换展开 */
+    root.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      var t = e.target;
+      if (t && t.getAttribute && t.hasAttribute('data-sm-toggle')) {
+        e.preventDefault();
+        toggleSmCard(root);
+      }
+    });
 
     /* 新建行：回车存、Esc 收起、点别处（有内容）自动存 */
     smBox.addEventListener('keydown', function (e) {
