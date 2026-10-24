@@ -304,6 +304,10 @@ window.Store = (function () {
     var rl = data.settings.reopenLog;
     if (!rl || typeof rl !== 'object' || Array.isArray(rl)) data.settings.reopenLog = {};
 
+    /* 完成任务时选的落点二级：{ 任务id: '阶段 / 二级' }，见 gateOfTask */
+    var gs = data.settings.taskGateSub;
+    if (!gs || typeof gs !== 'object' || Array.isArray(gs)) data.settings.taskGateSub = {};
+
     if (!data.settings.brand) data.settings.brand = '门店筹建管理系统';
     if (!data.settings.slogan) data.settings.slogan = '让每一家门店，按时开业！';
     if (data.settings.warnDays == null) data.settings.warnDays = 3;
@@ -1154,6 +1158,7 @@ window.Store = (function () {
       if (s[key] && s[key][id] != null) { delete s[key][id]; touched = true; }
     });
     if (s.reopenLog && s.reopenLog[id]) { delete s.reopenLog[id]; touched = true; }
+    if (s.taskGateSub && s.taskGateSub[id]) { delete s.taskGateSub[id]; touched = true; }
     if (touched) pushSettings();
 
     drop('tasks', id);
@@ -1857,6 +1862,113 @@ window.Store = (function () {
     return s;
   }
 
+  /* ================= 完成任务只是「记账」，阶段照样按门店实际进度走 =================
+
+     用户口径（2026-10-25 二次调整）：
+       「即使我点了营业执照完成，他也不会直接跳转到下一阶段，而是继续按照时间先走；
+         如果走到了建档资料阶段，因为已完成了才跳过去往下一阶段。」
+
+     所以点「完成」只做一件事：这条任务标记完成。门店阶段一动不动 ——
+     阶段反映的是门店实际到了哪一步，不该被一条任务一夜之间拽到最前面。
+
+     完成时记下的落点（任务自己那个「完成后进到」）攒在 gate 里：
+       ① 门店阶段往前挪时（门店表单改阶段）调 advanceStore()：
+          从当前格往后找，一直越过那些「活已经做完」的格子，落到最远的那一格；
+       ② 越过时写一条 reopenLog，之后对那条任务点「重开」还能退回原来那一格。
+
+     gateOfTask / gatesOf / gateOf 都是现算的（没有任何新表），
+     唯一要存的是「落点带二级时选的那一支」→ settings.taskGateSub。
+     ------------------------------------------------------------------ */
+
+  /* 阶段在一级序列里的位置（二级不影响）；不在序列里 = -1 */
+  function stageOrder(key) {
+    var base = C.stageSplit(key).base;
+    var idx = -1;
+    (C.STAGES || []).forEach(function (s, i) { if (s.key === base) idx = i; });
+    return idx;
+  }
+
+  function gateSubMap() {
+    var map = state && state.settings && state.settings.taskGateSub;
+    if (!map || typeof map !== 'object' || Array.isArray(map)) return {};
+    return map;
+  }
+
+  function gateSubOf(taskId) {
+    var v = gateSubMap()[taskId];
+    return typeof v === 'string' ? v : '';
+  }
+
+  function setGateSub(taskId, value) {
+    if (!state.settings) state.settings = {};
+    var map = gateSubMap();
+    if (value) map[taskId] = String(value);
+    else delete map[taskId];
+    state.settings.taskGateSub = map;
+    pushSettings();
+    cacheLocal();
+  }
+
+  function clearGateSub(taskId) { setGateSub(taskId, ''); }
+
+  /* 这条已完成任务要落到哪一格（一级 + 二级）；落点不是有效阶段 → null */
+  function gateOfTask(task) {
+    if (!task || task.status !== 'done') return null;
+    var p = C.stageSplit(task.stage || '');
+    if (stageOrder(p.base) < 0) return null;
+    var pick = C.stageSplit(gateSubOf(task.id)).sub;
+    var sub = p.sub || pick || '';
+    return {
+      taskId: task.id, title: task.title,
+      base: p.base, sub: sub, value: C.stageValue(p.base, sub)
+    };
+  }
+
+  /* 这家店「已完成、落点比现在更靠后」的格子，从近到远 */
+  function gatesOf(storeId) {
+    var store = storeById(storeId);
+    if (!store) return [];
+    var cur = stageOrder(store.stage);
+    var out = [];
+    state.tasks.forEach(function (t) {
+      if (t.storeId !== storeId) return;
+      var g = gateOfTask(t);
+      if (!g || stageOrder(g.base) <= cur) return;
+      out.push(g);
+    });
+    out.sort(function (a, b) { return stageOrder(a.base) - stageOrder(b.base); });
+    return out;
+  }
+
+  /* 最远那一格 —— 门店推进时落在这里 */
+  function gateOf(storeId) {
+    var list = gatesOf(storeId);
+    return list.length ? list[list.length - 1] : null;
+  }
+
+  /* 门店阶段往前挪：把「已完成任务的落点」一次性越过去
+     返回 { from, to, skipped:[被越过的阶段名], gate, store } / null（没得越就不动） */
+  function advanceStore(storeId) {
+    var store = storeById(storeId);
+    if (!store) return null;
+
+    var gate = gateOf(storeId);
+    if (!gate) return null;
+
+    var curBase = C.stageSplit(store.stage).base;
+    var from = C.stageValue(curBase, storeSub(store));
+    var curIdx = stageOrder(curBase);
+    var toIdx = stageOrder(gate.base);
+
+    var skipped = [];
+    for (var i = curIdx + 1; i < toIdx; i++) skipped.push(C.STAGES[i].key);
+
+    setStoreStage(storeId, gate.base, gate.sub);
+    setReopenPoint(gate.taskId, from, gate.value);
+
+    return { from: from, to: gate.value, skipped: skipped, gate: gate, store: storeById(storeId) };
+  }
+
   /* ---------------- 门店进度 ----------------
      两个口径分开，别混着用：
 
@@ -2503,6 +2615,14 @@ window.Store = (function () {
     storeSubs: storeSubs,
     storeSub: storeSub,
     setStoreStage: setStoreStage,
+    stageOrder: stageOrder,
+    gateSubOf: gateSubOf,
+    setGateSub: setGateSub,
+    clearGateSub: clearGateSub,
+    gateOfTask: gateOfTask,
+    gatesOf: gatesOf,
+    gateOf: gateOf,
+    advanceStore: advanceStore,
     progressStages: progressStages,
     progressPlan: progressPlan,
     leadDaysOf: leadDaysOf,

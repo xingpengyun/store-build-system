@@ -144,6 +144,60 @@ window.UI = (function () {
     setTimeout(dismiss, opts.duration || (opts.action ? 6000 : 2200));
   }
 
+  /* ---------------- 右下角小卡片：门店阶段往前走了 ----------------
+     跳阶段的时候右下角弹一张卡，写明「该门店已转入下一阶段的名称」。
+     跟顶部 toast 分工：toast 是操作回执（谁做了什么），这张是结果播报，
+     停 6.5 秒、可以手动关，最多同时叠 3 张（再来就把最老的推掉）。
+
+     opts: { store: '广州天河', from: '建档资料', to: '发货阶段', note: '…' } */
+  function stagePop(opts) {
+    opts = opts || {};
+
+    var root = document.getElementById('stagePopRoot');
+    if (!root) {
+      root = document.createElement('div');
+      root.id = 'stagePopRoot';
+      root.className = 'spop-root';
+      document.body.appendChild(root);
+    }
+
+    var def = C.stageDef(opts.to) || {};
+    var color = def.color || opts.color || '#0aa564';
+    var soft = def.soft || '#dcf7ea';
+
+    var el = document.createElement('div');
+    el.className = 'spop';
+    el.setAttribute('role', 'status');
+    el.innerHTML =
+      '<div class="spop-head">' +
+        '<span class="spop-ico" style="color:' + color + '">' + icon('check') + '</span>' +
+        '<span class="spop-title">门店已转入下一阶段</span>' +
+        '<button class="spop-x" type="button" aria-label="关闭">' + icon('close') + '</button>' +
+      '</div>' +
+      '<div class="spop-store">' + U.esc(opts.store || '') + '</div>' +
+      '<div class="spop-flow">' +
+        '<span class="spop-from">' + U.esc(opts.from || '—') + '</span>' +
+        '<span class="spop-arw">' + icon('arrow') + '</span>' +
+        '<span class="spop-to" style="color:' + color + ';background:' + soft + '">' +
+          U.esc(opts.to || '') + '</span>' +
+      '</div>' +
+      (opts.note ? '<div class="spop-note">' + U.esc(opts.note) + '</div>' : '');
+
+    root.appendChild(el);
+    while (root.children.length > 3) root.removeChild(root.firstChild);
+
+    var closed = false;
+    function dismiss() {
+      if (closed) return;
+      closed = true;
+      el.classList.add('out');
+      setTimeout(function () { el.remove(); }, 240);
+    }
+    el.querySelector('.spop-x').addEventListener('click', dismiss);
+    setTimeout(dismiss, opts.duration || 6500);
+    return el;
+  }
+
   /* ---------------- 加载遮罩 ---------------- */
   function loading(text) {
     hideLoading();
@@ -717,6 +771,7 @@ window.UI = (function () {
     progress: progress,
     empty: empty,
     toast: toast,
+    stagePop: stagePop,
     loading: loading,
     hideLoading: hideLoading,
     modal: modal,

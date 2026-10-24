@@ -1067,6 +1067,80 @@
 }
 .toast-act:hover { background: rgba(255, 255, 255, .3); }
 
+/* ---------------- 右下角小卡片：门店转入下一阶段 ----------------
+   跳阶段时从右下角滑出来，写清「广州天河：建档资料 → 发货阶段」。
+   跟顶部 toast 分开：toast 是操作回执，这张是结果播报，停 6.5 秒可手动关。 */
+.spop-root {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 320;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+  pointer-events: none;
+}
+.spop {
+  pointer-events: auto;
+  width: 272px;
+  padding: 12px 14px 13px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  box-shadow: 0 16px 38px rgba(19, 28, 49, .18), 0 2px 6px rgba(19, 28, 49, .06);
+  animation: spopIn .28s cubic-bezier(.22, .9, .3, 1) both;
+}
+@keyframes spopIn {
+  from { opacity: 0; transform: translateY(12px) scale(.97); }
+  to   { opacity: 1; transform: none; }
+}
+.spop.out { animation: spopOut .22s ease both; }
+@keyframes spopOut {
+  to { opacity: 0; transform: translateY(8px) scale(.98); }
+}
+.spop-head { display: flex; align-items: center; gap: 6px; }
+.spop-ico { line-height: 0; }
+.spop-ico svg { width: 15px; height: 15px; stroke-width: 2.4; }
+.spop-title { font-size: 11.5px; color: var(--text-3); }
+.spop-x {
+  margin-left: auto; padding: 2px; border: 0; background: none;
+  color: var(--text-4); cursor: pointer; line-height: 0;
+}
+.spop-x svg { width: 12px; height: 12px; }
+.spop-x:hover { color: var(--text-2); }
+.spop-store { margin-top: 7px; font-size: 14px; font-weight: 600; color: var(--text); }
+.spop-flow { margin-top: 7px; display: flex; align-items: center; gap: 7px; font-size: 13px; }
+.spop-from { color: var(--text-2); }
+.spop-arw { color: var(--text-4); line-height: 0; }
+.spop-arw svg { width: 12px; height: 12px; }
+.spop-to { padding: 2px 9px; border-radius: 7px; font-weight: 600; }
+.spop-note { margin-top: 7px; font-size: 11.5px; color: var(--text-3); line-height: 1.45; }
+
+/* 任务「完成后进到」列里的「待越过」小标：
+   这条做完了，但门店阶段还没走到这一格（虚线 = 还没生效） */.tgate {
+  display: inline-block;
+  margin-left: 5px;
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  line-height: 1.65;
+  color: var(--orange);
+  background: var(--orange-soft);
+  border: 1px dashed rgba(233, 122, 6, .42);
+  vertical-align: 1px;
+  cursor: help;
+  white-space: nowrap;
+}
+
+/* 门店行头「设计阶段 → 发货阶段」：已经做完的活够走到哪一格 */
+.sk-gate {
+  color: var(--orange);
+  border-bottom: 1px dashed rgba(233, 122, 6, .45);
+  cursor: help;
+  white-space: nowrap;
+}
+
 /* ---------------- 统计条（报表页） ---------------- */
 .stat-row {
   display: flex;

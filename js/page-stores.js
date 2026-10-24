@@ -222,8 +222,26 @@ window.Pages.stores = (function () {
               ? '门店已创建，已按清单派发 ' + tplCount + ' 条任务'
               : '门店已创建', 'success');
           } else {
+            var before = store.stage;
             S.updateStore(store.id, payload);
+
+            /* 阶段往前挪了：把「已经做完的格子」一口气越过 ——
+               门店推进到「建档资料」时，发现这格的活早做完了，就直接落到「发货阶段」。
+               越过了就在右下角跳一张小卡片写明进到哪个阶段（用户 2026-10-25 的要求）。 */
+            var jumped = S.stageOrder(payload.stage) > S.stageOrder(before)
+              ? S.advanceStore(store.id)
+              : null;
+
             UI.toast('门店信息已更新', 'success');
+            if (jumped) {
+              UI.stagePop({
+                store: jumped.store ? jumped.store.name : payload.name,
+                from: C.stageLabel(jumped.from),
+                to: C.stageLabel(jumped.to),
+                note: '「' + jumped.gate.title + '」已完成' +
+                  (jumped.skipped.length ? ' · 越过 ' + jumped.skipped.length + ' 格' : '')
+              });
+            }
           }
           close();
           App.refresh();

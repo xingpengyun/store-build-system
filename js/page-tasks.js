@@ -227,16 +227,16 @@ window.Pages.tasks = (function () {
     '</div>';
   }
 
-  /* 一行只有一个动作：没做完 → 「完成」（= 这件事做完了，门店自动进到这条任务
-     挂的那个阶段）；做完了 → 「重开」。「开始 / 进行中」这套状态流转取消。
+  /* 一行只有一个动作：没做完 → 「完成」（= 这件事做完了，门店的落点记下来）；
+     做完了 → 「重开」。「开始 / 进行中」这套状态流转取消。
      （原先叫「推送」，一线反馈不好理解，2026-10-25 改成「完成」） */
   function actionHtml(t) {
     if (t.status === 'done') {
       return '<span class="tlink" data-act="reopen" data-id="' + t.id + '"' +
-        ' title="点错了 / 又要补做：任务改回未完成，门店退回完成前那一格">重开</span>';
+        ' title="点错了 / 又要补做：任务改回未完成；如果门店是被这条越到下一格的，一并退回">重开</span>';
     }
     var tip = C.stageSplit(t.stage || '').base
-      ? '这条做完了，门店自动进到「' + C.stageLabel(t.stage) + '」'
+      ? '这条做完了；门店阶段不跟着跳，等门店推进到这一格时自动越过到「' + C.stageLabel(t.stage) + '」'
       : '这条做完了';
     var push = '<span class="tlink tlink-push" data-act="push" data-id="' + t.id + '"' +
       ' title="' + U.esc(tip) + '">完成</span>';
@@ -257,24 +257,24 @@ window.Pages.tasks = (function () {
     return push;
   }
 
-  /* ================= 完成：这条做完了，门店自动进到这条任务的落点 =================
+  /* ================= 完成：只记账，阶段照样按门店实际进度走 =================
 
      每条任务在筹建任务清单里挂一个落点（清单那列就叫「完成后进到」）。
-     点「完成」只做两件事：这条标记完成 + 门店阶段推到落点。规则就三条：
+     点「完成」现在只做一件事：这条标记完成。门店阶段一动不动 ——
+     阶段反映的是门店实际到了哪一步，不该被一条任务一夜之间拽到最前面。
 
-       ① 落点比门店当前阶段靠后（营业执照 → 建档资料，门店还在未出图）
-          → 直接推过去。并行推进没问题，门店阶段永远是「最远那一格」。
+     落点只是「记账」，攒在 Store.gateOf(storeId) 里；
+     等门店阶段真的往前挪（门店编辑里改阶段），Store.advanceStore() 会把
+     这些已经做完的格子一口气越过去，落到最远那一格，右下角弹一张小卡片。
 
-       ② 落点就是门店当前阶段（图纸 → 未出图 而门店就在未出图）
-          → 只标记完成，阶段不动。这一格还没干完，别急着往前走。
+     举个常见的：
+       门店在「设计阶段」，点「营业执照」完成 → 门店还是「设计阶段」；
+       门店推进到「建档资料」时，发现这格（和之前）的活都做完了，
+       于是直接越过，落到「发货阶段」。
 
-       ③ 落点比门店当前阶段靠前（门店已到广告物料，才回头补做图纸）
-          → 只标记完成，绝不往回退。
-
-     相比原来「每次弹窗让你从一堆阶段里挑」：
-       默认一下点完，只有落点带二级（「已出图」下的 已做首批 / 未做首批）
-       才问一句是哪一支，点一下就落定。推错了顶部提示条里有「撤销」。
-     ================================================================ */
+     落点带二级（「已出图」下的 已做首批 / 未做首批）仍然问一句落到哪一支，
+     只是问完也不动阶段，只把那一支记下来，等越过时用。
+     ==================================================================== */
 
   function stageIndex(key) {
     var idx = -1;
@@ -299,82 +299,60 @@ window.Pages.tasks = (function () {
       return;
     }
 
-    var prev = { status: task.status, stage: store.stage, sub: S.storeSub(store) };
+    var prev = { status: task.status };
     var p = C.stageSplit(task.stage || '');
     var tIdx = stageIndex(p.base);
-    var curBase = C.stageSplit(store.stage).base;
-    var curIdx = stageIndex(curBase);
-    var curSub = S.storeSub(store);
-    var forward = tIdx >= 0 && tIdx > curIdx;         /* 只有往前才动阶段 */
-    var subs = forward ? subsOfStage(p.base) : [];    /* 只有真的往前才需要选二级 */
-    var sub = p.sub || (forward ? '' : curSub);       /* 任务自己带二级就不用问 */
+    var curIdx = stageIndex(C.stageSplit(store.stage).base);
+    var ahead = tIdx >= 0 && tIdx > curIdx;   /* 落点在门店前面 → 记成「待越过」 */
+    var subs = ahead ? subsOfStage(p.base) : [];
+    var sub = p.sub || '';
 
     function undo() {
       S.updateTask(task.id, { status: prev.status || 'pending' });
-      S.setStoreStage(store.id, prev.stage, prev.sub);
-      S.clearReopenPoint(task.id);   /* 已经退回去了，回退点用不上了 */
-      UI.toast('已撤销，门店回到「' + C.stageLabel(C.stageValue(prev.stage, prev.sub)) + '」', 'info');
+      S.clearGateSub(task.id);
+      UI.toast('已撤销：「' + task.title + '」改回未完成', 'info');
       App.refresh({ keep: true });
     }
 
     function commit(branch) {
       S.updateTask(task.id, { status: 'done' });
-
-      var moved = '';
-      if (forward) {
-        S.setStoreStage(store.id, p.base, branch || '');
-        moved = C.stageLabel(C.stageValue(p.base, branch || ''));
-
-        /* 记下「完成前停在哪 → 被推到了哪」：之后点「重开」要退回原来的格子。
-           阶段没动的（② ③ 两条规则）就清掉旧记录，重开时只改状态 */
-        S.setReopenPoint(task.id,
-          C.stageValue(prev.stage, prev.sub),
-          C.stageValue(p.base, branch || ''));
-      } else {
-        S.clearReopenPoint(task.id);
-      }
+      if (branch) S.setGateSub(task.id, C.stageValue(p.base, branch));
+      else S.clearGateSub(task.id);
 
       var msg;
-      if (moved) {
-        msg = '已完成：「' + task.title + '」→ 门店进到「' + moved + '」';
-      } else if (p.base && p.base === curBase) {
-        msg = '「' + task.title + '」已完成（这条的落点就是「' + C.stageLabel(p.base) + '」，阶段不动）';
+      if (ahead) {
+        var to = C.stageLabel(C.stageValue(p.base, branch || sub));
+        msg = '「' + task.title + '」已完成 · 门店仍在「' + C.stageLabel(store.stage) +
+          '」，阶段往前挪时会自动越过到「' + to + '」';
       } else if (p.base) {
-        msg = '「' + task.title + '」已完成（门店已经在「' + C.stageLabel(store.stage) + '」，阶段不动）';
+        msg = '「' + task.title + '」已完成（门店已在「' + C.stageLabel(store.stage) + '」）';
       } else {
         msg = '「' + task.title + '」已完成';
-      }
-
-      /* 门店往前走了，可左侧还筛着老阶段 —— 不放开筛选的话，
-         刚点完的那家会当场从列表里消失，看着像被删了 */
-      if (moved && state.stage && store.stage !== state.stage) {
-        state.stage = '';
-        state.sub = '';
       }
 
       UI.toast(msg, 'success', { action: { label: '撤销', onClick: undo } });
       App.refresh({ keep: true });
     }
 
-    /* 不往前推 / 落点没有二级 / 任务自己已经带二级 → 一下点完，不弹窗 */
-    if (!forward || !subs.length || sub) { commit(forward ? sub : ''); return; }
+    /* 落点不在前面 / 落点没有二级 / 任务自己已经带二级 → 一下点完，不弹窗 */
+    if (!ahead || !subs.length || sub) { commit(''); return; }
 
-    /* 落点带二级：只问这一句，点哪个就落哪，点完就完事 */
+    /* 落点带二级：只问这一句落到哪一支（不动阶段） */
     UI.modal({
       title: '「' + task.title + '」已完成',
-      sub: store.name + ' 往前一步',
+      sub: store.name + ' · 先记下落点，阶段不跟着跳',
       body:
         '<div class="cm-flow">' +
-          '<span class="cm-chip">' + U.esc(C.stageLabel(C.stageValue(store.stage, curSub))) + '</span>' +
+          '<span class="cm-chip">' + U.esc(C.stageLabel(C.stageValue(store.stage, S.storeSub(store)))) + '</span>' +
           UI.icon('arrow') +
           '<span class="cm-chip cm-to">' + U.esc(C.stageLabel(p.base)) + '</span>' +
         '</div>' +
-        '<div class="push-sec">「' + U.esc(C.stageLabel(p.base)) + '」还分两支，选一个</div>' +
+        '<div class="push-sec">「' + U.esc(C.stageLabel(p.base)) + '」还分两支，落到哪一支？</div>' +
         '<div class="push-chips">' + subs.map(function (s) {
           return '<button type="button" class="push-chip" data-cm-sub="' + U.esc(s) + '">' +
             U.esc(s) + '</button>';
         }).join('') + '</div>' +
-        '<p class="push-hint">点一下就落定；选错了，顶部提示条里有「撤销」。</p>',
+        '<p class="push-hint">选完只记下来；等门店阶段推进到这一格，才落到这里。选错了顶部有「撤销」。</p>',
       footer: '<button class="btn" data-cm-cancel>取消</button>',
       onMount: function (rootEl, close) {
         rootEl.querySelector('[data-cm-cancel]').onclick = close;
@@ -389,15 +367,15 @@ window.Pages.tasks = (function () {
   }
 
   /* ================= 重开：把这次完成退回去 =================
-     点「重开」做两件事，跟点错「完成」后按一次「撤销」是一个效果：
+     点「重开」做两件事：
 
-       ① 任务状态改回「未完成」
-       ② 门店退回这条任务完成前停的那一格
+       ① 任务状态改回「未完成」，落点二级的选择也一并清掉
+       ② 如果这家门店正是被这条任务「越过」到下一格的，门店退回原来那一格
 
-     ② 不是无条件的：只有「门店还停在这条任务推到的位置」才退。
-     门店已经被别的任务推得更远、或者被人手动改过阶段，就只改状态、
-     阶段原地不动 —— 否则点一下重开会把别人这几天的推进一起抹掉。
-     回退点由 completeTask 记录（settings.reopenLog），撤销时一并清掉。
+     ② 不是无条件的：只有「门店还停在这条任务越到的位置」才退。
+     门店已经被别的任务 / 手工推得更远，就只改状态、阶段原地不动 ——
+     否则点一下重开会把别人这几天的推进一起抹掉。
+     回退点由 Store.advanceStore() 记（settings.reopenLog），这里用完就清。
      ========================================================== */
 
   function reopenTask(task) {
@@ -405,6 +383,7 @@ window.Pages.tasks = (function () {
     var pt = S.reopenPointOf(task.id);
 
     S.updateTask(task.id, { status: 'pending' });
+    S.clearGateSub(task.id);
     S.clearReopenPoint(task.id);
 
     var note = '';
@@ -482,10 +461,21 @@ window.Pages.tasks = (function () {
         ? '<span class="mono ' + (late ? 'text-red' : 'muted') + '">' + U.monthDay(due) + '</span>'
         : '<span class="dim">未设开业日</span>';
 
+      /* 做完了、但门店阶段还没走到这一格 → 标一枚「待越过」，
+         不然点完「完成」看阶段没动，容易以为没生效 */
+      var gateTag = '';
+      if (cls === 'done' && stt) {
+        var g = S.gateOfTask(t);
+        if (g && S.stageOrder(g.base) > S.stageOrder(stt.stage)) {
+          gateTag = '<span class="tgate" title="这条已经做完，门店还在「' +
+            U.esc(C.stageLabel(stt.stage)) + '」；门店阶段推进到这一格时会自动越过">待越过</span>';
+        }
+      }
+
       return '<tr>' +
         '<td><div class="sk-task-title">' + U.esc(t.title) + '</div>' +
           (t.priority === 'high' ? '<div class="sk-prio">高优先级</div>' : '') + '</td>' +
-        '<td>' + UI.stageBadge(t.stage) + '</td>' +
+        '<td>' + UI.stageBadge(t.stage) + gateTag + '</td>' +
         '<td>' + (mem
           ? '<div class="store-cell">' + UI.avatar(mem.name, mem.color, 'sm') + '<span>' + U.esc(mem.name) + '</span></div>'
           : '<span class="dim">未指派</span>') + '</td>' +
@@ -503,7 +493,7 @@ window.Pages.tasks = (function () {
     }).join('');
 
     return '<table class="sk-tbl">' +
-      '<thead><tr><th>任务</th><th style="width:118px" title="这条做完，门店自动进到哪个阶段">完成后进到</th>' +
+      '<thead><tr><th>任务</th><th style="width:140px" title="这条做完，门店最后该走到哪个阶段；只记账，门店阶段推进到这一格时才越过去">完成后进到</th>' +
         '<th style="width:100px">负责人</th>' +
         '<th style="width:190px">建议完成</th><th style="width:84px">状态</th><th style="width:182px;text-align:right">操作</th></tr></thead>' +
       '<tbody>' + body + '</tbody></table>';
@@ -518,12 +508,21 @@ window.Pages.tasks = (function () {
     var sub = S.storeSub(st);
     var stageTxt = U.esc(st.stage || '—') + (sub ? ' · ' + U.esc(sub) : '');
 
+    /* 这家店已经做完的活够往前走到哪一格：
+       点完「完成」阶段是不动的，这里给出「还差一次推进」，不然看不出门道 */
+    var gate = S.gateOf(st.id);
+    var gateTxt = gate
+      ? ' <span class="sk-gate" title="已经做完了的活够走到「' +
+          U.esc(C.stageLabel(gate.value)) + '」；在门店编辑里把阶段往前改时自动越过去">→ ' +
+          U.esc(C.stageLabel(gate.value)) + '</span>'
+      : '';
+
     var head = '<div class="sk-head" data-srow="' + st.id + '" title="' + (open ? '收起' : '展开') + '这家门店的任务">' +
       '<div class="sk-store">' +
         '<i class="sk-dot" style="background:' + (def.color || '#98a2b8') + '"></i>' +
         '<div class="sk-name-box">' +
           '<div class="sk-name">' + U.esc(st.name) + '</div>' +
-          '<div class="sk-meta">' + U.esc(st.province || '—') + ' · ' + stageTxt + '</div>' +
+          '<div class="sk-meta">' + U.esc(st.province || '—') + ' · ' + stageTxt + gateTxt + '</div>' +
         '</div>' +
         /* 备注（同一份 store.remark，门店编辑里改了这里跟着变）：
            不展开也能看到——重要事情写在备注里，扫一眼行首就能看到。
@@ -668,7 +667,7 @@ window.Pages.tasks = (function () {
         '<div class="field"><label>所属门店 <span class="req">*</span></label>' +
           '<select class="select" name="storeId">' + UI.options(stores, t.storeId || '', 'id', 'name') + '</select>' +
         '</div>' +
-        '<div class="field"><label>完成后门店进到 <span class="dim">（点「完成」时自动推到这里）</span></label>' +
+        '<div class="field"><label>完成后门店进到 <span class="dim">（只是记账：门店阶段推进到这一格时才越过去）</span></label>' +
           '<select class="select" name="stage">' + UI.stageOptions(t.stage || defaultStage(), S.stageSubsWithUsed()) + '</select>' +
         '</div>' +
       '</div>' +
@@ -842,9 +841,10 @@ window.Pages.tasks = (function () {
           '新建门店时如果勾选「一并派发筹建任务」，就按这里生成；截止日期 = 门店开业日往前推你填的天数。' +
           '<b>按住左侧 ⠿ 可以上下拖动调整顺序</b>（派任务时按这个顺序生成）。' +
           '<b>改动只影响之后新建的门店，已有门店的任务不会被改。</b><br />' +
-          '<b>「完成后进到」= 这条做完，门店自动推到这个阶段</b>：' +
+          '<b>「完成后进到」= 这条做完，门店最后该走到哪个阶段</b>：' +
           '比如「图纸」完成后进到「已出图」，「营业执照」完成后进到「建档资料」。' +
-          '门店阶段只往前推、不往回退，所以几件事同时推进也不会打架。<br />' +
+          '<b>它只是记账</b>：点「完成」不会把门店阶段拽过去，阶段照样按门店实际进度走；' +
+          '等门店推进到这一格，做完了的格子会自动越过去。<br />' +
           '<b>这一列用的就是左侧那条阶段时间线</b>：点开只能选一级或二级，' +
           '二级要加 / 改名 / 删除，请去左侧「阶段时间线」里做，那边改完这里立刻同步。<br />' +
           '<b>「任务名称」右边的小按钮只列这个阶段的二级</b>：完成后进到是「已出图」，就只给' +
