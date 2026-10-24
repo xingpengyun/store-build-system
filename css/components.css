@@ -1684,22 +1684,34 @@
 .item-add .btn { flex: 0 0 auto; padding: 0 18px; height: 34px; }
 
 .item-hint {
-  margin: 9px 0 0;
+  margin: 10px 0 8px;   /* 上下都留空，别贴着输入框和卡片边框（2026-10-24 用户要求） */
   font-size: 11.5px;
   line-height: 1.7;
-  color: var(--text-3);
+  color: var(--text-4);
 }
 
 /* ---------------- 设置页：卡片底部操作条（配置快照恢复） ---------------- */
+.lead-foot {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-top: 12px;
+  margin: 16px 0 6px;   /* 上下都留空，不贴卡牌区和卡片边框（2026-10-24 用户要求） */
   flex-wrap: wrap;
 }
 .lead-foot-tip {
   font-size: 11.5px;
+  color: var(--text-4);
+}
+/* 恢复条里的按钮跟着淡一格：不抢主视觉，hover 才显色 */
+.lead-foot .btn {
   color: var(--text-3);
+  border-color: var(--line);
+  background: transparent;
+}
+.lead-foot .btn:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: var(--primary-soft);
 }
 
 /* ---------------- 设置页：我的工作流配置（阶段 / 清单 / 物料） ---------------- */
