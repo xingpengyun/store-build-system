@@ -432,3 +432,29 @@
   改成「applyStages 之前读、之后存」（`saveStageSubs` 的清洗同样按 `C.STAGES` 过滤，新 key 必须等生效后再落盘）。
   `removeStage()` 删二级定义的同一处时序问题一并修掉。
 - 验证 41 项 PASS / 0 页面报错（任务页无任何编辑按钮/输入框且筛选照旧；设置页加一级/加二级/一级改名带二级同步/二级改名/删二级两条路径/删一级/拖排序；其余 6 个页面无回归）
+
+## 2026-10-24 阶段编辑搬回任务页时间线（?v=20261024z51）
+
+用户拉取公司电脑那 18 个提交后第一句话：「怎么少东西了」——选的是「时间线的编辑按钮」。
+上一版（z42）把 ✎ / ✕ / ＋ 和新建输入行整体搬去设置页，任务页只留筛选；实际用起来离开阶段本身太远。
+
+- `page-tasks.js`
+  - `state` 加 `addStage`（加一级阶段输入行开着没）、`addSub`（给哪个一级阶段加二级，存阶段名）
+  - 恢复 `stageAddRowHtml()` / `subAddRowHtml()`，「全部阶段」右边常显一个 `data-stage-row` 的 ＋
+  - 一级行末尾恢复 `.tl-tools`（✎ 改名 / ✕ 删除 / ＋ 加二级，hover 出）；二级行恢复 `.tl-op`（✎ / ✕）
+  - 新增 `focusIn / commitStageInput / commitSubInput / nameDlg / renameStageDlg / removeStageDlg / renameSubDlg / removeSubDlg`
+    —— 全部调 Store 现成接口（`addStage` / `renameStage` / `removeStage` / `saveStageSubs` / `renameStageSub` / `removeStageSub`），
+    和设置页那张「阶段与子阶段」卡是同一套，两处改动互相同步
+  - **click 分支顺序是重点**：`[data-stage-edit]/[data-stage-del]/[data-sub-add]/…` 必须排在 `[data-sub]`、`[data-stage]` 之前，
+    否则点工具按钮会顺手把阶段筛选也切掉
+  - 输入行回车存、Esc 收起（`keydown` 监听只认 `data-stage-inp` / `data-sub-inp`，不干扰顶部搜索框）
+  - 加二级时自动把该阶段选中（`state.stage = base`），否则二级区不展开、输入框没地方显示
+- `components.css`
+  - 恢复 `.tl-tools` / `.tl-add` / `.tl-op` / `.tl-top-add` / `.tl-sub-add` / `.tl-sub-inp` / `.tl-sub-ok` 一套
+  - `.tl-all .tl-add-top` 用 **`.tl-all` 前缀**提高权重：否则被后面的 `.tl-add{opacity:.55}` 盖掉，符号淡到看不见
+  - `.tl-add-top` 改为常显（淡蓝底 `#dfe9fd`），不再只 hover 才出来 —— 之前等于没有入口
+  - 窄屏（≤1180 单列）给 `.tk-rail` 加 `order:-1`：时间线排到门店列表**上面**，
+    之前跟在列表后面，一屏看不到就以为「时间线没了」
+- 验证 `chk-tl-edit.js` 20 项全过（7 个阶段都有 ✎/✕/＋；加一级；加二级并自动选中；二级改名；一级改名带门店同步；
+  删二级；删一级；点阶段名仍是筛选不误触）；`chk-accordion` / `smoke` / `chk-config-safety` 无回归
+  （后者的 `restoreWorkflow` 断言按新版删除该入口跳过，快照断言改成实际的 3 条清单 / 2 项物料）
