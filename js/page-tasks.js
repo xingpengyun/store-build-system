@@ -538,7 +538,15 @@ window.Pages.tasks = (function () {
       : '<div class="sk-body-empty">这家门店在「' + U.esc(state.sub || state.stage || '当前条件') + '」下没有任务，' +
         '点右上「新增任务」给它添一条。</div>';
 
-    return '<div class="sk-row open">' + head + '<div class="sk-body">' + body + '</div></div>';
+    /* 门店备注：和门店编辑弹窗里填的是同一份（store.remark），那边改了这里跟着变 */
+    var remarkTag = '<span class="sk-remark-tag">' + UI.icon('flag') + '备注</span>';
+    var remarkHtml = st.remark
+      ? '<div class="sk-remark">' + remarkTag +
+        '<span class="sk-remark-txt">' + U.esc(st.remark) + '</span></div>'
+      : '<div class="sk-remark is-empty">' + remarkTag +
+        '<span class="sk-remark-txt">暂无备注，可在「门店管理」里补充</span></div>';
+
+    return '<div class="sk-row open">' + head + '<div class="sk-body">' + remarkHtml + body + '</div></div>';
   }
 
   /* 展开 / 收起一家门店：一次只开一家（点开 A，原来开着的 B 自动收回去）。

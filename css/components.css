@@ -2136,6 +2136,41 @@
 .sk-row.open .sk-arrow svg { transform: rotate(-90deg); color: var(--primary); }
 
 .sk-body { padding: 0 12px 10px; border-top: 1px dashed var(--line-2); }
+
+/* 展开区顶部的门店备注：和门店编辑弹窗里填的备注是同一份（store.remark），
+   门店管理那边保存后会自动同步到这里；没有备注时给一句引导 */
+.sk-remark {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 10px 0 2px;
+  padding: 7px 10px;
+  border: 1px solid #e8eefb;
+  border-radius: 8px;
+  background: #f7f9fd;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--text-2);
+}
+.sk-remark.is-empty {
+  background: transparent;
+  border-style: dashed;
+  color: var(--text-3);
+}
+.sk-remark-tag {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding-top: 1px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--primary);
+}
+.sk-remark-tag svg { width: 11px; height: 11px; }
+.sk-remark-txt { white-space: pre-wrap; word-break: break-word; }
+.sk-remark.is-empty .sk-remark-txt { color: var(--text-3); }
+
 .sk-tbl { width: 100%; border-collapse: collapse; }
 .sk-tbl th {
   text-align: left;
