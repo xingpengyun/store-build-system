@@ -505,3 +505,111 @@ button:focus-visible,
 .btn-primary:hover { background: linear-gradient(96deg, #3457cf 0%, #6d42d3 100%); }
 .tabs { background: #f0f0f4; }
 .tabs .tab.active { background: var(--primary-grad); }
+
+/* ==========================================================
+   14. 首页横幅的空白：加一层会动的装饰
+   ------------------------------------------------------------
+   横幅中间那段（文字和日期卡之间）本来就没什么内容，
+   现在飘着三团柔光、底下一层缓慢流动的点阵、还有几点星光，
+   空白就有内容了。全是 CSS 动画，不吃 JS。
+   ========================================================== */
+.hero-fx {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 0;
+}
+
+/* 点阵：整层缓慢横移，像有风在吹 */
+.hero-fx::before {
+  content: '';
+  position: absolute;
+  inset: -30% -10%;
+  background-image: radial-gradient(circle, rgba(99, 124, 214, .16) 1.1px, transparent 1.2px);
+  background-size: 20px 20px;
+  -webkit-mask-image: linear-gradient(100deg, transparent 8%, #000 42%, #000 78%, transparent 98%);
+  mask-image: linear-gradient(100deg, transparent 8%, #000 42%, #000 78%, transparent 98%);
+  animation: hfGrid 26s linear infinite;
+}
+@keyframes hfGrid {
+  from { background-position: 0 0; }
+  to   { background-position: 120px 60px; }
+}
+
+/* 柔光团：慢慢飘、慢慢呼吸 */
+.hf-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(26px);
+  opacity: .5;
+}
+.hf-b1 {
+  width: 240px;
+  height: 240px;
+  left: 26%;
+  top: -60%;
+  background: radial-gradient(circle, rgba(124, 78, 224, .32), transparent 68%);
+  animation: hfDrift1 22s ease-in-out infinite alternate;
+}
+.hf-b2 {
+  width: 200px;
+  height: 200px;
+  left: 52%;
+  top: 40%;
+  background: radial-gradient(circle, rgba(63, 107, 245, .26), transparent 68%);
+  animation: hfDrift2 27s ease-in-out infinite alternate;
+}
+.hf-b3 {
+  width: 170px;
+  height: 170px;
+  left: 8%;
+  top: 30%;
+  background: radial-gradient(circle, rgba(18, 165, 148, .22), transparent 68%);
+  animation: hfDrift3 31s ease-in-out infinite alternate;
+}
+@keyframes hfDrift1 {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(46px, 34px) scale(1.14); }
+}
+@keyframes hfDrift2 {
+  from { transform: translate(0, 0) scale(1.08); }
+  to   { transform: translate(-38px, -22px) scale(.94); }
+}
+@keyframes hfDrift3 {
+  from { transform: translate(0, 0) scale(.95); }
+  to   { transform: translate(30px, -26px) scale(1.12); }
+}
+
+/* 星光：几点小光斑缓缓上浮（呼应「门店陆续开业」） */
+.hf-spark {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 10px 2px rgba(255, 255, 255, .85);
+  opacity: 0;
+  animation: hfRise 7s ease-in-out infinite;
+}
+.hf-s1 { left: 32%; animation-delay: .4s; }
+.hf-s2 { left: 44%; width: 4px; height: 4px; animation-delay: 2.6s; animation-duration: 9s; }
+.hf-s3 { left: 58%; width: 5px; height: 5px; animation-delay: 4.4s; animation-duration: 8s; }
+.hf-s4 { left: 68%; width: 3px; height: 3px; animation-delay: 1.6s; animation-duration: 10s; }
+@keyframes hfRise {
+  0%   { opacity: 0; transform: translateY(14px) scale(.6); }
+  22%  { opacity: .9; }
+  70%  { opacity: .5; }
+  100% { opacity: 0; transform: translateY(-52px) scale(1.15); }
+}
+
+/* 横幅里的内容要压在装饰上面 */
+.hero > *:not(.hero-fx) { position: relative; z-index: 1; }
+
+/* 开了「减少动效」就把装饰停住（不闪、不动） */
+@media (prefers-reduced-motion: reduce) {
+  .hero-fx::before,
+  .hf-blob,
+  .hf-spark { animation: none !important; }
+}

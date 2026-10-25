@@ -641,6 +641,13 @@ window.Pages.home = (function () {
     return '' +
     /* Hero */
     '<section class="hero fade-up">' +
+      /* 装饰层：横幅中间那块空白太空了，飘几团柔光、流动点阵、几点星光。
+         纯 CSS 动画，pointer-events:none，不挡任何内容。 */
+      '<div class="hero-fx" aria-hidden="true">' +
+        '<i class="hf-blob hf-b1"></i><i class="hf-blob hf-b2"></i><i class="hf-blob hf-b3"></i>' +
+        '<i class="hf-spark hf-s1"></i><i class="hf-spark hf-s2"></i><i class="hf-spark hf-s3"></i>' +
+        '<i class="hf-spark hf-s4"></i>' +
+      '</div>' +
       '<div class="hero-icon">🏪</div>' +
       '<div class="hero-main">' +
         '<h2>' + U.greeting() + '，' + U.esc(set.teamName || '阿蛮团队') + '！</h2>' +
