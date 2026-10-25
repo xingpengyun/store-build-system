@@ -60,12 +60,12 @@
 .login-card {
   width: 100%;
   max-width: 400px;
-  background: rgba(255, 255, 255, .88);
+  background: rgba(255, 255, 255, .95);
   backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, .95);
+  border: 1px solid #ffffff;
   border-radius: 24px;
   padding: 36px 32px 26px;
-  box-shadow: 0 24px 60px rgba(31, 61, 90, .1), 0 2px 8px rgba(31, 61, 90, .04);
+  box-shadow: 0 28px 64px rgba(31, 61, 90, .18), 0 2px 8px rgba(31, 61, 90, .06);
   animation: fadeUp .45s cubic-bezier(.22, .8, .3, 1) both;
 }
 
@@ -300,10 +300,10 @@
   font-size: 14px;
   border-radius: 12px;
   background: #f3f6fb;
-  border-color: transparent;
+  border-color: #dde5f2;   /* 彩色背景下给输入框一个清晰的边 */
   transition: background .16s, border-color .16s, box-shadow .16s;
 }
-.login-form .input:hover { background: #eef3fa; }
+.login-form .input:hover { background: #eef3fa; border-color: #cfd9ec; }
 .login-form .input:focus {
   background: #fff;
   border-color: var(--primary);
