@@ -141,7 +141,7 @@ window.Pages.team = (function () {
             UI.toast('成员信息已更新', 'success');
           }
           close();
-          App.refresh();
+          App.refresh({ keep: true });
         };
       }
     });
@@ -426,7 +426,7 @@ window.Pages.team = (function () {
             S.removeMember(id).then(function () {
               UI.hideLoading();
               UI.toast('成员已移除', 'success');
-              App.refresh();
+              App.refresh({ keep: true });
             }).catch(function (e) {
               UI.hideLoading();
               UI.toast('删除失败：' + (e.message || e), 'error');

@@ -242,7 +242,7 @@ window.Pages.stores = (function () {
             }
           }
           close();
-          App.refresh();
+          App.refresh({ keep: true });
         };
       }
     });
@@ -744,7 +744,7 @@ window.Pages.stores = (function () {
           onOk: function () {
             S.removeStore(id);
             UI.toast('门店已删除', 'success');
-            App.refresh();
+            App.refresh({ keep: true });
           }
         });
       }

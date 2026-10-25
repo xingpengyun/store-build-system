@@ -598,7 +598,7 @@ window.Pages.settings = (function () {
         try { localStorage.removeItem('sbs.weather.v1'); } catch (e) {}
         S.saveAll();
         UI.toast('设置已保存，团队其他人刷新后可见', 'success');
-        App.refresh();
+        App.refresh({ keep: true });
       }
 
       else if (act === 'export') {
@@ -675,7 +675,7 @@ window.Pages.settings = (function () {
             var r = S.restoreSettingsSnapshot();
             if (!r || !r.ok) { UI.toast((r && r.error) || '恢复失败', 'error'); return; }
             UI.toast('已恢复到 ' + fmtSnapTime(r.at) + ' 的配置', 'success', 2800);
-            setTimeout(function () { App.refresh(); }, 300);
+            setTimeout(function () { App.refresh({ keep: true }); }, 300);
           }
         });
       }

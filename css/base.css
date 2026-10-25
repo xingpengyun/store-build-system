@@ -115,3 +115,8 @@ svg { display: block; }
   to   { opacity: 1; transform: none; }
 }
 .fade-up { animation: fadeUp .34s cubic-bezier(.22, .8, .3, 1) backwards; }
+
+/* 数据变动触发的「原地重画」（app.js 给 #view 挂 .re-quiet）：
+   这时不重播入场动画 —— .fade-up 是向上挪 8px + 淡入，
+   每改一条数据整页都重新飘一遍，看起来就是抖。切页面时才播。 */
+.re-quiet .fade-up { animation: none; }

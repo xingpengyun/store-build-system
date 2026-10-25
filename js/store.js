@@ -23,13 +23,34 @@ window.Store = (function () {
 
   /* ================= 本地缓存 ================= */
 
-  function cacheLocal() {
+  /* 写盘合并（2026-10-25 z84）：以前每改一条数据就把整份 state
+     JSON.stringify 一次再写进 localStorage —— 连续操作（连点完成、
+     批量导入、逐字改备注）时主线程一格一格地卡。内存里的 state 和索引
+     是立刻生效的，只有「落盘」推迟 260ms，连续的改动最后只写一次。 */
+  var cacheTimer = null;
+  var cachedBytes = 0;
+
+  function writeCacheNow() {
+    if (cacheTimer) { clearTimeout(cacheTimer); cacheTimer = null; }
     try {
-      localStorage.setItem(KEY, JSON.stringify(state));
+      var s = JSON.stringify(state);
+      localStorage.setItem(KEY, s);
+      cachedBytes = new Blob([s]).size;
     } catch (e) {
       console.warn('[Store] 本地缓存写入失败', e);
     }
-    invalidateIdx();
+  }
+
+  function cacheLocal() {
+    invalidateIdx();                 /* 索引必须立刻失效，内存结构马上一致 */
+    if (cacheTimer) return;          /* 已有排队的写盘，这次改动一并带过去 */
+    cacheTimer = setTimeout(writeCacheNow, 260);
+  }
+
+  /* 关页面 / 切走之前一定把排队的写盘落下去 */
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('pagehide', writeCacheNow);
+    window.addEventListener('beforeunload', writeCacheNow);
   }
 
   function readLocal() {
@@ -43,6 +64,7 @@ window.Store = (function () {
   }
 
   function hasLocalData() {
+    writeCacheNow();        /* 先把排队的写盘落下去，别拿旧数据做判断 */
     var d = readLocal();
     return !!(d && d.stores && d.stores.length);
   }
@@ -2848,10 +2870,15 @@ window.Store = (function () {
     });
   }
 
+  /* 顶栏每次重画都要显示占用：以前是「把整份缓存读出来再建个 Blob 量一遍」，
+     重画一次就全量读一次。现在写盘时顺便记下，平时直接返回。 */
   function storageBytes() {
-    try {
-      return new Blob([localStorage.getItem(KEY) || '']).size;
-    } catch (e) { return 0; }
+    if (!cachedBytes) {
+      try {
+        cachedBytes = new Blob([localStorage.getItem(KEY) || '']).size;
+      } catch (e) { cachedBytes = 0; }
+    }
+    return cachedBytes;
   }
 
   function onChange(fn) { listeners.push(fn); }
@@ -2974,6 +3001,7 @@ window.Store = (function () {
     tasksOf: tasksOf,
     pendingCount: pendingCount,
     flushOutbox: flushOutbox,
-    storageBytes: storageBytes
+    storageBytes: storageBytes,
+    flushCache: writeCacheNow
   };
 })();

@@ -34,6 +34,34 @@ window.App = (function () {
     }
   }
 
+  /* ---------------- 重画时的「锚点」：不让它跳 ----------------
+     数据一变整页重画，行的位置会因为排序 / 增删而挪动，
+     滚动条不动就会看到内容整体跳一下。这里在重画前挑一个
+     视口里最靠上的、带 data-* / id 的元素当锚点，重画后
+     把它挪回原来在屏幕上的位置（跟任务页展开门店用的是一套思路）。 */
+  var ANCHOR_ATTRS = ['data-srow', 'data-id', 'data-store', 'id'];
+
+  function pickAnchor(view) {
+    if (!view) return null;
+    var vh = window.innerHeight || 800;
+    var best = null;
+    var nodes = view.querySelectorAll('[data-srow],[data-id],[data-store],[id]');
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      var r = el.getBoundingClientRect();
+      if (!r.height || r.bottom < 60 || r.top > vh) continue;   /* 不在视口里 */
+      var key = null;
+      for (var j = 0; j < ANCHOR_ATTRS.length; j++) {
+        var v = el.getAttribute(ANCHOR_ATTRS[j]);
+        if (v) { key = ANCHOR_ATTRS[j] + '="' + v + '"'; break; }
+      }
+      if (!key) continue;
+      var score = Math.abs(r.top - 110);
+      if (!best || score < best.score) best = { key: key, top: r.top, score: score };
+    }
+    return best;
+  }
+
   /* opts.keep = 原地重画：不跑 onEnter（那是「刚进这一页」的初始化），也不滚回顶部。
      数据变了要重画时用这个 —— 否则在任务页连点几条「完成」，
      每点一次门店就收起、页面弹回顶部，根本没法连着干。 */
@@ -53,12 +81,21 @@ window.App = (function () {
     var host = document.getElementById('view');
     if (!host) return;
 
+    var prevScroll = window.pageYOffset || document.documentElement.scrollTop || 0;
+    var anchor = keep ? pickAnchor(host) : null;
+
     /* 用一个新的空容器替换掉旧的 #view：
        各页面都是在 #view 上挂事件监听的，如果一直复用同一个节点，
        来回切页面会让监听越挂越多（点一次「新建门店」会连着触发上一次「新增任务」的处理，
        于是弹出一堆「请先创建门店」）。换节点后旧监听随旧节点一起丢掉。 */
     var view = host.cloneNode(false);
     host.parentNode.replaceChild(view, host);
+
+    /* 原地重画时别再播一遍入场动画：.fade-up 是「向上挪 8px + 淡入」，
+       每次数据变动整个页面都重新飘一遍，看起来就是抖。
+       切页面（非 keep）要清掉这个类 —— 新容器是从旧容器 clone 来的，会带着。 */
+    if (keep) view.classList.add('re-quiet');
+    else view.classList.remove('re-quiet');
 
     if (!keep && page.onEnter) page.onEnter(params);
     params = {};
@@ -74,7 +111,18 @@ window.App = (function () {
     document.title = (page.title || '首页') + ' · ' + brand;
 
     updateChrome();
-    if (!keep) window.scrollTo(0, 0);
+
+    if (!keep) { window.scrollTo(0, 0); return; }
+
+    /* 锚点还在（比如那家门店没被删）→ 按差值补滚动；不在了 → 退回原滚动值 */
+    var after = anchor ? view.querySelector('[' + anchor.key + ']') : null;
+    if (after) {
+      var delta = after.getBoundingClientRect().top - anchor.top;
+      if (Math.abs(delta) > 0.5) window.scrollBy(0, delta);
+      else window.scrollTo(0, prevScroll);
+    } else {
+      window.scrollTo(0, prevScroll);
+    }
   }
 
   function refresh(opts) { render(opts); }

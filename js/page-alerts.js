@@ -129,7 +129,7 @@ window.Pages.alerts = (function () {
         if (act === 'markAll') {
           S.markAllAlertsRead();
           UI.toast('已全部标记为已读', 'success');
-          App.refresh();
+          App.refresh({ keep: true });
           return;
         }
         if (act === 'toTasks') {

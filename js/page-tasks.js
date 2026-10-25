@@ -1147,7 +1147,7 @@ window.Pages.tasks = (function () {
               S.saveTemplates(list);
               var added = subsSnapshot().filter(function (v) { return before.indexOf(v) < 0; });
               close();
-              App.refresh();
+              App.refresh({ keep: true });
               UI.toast(tip, 'success');
               if (added.length) {
                 UI.toast('阶段时间线已同步，新增二级：' +
