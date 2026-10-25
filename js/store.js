@@ -29,6 +29,7 @@ window.Store = (function () {
     } catch (e) {
       console.warn('[Store] 本地缓存写入失败', e);
     }
+    invalidateIdx();
   }
 
   function readLocal() {
@@ -44,6 +45,163 @@ window.Store = (function () {
   function hasLocalData() {
     var d = readLocal();
     return !!(d && d.stores && d.stores.length);
+  }
+
+  /* ================= 待发送队列（2026-10-25，断网改的东西不丢） =================     以前保存失败只弹一句提示：45 秒后自动同步一拉，这次改动就被云端覆盖了。
+     现在失败的操作进 localStorage 队列，恢复联网后按顺序补发；
+     补发之前先把队列里的改动贴回刚拉下来的数据上，界面上的东西不会被同步冲掉。
+     ---------------------------------------------------------------- */
+
+  var OUTBOX_KEY = KEY + '.outbox';
+  var OUTBOX_MAX = 500;          /* 存满就丢最旧的：队列本身不是备份，别把 localStorage 撑爆 */
+
+  function readOutbox() {
+    try {
+      var raw = localStorage.getItem(OUTBOX_KEY);
+      var a = raw ? JSON.parse(raw) : [];
+      return Array.isArray(a) ? a : [];
+    } catch (e) { return []; }
+  }
+
+  function writeOutbox(list) {
+    try {
+      localStorage.setItem(OUTBOX_KEY, JSON.stringify(list));
+    } catch (e) { /* 配额满就算了，别影响主流程 */ }
+    if (window.App && window.App.refreshChrome) window.App.refreshChrome();
+  }
+
+  function opKey(op) {
+    return op.k + ':' + op.table + ':' + (op.id || 'main');
+  }
+
+  /* 同一条记录只留最后一次操作（后写的赢），不然改 10 次会存 10 条 */
+  function enqueue(op) {
+    var list = readOutbox();
+    var k = opKey(op);
+    list = list.filter(function (x) { return opKey(x) !== k; });
+    list.push(op);
+    if (list.length > OUTBOX_MAX) list = list.slice(list.length - OUTBOX_MAX);
+    writeOutbox(list);
+    console.warn('[cloud] 保存失败，进入待发送队列（' + k + '），共 ' + list.length + ' 条');
+  }
+
+  function pendingCount() {
+    return readOutbox().length;
+  }
+
+  /* 浏览器一报"网络回来了"，立刻补发，不用等下一次 45 秒同步 */
+  var onlineBound = false;
+  function bindOnline() {
+    if (onlineBound) return;
+    onlineBound = true;
+    try {
+      window.addEventListener('online', function () { flushOutbox(); });
+    } catch (e) {}
+  }
+
+  var flushing = false;
+
+  /* 从队首开始发，发到某条卡住就停：剩下的留下次，避免顺序错乱 */
+  function flushOutbox() {
+    if (flushing) return Promise.resolve(false);
+    var list = readOutbox();
+    if (!list.length) return Promise.resolve(false);
+    flushing = true;
+
+    function run(i) {
+      if (i >= list.length) {
+        flushing = false;
+        writeOutbox([]);
+        online = true;
+        if (window.UI) UI.toast('已恢复云端连接，补发了 ' + list.length + ' 条待发送数据', 'success');
+        return Promise.resolve(list.length);
+      }
+      /* applyOp 不在（比如离线演示页换了假的 Cloud）就当成发失败，别把异常抛到页面外 */
+      var send = (window.Cloud && window.Cloud.applyOp)
+        ? window.Cloud.applyOp(list[i])
+        : Promise.reject(new Error('云服务未加载'));
+      return send.then(function () {
+        return run(i + 1);
+      }, function (e) {
+        flushing = false;
+        online = false;
+        lastError = e.message || String(e);
+        writeOutbox(list.slice(i));      /* 这条没发出去，连同后面的都留下 */
+        console.error('[cloud] 补发中断', e);
+        return Promise.resolve(i);
+      });
+    }
+    return run(0).catch(function () { return 0; });
+  }
+
+  /* 把队列里的改动贴到刚拉下来的数据上（拉下来 → 贴 → 才显示）。
+     这样断网期间的改动在界面上不会"闪回去"，等补发成功后云端也就有了。 */
+  function applyPending(data) {
+    var list = readOutbox();
+    if (!list.length) return data;
+    list.forEach(function (op) {
+      var arr = data[op.table];
+      if (op.k === 'put') {
+        if (!Array.isArray(arr)) return;
+        var mapped = window.Cloud.fromRow(op.table, op.row);
+        var hit = null;
+        for (var i = 0; i < arr.length; i++) if (arr[i].id === mapped.id) { hit = arr[i]; break; }
+        if (hit) { Object.keys(mapped).forEach(function (k) { hit[k] = mapped[k]; }); }
+        else arr.push(mapped);
+      } else if (op.k === 'del') {
+        if (!Array.isArray(arr)) return;
+        data[op.table] = arr.filter(function (x) { return x.id !== op.id; });
+      } else if (op.k === 'set') {
+        try {
+          var s = JSON.parse(op.value);
+          if (s && s.settings) data.settings = s.settings;
+          if (s && s.alertsRead) data.alertsRead = s.alertsRead;
+        } catch (e) { /* 脏数据就跳过 */ }
+      }
+    });
+    return data;
+  }
+
+  /* ================= 查询索引（门店多了不能每次遍历全表） =================
+     400 家门店 ≈ 8000 条任务，按门店取任务原来是"整表 filter 一遍"，
+     一次渲染下来就是几千万次比较。这里建一次 id / 按门店的字典，改动后重建。
+     重建触发点：cacheLocal()（每次改动都会走）+ 数组引用变了 + 条数变了，
+     双保险，防止某条路径忘了刷新索引。 */
+
+  var idx = null;
+  var idxRef = null;
+
+  function buildIdx() {
+    idx = { stores: {}, members: {}, tasks: {}, byStore: {} };
+    idxRef = { stores: state.stores, tasks: state.tasks, members: state.members };
+    state.stores.forEach(function (s) { idx.stores[s.id] = s; });
+    state.members.forEach(function (m) { idx.members[m.id] = m; });
+    state.tasks.forEach(function (t) {
+      idx.tasks[t.id] = t;
+      var k = t.storeId || '';
+      if (!idx.byStore[k]) idx.byStore[k] = [];
+      idx.byStore[k].push(t);
+    });
+  }
+
+  function invalidateIdx() { idx = null; }
+
+  function index() {
+    if (!state) return null;
+    var stale = !idx ||
+      idxRef.stores !== state.stores ||
+      idxRef.tasks !== state.tasks ||
+      idxRef.members !== state.members;
+    if (stale) buildIdx();
+    return idx;
+  }
+
+  function tasksOf(storeId) {
+    var i = index();
+    if (!i) return [];
+    var l = i.byStore[storeId];
+    /* 返回副本：调用方经常 sort()，不能让他们把索引里的数组改了 */
+    return l ? l.slice() : [];
   }
 
   /* ================= 一级阶段（可自定义） =================
@@ -375,16 +533,26 @@ window.Store = (function () {
 
   function push(table, obj) {
     if (!window.Cloud) return;
+    var row = null;
+    try { row = window.Cloud.toRow(table, obj); } catch (e) { row = null; }
+
     window.Cloud.upsert(table, obj).then(function () {
       if (!online) {
         online = true;
         if (window.UI) UI.toast('已恢复云端连接', 'success');
+        writeOutbox(readOutbox());   /* 刷一下顶栏的待发送角标 */
       }
     }).catch(function (e) {
       online = false;
       lastError = e.message || String(e);
       console.error('[cloud] 保存失败', table, e);
-      if (window.UI) UI.toast('云端保存失败：' + lastError, 'error');
+      /* 没发出去 → 进队列，联网后补发，不让这次改动被同步覆盖掉 */
+      if (row) {
+        enqueue({ k: 'put', table: table, id: obj.id, row: row });
+        if (window.UI) UI.toast('云端连不上，这条已存进待发送队列，恢复后自动补发', 'error');
+      } else if (window.UI) {
+        UI.toast('云端保存失败：' + lastError, 'error');
+      }
     });
   }
 
@@ -395,16 +563,32 @@ window.Store = (function () {
 
   function drop(table, id) {
     if (!window.Cloud) return;
-    window.Cloud.remove(table, id).catch(function (e) {
+    window.Cloud.remove(table, id).then(function () {
+      if (!online) {
+        online = true;
+        if (window.UI) UI.toast('已恢复云端连接', 'success');
+      }
+    }).catch(function (e) {
       console.error('[cloud] 删除失败', table, id, e);
-      if (window.UI) UI.toast('云端删除失败：' + (e.message || e), 'error');
+      /* 删失败更要进队列：不然云端还留着这一行，下次同步又冒出来了 */
+      enqueue({ k: 'del', table: table, id: id });
+      if (window.UI) UI.toast('云端删除失败，已存进待发送队列：' + (e.message || e), 'error');
     });
   }
 
   function pushSettings() {
     if (!window.Cloud) return;
-    window.Cloud.saveSettings(state.settings, state.alertsRead).catch(function (e) {
+    var value = JSON.stringify({ settings: state.settings, alertsRead: state.alertsRead || [] });
+    window.Cloud.saveSettings(state.settings, state.alertsRead).then(function () {
+      if (!online) {
+        online = true;
+        if (window.UI) UI.toast('已恢复云端连接', 'success');
+      }
+    }).catch(function (e) {
+      online = false;
       console.error('[cloud] 设置保存失败', e);
+      enqueue({ k: 'set', table: 'app_settings', id: 'main', value: value });
+      if (window.UI) UI.toast('云端连不上，设置已存进待发送队列，恢复后自动补发', 'error');
     });
   }
 
@@ -421,8 +605,12 @@ window.Store = (function () {
   /* ================= 加载 ================= */
 
   function load(onProgress) {
-    return window.Cloud.pullAll().then(function (data) {
+    return window.Cloud.pullAll(onProgress).then(function (data) {
       online = true;
+      bindOnline();
+      /* 先把待发送队列里的改动贴回云端数据上，再判断"是不是空系统"：
+         否则断网时新建的门店，会因为云端还没收到而被当成空系统处理掉。 */
+      applyPending(data);
       var remoteEmpty = !data.stores.length && !data.tasks.length && !data.members.length;
 
       if (remoteEmpty) {
@@ -459,6 +647,8 @@ window.Store = (function () {
       state = normalized(data);
       cacheLocal();
       snapshotSettings('load');   /* 每次进系统都留一份配置快照，误删可找回 */
+      /* 刚才贴回来的改动，趁现在把队列补发掉 */
+      flushOutbox();
       return { imported: 0, seeded: false };
     }).catch(function (e) {
       /* 网络失败 → 退回本地缓存，离线可用 */
@@ -483,6 +673,7 @@ window.Store = (function () {
       if (document.querySelector('.modal-mask')) return;   /* 有弹窗时别打断 */
 
       window.Cloud.pullAll().then(function (data) {
+        applyPending(data);          /* 待发送的改动先贴回去，别被同步冲掉 */
         var next = normalized(data);
         var nextStamp = stampOf(next);
         if (nextStamp === lastStamp) return;
@@ -516,24 +707,21 @@ window.Store = (function () {
   function getLastError() { return lastError; }
 
   function storeById(id) {
-    for (var i = 0; i < state.stores.length; i++) {
-      if (state.stores[i].id === id) return state.stores[i];
-    }
-    return null;
+    var i = index();
+    if (!i) return null;
+    return i.stores[id] || null;
   }
 
   function memberById(id) {
-    for (var i = 0; i < state.members.length; i++) {
-      if (state.members[i].id === id) return state.members[i];
-    }
-    return null;
+    var i = index();
+    if (!i) return null;
+    return i.members[id] || null;
   }
 
   function taskById(id) {
-    for (var i = 0; i < state.tasks.length; i++) {
-      if (state.tasks[i].id === id) return state.tasks[i];
-    }
-    return null;
+    var i = index();
+    if (!i) return null;
+    return i.tasks[id] || null;
   }
 
   /* ---------------- 建议完成日：门店开业日 − 这条任务自己的「开业前 N 天」 ----------------
@@ -2783,6 +2971,9 @@ window.Store = (function () {
     snapshotSettings: snapshotSettings,
     settingsSnapshot: settingsSnapshot,
     restoreSettingsSnapshot: restoreSettingsSnapshot,
+    tasksOf: tasksOf,
+    pendingCount: pendingCount,
+    flushOutbox: flushOutbox,
     storageBytes: storageBytes
   };
 })();

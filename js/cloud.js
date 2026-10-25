@@ -205,24 +205,57 @@ window.Cloud = (function () {
 
   /* ---------------- 拉取 ---------------- */
 
-  function pullAll() {
+  /* 单页行数。必须小于服务端单次返回的上限 —— PostgREST 这类接口常见默认 1000 行，
+     超了不会报错，只会**悄悄少给**，页面看着像"数据丢了"。
+     到底了没有，不看页大小，看这一页实际拿回来多少：万一服务端上限比 500 还小，
+     也只是多绕一圈，不会漏。 */
+  var PAGE = 500;
+
+  /* 分页把整张表读干净。order('id') 保证翻页稳定（不排序的话，
+     第二页可能又从第一行开始，永远读不完）。 */
+  function selectAll(table, cols, onPage) {
+    var db = api().database;
+    var out = [];
+    var seen = {};
+    var from = 0;
+    function step() {
+      return db.from(table).select(cols || '*')
+        .order('id', { ascending: true })
+        .range(from, from + PAGE - 1)
+        .then(function (r) {
+          if (r.error) throw new Error(r.error.message || '读取云端数据失败');
+          var rows = r.data || [];
+          var fresh = 0;
+          rows.forEach(function (x) {
+            if (x && x.id != null && !seen[x.id]) { seen[x.id] = 1; out.push(x); fresh++; }
+          });
+          if (onPage) onPage(out.length);
+          /* 一页没拿满 = 真的到底；或者服务端不认 range（拿回来的全是见过的）= 也要停，否则死循环 */
+          if (rows.length < PAGE || fresh === 0) return out;
+          from += rows.length;
+          return step();
+        });
+    }
+    return step();
+  }
+
+  function pullAll(onProgress) {
     var db = api().database;
     return Promise.all([
-      db.from('stores').select('*'),
-      db.from('tasks').select('*'),
-      db.from('members').select('*'),
-      db.from('arrivals').select('*'),
+      selectAll('stores', '*', function (n) { if (onProgress) onProgress('stores', n); }),
+      selectAll('tasks', '*', function (n) { if (onProgress) onProgress('tasks', n); }),
+      selectAll('members', '*', function (n) { if (onProgress) onProgress('members', n); }),
+      selectAll('arrivals', '*', function (n) { if (onProgress) onProgress('arrivals', n); }),
       db.from('app_settings').select('*').eq('key', 'main')
     ]).then(function (res) {
       var out = { stores: [], tasks: [], members: [], arrivals: [], settings: null, alertsRead: [] };
-      res.forEach(function (r) {
-        if (r.error) throw new Error(r.error.message || '读取云端数据失败');
-      });
+      /* 前 4 个是 selectAll 的返回：已经是行数组了；最后一个是原始 builder 结果 { data, error } */
+      if (res[4] && res[4].error) throw new Error(res[4].error.message || '读取云端数据失败');
 
-      out.stores = (res[0].data || []).map(MAP.stores.fromRow);
-      out.tasks = (res[1].data || []).map(MAP.tasks.fromRow);
-      out.members = (res[2].data || []).map(MAP.members.fromRow);
-      out.arrivals = (res[3].data || []).map(MAP.arrivals.fromRow);
+      out.stores = (res[0] || []).map(MAP.stores.fromRow);
+      out.tasks = (res[1] || []).map(MAP.tasks.fromRow);
+      out.members = (res[2] || []).map(MAP.members.fromRow);
+      out.arrivals = (res[3] || []).map(MAP.arrivals.fromRow);
 
       var row = (res[4].data || [])[0];
       if (row && row.value) {
@@ -369,6 +402,58 @@ window.Cloud = (function () {
     });
   }
 
+  /* ---------------- 待发送队列（断网改的东西不丢） ----------------
+     2026-10-25：以前保存失败只弹一句提示就完了，45 秒后的自动同步会用云端数据
+     把这次改动覆盖掉，断网期间做的工作全白做。
+     现在失败的操作会存成一条 op，恢复联网后按顺序重放；
+     重放之前也会先把这些改动贴回刚拉下来的数据上，眼睛看到的东西不会被同步冲掉。
+
+     op 三种：
+       { k:'put',  table, id, row }    —— 行已按 MAP.toRow 转成数据库字段
+       { k:'del',  table, id }
+       { k:'set',  id:'main', value }  —— app_settings 整包 JSON
+     ---------------------------------------------------------------- */
+
+  function applyOp(op) {
+    if (!op || !op.k) return Promise.resolve(true);
+    var db = api().database;
+    if (op.k === 'put') {
+      return db.from(op.table).upsert(op.row).then(function (r) {
+        if (r.error) throw new Error(r.error.message || '保存失败');
+        return true;
+      });
+    }
+    if (op.k === 'del') {
+      return db.from(op.table).delete().eq('id', op.id).then(function (r) {
+        /* 云端已经没有这一行了（别人删过 / 上一轮其实发出去了）也算成功，
+           不然队列会永远卡在这一条上 */
+        if (r.error) throw new Error(r.error.message || '删除失败');
+        return true;
+      });
+    }
+    if (op.k === 'set') {
+      return db.from('app_settings')
+        .upsert({ key: 'main', value: op.value, updated_at: new Date().toISOString() })
+        .then(function (r) {
+          if (r.error) throw new Error(r.error.message || '设置保存失败');
+          return true;
+        });
+    }
+    return Promise.resolve(true);
+  }
+
+  /* 前端对象 → 数据库字段 / 反过来的两个小工具，给队列和"贴回本地"用 */
+  function toRow(table, obj) {
+    var m = MAP[table];
+    if (!m || !m.toRow) throw new Error('没有这张表的映射：' + table);
+    return m.toRow(obj);
+  }
+  function fromRow(table, row) {
+    var m = MAP[table];
+    if (!m || !m.fromRow) throw new Error('没有这张表的映射：' + table);
+    return m.fromRow(row);
+  }
+
   return {
     config: CFG,
     authMode: AUTH_MODE,
@@ -382,6 +467,7 @@ window.Cloud = (function () {
     verifyCode: verifyCode,
     logout: logout,
     pullAll: pullAll,
+    selectAll: selectAll,
     upsert: upsert,
     remove: remove,
     saveSettings: saveSettings,
@@ -390,6 +476,9 @@ window.Cloud = (function () {
     importBusiness: importBusiness,
     wipeBusiness: wipeBusiness,
     wipeAll: wipeAll,
+    applyOp: applyOp,
+    toRow: toRow,
+    fromRow: fromRow,
     map: MAP
   };
 })();

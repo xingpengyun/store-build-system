@@ -30,8 +30,9 @@ window.Pages.tasks = (function () {
 
   /* ---------------- 门店 / 任务 基础数据 ---------------- */
 
+  /* 按门店取任务走 Store 的索引（tasksOf 返回副本，随便 sort 不会动到索引） */
   function tasksOf(storeId) {
-    return S.getState().tasks.filter(function (t) { return t.storeId === storeId; });
+    return S.tasksOf(storeId);
   }
 
   function statOfTasks(list) {

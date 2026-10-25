@@ -109,6 +109,19 @@ window.App = (function () {
     var nameEl = document.getElementById('topbarUserName');
     if (nameEl) nameEl.textContent = uname;
 
+    /* 待发送角标：断网时改的东西进了队列，顶栏挂个数字，别让用户以为已经存上去了 */
+    var pend = S.pendingCount();
+    var obtn = document.getElementById('outboxBtn');
+    var odot = document.getElementById('outboxDot');
+    if (obtn) {
+      obtn.hidden = pend === 0;
+      obtn.classList.toggle('is-outbox', pend > 0);
+      obtn.title = pend
+        ? '还有 ' + pend + ' 条改动没发到云端，联网后会自动补发（点击手动补发）'
+        : '待发送数据';
+    }
+    if (odot) odot.textContent = pend > 99 ? '99+' : pend;
+
     /* 没权限的人：导航里干脆不放「系统设置」，少一个点进去被弹回来的坑 */
     var setItem = document.querySelector('.nav-item[data-route="settings"]');
     if (setItem) setItem.classList.toggle('hidden', !S.canSettings(myName()));
@@ -248,6 +261,18 @@ window.App = (function () {
     var bell = document.getElementById('bellBtn');
     if (bell) bell.addEventListener('click', function () { go('alerts'); });
 
+    /* 待发送按钮：平时隐藏，有排队数据时才出来；点一下立刻补发 */
+    var obtn = document.getElementById('outboxBtn');
+    if (obtn) obtn.addEventListener('click', function () {
+      var n = S.pendingCount();
+      if (!n) return;
+      window.UI.toast('正在补发 ' + n + ' 条待发送数据…');
+      S.flushOutbox().then(function (sent) {
+        window.UI.toast(sent ? '补发完成：' + sent + ' 条' : '云端还是连不上，稍后再试', sent ? 'success' : 'error');
+        updateChrome();
+      });
+    });
+
     var topUser = document.querySelector('.topbar-user');
     if (topUser) {
       topUser.addEventListener('click', function () { go('settings'); });
@@ -374,6 +399,7 @@ window.App = (function () {
     render: render,
     init: init,
     logout: logout,
+    refreshChrome: updateChrome,
     get user() { return currentUser; }
   };
 })();

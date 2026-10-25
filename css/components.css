@@ -1384,18 +1384,33 @@
 }
 
 /* ---- 系统设置权限卡（谁能进这一页） ---- */
+/* 徽章 / 姓名 / 「就是你」都做成同一个 22px 高的居中盒：
+   以前徽章靠 padding、姓名靠行高，两边盒子高度一不等，
+   浏览器字体度量差一点点，姓名就会比徽章低（用户截图指出的就是这个）。
+   盒子等高 + flex 居中，跟字体、浏览器都没关系。 */
 .acc-owner {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px;
+  padding: 9px 12px;
   border-radius: 10px;
   background: var(--primary-soft);
   border: 1px solid #cfdcff;
 }
+.acc-role,
+.acc-name,
+.acc-me {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 22px;
+  line-height: 1;
+  white-space: nowrap;
+}
 .acc-role {
   flex: 0 0 auto;
-  padding: 2px 8px;
+  padding: 0 9px;
   border-radius: 20px;
   background: var(--primary);
   color: #fff;
@@ -1405,11 +1420,11 @@
 .acc-name { font-size: 13px; font-weight: 650; color: var(--text); }
 .acc-me {
   margin-left: auto;
+  padding: 0 9px;
   font-size: 11px;
   color: var(--primary);
   background: #fff;
   border-radius: 20px;
-  padding: 1px 8px;
 }
 .acc-label {
   margin: 12px 0 7px;

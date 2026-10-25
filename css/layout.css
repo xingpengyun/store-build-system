@@ -152,6 +152,13 @@
 .icon-btn:hover { background: #f7f9fd; color: var(--primary); border-color: #d6e0f7; }
 .icon-btn svg { width: 17px; height: 17px; }
 
+/* hidden 属性打不过 .icon-btn 的 display:grid，得显式写一遍
+   （顶栏的「待发送」按钮平时是藏起来的，有排队数据才出来） */
+.icon-btn[hidden] { display: none; }
+
+/* 有排队数据时按钮常亮成橙色，比红点更显眼：这是"还没发出去"的意思 */
+.icon-btn.is-outbox { color: var(--orange); border-color: var(--orange-soft); background: var(--orange-soft); }
+
 .bell-dot {
   position: absolute;
   top: -5px;
