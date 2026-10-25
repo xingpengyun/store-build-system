@@ -404,13 +404,12 @@ window.App = (function () {
         window.UI.toast('云端连接失败，当前使用本地缓存', 'error');
       }
 
-      S.startAutoSync(45000, function () {
-        /* 别人改了数据：重画但不打断当前操作。
+      S.startAutoSync(3000, function () {
+        /* 别人改了数据：实时重画但不打断当前操作。
            正在输入框里打字时先别重画 —— 重画会把光标里的字冲掉、
            焦点也丢了。等他输入框失焦了再画（见 bindShell 里的 focusout）。 */
         if (isEditing()) { pendingRerender = true; return; }
         render({ keep: true });
-        window.UI.toast('检测到团队其他人的更新，已刷新', 'info');
       });
     }).catch(function (e) {
       window.UI.hideLoading();

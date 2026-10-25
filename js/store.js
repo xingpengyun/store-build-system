@@ -685,41 +685,81 @@ window.Store = (function () {
     });
   }
 
-  /* ================= 自动同步（拉取别人的改动） ================= */
+  /* ================= 自动同步（实时拉取别人的改动） ================= */
+
+  /* 同步的共享状态：startAutoSync 启动后，轮询和「切回标签/获得焦点」共用一个 once */
+  var syncOnChange = null;
+  var syncLastStamp = '';
+  var syncBusy = false;
+  var syncBound = false;
+
+  function syncOnce() {
+    if (syncBusy) return;                                   /* 上一轮还没回来，别叠着发 */
+    if (document.hidden) return;                            /* 后台标签省电 */
+    if (document.querySelector('.modal-mask')) return;      /* 有弹窗时别打断 */
+    syncBusy = true;
+
+    var p;
+    try { p = window.Cloud.pullAll(); }
+    catch (e) { syncBusy = false; return; }                 /* 发起就抛错：别卡死 */
+
+    p.then(function (data) {
+      applyPending(data);          /* 待发送的改动先贴回去，别被同步冲掉 */
+      var next = normalized(data);
+      var nextStamp = fingerprintOf(next);
+      if (nextStamp === syncLastStamp) return;
+      syncLastStamp = nextStamp;
+      state = next;
+      cacheLocal();
+      if (syncOnChange) syncOnChange();
+    }).catch(function () { /* 静默失败，下个周期再试 */ })
+      .then(function () { syncBusy = false; });
+  }
 
   function startAutoSync(intervalMs, onChange) {
     stopAutoSync();
-    var lastStamp = stamp();
-    syncTimer = setInterval(function () {
-      if (document.hidden) return;
-      if (document.querySelector('.modal-mask')) return;   /* 有弹窗时别打断 */
+    syncOnChange = onChange || null;
+    syncLastStamp = fingerprintOf(state);
 
-      window.Cloud.pullAll().then(function (data) {
-        applyPending(data);          /* 待发送的改动先贴回去，别被同步冲掉 */
-        var next = normalized(data);
-        var nextStamp = stampOf(next);
-        if (nextStamp === lastStamp) return;
-        lastStamp = nextStamp;
-        state = next;
-        cacheLocal();
-        if (onChange) onChange();
-      }).catch(function () { /* 静默失败，下个周期再试 */ });
-    }, intervalMs || 45000);
+    /* 切回这个标签 / 重新获得焦点，立刻拉一次 —— 不用等下一个轮询周期 */
+    if (!syncBound) {
+      syncBound = true;
+      var onWake = function () { if (!document.hidden) syncOnce(); };
+      document.addEventListener('visibilitychange', onWake);
+      window.addEventListener('focus', onWake);
+    }
+
+    syncTimer = setInterval(syncOnce, intervalMs || 3000);
+    syncOnce();   /* 启动后先立刻拉一次 */
   }
 
   function stopAutoSync() {
     if (syncTimer) clearInterval(syncTimer);
     syncTimer = null;
+    syncOnChange = null;
   }
 
-  function stampOf(s) {
-    var b = (s.settings && Array.isArray(s.settings.board)) ? s.settings.board : [];
-    return [s.stores.length, s.tasks.length, s.members.length, s.arrivals.length,
-      b.length, b.length ? (b[b.length - 1].at || '') : ''].join('/');
-  }
+  /* 内容指纹：把四张业务表 + 配置整包算个 hash，任何一处改动（改备注、改状态、
+     改物料到货时间、加成员……）都会变，不像以前只数条数、改内容就漏了。
+     每张表按 id 排序再序列化，保证顺序不同也算成同一个。 */
+  function fingerprintOf(s) {
+    s = s || {};
+    var tables = ['stores', 'tasks', 'members', 'arrivals'];
+    var parts = [];
+    tables.forEach(function (t) {
+      var list = (s[t] || []).slice().sort(function (a, b) {
+        var x = String(a.id), y = String(b.id);
+        return x < y ? -1 : x > y ? 1 : 0;
+      });
+      parts.push(t + ':' + JSON.stringify(list));
+    });
+    parts.push('settings:' + JSON.stringify(s.settings || {}));
+    parts.push('alertsRead:' + JSON.stringify(s.alertsRead || []));
 
-  function stamp() {
-    return state ? stampOf(state) : '';
+    var str = parts.join('|');
+    var h = 5381;
+    for (var i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) >>> 0;
+    return h;
   }
 
   /* ================= 查询辅助 ================= */
