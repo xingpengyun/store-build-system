@@ -48,16 +48,22 @@ window.Charts = (function () {
     '</div>';
   }
 
-  /* ---------- 柱状图 ---------- */
+  /* ---------- 柱状图 ----------
+     opts.empty：整组全是 0 时的空状态文案（不传就渲染灰色基线柱） */
   function bars(trend, opts) {
     opts = opts || {};
     var max = 1;
-    trend.forEach(function (t) { if (t.count > max) max = t.count; });
+    var total = 0;
+    trend.forEach(function (t) { if (t.count > max) max = t.count; total += t.count; });
+
+    if (!total && opts.empty) {
+      return '<div class="rows-empty">' + opts.empty + '</div>';
+    }
 
     var cols = trend.map(function (t) {
       var h = Math.max(4, Math.round(t.count / max * 100));
       var peak = t.count === max && max > 1;
-      return '<div class="bar-col' + (peak ? ' is-peak' : '') + '">' +
+      return '<div class="bar-col' + (peak ? ' is-peak' : '') + (t.count ? '' : ' is-zero') + '">' +
         '<span class="bar-val">' + t.count + '</span>' +
         '<i class="bar-fill" style="height:' + h + '%"></i>' +
       '</div>';
@@ -90,15 +96,26 @@ window.Charts = (function () {
     return '<div class="stage-bar">' + segs + '</div>';
   }
 
-  /* ---------- 水平进度条列表 ---------- */
-  function statRows(items) {
+  /* ---------- 水平进度条列表 ----------
+     opts.empty：items 为空或全 0 时的空状态文案（不传就照常渲染）。
+     行结构：彩色圆点 + 名称 + 渐变进度条 + 数值；0 值行整行淡显，不再一片灰轨。 */
+  function statRows(items, opts) {
+    opts = opts || {};
     var max = 1;
     items.forEach(function (i) { if (i.value > max) max = i.value; });
 
+    var any = items.some(function (i) { return i.value > 0; });
+    if (!items.length || (!any && opts.empty)) {
+      return '<div class="rows-empty">' + (opts.empty || '暂无数据') + '</div>';
+    }
+
     return items.map(function (i) {
-      return '<div class="stat-row">' +
+      var zero = !i.value;
+      var color = i.color || '#3f6bf5';
+      return '<div class="stat-row' + (zero ? ' is-zero' : '') + '">' +
+        '<span class="sr-dot" style="background:' + color + '"></span>' +
         '<span class="sr-name">' + i.name + '</span>' +
-        '<span class="sr-track"><i style="width:' + (i.value / max * 100).toFixed(1) + '%;background:' + (i.color || '#3f6bf5') + '"></i></span>' +
+        '<span class="sr-track"><i style="width:' + (i.value / max * 100).toFixed(1) + '%;background:' + color + '"></i></span>' +
         '<span class="sr-val">' + i.value + '</span>' +
       '</div>';
     }).join('');

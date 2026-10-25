@@ -1027,6 +1027,10 @@
 }
 .bar-col:hover .bar-fill { filter: brightness(1.05); }
 .bar-col.is-peak .bar-fill { background: linear-gradient(180deg, #6f8ffb, #3f6bf5); }
+/* 全 0 的月份：灰色基线柱 + 数值淡显，不再一排蓝色小短柱 */
+.bar-col.is-zero .bar-fill { background: #e7ecf5; }
+.bar-col.is-zero .bar-val { opacity: .55; }
+.bar-col.is-zero:hover .bar-val { opacity: 1; }
 .bar-ticks {
   display: flex;
   gap: 8px;
@@ -1330,20 +1334,31 @@
   white-space: nowrap;
 }
 
-/* ---------------- 统计条（报表页） ---------------- */
+/* ---------------- 统计条（报表页，z94 升级） ----------------
+   彩色圆点 + 名称 + 渐变进度条 + 数值；0 值行整行淡显。
+   行本身可 hover（淡淡的底色），不再用虚线分隔、密度更清爽。 */
 .stat-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 0;
+  gap: 9px;
+  padding: 7px 8px;
   font-size: 12.5px;
-  border-bottom: 1px dashed var(--line-2);
+  border-radius: 9px;
+  transition: background .15s;
 }
-.stat-row:last-child { border-bottom: 0; }
+.stat-row:hover { background: var(--card-2); }
+.stat-row .sr-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  flex: 0 0 8px;
+}
+.stat-row.is-zero { opacity: .42; }
+.stat-row.is-zero:hover { opacity: .8; }
 .stat-row .sr-name { width: 82px; flex: 0 0 82px; color: var(--text-2); }
 .stat-row .sr-track {
   flex: 1;
-  height: 7px;
+  height: 8px;
   border-radius: 6px;
   background: #f0f3f9;
   overflow: hidden;
@@ -1352,14 +1367,31 @@
   display: block;
   height: 100%;
   border-radius: 6px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35);   /* 顶部一道高光，条更立体 */
   transition: width .5s cubic-bezier(.22, .8, .3, 1);
 }
 .stat-row .sr-val {
   width: 42px;
   text-align: right;
-  font-weight: 650;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+.stat-row:not(.is-zero) .sr-val { color: var(--text); }
+
+/* 图表空状态：一整块数据为 0 时的占位（虚线框 + 灰字） */
+.rows-empty {
+  padding: 26px 14px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--text-3);
+  border: 1px dashed var(--line-2);
+  border-radius: 12px;
+  background: var(--card-2);
+}
+
+/* 卡片头部下方的彩色总览条（各阶段门店分布） */
+.card-overview { margin: 2px 0 8px; }
+.card-overview .stage-bar { height: 10px; border-radius: 7px; }
 
 /* 卡片里的滚动区：行数不定的榜单（省份门店分布，几十个省份）限高，
    超出在卡片内部滚动，别把整页拉成一条长条。

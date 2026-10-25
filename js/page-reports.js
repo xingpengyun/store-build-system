@@ -34,8 +34,9 @@ window.Pages.reports = (function () {
     var avgProgress = withTasks.length
       ? Math.round(U.sum(withTasks, function (x) { return S.taskProgress(x).pct; }) / withTasks.length)
       : 0;
-    var avgFoot = '按各门店任务完成率平均' +
-      (withTasks.length < s.stores.length ? '（' + withTasks.length + '/' + s.stores.length + ' 家有任务）' : '');
+    var avgFoot = withTasks.length === s.stores.length
+      ? '按全部门店任务完成率平均'
+      : (withTasks.length ? '按 ' + withTasks.length + '/' + s.stores.length + ' 家有任务门店平均' : '还没有任务数据');
 
     /* ---------- 当月开店 + 环比（按计划开业日） ---------- */
     var t0 = U.today();
@@ -75,7 +76,7 @@ window.Pages.reports = (function () {
     /* 阶段分布 */
     var stageRows = Charts.statRows(st.stageCounts.map(function (x) {
       return { name: x.key, value: x.count, color: x.color };
-    }));
+    }), { empty: '还没有门店，先去「门店管理」建一家' });
 
     /* 风险分布 */
     var riskRows = Charts.statRows(Object.keys(C.RISKS).map(function (k) {
@@ -85,12 +86,12 @@ window.Pages.reports = (function () {
         value: s.stores.filter(function (x) { return x.risk === k; }).length,
         color: r.color
       };
-    }));
+    }), { empty: '没有风险门店，状态健康' });
 
     /* 成员负荷 */
     var teamRows = Charts.statRows(st.team.map(function (m) {
       return { name: m.name, value: m.todo, color: m.color };
-    }));
+    }), { empty: '还没有成员待办' });
 
     /* 开业排期（按月份） */
     var monthMap = {};
@@ -106,21 +107,24 @@ window.Pages.reports = (function () {
         }))
       : UI.empty('暂无排期');
 
-    /* 按省份分布 */
+    /* 按省份分布：多色调色板轮着用，不再一整片单色 */
+    var PALETTE = ['#3f6bf5', '#17b26a', '#f79009', '#7a5af8', '#0ba5ec', '#e11d48', '#12b59b', '#8b5cf6'];
     var provMap = {};
     s.stores.forEach(function (x) {
       var p = x.province || '未填写';
       provMap[p] = (provMap[p] || 0) + 1;
     });
-    var provRows = Charts.statRows(Object.keys(provMap).map(function (p) {
-      return { name: p, value: provMap[p], color: '#7a5af8' };
-    }).sort(function (a, b) { return b.value - a.value; }));
+    var provRows = Charts.statRows(Object.keys(provMap).sort(function (a, b) {
+      return provMap[b] - provMap[a];
+    }).map(function (p, i) {
+      return { name: p, value: provMap[p], color: PALETTE[i % PALETTE.length] };
+    }), { empty: '还没有门店，建一家就会出现在这里' });
 
     return '' +
     '<div class="page-head fade-up">' +
       '<div>' +
         '<h1>数据报表</h1>' +
-        '<p>数据实时计算，统计范围为本机保存的全部记录</p>' +
+        '<p>数据实时统计 · 覆盖云端全部门店与任务</p>' +
       '</div>' +
       '<button class="btn" data-act="export">' + UI.icon('download') + '导出数据</button>' +
     '</div>' +
@@ -146,6 +150,11 @@ window.Pages.reports = (function () {
     '<section class="home-grid-2 fade-up" style="animation-delay:.07s">' +
       '<div class="card">' +
         '<div class="card-head"><h3>各阶段门店分布</h3><span class="card-sub">共 ' + st.totalStores + ' 家</span></div>' +
+        '<div class="card-overview">' +
+          Charts.stackBar(st.stageCounts.map(function (x) {
+            return { key: x.key, count: x.count, color: x.color };
+          })) +
+        '</div>' +
         stageRows +
       '</div>' +
       '<div class="card">' +
@@ -167,7 +176,7 @@ window.Pages.reports = (function () {
           '<div class="oc-mom ' + momCls + '">环比 ' + momTxt + '</div>' +
         '</div>' +
         '<div class="section-title">近 6 个月开店数</div>' +
-        Charts.bars(trend6) +
+        Charts.bars(trend6, { empty: '近 6 个月暂无开店安排' }) +
       '</div>' +
       '<div class="card">' +
         '<div class="card-head"><h3>开业排期</h3><span class="card-sub">按计划开业月份</span></div>' +
