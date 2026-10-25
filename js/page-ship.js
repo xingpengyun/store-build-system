@@ -1,13 +1,11 @@
 /* ==========================================================
    page-ship.js — 发货看板
    2026-10-24：用户确认「不安排发货，我们通知就行了」——
-   计划发货日整套去掉（不排期、不看谁该发、没有逾期未发），
-   看板只盯一件事：物料登记的到货时间，该通知供应商了就通知，
+   计划发货日整套去掉（不排期、不看谁该发、没有逾期未发）。
+   2026-10-25：用户确认「发了没发」这套也去掉（点了容易误标，
+   到货时间在物料列已经有了）——看板只盯一件事：
+   物料登记的到货时间，到货日 − 7 天该通知供应商了就通知，
    通知完点一下「已通知」，其他同事看到状态就知道办过了。
-
-   只看两件事：
-   1) 发了没发（实际发出后点一下记录，这家就不再催）
-   2) 物料登记的到货时间（到货日 − 7 天就该通知供应商，通知完点「已通知」）
    ========================================================== */
 window.Pages = window.Pages || {};
 
@@ -22,11 +20,9 @@ window.Pages.ship = (function () {
 
   /* 顶部这排既能看数，也能点进去只看这一类 */
   var TABS = [
-    { key: 'all', label: '全部', tip: '所有门店，含已发出的' },
-    { key: 'todo', label: '未发出', tip: '还没点「已发出」的门店' },
+    { key: 'all', label: '全部', tip: '所有门店' },
     { key: 'notify', label: '该通知供应商', tip: '有物料 7 天内到、还没通知供应商；已经有过了到货日的算进「漏通知」，不重复算' },
-    { key: 'arrlate', label: '漏通知', tip: '有物料已经过了到货日还没通知供应商，最急' },
-    { key: 'sent', label: '已发出', tip: '已经点过「已发出」的门店（物料照样要盯）' }
+    { key: 'arrlate', label: '漏通知', tip: '有物料已经过了到货日还没通知供应商，最急' }
   ];
 
   /* 「按到货日」视图的分类：一条物料一条记录，日期各店不同也能一眼看完 */
@@ -80,10 +76,8 @@ window.Pages.ship = (function () {
 
   function hitTab(r, key) {
     if (!key || key === 'all') return true;
-    if (key === 'todo') return !r.shipped;
     if (key === 'notify') return r.needNotify;
     if (key === 'arrlate') return r.arrLate;
-    if (key === 'sent') return r.shipped;
     return true;
   }
 
@@ -98,9 +92,9 @@ window.Pages.ship = (function () {
 
   /* ---------------- 一行 ---------------- */
 
-  /* 发出状态只有两态：已发出 / 未发出（2026-10-24 起没有「计划发货日」，
-     2026-10-25 起已发出的「实发日期」输入框也撤掉了 —— 点一下就是发完了，
-     日期不参与任何计算，所以这列只剩状态胶囊 + 下一步文字） */
+  /* 2026-10-24 起没有「计划发货日」；2026-10-25 起「发了没发」这套也撤掉了 ——
+     之前那列的「未发出/已发出」一点就整家店标记成发出，和到货通知的主线重复还容易误标。
+     这页现在只剩：物料 + 登记的到货时间（只列未通知）+ 备注 + 手动顺序。 */
 
   var MAT_MAX = 8;   /* 物料列宽，多铺几条 */
 
@@ -150,34 +144,9 @@ window.Pages.ship = (function () {
     return html;
   }
 
-  /* 发出之后：这一环过了，下一环是什么 —— 看板要能顺着时间往下走 */
-  function nextText(r) {
-    if (!r.shipped) return '';
-    if (r.pending > 0) {
-      return r.eta ? '物料 ' + U.dateDot(r.eta) + ' 到' : '补物料时间';
-    }
-    if (r.openLeft == null) return '等定开业日';
-    if (r.openLeft > 0) return r.openLeft + ' 天后开业';
-    return '已开业';
-  }
-
-  /* 悬停时把「下一步」说全 */
-  function nextTip(r) {
-    if (!r.shipped) return '';
-    if (r.pending > 0) {
-      return r.eta
-        ? '这家已发出，下一步等物料 ' + U.monthDay(r.eta) + ' 到货（还有 ' + r.pending + ' 项没到）'
-        : '这家已发出，但还有 ' + r.pending + ' 项物料没登记到货时间';
-    }
-    if (r.openLeft == null) return '物料都到齐了，等门店定开业日';
-    if (r.openLeft > 0) return '物料都到齐了，' + r.openLeft + ' 天后开业';
-    return '门店已经开业了';
-  }
-
   function rowHtml(r, idx) {
     var cls = [];
     if (r.arrLate) cls.push('is-arrlate');   /* 物料过了到货日还没通知 → 整行淡红底 */
-    if (r.shipped) cls.push('is-sent');
     if (r.pin) cls.push('is-pin');
 
     var openTxt = r.openLeft == null
@@ -204,18 +173,8 @@ window.Pages.ship = (function () {
         '</div>' +
       '</td>' +
 
-      /* 这一列把这家店所有物料的到货时间铺开 —— 原来是空的，现在填满 */
+      /* 这一列把这家店所有物料的到货时间铺开 */
       '<td class="ship-mats">' + matsHtml(r) + '</td>' +
-
-      '<td class="ship-sent">' +
-        '<button type="button" class="ship-st is-' + r.status + '" data-sent' +
-          ' title="' + (r.shipped ? '点一下改回「未发出」' : '发出去以后点这里，这家就不用再跟了') + '">' +
-          '<i></i>' + (r.shipped ? '已发出' : '未发出') +
-        '</button>' +
-        (r.shipped
-          ? '<div class="ship-next" title="' + U.esc(nextTip(r)) + '">' + U.esc(nextText(r)) + '</div>'
-          : '') +
-      '</td>' +
 
       '<td class="ship-note-cell">' +
         '<input class="ship-note" data-note value="' + U.esc(r.note) + '"' +
@@ -244,7 +203,6 @@ window.Pages.ship = (function () {
         '<th>物料 · 登记的到货时间（只列未通知）' +
           '<span class="th-legend"><i class="is-late"></i>过了到货日<i class="is-soon"></i>7 天内到<i class="is-nodate"></i>没填日期</span>' +
         '</th>' +
-        '<th style="width:132px">发出 / 下一步</th>' +
         '<th style="width:138px">备注</th>' +
         '<th style="width:44px"></th>' +
       '</tr></thead><tbody>' +
@@ -261,27 +219,6 @@ window.Pages.ship = (function () {
   }
 
   function bannerHtml(rows, s) {
-    /* 全部发完：这一环结束了，给个明确的下一步 —— 不然一发完这页就没话说了 */
-    if (!s.todo && s.all) {
-      var waiting = rows.filter(function (r) { return r.pending > 0; });
-      var nextEta = '';
-      waiting.forEach(function (r) {
-        if (r.eta && (!nextEta || r.eta < nextEta)) nextEta = r.eta;
-      });
-      return '<div class="ship-banner is-done">' +
-        '<span class="sb-ico">' + UI.icon('check') + '</span>' +
-        '<div class="sb-body">' +
-          '<b>' + s.all + ' 家全部发出去了，发货这一环结束</b>' +
-          '<span>下一个流程：盯物料到货' +
-            (waiting.length
-              ? '（' + waiting.length + ' 家还有物料没到' + (nextEta ? '，最近 ' + U.monthDay(nextEta) + ' 到' : '') + '）'
-              : '（物料都通知过了）') +
-            '；每条物料的日期都铺在下面表格里，也可以顺着「按到货日」的时间线看</span>' +
-        '</div>' +
-        '<button type="button" class="btn btn-sm" data-view="date">按到货日跟进 →</button>' +
-      '</div>';
-    }
-
     var arrLate = rows.filter(function (r) { return r.arrLate; });
     var notify = rows.filter(function (r) { return r.needNotify; });
 
@@ -289,8 +226,9 @@ window.Pages.ship = (function () {
       return '<div class="ship-banner is-ok">' +
         '<span class="sb-ico">' + UI.icon('check') + '</span>' +
         '<div class="sb-body"><b>没有漏通知的物料</b>' +
-          '<span>' + (s.active ? '还有 ' + s.active + ' 家没发出' : '所有门店都已发出') +
-          (notify.length ? '；' + notify.length + ' 家物料 7 天内到，今天该通知供应商发货' : '') +
+          '<span>' + (notify.length
+            ? notify.length + ' 家物料 7 天内到，今天该通知供应商发货'
+            : '每家店的到货时间都铺在下面表格里，到点前通知供应商就行') +
           '</span></div>' +
       '</div>';
     }
@@ -309,15 +247,13 @@ window.Pages.ship = (function () {
 
   function kpiHtml(rows, s) {
     var items = [
-      { k: 'todo', label: '未发出', v: s.todo, foot: '还没点发出的门店', color: '#3f6bf5', soft: '#edf2fe', icon: 'truck',
-        tip: '还没点「已发出」的门店。点这张卡只看这几家，再点一下取消' },
       { k: 'notify', label: '该通知供应商', v: s.notify, foot: '7 天内到，可以先通知', color: '#7a5af8', soft: '#f2eefe', icon: 'bell',
         tip: '有物料 7 天内到（含今天）、还没通知供应商。已经过了到货日的不算在这里，算进「漏通知」' },
       { k: 'arrlate', label: '漏通知', v: s.arrLate, foot: '过了到货日还没通知', color: '#d92d20', soft: '#fdedeb', icon: 'box',
         tip: '有物料已经过了到货日还没通知供应商 —— 最急，先去处理这几家' }
     ];
 
-    return '<section class="kpi-grid fade-up" style="grid-template-columns:repeat(3,minmax(0,1fr));animation-delay:.04s">' +
+    return '<section class="kpi-grid fade-up" style="grid-template-columns:repeat(2,minmax(0,1fr));animation-delay:.04s">' +
       items.map(function (i) {
         return '<div class="kpi ship-kpi' + (state.tab === i.k ? ' is-on' : '') + '" data-kpi="' + i.k + '" title="' + U.esc(i.tip) + '">' +
           '<span class="kpi-icon" style="background:' + i.soft + ';color:' + i.color + '">' + UI.icon(i.icon) + '</span>' +
@@ -333,8 +269,8 @@ window.Pages.ship = (function () {
 
   function tabsHtml(rows, s) {
     var n = {
-      all: rows.length, todo: s.todo,
-      notify: s.notify, arrlate: s.arrLate, sent: s.sent
+      all: rows.length,
+      notify: s.notify, arrlate: s.arrLate
     };
     return TABS.map(function (t) {
       return '<div class="tab' + (state.tab === t.key ? ' active' : '') + '" data-tab="' + t.key + '"' +
@@ -703,9 +639,9 @@ window.Pages.ship = (function () {
     '<div class="page-head fade-up">' +
       '<div>' +
         '<h1>发货看板</h1>' +
-        '<p>' + U.cnDate(today) + ' · 共 ' + rows.length + ' 家门店：<b>' + s.todo + '</b> 家待发出' +
-          (s.sent ? '、' + s.sent + ' 家已发出' : '') +
-          (s.arrLate ? '；其中 <b class="text-red">' + s.arrLate + '</b> 家漏通知供应商' : '') + '</p>' +
+        '<p>' + U.cnDate(today) + ' · 共 ' + rows.length + ' 家门店' +
+          (s.notify ? '：<b>' + s.notify + '</b> 家该通知供应商' : '') +
+          (s.arrLate ? (s.notify ? '；' : '：<b class="text-red">') + s.arrLate + ' 家漏通知' + (s.notify ? '' : '</b>') : '') + '</p>' +
       '</div>' +
       '<div style="display:flex;gap:8px;align-items:center">' +
         viewSwitchHtml() +
@@ -880,18 +816,6 @@ window.Pages.ship = (function () {
         var ok = S.moveShip(id, Number(mv.getAttribute('data-move')));
         if (!ok) UI.toast('已经在最前 / 最后了', 'info');
         else App.refresh({ keep: true });
-        return;
-      }
-
-      /* 发了没发：一次点击翻过来，点错了再点一下就回来 */
-      if (e.target.closest('[data-sent]')) {
-        var next = S.toggleShipSent(id);
-        UI.toast(next === 'sent'
-          ? hit.row.name + ' 已标记发出，沉到列表最后'
-          : hit.row.name + ' 改回「未发出」，重新回到要跟的队列',
-          next === 'sent' ? 'success' : 'info');
-        /* keep：在「未发出」里点发出，这行消失但还停在这一类，不被弹回「全部」 */
-        App.refresh({ keep: true });
         return;
       }
 

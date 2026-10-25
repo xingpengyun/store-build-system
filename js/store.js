@@ -1838,9 +1838,10 @@ window.Store = (function () {
       };
     });
 
-    /* 排序：还没发出的在前 → 先发置顶 → 手动顺序 → 名字 */
+    /* 排序：先发置顶 → 手动顺序 → 名字
+       2026-10-25：发了没发这套撤了，不再按发出状态沉底，
+       老数据里残留的 sent 状态不参与任何展示和排序。 */
     rows.sort(function (a, b) {
-      if (a.shipped !== b.shipped) return a.shipped ? 1 : -1;
       if (a.pin !== b.pin) return a.pin ? -1 : 1;
       if (a.seq != null && b.seq != null && a.seq !== b.seq) return a.seq - b.seq;
       if ((a.seq != null) !== (b.seq != null)) return a.seq != null ? -1 : 1;
