@@ -37,11 +37,15 @@ window.Login = (function () {
   function head() {
     return [
       '<div class="login-head">',
-      '  <span class="login-mark">🏪</span>',
       '  <h1>门店筹建管理系统</h1>',
       '  <p>阿蛮团队 · 云端协作版</p>',
       '</div>'
     ].join('');
+  }
+
+  /* 登录页的吉祥物（在卡片上方漂浮、眨眼、挥手） */
+  function mascot() {
+    return '<div class="login-mascot">' + (window.UI.mascot('login-mascot-svg')) + '</div>';
   }
 
   function tplSimple() {
@@ -99,7 +103,7 @@ window.Login = (function () {
 
     layer = document.createElement('div');
     layer.className = 'login-layer';
-    layer.innerHTML = isSimple() ? tplSimple() : tplPhone();
+    layer.innerHTML = mascot() + (isSimple() ? tplSimple() : tplPhone());
     document.body.appendChild(layer);
 
     if (isSimple()) bindSimple();

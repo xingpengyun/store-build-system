@@ -157,6 +157,12 @@ window.App = (function () {
     var nameEl = document.getElementById('topbarUserName');
     if (nameEl) nameEl.textContent = uname;
 
+    /* 头像的悬浮提示：管理员才能「点击去设置」，别人就只写当前登录人 */
+    var topUserEl = document.querySelector('.topbar-user');
+    if (topUserEl) {
+      topUserEl.title = S.canSettings(myName()) ? '当前登录人 · 点击去设置' : '当前登录人';
+    }
+
     /* 待发送角标：断网时改的东西进了队列，顶栏挂个数字，别让用户以为已经存上去了 */
     var pend = S.pendingCount();
     var obtn = document.getElementById('outboxBtn');
@@ -339,7 +345,14 @@ window.App = (function () {
 
     var topUser = document.querySelector('.topbar-user');
     if (topUser) {
-      topUser.addEventListener('click', function () { go('settings'); });
+      topUser.addEventListener('click', function () {
+        /* 没权限的人点头像：别跳到设置页再被弹回来，直接给个提示 */
+        if (!S.canSettings(myName())) {
+          window.UI.toast('「系统设置」只有管理员能进', 'error', 2400);
+          return;
+        }
+        go('settings');
+      });
     }
 
     bindSearch();
@@ -385,6 +398,8 @@ window.App = (function () {
       bindShell();
       render();
 
+      maybeWelcome();
+
       if (r && r.offline) {
         window.UI.toast('云端连接失败，当前使用本地缓存', 'error');
       }
@@ -408,6 +423,40 @@ window.App = (function () {
           '<button class="btn btn-primary" onclick="location.reload()">重新加载</button></div>';
       }
     });
+  }
+
+  /* ---------------- 首次登录欢迎 ----------------
+     每个姓名第一次在本机登录时，弹一次「欢迎加入」；
+     记在 localStorage（按姓名），下次再登就不弹了。 */
+  var WELCOME_KEY = 'shopbuild.welcome.seen.v1';
+
+  function welcomedList() {
+    try {
+      var arr = JSON.parse(localStorage.getItem(WELCOME_KEY) || '[]');
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) { return []; }
+  }
+
+  function hasWelcomed(name) {
+    return welcomedList().indexOf(name) >= 0;
+  }
+
+  function markWelcomed(name) {
+    try {
+      var arr = welcomedList();
+      if (arr.indexOf(name) < 0) arr.push(name);
+      localStorage.setItem(WELCOME_KEY, JSON.stringify(arr));
+    } catch (e) {}
+  }
+
+  function maybeWelcome() {
+    var name = myName();
+    if (!name || hasWelcomed(name)) return;
+    markWelcomed(name);
+    /* 等主界面先露出来再弹，别盖在加载遮罩上 */
+    setTimeout(function () {
+      window.UI.welcome({ name: name, admin: S.canSettings(name) });
+    }, 500);
   }
 
   function logout() {

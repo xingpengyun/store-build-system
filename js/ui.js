@@ -47,6 +47,40 @@ window.UI = (function () {
       ' stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + p + '</svg>';
   }
 
+  /* ---------------- 吉祥物（小蛮） ----------------
+     门店筹建的小角色：戴着黄色安全帽的蓝色团子，右臂挥手、会眨眼。
+     纯 SVG + CSS 动画，登录页和欢迎弹窗共用这一只。
+     各部件动画类：.mascot-glow 背景柔光 / .mascot-shadow 影子 /
+     .mascot-eye 眼睛（眨眼）/ .mascot-arm 右臂（挥手）/ .mascot-spark 星星。
+     cls 打在 <svg> 上（login-mascot-svg 或 welcome-mascot），CSS 按它取尺寸。 */
+  function mascot(cls) {
+    return '<svg class="' + (cls || '') + '" viewBox="0 0 200 220" aria-hidden="true" focusable="false">' +
+      '<defs><linearGradient id="mcBody" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0" stop-color="#8aa2ff"/><stop offset="1" stop-color="#5b7cff"/>' +
+      '</linearGradient></defs>' +
+      '<ellipse class="mascot-glow" cx="100" cy="120" rx="72" ry="64" fill="#cfe0ff" opacity=".45"/>' +
+      '<ellipse class="mascot-shadow" cx="100" cy="206" rx="46" ry="9" fill="#1f3d5a" opacity=".10"/>' +
+      '<ellipse cx="46" cy="160" rx="13" ry="24" fill="#5b7cff" transform="rotate(20 46 160)"/>' +
+      '<ellipse cx="100" cy="150" rx="56" ry="54" fill="url(#mcBody)"/>' +
+      '<ellipse cx="100" cy="174" rx="30" ry="20" fill="#ffffff" opacity=".14"/>' +
+      '<ellipse class="mascot-eye l" cx="82" cy="128" rx="6" ry="7.5" fill="#2b2f4a"/>' +
+      '<ellipse class="mascot-eye r" cx="118" cy="128" rx="6" ry="7.5" fill="#2b2f4a"/>' +
+      '<circle cx="84" cy="125.5" r="1.8" fill="#ffffff"/>' +
+      '<circle cx="120" cy="125.5" r="1.8" fill="#ffffff"/>' +
+      '<ellipse cx="68" cy="144" rx="9" ry="5" fill="#ff9db0" opacity=".5"/>' +
+      '<ellipse cx="132" cy="144" rx="9" ry="5" fill="#ff9db0" opacity=".5"/>' +
+      '<path d="M91 134 Q100 145 109 134" stroke="#2b2f4a" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+      '<g class="mascot-arm"><ellipse cx="158" cy="138" rx="12" ry="23" fill="#5b7cff" transform="rotate(30 158 138)"/></g>' +
+      '<path d="M60 92 a40 30 0 0 1 80 0 z" fill="#ffd23f"/>' +
+      '<ellipse cx="100" cy="95" rx="48" ry="9" fill="#f0b429"/>' +
+      '<path d="M72 80 a28 18 0 0 1 56 0" stroke="#ffffff" stroke-width="3" fill="none" opacity=".5" stroke-linecap="round"/>' +
+      '<g transform="translate(30,52)"><path class="mascot-spark s1" d="M0 -6.5 L1.7 -1.7 L6.5 0 L1.7 1.7 L0 6.5 L-1.7 1.7 L-6.5 0 L-1.7 -1.7 Z" fill="#ffd23f"/></g>' +
+      '<g transform="translate(176,64)"><path class="mascot-spark s2" d="M0 -5 L1.3 -1.3 L5 0 L1.3 1.3 L0 5 L-1.3 1.3 L-5 0 L-1.3 -1.3 Z" fill="#7c9cff"/></g>' +
+      '<g transform="translate(24,116)"><path class="mascot-spark s3" d="M0 -4 L1 -1 L4 0 L1 1 L0 4 L-1 1 L-4 0 L-1 -1 Z" fill="#34c78b"/></g>' +
+      '<g transform="translate(182,126)"><path class="mascot-spark s4" d="M0 -4.5 L1.2 -1.2 L4.5 0 L1.2 1.2 L0 4.5 L-1.2 1.2 L-4.5 0 L-1.2 -1.2 Z" fill="#ff9db0"/></g>' +
+    '</svg>';
+  }
+
   /* ---------------- 徽章 ---------------- */
   function riskBadge(key) {
     var r = C.RISKS[key] || C.RISKS.normal;
@@ -281,6 +315,56 @@ window.UI = (function () {
         };
       }
     });
+  }
+
+  /* ---------------- 首次登录欢迎 ----------------
+     首次登录（按姓名、本机）弹一次「欢迎加入」。
+     opts: { name, admin } —— admin 决定提示管理员还是找管理员开权限。 */
+  function welcome(opts) {
+    opts = opts || {};
+    var name = String(opts.name || '').trim() || '新伙伴';
+    var admin = !!opts.admin;
+    var owner = '';
+    try { owner = (window.Store && window.Store.accessOf) ? window.Store.accessOf().owner : ''; } catch (e) {}
+
+    var confetti = '';
+    var cfColors = ['#ffd23f', '#7c9cff', '#34c78b', '#ff9db0', '#8aa2ff'];
+    for (var i = 0; i < 7; i++) {
+      confetti += '<i class="wc" style="left:' + (8 + i * 13) + '%;' +
+        'background:' + cfColors[i % cfColors.length] + ';' +
+        'animation-delay:' + (i * 0.14).toFixed(2) + 's"></i>';
+    }
+
+    var mask = document.createElement('div');
+    mask.className = 'welcome-mask';
+    mask.innerHTML =
+      '<div class="welcome-card" role="dialog" aria-modal="true">' +
+        '<button class="welcome-x" type="button" aria-label="关闭">' + icon('close') + '</button>' +
+        '<div class="welcome-confetti">' + confetti + '</div>' +
+        mascot('welcome-mascot') +
+        '<h2>欢迎加入阿蛮团队</h2>' +
+        '<p class="welcome-name">Hi，' + U.esc(name) + '</p>' +
+        '<p class="welcome-text">你已加入门店筹建管理系统，大家共享同一份云端数据，改完自动同步、换电脑也不丢。</p>' +
+        (admin
+          ? '<p class="welcome-role">你是 <b>管理员</b>，可进「系统设置」管理品牌、成员与授权。</p>'
+          : '<p class="welcome-role">需要改系统设置时，请联系管理员 <b>' + U.esc(owner || '—') + '</b>。</p>') +
+        '<button class="btn btn-primary btn-block welcome-btn" type="button">开始使用</button>' +
+      '</div>';
+    document.body.appendChild(mask);
+
+    function close() {
+      mask.classList.add('out');
+      setTimeout(function () { mask.remove(); }, 260);
+    }
+    function onKey(e) {
+      if (e.key !== 'Escape') return;
+      document.removeEventListener('keydown', onKey);
+      close();
+    }
+    mask.querySelector('.welcome-x').onclick = close;
+    mask.querySelector('.welcome-btn').onclick = close;
+    mask.addEventListener('mousedown', function (e) { if (e.target === mask) close(); });
+    document.addEventListener('keydown', onKey);
   }
 
   /* ---------------- 分页 ---------------- */
@@ -763,6 +847,7 @@ window.UI = (function () {
 
   return {
     icon: icon,
+    mascot: mascot,
     riskBadge: riskBadge,
     stageBadge: stageBadge,
     stageOptions: stageOptions,
@@ -777,6 +862,7 @@ window.UI = (function () {
     modal: modal,
     closeModal: closeModal,
     confirm: confirm,
+    welcome: welcome,
     pager: pager,
     formValue: formValue,
     options: options,
