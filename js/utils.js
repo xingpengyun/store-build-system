@@ -176,6 +176,36 @@ window.Utils = (function () {
     });
   }
 
+  /* ---- 拼音首字母（门店名搜索用）----
+     「杭州望达店」→ 「hzw d」→ 紧凑成「hzwd」。
+     命不中的字直接跳过，所以搜「hzwd」也能命中「杭州万达」。
+     查不到中文的字不算错，只是这一路匹配不上，中文原文照样能搜。 */
+  function pinyinInit(str) {
+    var map = (window.CONST && window.CONST.PINYIN_INIT) || {};
+    var out = '';
+    String(str == null ? '' : str).split('').forEach(function (ch) {
+      if (/[a-z0-9]/i.test(ch)) { out += ch.toLowerCase(); return; }
+      var m = map[ch];
+      if (m) out += m;
+    });
+    return out;
+  }
+
+  /* 一个词能不能命中这一条：
+     ① 中文原文包含；② 拼音首字母包含；③ 省份全拼包含（江苏 / jiangsu） */
+  function matchPinyin(text, query, extra) {
+    var q = String(query == null ? '' : query).trim().toLowerCase().replace(/\s+/g, '');
+    if (!q) return true;
+    var t = String(text == null ? '' : text).toLowerCase();
+    if (t.indexOf(q) >= 0) return true;
+    if (pinyinInit(text).indexOf(q) >= 0) return true;
+    if (extra) {
+      var e = String(extra).toLowerCase().replace(/\s+/g, '');
+      if (e.indexOf(q) >= 0) return true;
+    }
+    return false;
+  }
+
   function bytes(n) {
     if (n < 1024) return n + ' B';
     if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
@@ -203,6 +233,8 @@ window.Utils = (function () {
     pct: pct,
     num: num,
     sum: sum,
+    pinyinInit: pinyinInit,
+    matchPinyin: matchPinyin,
     debounce: debounce,
     sortBy: sortBy,
     bytes: bytes

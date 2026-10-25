@@ -520,31 +520,99 @@ window.Pages.ship = (function () {
   /* ---------------- 「门店物料」：选一家店，直接看它的物料 ----------------
      以前这个按钮是直接跳到「门店管理」列表页，名字叫门店物料、点进去却是一张
      全部门店的清单，很莫名其妙。现在改成：先选门店 → 直接打开那家店的详情，
-     并滚到「物料到货」那一段，一步到位。 */
+     并滚到「物料到货」那一段，一步到位。
+
+     门店一多这个弹窗就变成一长条：所以加了顶部搜索（中文 / 拼音首字母 / 省份拼音）、
+     「只看有待通知」开关，列表超高自己滚，待通知多的排在前面。 */
   function pickStoreMaterials() {
     var s = S.getState();
-    var rows = s.stores.map(function (st) {
+    var all = s.stores.map(function (st) {
       var arr = s.arrivals.filter(function (a) { return a.storeId === st.id; });
       var pending = arr.filter(function (a) { return !S.arrNotified(a); }).length;
-      return { store: st, total: arr.length, pending: pending };
+      return {
+        store: st,
+        total: arr.length,
+        pending: pending,
+        py: U.pinyinInit(st.name),
+        provincePy: (C.PROVINCE_PINYIN || {})[st.province] || ''
+      };
     });
 
-    if (!rows.length) {
+    if (!all.length) {
       UI.toast('还没有门店，先去「门店管理」建一家', 'info');
       return;
     }
-    rows = U.sortBy(rows, function (r) { return (r.store.openDate || '9999-99-99'); });
 
-    var body = '<div class="pick-list">' + rows.map(function (r) {
-      return '<button type="button" class="pick-row" data-pick-store="' + U.esc(r.store.id) + '">' +
+    var q = '';
+    var onlyPending = false;
+
+    function sorted() {
+      var list = all.filter(function (r) {
+        if (onlyPending && !r.pending) return false;
+        if (!q) return true;
+        /* 中文名 / 拼音首字母 / 省份全拼，任一命中就算 */
+        if (U.matchPinyin(r.store.name, q)) return true;
+        if (r.py && r.py.indexOf(q) >= 0) return true;
+        if (r.provincePy && r.provincePy.indexOf(q) >= 0) return true;
+        return false;
+      });
+      /* 待通知多的先排，然后按开业日 */
+      list.sort(function (a, b) {
+        if (b.pending !== a.pending) return b.pending - a.pending;
+        return (a.store.openDate || '9999-99-99') < (b.store.openDate || '9999-99-99') ? -1 : 1;
+      });
+      return list;
+    }
+
+    function rowHtml(r) {
+      return '<button type="button" class="pick-row' + (r.pending ? ' is-alert' : '') + '" ' +
+        'data-pick-store="' + U.esc(r.store.id) + '">' +
         '<span class="pick-name">' + U.esc(r.store.name) + '</span>' +
         '<span class="pick-meta">' + U.esc(r.store.province || '未填省份') +
           (r.store.openDate ? ' · ' + U.monthDay(r.store.openDate) + ' 开业' : '') + '</span>' +
         '<span class="pick-count">' + (r.total ? r.total + ' 项物料' : '暂无物料') +
           (r.pending ? ' · <b>' + r.pending + ' 项待通知</b>' : '') + '</span>' +
       '</button>';
-    }).join('') + '</div>';
+    }
 
+    function paint(box) {
+      var list = sorted();
+      var wrap = box.querySelector('#pickList');
+      var cnt = box.querySelector('#pickCount');
+      if (cnt) cnt.textContent = q || onlyPending
+        ? '匹配 ' + list.length + ' / ' + all.length + ' 家'
+        : '共 ' + all.length + ' 家门店';
+      if (!list.length) {
+        wrap.innerHTML = '<div class="pick-empty">没找到匹配的门店' +
+          (q ? '（' + U.esc(q) + '）' : '') + '，换个词试试</div>';
+        return;
+      }
+      wrap.innerHTML = list.map(rowHtml).join('');
+      box.querySelectorAll('[data-pick-store]').forEach(function (el) {
+        el.addEventListener('click', function () {
+          closeBox();
+          var id = el.getAttribute('data-pick-store');
+          Pages.stores.openDetail(id);
+          setTimeout(function () {
+            var t = document.getElementById('sdArrTitle');
+            if (t && t.scrollIntoView) t.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          }, 320);
+        });
+      });
+    }
+
+    var body =
+      '<div class="pick-bar">' +
+        '<div class="mini-search pick-search">' + UI.icon('search') +
+          '<input id="pickQ" placeholder="搜门店名 / 拼音首字母（如 hzwd）/ 省份" autocomplete="off" />' +
+        '</div>' +
+        '<button type="button" class="pick-toggle" id="pickPending">' +
+          '<i></i>只看有待通知</button>' +
+        '<span class="pick-count-hint" id="pickCount"></span>' +
+      '</div>' +
+      '<div class="pick-list" id="pickList"></div>';
+
+    var closeBox = function () {};
     UI.modal({
       size: 'lg',
       title: '门店物料',
@@ -552,18 +620,22 @@ window.Pages.ship = (function () {
       body: body,
       footer: '<button class="btn" data-pick-close type="button">关闭</button>',
       onMount: function (box, close) {
-        box.querySelectorAll('[data-pick-store]').forEach(function (el) {
-          el.addEventListener('click', function () {
-            close();
-            var id = el.getAttribute('data-pick-store');
-            Pages.stores.openDetail(id);
-            /* 详情是弹窗，滚到「物料到货」那一段 */
-            setTimeout(function () {
-              var t = document.getElementById('sdArrTitle');
-              if (t && t.scrollIntoView) t.scrollIntoView({ block: 'center', behavior: 'smooth' });
-            }, 320);
-          });
+        closeBox = close;
+        paint(box);
+
+        var input = box.querySelector('#pickQ');
+        input.addEventListener('input', U.debounce(function () {
+          q = String(input.value || '').trim().toLowerCase().replace(/\s+/g, '');
+          paint(box);
+        }, 140));
+
+        var tg = box.querySelector('#pickPending');
+        tg.addEventListener('click', function () {
+          onlyPending = !onlyPending;
+          tg.classList.toggle('is-on', onlyPending);
+          paint(box);
         });
+
         var btn = box.querySelector('[data-pick-close]');
         if (btn) btn.addEventListener('click', close);
       }

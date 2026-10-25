@@ -452,7 +452,7 @@ window.Pages.tasks = (function () {
   }
 
   function playComplete(el, task) {
-    var row = el && el.closest ? el.closest('tr') : null;
+    var row = el && el.closest ? el.closest('.sk-card') : null;
     var reduce = false;
     try {
       reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -614,31 +614,47 @@ window.Pages.tasks = (function () {
         }
       }
 
-      return '<tr>' +
-        '<td><div class="sk-task-title">' + U.esc(t.title) + '</div>' +
-          (t.priority === 'high' ? '<div class="sk-prio">高优先级</div>' : '') + '</td>' +
-        '<td>' + UI.stageBadge(t.stage) + gateTag + '</td>' +
-        '<td>' + (mem
-          ? '<div class="store-cell">' + UI.avatar(mem.name, mem.color, 'sm') + '<span>' + U.esc(mem.name) + '</span></div>'
-          : '<span class="dim">未指派</span>') + '</td>' +
-        '<td class="nowrap" title="' + U.esc(dueTip) + '">' +
-          dueCell +
-          '<span class="dim" style="font-size:10.5px;margin-left:5px">' +
-            '开业前 ' + lead + ' 天 · ' + sub +
-          '</span></td>' +
-        '<td>' + UI.statusBadge(cls) + '</td>' +
-        '<td class="nowrap" style="text-align:right">' + actionHtml(t) +
+      /* 每条任务一张卡（2026-10-25 z86）：
+         原来是一张六列表格，列一多就只剩一堆横线；改成卡片后
+         标题在最上面，下面一行放阶段 / 负责人 / 建议完成 / 状态，
+         操作固定在右边。鼠标移上去整张卡会微微放大、抬起来。 */
+      var railColor = late ? 'var(--red)'
+        : (cls === 'done' ? 'var(--green)'
+        : (cls === 'risk' ? 'var(--orange)' : 'var(--slate)'));
+
+      return '<div class="sk-card' + (late ? ' is-late' : '') +
+          (cls === 'done' ? ' is-done' : '') + '" data-tid="' + t.id + '">' +
+        '<i class="sk-card-rail" style="background:' + railColor + '"></i>' +
+        '<div class="sk-card-main">' +
+          '<div class="sk-card-top">' +
+            '<span class="sk-task-title">' + U.esc(t.title) + '</span>' +
+            (t.priority === 'high' ? '<span class="sk-prio">高优先级</span>' : '') +
+            gateTag +
+          '</div>' +
+          '<div class="sk-card-meta">' +
+            '<span class="sk-card-stage">' + UI.stageBadge(t.stage) + '</span>' +
+            (mem
+              ? '<span class="sk-card-who">' + UI.avatar(mem.name, mem.color, 'sm') +
+                '<span>' + U.esc(mem.name) + '</span></span>'
+              : '<span class="dim">未指派</span>') +
+            '<span class="sk-card-due" title="' + U.esc(dueTip) + '">' +
+              (due
+                ? '<span class="mono ' + (late ? 'text-red' : '') + '">' + U.monthDay(due) + '</span>'
+                : '<span class="dim">未设开业日</span>') +
+              '<span class="dim"> · 开业前 ' + lead + ' 天 · ' + sub + '</span>' +
+            '</span>' +
+            '<span class="sk-card-state">' + UI.statusBadge(cls) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="sk-card-act">' +
+          actionHtml(t) +
           '<span class="tlink" data-act="edit" data-id="' + t.id + '">编辑</span>' +
           '<span class="tlink danger" data-act="del" data-id="' + t.id + '">删除</span>' +
-        '</td>' +
-      '</tr>';
+        '</div>' +
+      '</div>';
     }).join('');
 
-    return '<table class="sk-tbl">' +
-      '<thead><tr><th>任务</th><th style="width:140px" title="这条做完，等于「完成」了这个阶段；只记账，门店阶段推进到这一格时才自动越过">完成后进到</th>' +
-        '<th style="width:100px">负责人</th>' +
-        '<th style="width:190px">建议完成</th><th style="width:84px">状态</th><th style="width:182px;text-align:right">操作</th></tr></thead>' +
-      '<tbody>' + body + '</tbody></table>';
+    return '<div class="sk-cards">' + body + '</div>';
   }
 
   function storeRowHtml(st) {
