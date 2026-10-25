@@ -4,7 +4,8 @@
 
 - 数据不再存 localStorage，改为**云端 PostgreSQL**（WorkBuddy 云服务）
 - `applicationId`：`wbapp_JwWrDm3Xy5kxdaiR11r7FM`
-- 线上地址：`https://store-build-system.app.workbuddy.link/?sharecode=ZVHDE3E4G6`
+- 线上地址：`https://store-build-system-59240.app.workbuddy.host/?sharecode=SXM4622FRX`
+  （2026-10-26 起本目录的发布地址。旧的 `store-build-system.app.workbuddy.link` 属于另一台电脑上的工作副本，不随本目录更新）
 - 5 张表：`stores` / `tasks` / `members` / `arrivals` / `app_settings`
 - 新增文件：`js/cloud.js`（云端层）、`js/login.js` + `css/login.css`（登录）、`js/vendor/cloud-sdk.js`（本地化的云 SDK，不走 CDN）
 - `js/store.js` 已重写：**云端优先**，localStorage 降级为离线缓存 + 首次迁移来源
@@ -1728,3 +1729,13 @@ suggestDateOf / daysLeftOf，全部门店算一遍进度。一次改动两条都
 - 真浏览器（Edge + puppeteer，`.workbuddy/shot-boot-z106.html`）：首页 0 报错，
   顶栏=狐狸、首页表格李四=熊猫；门店详情任务卡两处 `is-art` 且含 SVG；
   设置页管理员=狐狸、李四 chip=熊猫、不在团队的王五仍是首字「王」。
+
+### 四、Git 与线上（2026-10-26）
+
+- 本目录此前没有 `.git`（是打包解出来的副本），这一轮重新接回远程仓库：
+  `git init` → `fetch` → `reset --mixed origin/main` → 提交 → 推送，
+  历史是线性的（父提交 `c0565a2`），**没有强推**。
+- 顺手清掉 `index.html` 里 76 处编辑器注入的 `data-page-node-id="…"` ——
+  它们是设计器元数据、JS 不引用，但会让每次保存都变成「整文件重写」，
+  提交记录里看不出真实改动。
+- 线上地址换成本目录的发布链接（见文件顶部说明）：部署后实测返回 `?v=20261025z106`。
