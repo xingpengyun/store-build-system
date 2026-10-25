@@ -146,15 +146,22 @@ window.Pages.settings = (function () {
     var iAmOwner = S.isSettingsOwner(me);
     var allow = a.allow || [];
 
+    /* 取姓名第一个字做头像 */
+    function ini(name) {
+      var s = String(name || '').replace(/^\s+/, '');
+      return (s.charAt(0) || '?').toUpperCase();
+    }
+
     var chips = allow.length
       ? allow.map(function (n) {
-          return '<span class="acc-chip">' + U.esc(n) +
+          return '<span class="acc-chip">' +
+            '<i class="acc-chip-ava">' + U.esc(ini(n)) + '</i>' + U.esc(n) +
             (iAmOwner
               ? '<i class="acc-x" data-act="revokeAccess" data-name="' + U.esc(n) + '" title="收回「' + U.esc(n) + '」的权限">×</i>'
               : '') +
             '</span>';
         }).join('')
-      : '<span class="acc-empty">还没给任何人开权限</span>';
+      : '<span class="acc-empty">还没有授权任何人，在下面输入姓名添加</span>';
 
     return '' +
     '<div class="card fade-up" style="animation-delay:.06s">' +
@@ -162,13 +169,19 @@ window.Pages.settings = (function () {
         '<span class="card-sub">' + (iAmOwner ? '你是管理员，可以给下面的人开 / 收权限' : '只有管理员能改这份名单') + '</span></div>' +
 
       '<div class="acc-owner">' +
-        '<span class="acc-role">管理员</span>' +
-        '<span class="acc-name">' + U.esc(a.owner) + '</span>' +
-        (me && me === a.owner ? '<span class="acc-me">就是你</span>' : '') +
+        '<span class="acc-ava">' + U.esc(ini(a.owner)) + '</span>' +
+        '<span class="acc-who">' +
+          '<span class="acc-line1"><b class="acc-name">' + U.esc(a.owner) + '</b>' +
+          '<i class="acc-role">管理员</i>' +
+          (me && me === a.owner ? '<i class="acc-me">就是你</i>' : '') + '</span>' +
+          '<span class="acc-sub">拥有系统设置的全部权限</span>' +
+        '</span>' +
       '</div>' +
 
-      '<div class="acc-label">已被授权（' + allow.length + ' 人）</div>' +
-      '<div class="acc-list">' + chips + '</div>' +
+      '<div class="acc-sec">' +
+        '<div class="acc-label">已授权成员<span class="acc-count">' + allow.length + '</span></div>' +
+        '<div class="acc-list">' + chips + '</div>' +
+      '</div>' +
 
       (iAmOwner
         ? '<div class="acc-add">' +

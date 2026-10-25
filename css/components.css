@@ -1383,78 +1383,129 @@
   gap: 10px;
 }
 
-/* ---- 系统设置权限卡（谁能进这一页） ---- */
-/* 徽章 / 姓名 / 「就是你」都做成同一个 22px 高的居中盒：
-   以前徽章靠 padding、姓名靠行高，两边盒子高度一不等，
-   浏览器字体度量差一点点，姓名就会比徽章低（用户截图指出的就是这个）。
-   盒子等高 + flex 居中，跟字体、浏览器都没关系。 */
+/* ---- 系统设置权限卡（谁能进这一页）z83 重做 ----
+   管理员做成「名片」：渐变头像块 + 姓名 + 徽章 + 一行小字说明，
+   姓名和徽章放在同一条 flex 线里 align-items:center，天然对齐
+   （z82 那版是靠等高盒子凑的，结构换了就不用凑了）。
+   授权成员改成带头像圆点的白色药丸，提示文案收进虚线框。 */
 .acc-owner {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 9px 12px;
-  border-radius: 10px;
-  background: var(--primary-soft);
-  border: 1px solid #cfdcff;
+  gap: 12px;
+  padding: 13px 15px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #edf3ff, #eefaf4);
+  border: 1px solid #dce7fa;
 }
-.acc-role,
-.acc-name,
-.acc-me {
-  display: inline-flex;
+.acc-ava {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: linear-gradient(140deg, #4b7bff, #7a5af8);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+  box-shadow: 0 5px 12px rgba(75, 123, 255, .28);
+}
+.acc-who {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.acc-line1 {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  height: 22px;
-  line-height: 1;
+  gap: 7px;
+}
+.acc-name {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text);
   white-space: nowrap;
 }
 .acc-role {
   flex: 0 0 auto;
-  padding: 0 9px;
+  padding: 2.5px 9px;
   border-radius: 20px;
   background: var(--primary);
   color: #fff;
   font-size: 10.5px;
   font-weight: 600;
+  font-style: normal;
 }
-.acc-name { font-size: 13px; font-weight: 650; color: var(--text); }
 .acc-me {
-  margin-left: auto;
-  padding: 0 9px;
-  font-size: 11px;
-  color: var(--primary);
-  background: #fff;
+  padding: 2.5px 9px;
   border-radius: 20px;
+  background: var(--green-soft);
+  color: var(--green);
+  font-size: 10.5px;
+  font-weight: 600;
+  font-style: normal;
 }
+.acc-sub { font-size: 11.5px; color: var(--text-2); }
+
+.acc-sec { margin-top: 14px; }
 .acc-label {
-  margin: 12px 0 7px;
-  font-size: 11.5px;
-  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.acc-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 10.5px;
+  font-weight: 700;
 }
 .acc-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 7px;
-  min-height: 26px;
+  gap: 8px;
+  min-height: 30px;
   align-items: center;
 }
 .acc-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  height: 26px;
-  padding: 0 4px 0 10px;
+  gap: 6px;
+  height: 30px;
+  padding: 0 6px 0 4px;
   border-radius: 20px;
-  background: var(--card-2);
+  background: #fff;
   border: 1px solid var(--line);
-  font-size: 12px;
+  box-shadow: var(--shadow-1);
+  font-size: 12.5px;
   color: var(--text);
+}
+.acc-chip-ava {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 10.5px;
+  font-weight: 700;
+  font-style: normal;
 }
 .acc-x {
   display: grid;
   place-items: center;
-  width: 18px;
-  height: 18px;
+  width: 19px;
+  height: 19px;
   border-radius: 50%;
   font-style: normal;
   font-size: 13px;
@@ -1468,14 +1519,24 @@
 .acc-add {
   display: flex;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 14px;
 }
-.acc-add .input { height: 34px; font-size: 12.5px; }
+.acc-add .input {
+  flex: 1;
+  height: 38px;
+  font-size: 12.5px;
+  border-radius: 11px;
+}
+.acc-add .btn { height: 38px; border-radius: 11px; padding: 0 18px; }
 .acc-hint {
-  margin-top: 8px;
+  margin-top: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--card-2);
+  border: 1px dashed var(--line);
   font-size: 11.5px;
   line-height: 1.7;
-  color: var(--text-3);
+  color: var(--text-2);
 }
 .mini-stat {
   padding: 11px 12px;
