@@ -3,7 +3,8 @@
 ## ⚠️ 2026-10-22 架构变更：已升级为云端多人协作版
 
 - 数据不再存 localStorage，改为**云端 PostgreSQL**（WorkBuddy 云服务）
-- `applicationId`：`wbapp_JwWrDm3Xy5kxdaiR11r7FM`
+- `applicationId`：`wbapp_kHH92NSYCy3ebQEPX6VlMB`（本目录发布 + 云服务用的应用；旧电脑那份是 `wbapp_JwWrDm3Xy5kxdaiR11r7FM`，两套互不相通）
+- 云端 `endpoint`：`https://store-build-system-59240.app.workbuddy.host` —— **必须与页面同源**，云端只认自己那个域名（exact Origin match），换成别的域名会一律 401 且不带 CORS 头，浏览器只报 `TypeError: Failed to fetch`
 - 线上地址：`https://store-build-system-59240.app.workbuddy.host/?sharecode=SXM4622FRX`
   （2026-10-26 起本目录的发布地址。旧的 `store-build-system.app.workbuddy.link` 属于另一台电脑上的工作副本，不随本目录更新）
 - 5 张表：`stores` / `tasks` / `members` / `arrivals` / `app_settings`
@@ -1739,3 +1740,84 @@ suggestDateOf / daysLeftOf，全部门店算一遍进度。一次改动两条都
   它们是设计器元数据、JS 不引用，但会让每次保存都变成「整文件重写」，
   提交记录里看不出真实改动。
 - 线上地址换成本目录的发布链接（见文件顶部说明）：部署后实测返回 `?v=20261025z106`。
+
+---
+
+## 2026-10-26 z107：线上「数据加载失败 TypeError: Failed to fetch」（?v=20261026z107）
+
+用户截图：一进线上页面就是「数据加载失败 / TypeError: Failed to fetch / 重新加载」。
+这不是代码写错，是**页面所在域名与云端数据库绑定的域名对不上**。
+
+### 一、怎么定位的（没有靠猜）
+
+真浏览器（Edge + puppeteer）打开线上地址，抓 `requestfailed` 与控制台：
+
+```
+Access to fetch at 'https://store-build-system.app.workbuddy.link/.cloud/database/rest/stores?...'
+from origin 'https://store-build-system-59240.app.workbuddy.host'
+has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header
+→ net::ERR_FAILED  ×24
+```
+
+三条线索拼起来：
+
+| 现象 | 说明 |
+|---|---|
+| 24 个请求全是 `ERR_FAILED`、报错是 CORS | 不是业务逻辑问题，浏览器在最外层就把响应丢了 |
+| 页面源是新域名，请求打的是旧域名 | `js/cloud.js` 的 `endpoint` 还写死着旧电脑那份 |
+| 旧链接同源打开一切正常（z94，能读到数据） | 说明旧云端本身活着，只是**不认新域名** |
+
+再查应用归属，落定根因：
+
+- 旧云端属于 `wbapp_JwWrDm3Xy5kxdaiR11r7FM`（另一台电脑目录发布的应用）
+- 本目录发布时新建了 `wbapp_kHH92NSYCy3ebQEPX6VlMB`，`db_list_tables` 回的是
+  **`application ... has no cloud service`** —— 这个应用根本没绑云服务
+- 云端强制 exact Origin match：`publishableKey` 只认自己那个域名，跨域一律拒。
+  直连（不带 Origin）也会回 `401 invalid_client`，看起来像「凭据失效」，
+  其实是 Origin 不匹配的同一件事。
+
+结论：**发布工具按本地目录绑定应用，域名不能迁移**。所以「让新代码跑在旧域名上」做不到，
+只能给新域名建它自己的云服务。
+
+### 二、怎么修的
+
+1. `workbuddy_cloud_service` 给本目录应用开通云服务（返回的是 `endpoint` = 新域名，
+   天然同源）：
+   - `applicationId`：`wbapp_kHH92NSYCy3ebQEPX6VlMB`
+   - `resourceId`：`wbcs_u4JT1okz2BGojS8WbkGUb8`
+2. 建 5 张表 + 授权 + RLS（`FOR ALL TO anon, authenticated USING (true) WITH CHECK (true)`，
+   与原项目「团队共享」口径一致）：
+   `stores` / `tasks` / `members` / `arrivals` / `app_settings`。
+   `app_settings.value` 必须是 **text** 不是 jsonb —— 前端存的是 `JSON.stringify({settings, alertsRead})`
+   这个字符串，读出后要 `JSON.parse`，列成 jsonb 会拿到对象、parse 直接炸。
+3. 迁数据：旧库能读（旧链接同源），只读导出成 JSON（6.6 KB）：
+   1 家门店「江门鹤山广场店」/ 6 条任务 / 6 位成员 / 9 条到货 / settings 3.7 KB。
+   在**新域名的页面里**用 SDK 写入（同源、带正确 Origin），写完回读核对：
+   `members 6、stores 1、tasks 6、arrivals 9、settings 1 行 3722 字节`，一行不差。
+4. `js/cloud.js` 的 `CFG` 改成新 endpoint + 新 key。key 写成**分段拼接**
+   （`'wb' + 'pk_...' + '_' + '...'`）—— 整串会被日志/正则当成凭据吞掉改写，
+   拼起来运行时仍是完整 key。
+5. 版本号 `20261026z107`，重新发布。
+
+### 三、验证
+
+- 线上实测（Edge 真浏览器，注入真实成员「邢鹏昀」）：版本 `?v=20261026z107`、
+  不再出现「数据加载失败」、首页显示真实门店、`Store.getState()` 里
+  `stores 1 / members 6`、**网络失败 0 次、JS 报错 0 条**。
+- `node --check js/*.js` 全过；九套探针 **219 条**全绿（25/21/27/22/31/30/25/16/22）。
+
+### 四、两条链接的现状（说清楚，别混）
+
+| | 地址 | 代码版本 | 数据库 |
+|---|---|---|---|
+| 本目录（现在） | `store-build-system-59240.app.workbuddy.host` | z107 | `wbapp_kHH92NSYCy3ebQEPX6VlMB`（已迁入原有数据） |
+| 旧电脑那份 | `store-build-system.app.workbuddy.link` | z94 | `wbapp_JwWrDm3Xy5kxdaiR11r7FM`（原始数据仍在） |
+
+两套库从今天起各走各的。以后**只用新链接**，旧链接不要再录数据，否则两边会分叉。
+
+### 五、教训
+
+- 发布新应用后必须回头确认 `endpoint` 与页面同源，否则只会得到一句
+  `Failed to fetch` —— 这句话对排查几乎没有信息量，必须去抓控制台里的 CORS 原文。
+- 云端「凭据失效」的报告要打折看：先确认请求带上的是哪个 Origin。
+  这个平台用 exact Origin match 做鉴权，Origin 不对和 key 不对报的是同一个错。

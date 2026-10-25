@@ -5,7 +5,7 @@
 数据存在云端数据库，团队成员共享同一份，换电脑、清缓存都不会丢。
 
 - **在线地址**：https://store-build-system-59240.app.workbuddy.host/?sharecode=SXM4622FRX
-  （这是本目录当前发布的地址；旧的 `store-build-system.app.workbuddy.link` 是另一台电脑上的工作副本发布的，不会跟着本目录更新）
+  （这是本目录当前发布的地址；旧的 `store-build-system.app.workbuddy.link` 是另一台电脑上的工作副本发布的，不会跟着本目录更新。两边的云端数据库是**各自独立**的两套，只在下面这个新地址录入数据，否则数据会分叉）
 - **登录**：账号 `admin`，密码 `123`（临时方案，见下方「登录方式」）
 
 ### 架构

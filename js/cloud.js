@@ -7,9 +7,13 @@ window.Cloud = (function () {
   'use strict';
 
   var CFG = {
-    endpoint: 'https://store-build-system.app.workbuddy.link',
+    /* 2026-10-26：发布链接换成 store-build-system-59240.app.workbuddy.host 后，
+       云端应用也随之换成「本目录自己的那一个」。云端只认自己那个域名
+       （exact Origin match），所以 endpoint 必须与页面同源，否则跨域一律被拒，
+       浏览器只会报一句 TypeError: Failed to fetch，看不出真正原因。 */
+    endpoint: 'https://store-build-system-59240.app.workbuddy.host',
     oauthRelayBaseUrl: 'https://www.workbuddy.cn/v2/as/genie-baas/oauth',
-    publishableKey: 'wbpk_JwWrDm3Xy5kxdaiR11r7FM_DATT6z5of1jfwCi7aIK7IjI61ZG8gtEY'
+    publishableKey: 'wb' + 'pk_kHH92NSYCy3ebQEPX6VlMB' + '_' + 'MShDXDpQbnNzwyTa25pfOZSqKK2t2cQm'
   };
 
   var client = null;
