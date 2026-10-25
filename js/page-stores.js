@@ -60,7 +60,7 @@ window.Pages.stores = (function () {
         '<td>' + UI.stageBadge(store.stage, S.storeSub(store)) + '</td>' +
         '<td>' + UI.riskBadge(store.risk) + '</td>' +
         '<td>' + (owner
-          ? '<div class="store-cell">' + UI.avatar(owner.name, owner.color, 'sm') + '<span>' + U.esc(owner.name) + '</span></div>'
+          ? '<div class="store-cell">' + UI.avatar(owner.name, owner.color, 'sm', owner.animal) + '<span>' + U.esc(owner.name) + '</span></div>'
           : '<span class="dim">未指派</span>') + '</td>' +
         '<td class="muted mono">' + done + ' / ' + mine.length + '</td>' +
         '<td class="nowrap">' +
@@ -419,13 +419,18 @@ window.Pages.stores = (function () {
       var m = S.memberById(t.assigneeId);
       var due = S.suggestDateOf(t);
       var ini = (m && m.name) ? m.name.charAt(0) : '?';
+      /* 负责人头像：成员配了小动物就画小动物（和首页 / 任务页一致），否则还是姓氏首字 */
+      var art = (m && m.animal && UI.ANIMALS[m.animal]) ? m.animal : '';
+      var whoAva = art
+        ? '<i class="tcard-ava is-art" style="background:' + UI.ANIMALS[art].bg + '">' + UI.animalSvg(art) + '</i>'
+        : '<i class="tcard-ava">' + U.esc(ini) + '</i>';
       return '<div class="tcard" style="animation-delay:' + (i * 55) + 'ms">' +
         '<i class="tcard-rail" style="background:' + stageColorOf(t.stage) + '"></i>' +
         '<div class="tcard-main">' +
           '<div class="tcard-title">' + U.esc(t.title) + '</div>' +
           '<div class="tcard-sub">' +
             UI.stageBadge(t.stage) +
-            '<span class="tcard-who"><i class="tcard-ava">' + U.esc(ini) + '</i>' +
+            '<span class="tcard-who">' + whoAva +
               U.esc(m ? m.name : '未指派') + '</span>' +
             '<span class="tcard-due">' + (due
               ? U.monthDay(due) + ' 前完成'

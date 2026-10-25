@@ -229,7 +229,7 @@ window.Pages.home = (function () {
         '<td>' + UI.progress(S.progressValue(store), null, S.progressTip(store)) + '</td>' +
         '<td>' + UI.stageBadge(store.stage, S.storeSub(store)) + '</td>' +
         '<td>' + UI.riskBadge(store.risk) + '</td>' +
-        '<td>' + (owner ? '<div class="store-cell">' + UI.avatar(owner.name, owner.color, 'sm') +
+        '<td>' + (owner ? '<div class="store-cell">' + UI.avatar(owner.name, owner.color, 'sm', owner.animal) +
           '<span>' + U.esc(owner.name) + '</span></div>' : '<span class="dim">未指派</span>') + '</td>' +
         '<td><span class="tlink" data-store-view="' + store.id + '">查看</span></td>' +
       '</tr>';
@@ -572,7 +572,7 @@ window.Pages.home = (function () {
     /* ---- 团队 ---- */
     var teamHtml = st.team.map(function (m, i) {
       return '<div class="team-row" data-member="' + m.id + '">' +
-        UI.avatar(m.name, m.color, 'md') +
+        UI.avatar(m.name, m.color, 'md', m.animal) +
         '<div class="team-info">' +
           '<div class="team-name-line">' + U.esc(m.name) +
             '<span class="team-role">' + U.esc(m.role) + '</span>' +
@@ -794,6 +794,14 @@ window.Pages.home = (function () {
   function mount(root) {
     /* 天气：先用手上的缓存/兜底值画出来，再异步换真实数据 */
     loadWeather(root);
+
+    /* 先按当前宽度把每个判断逻辑气泡定好位（2026-10-25 z105）。
+       气泡宽 254px，默认从 ⓘ 往右展开；最右边那张卡的气泡即使没展开
+       （visibility:hidden 仍参与布局），也会把整页撑出一条横向滚动条。
+       提前跑一遍 placeTip，该翻到左边的先翻过去。 */
+    try {
+      root.querySelectorAll('.kpi-help').forEach(placeTip);
+    } catch (e) { /* 老浏览器没有 forEach 就算了，不影响功能 */ }
 
     /* 首次进首页引导一次：ⓘ 在哪、怎么用（之后不再打扰） */
     try {

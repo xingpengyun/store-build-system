@@ -11,6 +11,7 @@ window.App = (function () {
   var params = {};
   var currentUser = null;
   var syncTip = null;
+  var syncTipKind = '';
 
   /* ---------------- 路由 ---------------- */
   function currentRoute() {
@@ -128,6 +129,36 @@ window.App = (function () {
   function refresh(opts) { render(opts); }
 
   /* ---------------- 顶栏 / 侧栏状态 ---------------- */
+
+  /* 顶栏右上角那颗头像。
+     2026-10-25 z106：以前这里硬写「名字后两字」，团队页把成员头像换成小动物后，
+     右上角永远还是那两个字 —— 用户说的「其他显示头像的地方没有换」就是这个。
+     现在跟其他页面走同一套：成员配了动物就画动物，没配还是名字后两字。
+     只在「动物 key 变了」时重建节点：每次同步都重插一遍 SVG 会闪。 */
+  function paintUserAvatar(uname) {
+    var el = document.querySelector('.topbar-user .avatar');
+    if (!el) return;
+
+    var list = (S.getState() || {}).members || [];
+    var nm = String(uname || '').trim();
+    var me = null;
+    for (var i = 0; i < list.length; i++) {
+      if (String(list[i].name || '').trim() === nm) { me = list[i]; break; }
+    }
+
+    var art = (me && me.animal && UI.ANIMALS[me.animal]) ? me.animal : '';
+    var color = (me && me.color) || '#3f6bf5';
+
+    var sig = art + '|' + nm;
+    if (el.getAttribute('data-sig') !== sig) {
+      el.setAttribute('data-sig', sig);
+      el.className = 'avatar avatar-md' + (art ? ' avatar-art' : '');
+      el.style.background = art ? (UI.ANIMALS[art].bg || color) : color;
+      el.innerHTML = art ? UI.animalSvg(art) : U.esc(String(uname).slice(-2));
+    }
+    el.title = uname + ' · 点击去设置';
+  }
+
   function updateChrome() {
     var set = S.getState().settings;
 
@@ -148,12 +179,8 @@ window.App = (function () {
     if (sizeEl) sizeEl.textContent = U.bytes(bytes);
     if (barEl) barEl.style.width = Math.min(100, bytes / (5 * 1024 * 1024) * 100).toFixed(1) + '%';
 
-    var userEl = document.querySelector('.topbar-user .avatar');
     var uname = (currentUser && (currentUser.name || currentUser.phone)) || '我';
-    if (userEl) {
-      userEl.textContent = String(uname).slice(-2);
-      userEl.title = uname + ' · 点击去设置';
-    }
+    paintUserAvatar(uname);
     var nameEl = document.getElementById('topbarUserName');
     if (nameEl) nameEl.textContent = uname;
 
@@ -180,18 +207,27 @@ window.App = (function () {
     var setItem = document.querySelector('.nav-item[data-route="settings"]');
     if (setItem) setItem.classList.toggle('hidden', !S.canSettings(myName()));
 
-    showSyncTip(!S.isOnline());
+    showSyncTip(!S.isOnline() ? 'offline' : (syncing ? 'syncing' : ''));
   }
 
-  function showSyncTip(offline) {
-    if (!offline) {
+  /* 底部那一条小提示：
+       'offline' —— 离线模式（红）
+       'syncing' —— 先显示本地缓存、后台正在对齐云端（深色）
+       ''        —— 收起来 */
+  function showSyncTip(kind) {
+    if (!kind) {
       if (syncTip) { syncTip.remove(); syncTip = null; }
+      syncTipKind = '';
       return;
     }
-    if (syncTip) return;
+    if (syncTip && syncTipKind === kind) return;
+    if (syncTip) { syncTip.remove(); syncTip = null; }
+    syncTipKind = kind;
     syncTip = document.createElement('div');
-    syncTip.className = 'sync-tip offline';
-    syncTip.innerHTML = '<i></i><span>离线模式：改动先存在本地，联网后自动补传</span>';
+    syncTip.className = 'sync-tip' + (kind === 'offline' ? ' offline' : '');
+    syncTip.innerHTML = '<i></i><span>' +
+      (kind === 'offline' ? '离线模式：改动先存在本地，联网后自动补传' : '正在同步最新数据…') +
+      '</span>';
     document.body.appendChild(syncTip);
   }
 
@@ -304,7 +340,7 @@ window.App = (function () {
   }
 
   /* ---------------- 自动同步时别打断正在输入的人 ----------------
-     同事同时在用时，每 45 秒会把云端最新数据拉回来重画。
+     同事同时在用时，会定时把云端最新数据拉回来重画（间隔按数据量自适应，4~15 秒）。
      如果这时候你正在某个输入框里打字（到货备注、门店名、表单…），
      重画会把你打的字冲掉、光标也丢了。所以：
      ① 正在输入就先不重画，记下来；
@@ -372,19 +408,95 @@ window.App = (function () {
   }
 
   /* ---------------- 启动流程 ---------------- */
+
+  var booted = false;       /* 外壳（导航 / 搜索 / hashchange）只挂一次 */
+  var syncing = false;      /* 正在后台对齐云端：底部提示用 */
+  var welcomed = false;
+  var kicked = false;
+
+  function bootShell() {
+    if (booted) return;
+    booted = true;
+    if (!location.hash) location.hash = '#/home';
+    bindShell();
+  }
+
+  /* 登录之后还要再校验一次（2026-10-25 z105）
+     ------------------------------------------------------------
+     登录时只校验过一次，人被移出团队之后，那台还开着的页面照样能看能改。
+     现在：数据刚从云端拉下来时、以及每轮同步之后，都拿最新名单再问一遍，
+     不在名单里就清掉登录态、请回登录页。 */
+  function checkMe() {
+    if (!currentUser || !currentUser.name) return;
+    var r = S.meAllowed(currentUser.name);
+    if (r && r.ok === false) kickOut(r.msg || '你已不在团队成员名单里');
+  }
+
+  function kickOut(msg) {
+    if (kicked) return;
+    kicked = true;
+    S.stopAutoSync();
+    try { window.Cloud.simpleLogout(); } catch (e) {}
+    try { window.Cloud.logout().catch(function () {}); } catch (e2) {}
+
+    function goLogin() { location.hash = ''; location.reload(); }
+
+    window.UI.modal({
+      title: '登录已失效',
+      body: '<p style="font-size:13px;line-height:1.8;color:var(--text-2)">' +
+        U.esc(msg) + '</p>' +
+        '<p style="margin-top:8px;font-size:12px;line-height:1.8;color:var(--text-3)">' +
+        '你的账号已被移出团队（或管理员收回了授权）。需要继续使用，请联系管理员重新开通后再登录。</p>',
+      footer: '<button class="btn btn-primary" data-act="ok">重新登录</button>',
+      onMount: function (rootEl) {
+        rootEl.querySelector('[data-act="ok"]').onclick = goLogin;
+        /* 光弹个框不够：点 × / 点遮罩 / 按 Esc 都能关掉它，关掉之后
+           页面还在，照样能看能改。所以这三种关法也一律回登录页。 */
+        var mask = rootEl.closest('.modal-mask');
+        document.addEventListener('click', function (e) {
+          if (e.target === mask || (e.target.closest && e.target.closest('.modal-close'))) goLogin();
+        }, true);
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape') goLogin();
+        }, true);
+      }
+    });
+  }
+
   function startApp() {
     /* 登录没完成前整个外壳是藏着的（body.booting），
        否则刷新时会先闪一下主界面，再退回登录页 */
     document.body.classList.remove('booting');
+
+    var painted = false;    /* 是否已经用本地缓存先把界面画出来了 */
+
     window.UI.loading('正在从云端加载数据…');
 
-    S.load(function (done, total) {
+    var loading = S.load(function (done, total) {
       var label = document.querySelector('#loadingLayer p');
       if (label && total) {
         label.textContent = '首次同步：正在上传 ' + done + ' / ' + total + ' 条…';
       }
-    }).then(function (r) {
+    }, function onCached() {
+      /* 本地有上一轮的完整快照 → 立刻上屏（几十毫秒），云端那份回来后再替换。
+         几千条数据时，这一下就把「打开要等好几秒」变成了「打开就有」。 */
+      painted = true;
       window.UI.hideLoading();
+      bootShell();
+      render();
+      syncing = true;
+      updateChrome();
+    });
+
+    loading.then(function (r) {
+      syncing = false;
+      window.UI.hideLoading();
+      bootShell();
+
+      if (painted) render({ keep: true });     /* 缓存 → 云端那份对齐了 */
+      else render();
+
+      if (!welcomed) { welcomed = true; maybeWelcome(); }
 
       if (r && r.imported) {
         window.UI.toast('已把本地 ' + r.imported + ' 家门店同步到云端', 'success');
@@ -394,24 +506,25 @@ window.App = (function () {
         window.UI.toast('还没有数据，去「门店管理」添加第一家门店', 'info');
       }
 
-      if (!location.hash) location.hash = '#/home';
-      bindShell();
-      render();
-
-      maybeWelcome();
-
       if (r && r.offline) {
         window.UI.toast('云端连接失败，当前使用本地缓存', 'error');
+      } else {
+        checkMe();      /* 名单刚更新过：确认当前登录人还在团队里 */
       }
 
-      S.startAutoSync(3000, function () {
+      /* 传 0 = 让数据层按体量自适应间隔（小数据 4 秒 / 中等 8 秒 / 大数据 15 秒）。
+         每轮先问一次变更票据，没人改过就整轮跳过，一个字节都不下。 */
+      S.startAutoSync(0, function () {
         /* 别人改了数据：实时重画但不打断当前操作。
            正在输入框里打字时先别重画 —— 重画会把光标里的字冲掉、
            焦点也丢了。等他输入框失焦了再画（见 bindShell 里的 focusout）。 */
+        checkMe();                  /* 别人可能刚把我移出团队 */
+        if (kicked) return;
         if (isEditing()) { pendingRerender = true; return; }
         render({ keep: true });
       });
     }).catch(function (e) {
+      syncing = false;
       window.UI.hideLoading();
       window.UI.toast('数据加载失败：' + (e.message || e), 'error');
       var view = document.getElementById('view');

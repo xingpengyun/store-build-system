@@ -48,6 +48,8 @@ window.Login = (function () {
     return '<div class="login-mascot">' + (window.UI.mascot('login-mascot-svg')) + '</div>';
   }
 
+  /* 2026-10-25：卡片底部那行说明（「没在名单里的姓名登不进来…数据保存在云端…」）
+     用户要求去掉，登录页只留姓名 / 账号 / 密码三个框和登录按钮，不再解释规则。 */
   function tplSimple() {
     return '<div class="login-card">' + head() +
       '<form class="login-form" id="lgForm" autocomplete="off">' +
@@ -56,7 +58,7 @@ window.Login = (function () {
           '<input class="input" id="lgName" type="text" maxlength="20"' +
           '       placeholder="请填写你的真实姓名" autocomplete="name"' +
           '       value="' + esc(lastName()) + '" />' +
-          '<p class="login-hint">请填真实姓名，不要填昵称或缩写 —— 页面上显示的就是这个名字。</p>' +
+          '<p class="login-hint">填真实姓名 —— 页面上显示的就是这个名字。</p>' +
         '</div>' +
         '<div class="field">' +
           '<label>账号</label>' +
@@ -69,7 +71,6 @@ window.Login = (function () {
         '<p class="login-err" id="lgErr"></p>' +
         '<button type="submit" class="btn btn-primary btn-block login-submit" id="lgSubmit">登 录</button>' +
       '</form>' +
-      '<p class="login-tip">数据保存在云端，团队成员共享同一份。</p>' +
     '</div>';
   }
 
@@ -163,14 +164,37 @@ window.Login = (function () {
 
       if (!u || !p) { err('请输入账号和密码'); return; }
 
-      if (window.Cloud.simpleLogin(u, p, chk.name)) {
+      var btn = q('#lgSubmit');
+      btn.disabled = true;
+      btn.textContent = '校验中…';
+      err('');
+
+      /* 先过姓名白名单（只有团队成员能进），再对账号密码。
+         白名单要问云端，所以这里是异步：断网时退回本机镜像。 */
+      window.Cloud.memberGate(chk.name).then(function (gate) {
+        if (!gate || !gate.ok) {
+          btn.disabled = false;
+          btn.textContent = '登 录';
+          err(gate && gate.msg ? gate.msg : '请联系管理员开通账号');
+          return;   /* 不说是密码错了，也不清空，让人照着提示去找管理员 */
+        }
+
+        if (!window.Cloud.simpleLogin(u, p, chk.name)) {
+          btn.disabled = false;
+          btn.textContent = '登 录';
+          err('账号或密码不正确');
+          passEl.value = '';
+          passEl.focus();
+          return;
+        }
+
         hide();
         if (onDone) onDone({ name: chk.name, account: u });
-      } else {
-        err('账号或密码不正确');
-        passEl.value = '';
-        passEl.focus();
-      }
+      }).catch(function (ex) {
+        btn.disabled = false;
+        btn.textContent = '登 录';
+        err('登录检查失败：' + ((ex && ex.message) || '请稍后重试'));
+      });
     });
   }
 

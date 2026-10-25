@@ -152,10 +152,27 @@ window.Pages.settings = (function () {
       return (s.charAt(0) || '?').toUpperCase();
     }
 
+    /* 这个人在团队里配了小动物没有：配了就画动物，和其他页面保持一致。
+       授权名单里可能是还没加进团队的人，查不到就退回首字。 */
+    function artOf(name) {
+      var list = (S.getState() || {}).members || [];
+      var nm = String(name || '').trim();
+      for (var i = 0; i < list.length; i++) {
+        if (String(list[i].name || '').trim() === nm) {
+          var a = list[i].animal;
+          return (a && UI.ANIMALS[a]) ? a : '';
+        }
+      }
+      return '';
+    }
+
     var chips = allow.length
       ? allow.map(function (n) {
+          var a = artOf(n);
           return '<span class="acc-chip">' +
-            '<i class="acc-chip-ava">' + U.esc(ini(n)) + '</i>' + U.esc(n) +
+            '<i class="acc-chip-ava' + (a ? ' is-art' : '') + '"' +
+              (a ? ' style="background:' + UI.ANIMALS[a].bg + '"' : '') + '>' +
+              (a ? UI.animalSvg(a) : U.esc(ini(n))) + '</i>' + U.esc(n) +
             (iAmOwner
               ? '<i class="acc-x" data-act="revokeAccess" data-name="' + U.esc(n) + '" title="收回「' + U.esc(n) + '」的权限">×</i>'
               : '') +
@@ -163,13 +180,24 @@ window.Pages.settings = (function () {
         }).join('')
       : '<span class="acc-empty">还没有授权任何人，在下面输入姓名添加</span>';
 
+    var ownerArt = artOf(a.owner);
+
     return '' +
     '<div class="card fade-up" style="animation-delay:.06s">' +
       '<div class="card-head"><h3>谁能进系统设置</h3>' +
         '<span class="card-sub">' + (iAmOwner ? '你是管理员，可以给下面的人开 / 收权限' : '只有管理员能改这份名单') + '</span></div>' +
 
+      /* 2026-10-25：登入门禁改成「姓名白名单」——只有团队成员 + 管理员 + 这份授权名单
+         里的姓名能登进来，其他人的登录页会提示「请联系管理员开通」。 */
+      '<p class="muted" style="margin:-2px 0 12px;font-size:12px;color:var(--text-3)">' +
+        '登录规则：姓名 + 账号 + 密码。能登进来的人 = 团队成员 + 管理员 + 下面这份授权名单；' +
+        '名单外的姓名会被挡在登录页，提示「请联系管理员开通」。' +
+      '</p>' +
+
       '<div class="acc-owner">' +
-        '<span class="acc-ava">' + U.esc(ini(a.owner)) + '</span>' +
+        '<span class="acc-ava' + (ownerArt ? ' is-art' : '') + '"' +
+          (ownerArt ? ' style="background:' + UI.ANIMALS[ownerArt].bg + '"' : '') + '>' +
+          (ownerArt ? UI.animalSvg(ownerArt) : U.esc(ini(a.owner))) + '</span>' +
         '<span class="acc-who">' +
           '<span class="acc-line1"><b class="acc-name">' + U.esc(a.owner) + '</b>' +
           '<i class="acc-role">管理员</i>' +

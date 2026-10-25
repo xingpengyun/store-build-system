@@ -108,7 +108,147 @@ window.UI = (function () {
   }
 
   /* ---------------- 头像 ---------------- */
-  function avatar(name, color, size) {
+  /* ---------------- 可爱动物头像 ----------------
+     一套统一画法的圆脸小动物：同一个 viewBox（40×40）、同一种「圆头 + 点眼 + 腮红 +
+     小鼻子」的造型语言，只靠**耳朵形状 / 花色**区分——所以 12 只放在一起是同一个风格。
+     纯内联 SVG：不引外部图片、不走 CDN，file:// 双击也能显示。
+     配色走奶油马卡龙色系，跟系统里那套淡色卡片是一个调子。 */
+  var ART = {
+    cat:     { name: '小猫', bg: '#FFF3E4', fur: '#F8B26A', line: '#8A5A2B', blush: '#FFC7A6', ear: 'cat', whisker: 1 },
+    dog:     { name: '小狗', bg: '#FFF5EC', fur: '#DDA56E', line: '#7A4A22', blush: '#F7C6A0', ear: 'dog', tongue: 1 },
+    rabbit:  { name: '小兔', bg: '#FFF1F6', fur: '#FFD6E4', line: '#B0607E', blush: '#FFB3C9', ear: 'rabbit' },
+    bear:    { name: '小熊', bg: '#FFF6EA', fur: '#CD9F71', line: '#7A4A22', blush: '#F2BD95', ear: 'bear' },
+    panda:   { name: '熊猫', bg: '#F3F6FB', fur: '#FFFFFF', line: '#2B3246', blush: '#FFC4CE', ear: 'panda' },
+    fox:     { name: '狐狸', bg: '#FFF1E7', fur: '#FFA56E', line: '#8A4B2A', blush: '#FFC3A3', ear: 'fox', whisker: 1 },
+    pig:     { name: '小猪', bg: '#FFF0F5', fur: '#FFB7CC', line: '#A8546B', blush: '#FF9DBB', ear: 'pig', snout: 1 },
+    frog:    { name: '青蛙', bg: '#EFFAEF', fur: '#A9E3A3', line: '#3E7A46', blush: '#8FD98B', ear: 'frog' },
+    chick:   { name: '小鸡', bg: '#FFFAE3', fur: '#FFE07F', line: '#8A6A1F', blush: '#FFC8A6', ear: 'chick' },
+    koala:   { name: '考拉', bg: '#F2F5FA', fur: '#B9C4D4', line: '#4B5568', blush: '#F2B7C4', ear: 'koala' },
+    tiger:   { name: '小虎', bg: '#FFF4DE', fur: '#FFC46B', line: '#6B4423', blush: '#FFC7A0', ear: 'bear', stripe: 1 },
+    penguin: { name: '企鹅', bg: '#EEF4FF', fur: '#3E4A63', line: '#EAF0FA', blush: '#FFB3C9', ear: 'none', belly: 1 }
+  };
+  var ART_KEYS = Object.keys(ART);
+
+  /* 耳朵：都在头圆之前画，等于压在后面。
+     每片耳朵都描一道极淡的边 —— 同色的耳朵压在圆脸上才看得出形状（尤其小狗垂耳）。 */
+  function artEars(kind, d) {
+    var fill = d.ear === 'panda' ? d.line : d.fur;
+    var O = ' stroke="rgba(20,28,48,.12)" stroke-width="1"';
+    switch (kind) {
+      case 'cat':
+        return '<path d="M8.4 13 L11.2 3.4 L18.6 9.4 Z" fill="' + fill + '"' + O + '/>' +
+               '<path d="M31.6 13 L28.8 3.4 L21.4 9.4 Z" fill="' + fill + '"' + O + '/>' +
+               '<path d="M11.6 10.4 L12.7 6.6 L15.9 9.4 Z" fill="' + d.blush + '" opacity=".85"/>' +
+               '<path d="M28.4 10.4 L27.3 6.6 L24.1 9.4 Z" fill="' + d.blush + '" opacity=".85"/>';
+      case 'fox':
+        return '<path d="M7.2 14.4 L9.4 2.8 L19.4 8.4 Z" fill="' + fill + '"' + O + '/>' +
+               '<path d="M32.8 14.4 L30.6 2.8 L20.6 8.4 Z" fill="' + fill + '"' + O + '/>' +
+               '<path d="M10.4 11.4 L11.6 5.8 L17.4 9.6 Z" fill="#FFFFFF" opacity=".55"/>' +
+               '<path d="M29.6 11.4 L28.4 5.8 L22.6 9.6 Z" fill="#FFFFFF" opacity=".55"/>';
+      case 'dog':
+        return '<ellipse cx="7.4" cy="18.4" rx="4.6" ry="7.8" fill="' + fill + '"' + O + ' transform="rotate(-16 7.4 18.4)"/>' +
+               '<ellipse cx="32.6" cy="18.4" rx="4.6" ry="7.8" fill="' + fill + '"' + O + ' transform="rotate(16 32.6 18.4)"/>';
+      case 'rabbit':
+        return '<ellipse cx="13.8" cy="7" rx="3.5" ry="8.2" fill="' + fill + '"' + O + ' transform="rotate(-9 13.8 7)"/>' +
+               '<ellipse cx="26.2" cy="7" rx="3.5" ry="8.2" fill="' + fill + '"' + O + ' transform="rotate(9 26.2 7)"/>' +
+               '<ellipse cx="13.8" cy="7" rx="1.5" ry="5.2" fill="' + d.blush + '" opacity=".9" transform="rotate(-9 13.8 7)"/>' +
+               '<ellipse cx="26.2" cy="7" rx="1.5" ry="5.2" fill="' + d.blush + '" opacity=".9" transform="rotate(9 26.2 7)"/>';
+      case 'bear':
+      case 'panda':
+        return '<circle cx="10.2" cy="11.8" r="5" fill="' + fill + '"' + O + '/>' +
+               '<circle cx="29.8" cy="11.8" r="5" fill="' + fill + '"' + O + '/>' +
+               (kind === 'panda' ? '' :
+                 '<circle cx="10.2" cy="11.8" r="2.2" fill="' + d.blush + '" opacity=".8"/>' +
+                 '<circle cx="29.8" cy="11.8" r="2.2" fill="' + d.blush + '" opacity=".8"/>');
+      case 'pig':
+        return '<path d="M9.4 12.6 L11.6 5 L17 9.8 Z" fill="' + fill + '"' + O + '/>' +
+               '<path d="M30.6 12.6 L28.4 5 L23 9.8 Z" fill="' + fill + '"' + O + '/>';
+      case 'koala':
+        return '<ellipse cx="9.4" cy="12.6" rx="5.8" ry="6.4" fill="' + fill + '"' + O + '/>' +
+               '<ellipse cx="30.6" cy="12.6" rx="5.8" ry="6.4" fill="' + fill + '"' + O + '/>' +
+               '<ellipse cx="9.4" cy="12.6" rx="3" ry="3.4" fill="' + d.blush + '" opacity=".75"/>' +
+               '<ellipse cx="30.6" cy="12.6" rx="3" ry="3.4" fill="' + d.blush + '" opacity=".75"/>';
+      case 'frog':
+        return '<circle cx="12.4" cy="10.4" r="4.8" fill="' + fill + '"' + O + '/>' +
+               '<circle cx="27.6" cy="10.4" r="4.8" fill="' + fill + '"' + O + '/>' +
+               '<circle cx="12.4" cy="10" r="1.8" fill="#2b3246"/>' +
+               '<circle cx="27.6" cy="10" r="1.8" fill="#2b3246"/>' +
+               '<circle cx="13" cy="9.3" r=".6" fill="#fff" opacity=".9"/>' +
+               '<circle cx="28.2" cy="9.3" r=".6" fill="#fff" opacity=".9"/>';
+      case 'chick':
+        return '<path d="M18.4 9 q.4 -3.6 3.6 -4.8" fill="none" stroke="' + d.line + '" stroke-width="1.6" stroke-linecap="round"/>' +
+               '<path d="M21.8 9 q1.6 -2.6 4.2 -2.6" fill="none" stroke="' + d.line + '" stroke-width="1.5" stroke-linecap="round" opacity=".7"/>';
+      default:
+        return '';
+    }
+  }
+
+  function animalSvg(key) {
+    var d = ART[key];
+    if (!d) return '';
+    var dark = d.ear === 'penguin' ? '#2b3246' : '#2b3246';
+    var eyeFill = d.ear === 'penguin' ? '#FFFFFF' : dark;
+    var s = '<svg viewBox="0 0 40 40" class="ava-art" aria-hidden="true">';
+    s += artEars(d.ear, d);
+
+    /* 头：统一一个圆，白色 / 浅色脸描一道极淡的边，不然在浅底上看不出轮廓 */
+    s += '<circle cx="20" cy="22.4" r="13.4" fill="' + d.fur + '" stroke="rgba(20,28,48,.10)" stroke-width="1"/>';
+    if (d.belly) s += '<ellipse cx="20" cy="24.8" rx="8.4" ry="8.6" fill="#FFFFFF"/>';
+
+    /* 熊猫：先铺黑眼圈，再点白眼睛 */
+    if (d.ear === 'panda') {
+      s += '<ellipse cx="15.2" cy="21" rx="3.6" ry="4.2" fill="' + d.line + '"/>' +
+           '<ellipse cx="24.8" cy="21" rx="3.6" ry="4.2" fill="' + d.line + '"/>' +
+           '<circle cx="15.2" cy="21" r="1.5" fill="#FFFFFF"/>' +
+           '<circle cx="24.8" cy="21" r="1.5" fill="#FFFFFF"/>';
+    } else if (d.ear !== 'frog') {
+      s += '<circle cx="15.4" cy="21.2" r="1.95" fill="' + eyeFill + '"/>' +
+           '<circle cx="24.6" cy="21.2" r="1.95" fill="' + eyeFill + '"/>';
+    }
+
+    /* 腮红 */
+    s += '<ellipse cx="11.6" cy="25.8" rx="2.7" ry="1.7" fill="' + d.blush + '" opacity=".8"/>' +
+         '<ellipse cx="28.4" cy="25.8" rx="2.7" ry="1.7" fill="' + d.blush + '" opacity=".8"/>';
+
+    /* 鼻子 / 嘴 */
+    if (d.snout) {
+      s += '<ellipse cx="20" cy="25.6" rx="4.3" ry="3.2" fill="' + d.blush + '"/>' +
+           '<circle cx="18.5" cy="25.4" r=".7" fill="' + d.line + '"/>' +
+           '<circle cx="21.5" cy="25.4" r=".7" fill="' + d.line + '"/>';
+    } else if (!d.belly) {
+      s += '<ellipse cx="20" cy="25.8" rx="1.8" ry="1.4" fill="' + d.line + '" opacity=".9"/>';
+    }
+
+    if (d.belly) {
+      /* 企鹅：橙色小尖嘴（没有这个就是一团黑） */
+      s += '<path d="M20 24.6 L17.8 26.4 L20 28.2 L22.2 26.4 Z" fill="#F5A63C"/>';
+    } else if (d.ear === 'chick') {
+      s += '<path d="M20 27.6 L23.4 29.2 L20 30.6 Z" fill="#F2A03D"/>';
+    } else {
+      s += '<path d="M17.4 28.2 q2.6 2.2 5.2 0" fill="none" stroke="' + d.line +
+           '" stroke-width="1.15" stroke-linecap="round" opacity=".7"/>';
+    }
+    if (d.tongue) {
+      s += '<path d="M18.8 29.2 q1.2 2.4 2.4 0 z" fill="#F58AA2"/>';
+    }
+    if (d.whisker) {
+      s += '<path d="M4.8 23.4 H9 M4.8 26.2 H9 M35.2 23.4 H31 M35.2 26.2 H31" stroke="' +
+           d.line + '" stroke-width="1" stroke-linecap="round" opacity=".45"/>';
+    }
+    if (d.stripe) {
+      s += '<path d="M20 10.4 v3 M16.4 12 L18 14.6 M23.6 12 L22 14.6" stroke="' +
+           d.line + '" stroke-width="1.5" stroke-linecap="round" opacity=".65"/>';
+    }
+    return s + '</svg>';
+  }
+
+  /* 头像：传了动物 key 就画小动物，没传还是原来那颗「颜色 + 姓氏首字」 */
+  function avatar(name, color, size, animal) {
+    var d = animal && ART[animal];
+    if (d) {
+      return '<span class="avatar avatar-' + (size || 'md') + ' avatar-art" style="background:' + d.bg +
+        '" title="' + U.esc(d.name) + '">' + animalSvg(animal) + '</span>';
+    }
     var ch = (name || '?').slice(0, 1);
     return '<span class="avatar avatar-' + (size || 'md') + '" style="background:' + (color || '#3f6bf5') + '">' +
       U.esc(ch) + '</span>';
@@ -178,10 +318,11 @@ window.UI = (function () {
     setTimeout(dismiss, opts.duration || (opts.action ? 6000 : 2200));
   }
 
-  /* ---------------- 右下角小卡片：门店阶段往前走了 ----------------
-     跳阶段的时候右下角弹一张卡，写明「该门店已转入下一阶段的名称」。
-     跟顶部 toast 分工：toast 是操作回执（谁做了什么），这张是结果播报，
-     停 6.5 秒、可以手动关，最多同时叠 3 张（再来就把最老的推掉）。
+  /* ---------------- 页面正中小卡片：门店阶段往前走了 ----------------
+     跳阶段的时候页面中间弹一张卡，写明「该门店已转入下一阶段的名称」。
+     跟顶部 toast 分工：toast 是操作回执（谁做了什么），这张是结果播报。
+     2026-10-25：位置从右下角改到屏幕正中，停留 6.5 秒 → 2 秒（用户要求），
+     仍可手动点 × 提前关；最多同时叠 3 张（再来就把最老的推掉）。
 
      opts: { store: '广州天河', from: '建档资料', to: '发货阶段', note: '…' } */
   function stagePop(opts) {
@@ -228,7 +369,7 @@ window.UI = (function () {
       setTimeout(function () { el.remove(); }, 240);
     }
     el.querySelector('.spop-x').addEventListener('click', dismiss);
-    setTimeout(dismiss, opts.duration || 6500);
+    setTimeout(dismiss, opts.duration || 2000);
     return el;
   }
 
@@ -853,6 +994,9 @@ window.UI = (function () {
     stageOptions: stageOptions,
     statusBadge: statusBadge,
     avatar: avatar,
+    animalSvg: animalSvg,
+    ANIMALS: ART,          /* { key: { name, bg, fur … } }，团队页头像选择器按这个铺 */
+    ANIMAL_KEYS: ART_KEYS,
     progress: progress,
     empty: empty,
     toast: toast,

@@ -2,10 +2,9 @@
    page-ship.js — 发货看板
    2026-10-24：用户确认「不安排发货，我们通知就行了」——
    计划发货日整套去掉（不排期、不看谁该发、没有逾期未发）。
-   2026-10-25：用户确认「发了没发」这套也去掉（点了容易误标，
-   到货时间在物料列已经有了）——看板只盯一件事：
-   物料登记的到货时间，到货日 − 7 天该通知供应商了就通知，
-   通知完点一下「已通知」，其他同事看到状态就知道办过了。
+   2026-10-25：撤掉的只是「实发日期」那个输入框，不是「一件发出」本身。
+   现在一颗胶囊管整家店：点成「已发出」= 这家店所有物料一起记为已通知供应商、
+   行沉到表格底部；再点一次 = 全部退回「待通知」。
    ========================================================== */
 window.Pages = window.Pages || {};
 
@@ -92,9 +91,26 @@ window.Pages.ship = (function () {
 
   /* ---------------- 一行 ---------------- */
 
-  /* 2026-10-24 起没有「计划发货日」；2026-10-25 起「发了没发」这套也撤掉了 ——
-     之前那列的「未发出/已发出」一点就整家店标记成发出，和到货通知的主线重复还容易误标。
-     这页现在只剩：物料 + 登记的到货时间（只列未通知）+ 备注 + 手动顺序。 */
+  /* 2026-10-24 起没有「计划发货日」；2026-10-25 起「实发日期」输入框也撤了。
+     「一件发出」这颗胶囊保留：整家店一键，点一下 = 全店物料都通知过供应商了。 */
+
+  /* 「一件发出」这一列：只有一颗胶囊，什么小字都不加（2026-10-25 用户要求
+     依次撤掉了「最早 11.3 到」和「N 天后开业」——这一列只留一个动作/状态）。
+     未发出时胶囊写动作「一键发出」，点了整店物料一起记为已通知；已发出写「已发出」。 */
+  function sentHtml(r) {
+    var list = C.SHIP_STATUS || [];
+    var key = r.shipped ? 'sent' : 'todo';
+    var st = null;
+    for (var i = 0; i < list.length; i++) if (list[i].key === key) st = list[i];
+    var label = r.shipped ? (st ? st.label : '已发出') : '一键发出';
+
+    return '<button type="button" class="ship-st ' + (r.shipped ? 'is-sent' : 'is-todo') + '" data-sent' +
+        ' title="' + (r.shipped
+          ? '点一下取消：全店 ' + (r.total || 0) + ' 项物料一起退回「待通知」'
+          : '点一下：整店记为已发出，' + (r.pending || 0) + ' 项未通知的物料一起记为已通知') + '">' +
+        '<i></i>' + label +
+      '</button>';
+  }
 
   var MAT_MAX = 8;   /* 物料列宽，多铺几条 */
 
@@ -148,6 +164,7 @@ window.Pages.ship = (function () {
     var cls = [];
     if (r.arrLate) cls.push('is-arrlate');   /* 物料过了到货日还没通知 → 整行淡红底 */
     if (r.pin) cls.push('is-pin');
+    if (r.shipped) cls.push('is-sent');      /* 已发出 → 整行淡一档（样式早就有，只是那阵子没挂上） */
 
     var openTxt = r.openLeft == null
       ? '开业日未定'
@@ -176,6 +193,9 @@ window.Pages.ship = (function () {
       /* 这一列把这家店所有物料的到货时间铺开 */
       '<td class="ship-mats">' + matsHtml(r) + '</td>' +
 
+      /* 一件发出：整店一键，不登记日期 */
+      '<td class="ship-sent">' + sentHtml(r) + '</td>' +
+
       '<td class="ship-note-cell">' +
         '<input class="ship-note" data-note value="' + U.esc(r.note) + '"' +
           ' placeholder="点这里加备注" title="' + U.esc(r.note || '例如：等门店确认收货人') + '" />' +
@@ -203,6 +223,7 @@ window.Pages.ship = (function () {
         '<th>物料 · 登记的到货时间（只列未通知）' +
           '<span class="th-legend"><i class="is-late"></i>过了到货日<i class="is-soon"></i>7 天内到<i class="is-nodate"></i>没填日期</span>' +
         '</th>' +
+        '<th style="width:112px">一件发出</th>' +
         '<th style="width:138px">备注</th>' +
         '<th style="width:44px"></th>' +
       '</tr></thead><tbody>' +
@@ -639,9 +660,10 @@ window.Pages.ship = (function () {
     '<div class="page-head fade-up">' +
       '<div>' +
         '<h1>发货看板</h1>' +
-        '<p>' + U.cnDate(today) + ' · 共 ' + rows.length + ' 家门店' +
-          (s.notify ? '：<b>' + s.notify + '</b> 家该通知供应商' : '') +
-          (s.arrLate ? (s.notify ? '；' : '：<b class="text-red">') + s.arrLate + ' 家漏通知' + (s.notify ? '' : '</b>') : '') + '</p>' +
+        '<p>' + U.cnDate(today) + ' · 共 ' + rows.length + ' 家门店：<b>' + s.todo + '</b> 家待发出' +
+          (s.sent ? '、<b>' + s.sent + '</b> 家已发出' : '') +
+          (s.notify ? '；<b>' + s.notify + '</b> 家该通知供应商' : '') +
+          (s.arrLate ? '；<b class="text-red">' + s.arrLate + '</b> 家漏通知' : '') + '</p>' +
       '</div>' +
       '<div style="display:flex;gap:8px;align-items:center">' +
         viewSwitchHtml() +
@@ -664,7 +686,7 @@ window.Pages.ship = (function () {
       '<div id="shipTable">' + tableHtml(list) + '</div>' +
       '<div class="ship-foot">' +
         '<span>每行只铺还没通知供应商的物料，通知过的不再占地方；历史记录去「按到货日」视图的「已通知」</span>' +
-        '<span>到货时间以门店 / 供应商登记的为准，改日期就是新承诺</span>' +
+        '<span>「一件发出」点一下 = 整店物料都通知过供应商了，行沉到底；再点一下全部退回待通知</span>' +
       '</div>' +
     '</div>';
   }
@@ -801,6 +823,23 @@ window.Pages.ship = (function () {
       var id = tr.getAttribute('data-ship');
       var hit = findRow(id);
       if (!hit) return;
+
+      /* ★ 一件发出：整店翻转 —— 物料通知状态跟着一起走，行沉底 / 回位 */
+      if (e.target.closest('[data-sent]')) {
+        var res = S.toggleShipSent(id);
+        if (!res) return;
+        if (res.status === 'sent') {
+          UI.toast(res.changed
+            ? '已记「已发出」，' + res.changed + ' 项物料同时记为已通知供应商'
+            : '已记「已发出」（这家店没有待通知的物料）', 'success');
+        } else {
+          UI.toast(res.changed
+            ? '已取消一件发出，' + res.changed + ' 项物料回到「待通知」'
+            : '已改回「未发出」（这家店没有已通知的物料）', 'info');
+        }
+        App.refresh({ keep: true });
+        return;
+      }
 
       /* ★ 先发 */
       if (e.target.closest('[data-pin]')) {

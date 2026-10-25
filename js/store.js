@@ -30,15 +30,37 @@ window.Store = (function () {
   var cacheTimer = null;
   var cachedBytes = 0;
 
+  /* 数据版本号：任何一次改动 +1。给「算一次很贵、但输入没变就该复用」的
+     派生结果当缓存键（目前是 alerts()：4000 条任务算一遍要 5ms 以上，
+     而顶栏每次刷新都会问一次未读数）。 */
+  var dataRev = 0;
+
   function writeCacheNow() {
     if (cacheTimer) { clearTimeout(cacheTimer); cacheTimer = null; }
     try {
       var s = JSON.stringify(state);
       localStorage.setItem(KEY, s);
-      cachedBytes = new Blob([s]).size;
+      /* 体积用「字符数 × 2」估：localStorage 按 UTF-16 算配额，
+         这样既贴近 5MB 的真实口径，又不用为了量体积再分配一个 Blob */
+      cachedBytes = s.length * 2;
     } catch (e) {
       console.warn('[Store] 本地缓存写入失败', e);
     }
+    /* 顺手把「能登进来的人」镜像一份给登录页用（登录发生在数据加载之前，
+       那时还读不到 state，只能读这个镜像；见 cloud.js memberGate）。
+       名单 = 团队成员 + 管理员 + 系统设置授权名单 —— 后两个也加进来，
+       否则把成员配齐之后管理员自己反而登不进去了。
+       第二个参数是「这份名单是什么时候跟云端核对过的」：在线时才更新，
+       离线写盘不能刷新时间戳，否则名单过期机制就形同虚设。 */
+    try {
+      if (window.Cloud && window.Cloud.saveAllowNames && state && state.members) {
+        var names = state.members.map(function (m) { return m.name; });
+        var ac = state.settings && state.settings.access;
+        if (ac && ac.owner) names.push(ac.owner);
+        if (ac && ac.allow && ac.allow.length) names = names.concat(ac.allow);
+        window.Cloud.saveAllowNames(names, online ? Date.now() : 0);
+      }
+    } catch (e2) { /* 镜像失败不影响主流程 */ }
   }
 
   function cacheLocal() {
@@ -47,10 +69,15 @@ window.Store = (function () {
     cacheTimer = setTimeout(writeCacheNow, 260);
   }
 
-  /* 关页面 / 切走之前一定把排队的写盘落下去 */
+  /* 关页面 / 切走之前一定把排队的写盘落下去，顺手把还没发的改动推出去 */
   if (typeof window !== 'undefined' && window.addEventListener) {
-    window.addEventListener('pagehide', writeCacheNow);
-    window.addEventListener('beforeunload', writeCacheNow);
+    var flushAllOnExit = function () {
+      try { flushWrites(); } catch (e) {}
+      try { flushSettings(); } catch (e2) {}
+      writeCacheNow();
+    };
+    window.addEventListener('pagehide', flushAllOnExit);
+    window.addEventListener('beforeunload', flushAllOnExit);
   }
 
   function readLocal() {
@@ -89,6 +116,7 @@ window.Store = (function () {
     try {
       localStorage.setItem(OUTBOX_KEY, JSON.stringify(list));
     } catch (e) { /* 配额满就算了，别影响主流程 */ }
+    outboxCount = (list || []).length;
     if (window.App && window.App.refreshChrome) window.App.refreshChrome();
   }
 
@@ -96,22 +124,38 @@ window.Store = (function () {
     return op.k + ':' + op.table + ':' + (op.id || 'main');
   }
 
-  /* 同一条记录只留最后一次操作（后写的赢），不然改 10 次会存 10 条 */
-  function enqueue(op) {
+  /* 同一条记录只留最后一次操作（后写的赢），不然改 10 次会存 10 条。
+     2026-10-25 z104：批量失败时（一次 500 条）以前是「每条都读一遍 outbox → 改 → 写回」，
+     读写各 500 次、还要反复 JSON.parse 越来越大的数组。现在整批一次读写。 */
+  function enqueueMany(ops) {
+    if (!ops || !ops.length) return;
     var list = readOutbox();
-    var k = opKey(op);
-    list = list.filter(function (x) { return opKey(x) !== k; });
-    list.push(op);
+    var at = {};
+    list.forEach(function (x, i) { at[opKey(x)] = i; });
+
+    ops.forEach(function (op) {
+      var k = opKey(op);
+      if (at[k] != null) list[at[k]] = op;
+      else { list.push(op); at[k] = list.length - 1; }
+    });
+
     if (list.length > OUTBOX_MAX) list = list.slice(list.length - OUTBOX_MAX);
     writeOutbox(list);
-    console.warn('[cloud] 保存失败，进入待发送队列（' + k + '），共 ' + list.length + ' 条');
+    console.warn('[cloud] 保存失败，进入待发送队列，共 ' + list.length + ' 条');
   }
+
+  function enqueue(op) { enqueueMany([op]); }
+
+  /* 顶栏每次刷新都会问「还有几条没发出去」，readOutbox 要 JSON.parse 一遍。
+     条数记在内存里，写入时同步更新（别的地方改了 outbox 会走 writeOutbox）。 */
+  var outboxCount = -1;
 
   function pendingCount() {
-    return readOutbox().length;
+    if (outboxCount < 0) outboxCount = readOutbox().length;   /* 上次会话留下的队列 */
+    return outboxCount;
   }
 
-  /* 浏览器一报"网络回来了"，立刻补发，不用等下一次 45 秒同步 */
+  /* 浏览器一报"网络回来了"，立刻补发，不用等下一次自动同步 */
   var onlineBound = false;
   function bindOnline() {
     if (onlineBound) return;
@@ -135,6 +179,7 @@ window.Store = (function () {
         flushing = false;
         writeOutbox([]);
         online = true;
+        if (list.length) bumpRev();
         if (window.UI) UI.toast('已恢复云端连接，补发了 ' + list.length + ' 条待发送数据', 'success');
         return Promise.resolve(list.length);
       }
@@ -161,19 +206,21 @@ window.Store = (function () {
   function applyPending(data) {
     var list = readOutbox();
     if (!list.length) return data;
+
+    /* 三趟走完，每张表只扫一遍（2026-10-25 z104）：
+       以前是「每个 op 都去数组里线性找一遍」—— 队列里 500 条 × 8000 行 = 400 万次比较，
+       刷新 / 自动同步时才贴一次就能卡出一顿。现在先收集删除、过滤一次，
+       再按 id 字典贴 put。 */
+    var puts = [];
+    var delsByTable = {};
+
     list.forEach(function (op) {
-      var arr = data[op.table];
-      if (op.k === 'put') {
-        if (!Array.isArray(arr)) return;
-        var mapped = window.Cloud.fromRow(op.table, op.row);
-        var hit = null;
-        for (var i = 0; i < arr.length; i++) if (arr[i].id === mapped.id) { hit = arr[i]; break; }
-        if (hit) { Object.keys(mapped).forEach(function (k) { hit[k] = mapped[k]; }); }
-        else arr.push(mapped);
-      } else if (op.k === 'del') {
-        if (!Array.isArray(arr)) return;
-        data[op.table] = arr.filter(function (x) { return x.id !== op.id; });
-      } else if (op.k === 'set') {
+      if (op.k === 'put') { puts.push(op); return; }
+      if (op.k === 'del') {
+        (delsByTable[op.table] = delsByTable[op.table] || {})[op.id] = 1;
+        return;
+      }
+      if (op.k === 'set') {
         try {
           var s = JSON.parse(op.value);
           if (s && s.settings) data.settings = s.settings;
@@ -181,6 +228,38 @@ window.Store = (function () {
         } catch (e) { /* 脏数据就跳过 */ }
       }
     });
+
+    Object.keys(delsByTable).forEach(function (table) {
+      var arr = data[table];
+      if (!Array.isArray(arr)) return;
+      var dead = delsByTable[table];
+      data[table] = arr.filter(function (x) { return !dead[x.id]; });
+    });
+
+    var posOf = {};
+    function posFor(table) {
+      if (posOf[table]) return posOf[table];
+      var m = {};
+      var arr = data[table];
+      if (Array.isArray(arr)) arr.forEach(function (x, i) { m[x.id] = i; });
+      posOf[table] = m;
+      return m;
+    }
+
+    puts.forEach(function (op) {
+      var arr = data[op.table];
+      if (!Array.isArray(arr)) return;
+      var mapped = window.Cloud.fromRow(op.table, op.row);
+      var pos = posFor(op.table);
+      var i = pos[mapped.id];
+      if (i == null) {
+        arr.push(mapped);
+        pos[mapped.id] = arr.length - 1;
+      } else {
+        Object.keys(mapped).forEach(function (k) { arr[i][k] = mapped[k]; });
+      }
+    });
+
     return data;
   }
 
@@ -206,7 +285,7 @@ window.Store = (function () {
     });
   }
 
-  function invalidateIdx() { idx = null; }
+  function invalidateIdx() { idx = null; dataRev += 1; }
 
   function index() {
     if (!state) return null;
@@ -548,34 +627,57 @@ window.Store = (function () {
       data.settings.stageSeed = 1;
     }
 
+    /* 成员头像（可爱小动物）：存在 settings.memberArt = { 成员id: 'cat' }。
+       members 表没有这个字段，也不打算为它加一列 —— settings 本来就是整包上云的
+       JSON（留言板 settings.board 也这么存），换台电脑登录一样能看到。
+       顺手做两件事：① 清掉指向已删成员的死键；② 把值挂到成员对象上（m.animal），
+       各页面直接 UI.avatar(m.name, m.color, size, m.animal) 就行。 */
+    var art = data.settings.memberArt;
+    if (!art || typeof art !== 'object' || Array.isArray(art)) art = data.settings.memberArt = {};
+    var memberIds = {};
+    data.members.forEach(function (m) { memberIds[m.id] = 1; });
+    Object.keys(art).forEach(function (k) { if (!memberIds[k]) delete art[k]; });
+    /* 云端可能被别的版本写进一个不存在的动物 key：一起清掉，别让它传到页面上 */
+    var known = (window.UI && UI.ANIMALS) || null;
+    data.members.forEach(function (m) {
+      var k = art[m.id];
+      if (k && known && !known[k]) { delete art[m.id]; k = ''; }
+      m.animal = k || '';
+    });
+
     return data;
   }
 
-  /* ================= 云端推送（异步，不阻塞界面） ================= */
+  /* ================= 云端推送（合并后异步发，不阻塞界面） =================
+     2026-10-25 z104：以前「改一条 = 发一次 HTTP」。
+       「一键发出」一店 10 条物料 = 10 个请求；批量改阶段 630 条记录 = 630 个请求。
+       这么多并发请求既拖慢这次操作的回执，也把后面的拉取挤在队尾。
+     现在：改动先进一个 90ms 的合并窗口（同一条记录只留最后一次，后写赢），
+     到点按表分组、每 200 行一次 bulk upsert —— 630 条记录从 630 个请求降到 4 个。
+     内存里的 state 是立刻改好的，界面不等网络。 */
+
+  var wq = {};              /* key: table|id → { table, id, row } */
+  var wqTimer = null;
+  var wqSending = 0;        /* 正在飞的批次数：自动同步看到它就先让一让 */
+  var WQ_WAIT = 90;
+
+  function wqSize() { return Object.keys(wq).length; }
+
+  /* 有改动还没发出去 —— 自动同步据此避让，别一边上传一边拉回来打架 */
+  function wqBusy() { return wqSending > 0 || wqTimer !== null || wqSize() > 0; }
+
+  function scheduleWrites() {
+    if (wqTimer) return;
+    wqTimer = setTimeout(function () { wqTimer = null; flushWrites(); }, WQ_WAIT);
+  }
 
   function push(table, obj) {
-    if (!window.Cloud) return;
+    if (!window.Cloud || !obj || !obj.id) return;
     var row = null;
     try { row = window.Cloud.toRow(table, obj); } catch (e) { row = null; }
-
-    window.Cloud.upsert(table, obj).then(function () {
-      if (!online) {
-        online = true;
-        if (window.UI) UI.toast('已恢复云端连接', 'success');
-        writeOutbox(readOutbox());   /* 刷一下顶栏的待发送角标 */
-      }
-    }).catch(function (e) {
-      online = false;
-      lastError = e.message || String(e);
-      console.error('[cloud] 保存失败', table, e);
-      /* 没发出去 → 进队列，联网后补发，不让这次改动被同步覆盖掉 */
-      if (row) {
-        enqueue({ k: 'put', table: table, id: obj.id, row: row });
-        if (window.UI) UI.toast('云端连不上，这条已存进待发送队列，恢复后自动补发', 'error');
-      } else if (window.UI) {
-        UI.toast('云端保存失败：' + lastError, 'error');
-      }
-    });
+    /* 记账的是 id + 行快照：同一个 id 改几次只留最后一版 */
+    wq[table + '|' + obj.id] = { k: 'put', table: table, id: obj.id, row: row };
+    scheduleWrites();
   }
 
   function pushMany(table, list) {
@@ -583,34 +685,140 @@ window.Store = (function () {
     list.forEach(function (item) { push(table, item); });
   }
 
+  /* 删除也走同一个合并窗口：删一家门店原来要发 1 + 任务数 + 物料数 个 DELETE，
+     现在是「按表一批 in(id)」，30 多条记录的级联删除缩成 3 个请求。 */
   function drop(table, id) {
-    if (!window.Cloud) return;
-    window.Cloud.remove(table, id).then(function () {
-      if (!online) {
-        online = true;
-        if (window.UI) UI.toast('已恢复云端连接', 'success');
+    if (!window.Cloud || !id) return;
+    wq[table + '|' + id] = { k: 'del', table: table, id: id };
+    scheduleWrites();
+  }
+
+  /* 数据写成功了 → 换掉云端票据（app_settings 里 key='rev' 那一行），
+     别人的轮询读到新票据就知道该拉了。合并 700ms，连写只换一次。 */
+  function bumpRev() {
+    try {
+      if (window.Cloud && window.Cloud.bumpRev) window.Cloud.bumpRev();
+    } catch (e) { /* 换不成只是退回全量拉，不影响数据 */ }
+  }
+
+  /* 把合并好的改动按表分组发出去；失败的行照旧进待发送队列。
+     返回 Promise<succeededRows>，返回前就可以继续改下一条。 */
+  function flushWrites() {
+    if (wqTimer) { clearTimeout(wqTimer); wqTimer = null; }
+    var items = [];
+    Object.keys(wq).forEach(function (k) { items.push(wq[k]); });
+    wq = {};
+    if (!items.length) return Promise.resolve(0);
+
+    var putsByTable = {};
+    var delsByTable = {};
+    var bad = 0;
+    items.forEach(function (it) {
+      if (it.k === 'del') {
+        (delsByTable[it.table] = delsByTable[it.table] || []).push(it.id);
+        return;
       }
-    }).catch(function (e) {
-      console.error('[cloud] 删除失败', table, id, e);
-      /* 删失败更要进队列：不然云端还留着这一行，下次同步又冒出来了 */
-      enqueue({ k: 'del', table: table, id: id });
-      if (window.UI) UI.toast('云端删除失败，已存进待发送队列：' + (e.message || e), 'error');
+      if (!it.row) { bad += 1; return; }      /* toRow 炸了：这条发不了，别假装发过 */
+      (putsByTable[it.table] = putsByTable[it.table] || []).push(it);
+    });
+    if (bad && window.UI) UI.toast('有 ' + bad + ' 条改动格式不对，没能保存', 'error');
+
+    var jobs = [];
+
+    Object.keys(putsByTable).forEach(function (table) {
+      var list = putsByTable[table];
+      var rows = list.map(function (x) { return x.row; });
+      jobs.push(sendJob(table, list, function () {
+        return window.Cloud.upsertMany
+          ? window.Cloud.upsertMany(table, rows)
+          : Promise.all(list.map(function (x) { return window.Cloud.upsert(table, x.row); }));
+      }));
+    });
+
+    Object.keys(delsByTable).forEach(function (table) {
+      var ids = delsByTable[table];
+      jobs.push(sendJob(table, ids.map(function (id) { return { id: id }; }), function () {
+        return window.Cloud.removeMany
+          ? window.Cloud.removeMany(table, ids)
+          : Promise.all(ids.map(function (id) { return window.Cloud.remove(table, id); }));
+      }, 'del', ids));
+    });
+
+    if (!jobs.length) return Promise.resolve(0);
+    return Promise.all(jobs).then(function (rs) {
+      return rs.reduce(function (a, b) { return a + b; }, 0);
     });
   }
 
+  /* 一批的发送 / 失败兜底：成功报一次联网，失败逐条进待发送队列 */
+  function sendJob(table, list, send, kind, ids) {
+    wqSending += 1;
+    return Promise.resolve().then(send).then(function () {
+      bumpRev();                  /* 数据变了 → 换票据，别人的轮询才会来拉 */
+      if (!online) {
+        online = true;
+        if (window.UI) UI.toast('已恢复云端连接', 'success');
+        writeOutbox(readOutbox());   /* 刷一下顶栏的待发送角标 */
+      }
+      return list.length;
+    }).catch(function (e) {
+      online = false;
+      lastError = e.message || String(e);
+      console.error('[cloud] 保存失败', table, list.length, e);
+      if (kind === 'del') {
+        enqueueMany((ids || list.map(function (x) { return x.id; })).map(function (id) {
+          return { k: 'del', table: table, id: id };
+        }));
+        if (window.UI) UI.toast('云端删除失败，' + list.length + ' 条已存进待发送队列', 'error');
+      } else {
+        enqueueMany(list.map(function (x) {
+          return { k: 'put', table: table, id: x.id, row: x.row };
+        }));
+        if (window.UI) UI.toast('云端连不上，' + list.length + ' 条改动已存进待发送队列', 'error');
+      }
+      return 0;
+    }).then(function (n) {
+      wqSending -= 1;
+      return n;
+    });
+  }
+
+  /* 设置是整包 JSON（阶段、清单、权限、留言板…都在里面），一次写就是整份。
+     以前改 3 个键就整包发 3 次；现在 160ms 内合并成一次，内容没变就不发。 */
+  var settingsTimer = null;
+  var settingsSent = '';
+
+  function settingsPayload() {
+    return JSON.stringify({ settings: state.settings, alertsRead: state.alertsRead || [] });
+  }
+
   function pushSettings() {
-    if (!window.Cloud) return;
-    var value = JSON.stringify({ settings: state.settings, alertsRead: state.alertsRead || [] });
-    window.Cloud.saveSettings(state.settings, state.alertsRead).then(function () {
+    if (!window.Cloud || !state) return;
+    if (settingsTimer) clearTimeout(settingsTimer);
+    settingsTimer = setTimeout(function () { settingsTimer = null; flushSettings(); }, 160);
+  }
+
+  function flushSettings() {
+    if (settingsTimer) { clearTimeout(settingsTimer); settingsTimer = null; }
+    if (!window.Cloud || !state) return Promise.resolve(false);
+
+    var value = settingsPayload();
+    if (value === settingsSent) return Promise.resolve(false);   /* 内容没变，省一次整包写 */
+
+    return window.Cloud.saveSettings(state.settings, state.alertsRead).then(function () {
+      settingsSent = value;
+      bumpRev();                  /* 配置也是数据，同样换票据 */
       if (!online) {
         online = true;
         if (window.UI) UI.toast('已恢复云端连接', 'success');
       }
+      return true;
     }).catch(function (e) {
       online = false;
       console.error('[cloud] 设置保存失败', e);
       enqueue({ k: 'set', table: 'app_settings', id: 'main', value: value });
       if (window.UI) UI.toast('云端连不上，设置已存进待发送队列，恢复后自动补发', 'error');
+      return false;
     });
   }
 
@@ -624,10 +832,42 @@ window.Store = (function () {
     }
   }
 
-  /* ================= 加载 ================= */
+  /* ================= 加载 =================
+     onProgress(done, total) 上传进度（首次迁移上云时用）
+     onCached() 本地有上一轮的完整快照时，先把它交给页面画出来 —— 见下面 */
 
-  function load(onProgress) {
-    return window.Cloud.pullAll(onProgress).then(function (data) {
+  function load(onProgress, onCached) {
+    /* 缓存优先（2026-10-25 z105）
+       ------------------------------------------------------------
+       以前每次打开都是「等云端把四张表全拉完才画」，几千条数据时要盯着
+       加载遮罩好几秒。现在：本机有上一轮的快照就先画出来（几十毫秒），
+       云端那份拉回来之后再静默替换 —— 眼睛先看到东西，数据随后对齐。
+       代价是极短时间可能看到上一轮的数据（比如别人刚改的那一条），
+       所以 app.js 那边会在同步完成后重画一次。 */
+    var local0 = readLocal();
+    if (local0 && local0.stores && local0.tasks && local0.members && onCached) {
+      try {
+        state = normalized(JSON.parse(JSON.stringify(local0)));
+        onCached();
+      } catch (e) {
+        state = null;      /* 缓存坏了就当没有，老老实实等云端 */
+      }
+    }
+
+    /* 顺手把云端当前的变更票据读下来（一个几十字节的请求）：
+       全量拉完之后把它记成基线，下一轮轮询才能一眼看出"有没有人改过"。
+       先读票据、再拉数据 —— 万一这中间有人写了，票据对不上只是多拉一次，
+       不会漏（反过来先拉后读，就可能把这次改动当成"我这轮已经拉过了"）。 */
+    var revP = null;
+    try {
+      revP = window.Cloud.pullRev ? window.Cloud.pullRev() : null;
+    } catch (e) { revP = null; }
+    if (!revP || !revP.then) revP = Promise.resolve(null);
+
+    return Promise.all([window.Cloud.pullAll(onProgress), revP.catch(function () { return null; })])
+      .then(function (both) {
+      var data = both[0];
+      var revAtStart = both[1];
       online = true;
       bindOnline();
       /* 先把待发送队列里的改动贴回云端数据上，再判断"是不是空系统"：
@@ -667,6 +907,8 @@ window.Store = (function () {
       }
 
       state = normalized(data);
+      lastFullAt = Date.now();     /* 这一轮刚全量拉过，增量同步从这一刻算起 */
+      syncRev = revAtStart || '';  /* 基线票据：这轮拉的就是「这个票据」对应的数据 */
       cacheLocal();
       snapshotSettings('load');   /* 每次进系统都留一份配置快照，误删可找回 */
       /* 刚才贴回来的改动，趁现在把队列补发掉 */
@@ -693,32 +935,99 @@ window.Store = (function () {
   var syncBusy = false;
   var syncBound = false;
 
+  /* 增量同步（2026-10-25 z105）
+     ------------------------------------------------------------
+     以前每一轮都把四张表整包拉一遍；现在先问一次「变更票据」（app_settings
+     里 key='rev' 的一行，几十字节）：
+       · 票据没变 → 谁都没改过 → 这一轮直接跳过，一个字节的业务数据都不下
+       · 票据变了 / 读不到 → 真去拉一次全量
+     票据由写成功的那一端换掉（bumpRev），所以多人协作也是准的。
+     兜底：距上一次全量超过 FULL_EVERY 就强制拉一次 —— 万一有台机器跑的是
+     老版本（写数据不换票据），最多漏这么久。 */
+  var syncRev = '';
+  var lastFullAt = 0;
+  var FULL_EVERY = 45000;
+  var syncSkipped = 0;      /* 跳过次数：给「省了多少次请求」留个可观测的数 */
+
+  /* 这次要不要真拉：返回 Promise<boolean> */
+  function needPull() {
+    if (!lastFullAt || Date.now() - lastFullAt > FULL_EVERY) return Promise.resolve(true);
+    if (!window.Cloud || !window.Cloud.pullRev) return Promise.resolve(true);
+
+    var p;
+    try { p = window.Cloud.pullRev(); } catch (e) { return Promise.resolve(true); }
+    return p.then(function (rev) {
+      if (!rev) return true;                             /* 读不到票据：保守全量 */
+      if (rev === syncRev) return false;                 /* 票据没变：谁都没改过 */
+      /* 票据变了，但正是我们自己刚才写出去那份（写完换的）→ 本地已经有了，不用拉 */
+      var mine = '';
+      try { mine = (window.Cloud.currentRev && window.Cloud.currentRev()) || ''; } catch (e) { mine = ''; }
+      if (mine && rev === mine) { syncRev = rev; return false; }
+      syncRev = rev;
+      return true;
+    }).catch(function () { return true; });
+  }
+
   function syncOnce() {
     if (syncBusy) return;                                   /* 上一轮还没回来，别叠着发 */
     if (document.hidden) return;                            /* 后台标签省电 */
     if (document.querySelector('.modal-mask')) return;      /* 有弹窗时别打断 */
+    /* 本地还有改动没发出去：先让它发完，别一边上传一边把旧数据拉回来
+       （拉回来会让刚点的操作闪一下，还白占一条带宽） */
+    if (wqBusy()) return;
     syncBusy = true;
 
-    var p;
-    try { p = window.Cloud.pullAll(); }
-    catch (e) { syncBusy = false; return; }                 /* 发起就抛错：别卡死 */
-
-    p.then(function (data) {
-      applyPending(data);          /* 待发送的改动先贴回去，别被同步冲掉 */
-      var next = normalized(data);
-      var nextStamp = fingerprintOf(next);
-      if (nextStamp === syncLastStamp) return;
-      syncLastStamp = nextStamp;
-      state = next;
-      cacheLocal();
-      if (syncOnChange) syncOnChange();
+    needPull().then(function (yes) {
+      if (!yes) { syncSkipped += 1; return null; }          /* 票据没变：这一轮不拉 */
+      var p;
+      try { p = window.Cloud.pullAll(); }
+      catch (e) { return null; }                            /* 发起就抛错：别卡死 */
+      if (!p || !p.then) return null;
+      return p.then(function (data) {
+        lastFullAt = Date.now();
+        applyPending(data);          /* 待发送的改动先贴回去，别被同步冲掉 */
+        var next = normalized(data);
+        var nextStamp = fingerprintOf(next);
+        if (nextStamp === syncLastStamp) return;
+        syncLastStamp = nextStamp;
+        state = next;
+        cacheLocal();
+        if (syncOnChange) syncOnChange();
+      });
     }).catch(function () { /* 静默失败，下个周期再试 */ })
       .then(function () { syncBusy = false; });
+  }
+
+  /* 轮询间隔按数据量自适应（2026-10-25 z104）
+     ------------------------------------------------------------
+     以前是固定 3 秒把四张表整包拉一遍。数据一多（400 家店 / 8000 条任务），
+     每分钟几十兆下载，每个操作都排在自己的同步请求后面，越用越卡。
+     现在：小数据 4 秒、中等 8 秒、大数据 15 秒，再加 ±10% 抖动，
+     免得几个同事的标签页同时打点。切回标签 / 重新聚焦仍会立刻拉一次。 */
+  function pickInterval() {
+    var s = state || {};
+    /* 用行数估体量就行，别为了估算去 JSON.stringify 整包 */
+    var n = (s.tasks || []).length + (s.stores || []).length * 6 + (s.arrivals || []).length * 2;
+    var base = n < 1200 ? 4000 : (n < 8000 ? 8000 : 15000);
+    return Math.round(base * (0.9 + Math.random() * 0.2));
+  }
+
+  var syncInterval = 0;
+  var syncTick = null;
+
+  function nextSyncTick() {
+    if (syncTick) { clearTimeout(syncTick); syncTick = null; }
+    if (!syncOnChange) return;                    /* 已经被 stopAutoSync 停掉了 */
+    syncTick = setTimeout(function () {
+      syncOnce();
+      nextSyncTick();
+    }, syncInterval || pickInterval());
   }
 
   function startAutoSync(intervalMs, onChange) {
     stopAutoSync();
     syncOnChange = onChange || null;
+    syncInterval = intervalMs || 0;               /* 0 / 不传 = 按数据量自适应 */
     syncLastStamp = fingerprintOf(state);
 
     /* 切回这个标签 / 重新获得焦点，立刻拉一次 —— 不用等下一个轮询周期 */
@@ -729,11 +1038,12 @@ window.Store = (function () {
       window.addEventListener('focus', onWake);
     }
 
-    syncTimer = setInterval(syncOnce, intervalMs || 3000);
+    nextSyncTick();
     syncOnce();   /* 启动后先立刻拉一次 */
   }
 
   function stopAutoSync() {
+    if (syncTick) { clearTimeout(syncTick); syncTick = null; }
     if (syncTimer) clearInterval(syncTimer);
     syncTimer = null;
     syncOnChange = null;
@@ -1104,8 +1414,21 @@ window.Store = (function () {
 
   /* ================= 预警 ================= */
 
+  /* 提醒清单的缓存（2026-10-25 z104）
+     ------------------------------------------------------------
+     顶栏每次刷新都会问「有几条未读」，答案是 alerts() 里现算的：
+     要把全部任务过一遍 classify / suggestDateOf / daysLeftOf，再把全部门店
+     算一遍进度 —— 4000 条任务就是 5ms 起步，点一下按钮、改一个字都要付一次。
+     现在按「数据版本号 + 今天」缓存：数据没变、日期没变，直接给上次那份。
+     任何改动都会走 cacheLocal() → invalidateIdx() → dataRev + 1，
+     所以不会吃到旧结果；跨天（今天的口径变了）自动作废。 */
+  var alertsCache = null;
+
   function alerts() {
     var t0 = U.today();
+    if (alertsCache && alertsCache.rev === dataRev && alertsCache.day === t0) {
+      return alertsCache.list;
+    }
     var warnDays = state.settings.warnDays || 3;
     var list = [];
     var seen = {};
@@ -1223,8 +1546,13 @@ window.Store = (function () {
       if (a.read !== b.read) return a.read ? 1 : -1;
       return (order[a.level] || 9) - (order[b.level] || 9);
     });
+    alertsCache = { rev: dataRev, day: t0, list: list };
     return list;
   }
+
+  /* 已读 / 未读是挂在 settings.alertsRead 上的，不走 cacheLocal，
+     所以这两处要手动把版本号推进一格，否则顶栏角标不会变。 */
+  function bumpAlerts() { dataRev += 1; alertsCache = null; }
 
   function unreadAlertCount() {
     var n = 0;
@@ -1462,15 +1790,47 @@ window.Store = (function () {
 
   /* ================= 成员 CRUD ================= */
 
+  /* 成员头像（动物 key）：存在 settings.memberArt，不动 members 表 */
+  function artMap() {
+    state.settings = state.settings || {};
+    var m = state.settings.memberArt;
+    if (!m || typeof m !== 'object' || Array.isArray(m)) m = state.settings.memberArt = {};
+    return m;
+  }
+
+  function memberArt(id) {
+    return (id && artMap()[id]) || '';
+  }
+
+  function setMemberArt(id, key) {
+    if (!id) return '';
+    /* 只收 UI 里真有的那 12 只：别的版本写进来的怪 key 一律当「不用动物」，
+       免得各页面各 fallback 一套，最后同一个人的头像在四处长得不一样 */
+    if (key && !(window.UI && UI.ANIMALS && UI.ANIMALS[key])) key = '';
+    var map = artMap();
+    if (key) map[id] = key; else delete map[id];
+    state.settings.memberArt = map;
+    pushSettings();
+    cacheLocal();
+    var m = memberById(id);
+    if (m) m.animal = key || '';
+    /* 顶栏那颗头像跟着一起换：它在页面外壳里，不参与页面重绘，
+       不主动通知就得等下一次整页刷新才更新（用户看到的就是「换了没生效」）。 */
+    if (window.App && window.App.refreshChrome) window.App.refreshChrome();
+    return key || '';
+  }
+
   function addMember(data) {
     var m = {
       id: U.uid('user'),
       name: (data.name || '新成员').trim(),
       role: data.role || '门店统筹',
-      color: data.color || '#3f6bf5'
+      color: data.color || '#3f6bf5',
+      animal: data.animal || ''      /* 只是内存里的展示值，真正存的是 settings.memberArt */
     };
     state.members.push(m);
     push('members', m);
+    if (m.animal) setMemberArt(m.id, m.animal);
     cacheLocal();
     return m;
   }
@@ -1478,8 +1838,12 @@ window.Store = (function () {
   function updateMember(id, patch) {
     var m = memberById(id);
     if (!m) return null;
-    Object.keys(patch).forEach(function (k) { m[k] = patch[k]; });
-    push('members', m);
+    var animal = patch && Object.prototype.hasOwnProperty.call(patch, 'animal') ? patch.animal : null;
+    var rest = {};
+    Object.keys(patch || {}).forEach(function (k) { if (k !== 'animal') rest[k] = patch[k]; });
+    Object.keys(rest).forEach(function (k) { m[k] = rest[k]; });
+    if (Object.keys(rest).length) push('members', m);
+    if (animal !== null) setMemberArt(id, animal);
     cacheLocal();
     return m;
   }
@@ -1488,6 +1852,12 @@ window.Store = (function () {
   function removeMember(id) {
     return window.Cloud.remove('members', id).then(function () {
       state.members = state.members.filter(function (m) { return m.id !== id; });
+
+      /* 头像顺手一起清掉，别在配置里留孤儿键 */
+      if (artMap()[id]) {
+        delete artMap()[id];
+        pushSettings();
+      }
 
       /* 顺手把该成员名下的任务改成未指派 */
       state.tasks.forEach(function (t) {
@@ -1824,7 +2194,15 @@ window.Store = (function () {
 
       var owner = memberById(s.ownerId);
       var openLeft = s.openDate ? U.diffDays(t0, s.openDate) : null;
-      var shipped = info.status === 'sent';
+
+      /* ★ 发没发，以**物料本身**为准，不认 settings 里那个老标记：
+           只要这家店还有一条物料没通知，就还是「一键发出」（待发出）；
+           物料全部通知过了才算「已发出」。
+         2026-10-25 用户报的问题：物料列明明还有一堆没通知，右边却显示「已发出」——
+         因为标记是当初点按钮时写死的，后来新加了物料 / 有人把某条改回待通知，
+         标记没跟着退回，两边就打架了。现在改成实时算，两边永远一致。
+         零物料的店没东西可算，仍按标记走（允许手动标一下）。 */
+      var shipped = list.length ? pend.length === 0 : info.status === 'sent';
 
       /* 这家店每条物料的登记到货时间 —— 看板上一行全铺开，不用点进门店看
          排序：还没通知的在前（日期近的在上）→ 已通知的沉后 */
@@ -1878,10 +2256,11 @@ window.Store = (function () {
       };
     });
 
-    /* 排序：先发置顶 → 手动顺序 → 名字
-       2026-10-25：发了没发这套撤了，不再按发出状态沉底，
-       老数据里残留的 sent 状态不参与任何展示和排序。 */
+    /* 排序：待发出在前 → 已发出沉到底 → 先发置顶（同一组内）→ 手动顺序 → 名字
+       2026-10-25 用户确认：点「一件发出」后这家店沉到表格底部，
+       取消后回到待发出那一组，位置按先发 / 手动顺序重新排。 */
     rows.sort(function (a, b) {
+      if (a.shipped !== b.shipped) return a.shipped ? 1 : -1;
       if (a.pin !== b.pin) return a.pin ? -1 : 1;
       if (a.seq != null && b.seq != null && a.seq !== b.seq) return a.seq - b.seq;
       if ((a.seq != null) !== (b.seq != null)) return a.seq != null ? -1 : 1;
@@ -1982,12 +2361,38 @@ window.Store = (function () {
     return !cur.pin;
   }
 
-  /* 发了没发：一次点击就翻过来，不做「在途 / 到店」那些中间态 */
+  /* 「一件发出」：整店一键 —— 不做「在途 / 到店」那些中间态，也不登记任何日期。
+     2026-10-25 用户口径：
+       点成「已发出」= 这家店所有物料都算通知过供应商了（一次性办完，行沉到底）；
+       再点一次取消   = 这家店所有物料全部退回「待通知」。
+     物料通知状态本来就是 arrivals.status（pending / notified），这里改的是同一条记录，
+     不新增字段、不动表结构；sentAt 仍由 setShip 记个日期，只留痕、不展示、不参与计算。
+
+     2026-10-25 修：翻转方向以**当前显示的状态**为准（= 还有没有未通知的物料），
+     不再看 settings 里那个老标记 —— 否则会出现「物料还有一堆没通知，按一下却被当成取消」。
+     顺带把老标记同步成新状态，数据自己就修正回来了。 */
   function toggleShipSent(storeId) {
-    var cur = shipOf(storeId);
-    var next = cur.status === 'sent' ? 'todo' : 'sent';
+    if (!storeId) return null;
+
+    var list = state.arrivals.filter(function (a) { return a.storeId === storeId; });
+    var pend = list.filter(function (a) { return !arrNotified(a); });
+    var isSent = list.length ? pend.length === 0 : shipOf(storeId).status === 'sent';
+
+    var next = isSent ? 'todo' : 'sent';
+    var want = next === 'sent' ? 'notified' : 'pending';
+    var changed = 0;
+
+    state.arrivals.forEach(function (a) {
+      if (a.storeId !== storeId) return;
+      if (a.status === want) return;
+      a.status = want;
+      push('arrivals', a);
+      changed += 1;
+    });
+
+    if (changed) cacheLocal();
     setShip(storeId, { status: next });
-    return next;
+    return { status: next, changed: changed };
   }
 
   /* ================= 设置 / 导入导出 ================= */
@@ -2020,6 +2425,31 @@ window.Store = (function () {
 
   function isSettingsOwner(name) {
     return String(name || '').trim() === accessOf().owner;
+  }
+
+  /* 当前登录人还在不在名单里（2026-10-25 z105）
+     ------------------------------------------------------------
+     登录时校验过一次就完事的话，人被移出团队之后，那台还开着的页面
+     照样能看能改（数据层没有任何身份概念）。这里给 app.js 一个复核入口：
+     数据刚从云端拉下来之后、以及每轮同步之后，用它再问一遍。
+     返回 { ok:false, msg } 就该把人请回登录页。 */
+  function meAllowed(name) {
+    var nm = String(name == null ? '' : name).replace(/\s+/g, ' ').trim();
+    if (!nm) return { ok: false, msg: '登录信息丢了，请重新登录' };
+    if (!state) return { ok: true, skipped: true };      /* 还没数据：别误伤 */
+    /* 团队一个人都没有 = 系统还没初始化，这时候无从判断，也不该把人踢出去
+       （和登录页「空系统先放行」是同一个口径） */
+    if (!(state.members || []).length) return { ok: true, skipped: true };
+
+    var names = (state.members || []).map(function (m) { return m.name; });
+    var ac = accessOf();
+    names.push(ac.owner);
+    names = names.concat(ac.allow);
+    for (var i = 0; i < names.length; i++) {
+      var x = String(names[i] == null ? '' : names[i]).replace(/\s+/g, ' ').trim();
+      if (x === nm) return { ok: true };
+    }
+    return { ok: false, msg: '「' + nm + '」已不在团队成员名单里' };
   }
 
   /* 加 / 减授权名单；管理员换人也能改（owner 默认为出厂值） */
@@ -2670,6 +3100,7 @@ window.Store = (function () {
 
   function markAlertRead(id) {
     if (state.alertsRead.indexOf(id) < 0) state.alertsRead.push(id);
+    bumpAlerts();
     pushSettings();
   }
 
@@ -2677,6 +3108,7 @@ window.Store = (function () {
     alerts().forEach(function (a) {
       if (state.alertsRead.indexOf(a.id) < 0) state.alertsRead.push(a.id);
     });
+    bumpAlerts();
     pushSettings();
   }
 
@@ -2916,7 +3348,7 @@ window.Store = (function () {
   function storageBytes() {
     if (!cachedBytes) {
       try {
-        cachedBytes = new Blob([localStorage.getItem(KEY) || '']).size;
+        cachedBytes = (localStorage.getItem(KEY) || '').length * 2;   /* UTF-16，跟配额同口径 */
       } catch (e) { cachedBytes = 0; }
     }
     return cachedBytes;
@@ -2928,6 +3360,8 @@ window.Store = (function () {
     load: load,
     onChange: onChange,
     getState: getState,
+    /* 数据版本号：给页面侧做「同一版本内不重复算」的缓存键（见 page-tasks 的 statOf） */
+    rev: function () { return dataRev; },
     isOnline: isOnline,
     getLastError: getLastError,
     hasLocalData: hasLocalData,
@@ -2935,6 +3369,8 @@ window.Store = (function () {
     stopAutoSync: stopAutoSync,
     storeById: storeById,
     memberById: memberById,
+    memberArt: memberArt,
+    setMemberArt: setMemberArt,
     taskById: taskById,
     classify: classify,
     isLate: isLate,
@@ -2976,6 +3412,8 @@ window.Store = (function () {
     accessOf: accessOf,
     canSettings: canSettings,
     isSettingsOwner: isSettingsOwner,
+    meAllowed: meAllowed,
+    syncSkipped: function () { return syncSkipped; },
     grantSettings: grantSettings,
     revokeSettings: revokeSettings,
     templates: templates,
@@ -3042,6 +3480,10 @@ window.Store = (function () {
     tasksOf: tasksOf,
     pendingCount: pendingCount,
     flushOutbox: flushOutbox,
+    /* 还没发出去的改动：切页 / 关页面 / 探针里用它把队列推干净 */
+    flushWrites: flushWrites,
+    flushSettings: flushSettings,
+    writesPending: wqBusy,
     storageBytes: storageBytes,
     flushCache: writeCacheNow
   };

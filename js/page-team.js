@@ -82,6 +82,7 @@ window.Pages.team = (function () {
     var isNew = !member;
     var m = member || {};
     var picked = m.color || COLORS[0];
+    var pickedArt = m.animal || '';
 
     var colorDots = COLORS.map(function (c) {
       return '<label class="color-opt" style="display:inline-flex;margin-right:6px;cursor:pointer">' +
@@ -91,6 +92,18 @@ window.Pages.team = (function () {
           ';display:block;outline:' + (c === picked ? '2px solid #cfdcff' : 'none') + ';outline-offset:2px"></span>' +
       '</label>';
     }).join('');
+
+    /* 动物头像：12 只统一画法的小动物 + 一颗「不用动物」（还是颜色 + 姓氏首字） */
+    var artDots = UI.ANIMAL_KEYS.map(function (k) {
+      return '<label class="art-opt" title="' + U.esc(UI.ANIMALS[k].name) + '">' +
+        '<input type="radio" name="art" value="' + k + '"' + (k === pickedArt ? ' checked' : '') + ' />' +
+        UI.avatar(m.name || '新', picked, 'md', k) +
+      '</label>';
+    }).join('');
+    var noneDot = '<label class="art-opt is-none" title="不用动物，只用颜色 + 姓氏首字">' +
+      '<input type="radio" name="art" value=""' + (pickedArt ? '' : ' checked') + ' />' +
+      UI.avatar(m.name || '新', picked, 'md') +
+    '</label>';
 
     UI.modal({
       title: isNew ? '新增成员' : '编辑成员',
@@ -104,12 +117,17 @@ window.Pages.team = (function () {
               '<datalist id="roleList">' + ROLES.map(function (r) { return '<option value="' + r + '"></option>'; }).join('') + '</datalist>' +
             '</div>' +
           '</div>' +
+          '<div class="field"><label>头像 <span class="field-sub">选一只小动物，或者用颜色 + 姓氏首字</span></label>' +
+            '<div id="artPicker" class="art-grid">' + noneDot + artDots + '</div>' +
+          '</div>' +
           '<div class="field"><label>头像颜色</label><div id="colorPicker">' + colorDots + '</div></div>' +
         '</form>',
       footer:
         '<button class="btn" data-act="cancel">取消</button>' +
         '<button class="btn btn-primary" data-act="save">保存</button>',
       onMount: function (rootEl, close) {
+        var noneAva = rootEl.querySelector('.art-opt.is-none .avatar');
+
         rootEl.querySelectorAll('.color-opt input').forEach(function (input) {
           input.addEventListener('change', function () {
             rootEl.querySelectorAll('.color-dot').forEach(function (dot) {
@@ -117,8 +135,18 @@ window.Pages.team = (function () {
             });
             input.nextElementSibling.style.outline = '2px solid #cfdcff';
             input.nextElementSibling.style.outlineOffset = '2px';
+            /* 「不用动物」那颗跟着颜色走，选颜色时能立刻看到效果 */
+            if (noneAva) noneAva.style.background = input.value;
           });
         });
+
+        /* 改名字时，那颗「不用动物」的首字也跟着变 */
+        var nameEl = rootEl.querySelector('input[name="name"]');
+        if (nameEl && noneAva) {
+          nameEl.addEventListener('input', function () {
+            noneAva.textContent = (nameEl.value.trim() || '新').slice(0, 1);
+          });
+        }
 
         rootEl.querySelector('[data-act="cancel"]').onclick = close;
         rootEl.querySelector('[data-act="save"]').onclick = function () {
@@ -128,10 +156,12 @@ window.Pages.team = (function () {
             return;
           }
           var checked = rootEl.querySelector('input[name="color"]:checked');
+          var artOn = rootEl.querySelector('input[name="art"]:checked');
           var payload = {
             name: name,
             role: UI.formValue(rootEl, 'role') || '售前',
-            color: checked ? checked.value : COLORS[0]
+            color: checked ? checked.value : COLORS[0],
+            animal: artOn ? artOn.value : ''
           };
           if (isNew) {
             S.addMember(payload);
@@ -184,9 +214,9 @@ window.Pages.team = (function () {
 
   function boardAuthor() {
     var m = boardWho();
-    if (m) return { id: m.id, name: m.name, color: m.color || COLORS[0] };
+    if (m) return { id: m.id, name: m.name, color: m.color || COLORS[0], animal: m.animal || '' };
     if (!bs.guest) bs.guest = lsGet(GUEST_KEY) || '';
-    return { id: '', name: bs.guest.trim() || '匿名', color: COLORS[0] };
+    return { id: '', name: bs.guest.trim() || '匿名', color: COLORS[0], animal: '' };
   }
 
   function boardComposerHtml() {
@@ -196,7 +226,7 @@ window.Pages.team = (function () {
 
     var whoHtml;
     if (members.length) {
-      whoHtml = UI.avatar(author.name, author.color, 'md').replace('class="avatar', 'data-board-ava class="avatar') +
+      whoHtml = UI.avatar(author.name, author.color, 'md', author.animal).replace('class="avatar', 'data-board-ava class="avatar') +
         '<select class="select board-who-sel" data-board-who>' +
           members.map(function (m) {
             return '<option value="' + m.id + '"' + (me && m.id === me.id ? ' selected' : '') + '>' +
@@ -204,7 +234,7 @@ window.Pages.team = (function () {
           }).join('') +
         '</select>';
     } else {
-      whoHtml = UI.avatar(author.name, author.color, 'md').replace('class="avatar', 'data-board-ava class="avatar') +
+      whoHtml = UI.avatar(author.name, author.color, 'md', author.animal).replace('class="avatar', 'data-board-ava class="avatar') +
         '<input class="input board-guest" data-board-guest maxlength="12" autocomplete="off"' +
           ' value="' + U.esc(bs.guest) + '" placeholder="你的名字" />';
     }
@@ -228,7 +258,7 @@ window.Pages.team = (function () {
     var isMine = author && ((n.authorId && n.authorId === author.id) ||
       (!n.authorId && !author.id && name === author.name));
     return '<div class="note' + (isMine ? ' mine' : '') + '" data-note-id="' + U.esc(n.id) + '">' +
-      UI.avatar(name, color, 'md') +
+      UI.avatar(name, color, 'md', n.authorId ? S.memberArt(n.authorId) : '') +
       '<div class="note-main">' +
         '<div class="note-head">' +
           '<span class="note-name">' + U.esc(name) + '</span>' +
@@ -324,7 +354,7 @@ window.Pages.team = (function () {
       var m = r.member;
       return '<div class="member-card" data-member="' + m.id + '">' +
         '<div class="mc-head">' +
-          UI.avatar(m.name, m.color, 'lg') +
+          UI.avatar(m.name, m.color, 'lg', m.animal) +
           '<div><div class="mc-name">' + U.esc(m.name) + '</div>' +
             '<div class="mc-role">' + U.esc(m.role) + '</div></div>' +
           '<div class="mc-tools">' +
@@ -457,8 +487,10 @@ window.Pages.team = (function () {
         var m = S.memberById(bs.who);
         var ava = root.querySelector('[data-board-ava]');
         if (m && ava) {
-          ava.style.background = m.color || COLORS[0];
-          ava.textContent = (m.name || '?').slice(0, 1);
+          /* 换人 = 换头像：直接用新成员的完整头像节点替换（有没有小动物都对） */
+          var fresh = UI.avatar(m.name, m.color || COLORS[0], 'md', m.animal);
+          fresh = fresh.replace('class="avatar', 'data-board-ava class="avatar');
+          ava.outerHTML = fresh;
         }
         return;
       }
@@ -509,5 +541,6 @@ window.Pages.team = (function () {
     }
   }
 
-  return { title: '团队工作台', render: render, mount: mount, onEnter: onEnter };
+  /* openForm 导出：成员卡片上的「编辑」在页面内部调它，离线视觉核对 / 探针也用它 */
+  return { title: '团队工作台', render: render, mount: mount, onEnter: onEnter, openForm: openForm };
 })();

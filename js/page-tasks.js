@@ -45,20 +45,55 @@ window.Pages.tasks = (function () {
     return { open: open, late: late, done: done, total: list.length };
   }
 
-  /* 门店是否命中某个状态筛选项（按它自己的任务算） */
-  function storeHitTab(store, key) {
-    if (!key || key === 'all') return true;
-    var list = tasksOf(store.id);
-    if (key === 'done') {
-      return list.length > 0 && list.every(function (t) { return t.status === 'done'; });
-    }
-    return list.some(function (t) { return S.classify(t) === key; });
+  /* 同一家店的任务统计，在一次渲染里只算一次（2026-10-25 z104）
+     ------------------------------------------------------------
+     以前排序的比较器里现算 statOfTasks：120 家店排序 = 上千次调用，
+     每次都要把这家店的任务逐条 classify。加上五个页签各自再算一遍、
+     左侧时间线再算一遍，一次渲染能算两万多遍。
+     现在按「数据版本号」缓存：数据一变（Store.rev 变了）自动作废。 */
+  var statMemo = {};
+  var statMemoRev = -1;
+
+  function statOf(storeId) {
+    var r = S.rev();
+    if (r !== statMemoRev) { statMemo = {}; statMemoRev = r; }
+    var hit = statMemo[storeId];
+    if (!hit) { hit = statOfTasks(tasksOf(storeId)); statMemo[storeId] = hit; }
+    return hit;
   }
 
-  /* 只受「搜索 / 负责人」影响的门店集合（不含状态筛选），用来算各状态的数字 */
+  /* 门店是否命中某个状态筛选项（按它自己的任务算） */
+  var tabMemo = {};
+  var tabMemoRev = -1;
+
+  function storeHitTab(store, key) {
+    if (!key || key === 'all') return true;
+    var r = S.rev();
+    if (r !== tabMemoRev) { tabMemo = {}; tabMemoRev = r; }
+    var k = store.id + '|' + key;
+    if (Object.prototype.hasOwnProperty.call(tabMemo, k)) return tabMemo[k];
+
+    var list = tasksOf(store.id);
+    var res;
+    if (key === 'done') {
+      res = list.length > 0 && list.every(function (t) { return t.status === 'done'; });
+    } else {
+      res = list.some(function (t) { return S.classify(t) === key; });
+    }
+    tabMemo[k] = res;
+    return res;
+  }
+
+  /* 只受「搜索 / 负责人」影响的门店集合（不含状态筛选），用来算各状态的数字。
+     五个页签都要问一遍，所以按「筛选条件 + 数据版本」缓存一次。 */
+  var baseMemo = null;
+
   function baseStores() {
+    var sig = [state.q || '', state.stage || '', state.sub || '', state.owner || '', S.rev()].join('\u0001');
+    if (baseMemo && baseMemo.sig === sig) return baseMemo.list;
+
     var q = String(state.q || '').toLowerCase();
-    return S.getState().stores.filter(function (st) {
+    var list = S.getState().stores.filter(function (st) {
       if (state.stage && st.stage !== state.stage) return false;
       if (state.sub) {
         /* 二级有两个来源：门店自己推到了这一支（推送时选的），
@@ -77,6 +112,8 @@ window.Pages.tasks = (function () {
       }
       return true;
     });
+    baseMemo = { sig: sig, list: list };
+    return list;
   }
 
   /* 排序：先按阶段顺序，再「越急的越靠上」（逾期多、待办多） */
@@ -89,8 +126,8 @@ window.Pages.tasks = (function () {
       var ob = order[b.stage] == null ? 99 : order[b.stage];
       if (oa !== ob) return oa - ob;
 
-      var ma = statOfTasks(tasksOf(a.id));
-      var mb = statOfTasks(tasksOf(b.id));
+      var ma = statOf(a.id);
+      var mb = statOf(b.id);
       if (ma.late !== mb.late) return mb.late - ma.late;
       if (ma.open !== mb.open) return mb.open - ma.open;
       return String(a.name).localeCompare(String(b.name), 'zh');
@@ -634,7 +671,7 @@ window.Pages.tasks = (function () {
           '<div class="sk-card-meta">' +
             '<span class="sk-card-stage">' + UI.stageBadge(t.stage) + '</span>' +
             (mem
-              ? '<span class="sk-card-who">' + UI.avatar(mem.name, mem.color, 'sm') +
+              ? '<span class="sk-card-who">' + UI.avatar(mem.name, mem.color, 'sm', mem.animal) +
                 '<span>' + U.esc(mem.name) + '</span></span>'
               : '<span class="dim">未指派</span>') +
             '<span class="sk-card-due" title="' + U.esc(dueTip) + '">' +
@@ -658,7 +695,7 @@ window.Pages.tasks = (function () {
   }
 
   function storeRowHtml(st) {
-    var m = statOfTasks(tasksOf(st.id));
+    var m = statOf(st.id);
     var def = C.stageDef(st.stage) || {};
     var owner = S.memberById(st.ownerId);
     var open = state.open === st.id;
@@ -703,7 +740,7 @@ window.Pages.tasks = (function () {
               : days == null ? '' : days < 0 ? '已超 ' + Math.abs(days) + ' 天' : days + ' 天后') + '</span>'
         : '<span class="dim">未定</span>') + '</div>' +
       '<div class="sk-owner">' + (owner
-        ? UI.avatar(owner.name, owner.color, 'sm') + '<span>' + U.esc(owner.name) + '</span>'
+        ? UI.avatar(owner.name, owner.color, 'sm', owner.animal) + '<span>' + U.esc(owner.name) + '</span>'
         : '<span class="dim">—</span>') + '</div>' +
       '<span class="sk-arrow">' + UI.icon('arrow') + '</span>' +
     '</div>';
@@ -1240,7 +1277,7 @@ window.Pages.tasks = (function () {
 
     var st = S.stats();
     var stores = S.getState().stores;
-    var lateStores = stores.filter(function (x) { return statOfTasks(tasksOf(x.id)).late > 0; }).length;
+    var lateStores = stores.filter(function (x) { return statOf(x.id).late > 0; }).length;
 
     return '' +
     '<div class="page-head fade-up">' +
