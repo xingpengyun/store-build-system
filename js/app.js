@@ -463,6 +463,48 @@ window.App = (function () {
     });
   }
 
+  /* 双击 index.html（Origin 是 null）或在本机起服务预览时，云端一定会拒：
+     它按「来源域名」校验凭据，域名对不上就当跨域处理。
+     这不是代码坏了，得把话说明白，而不是甩一句 Failed to fetch。 */
+  function isLocalOpen() {
+    return location.protocol === 'file:' ||
+      /^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])$/i.test(location.hostname || '');
+  }
+
+  function onlineUrl() {
+    try {
+      var c = window.Cloud && (window.Cloud.config || window.Cloud.CFG);
+      return (c && c.siteUrl) || '';
+    } catch (e) { return ''; }
+  }
+
+  function showLocalHint(cached) {
+    var url = onlineUrl();
+    var link = url ? '<a class="btn btn-primary" href="' + U.esc(url) + '">打开线上地址</a>' : '';
+
+    /* 有缓存：界面已经画出来了，别用整块卡片盖掉，只在底部挂一条提示 */
+    if (cached) {
+      if (document.querySelector('.sync-tip.local')) return;
+      var tip = document.createElement('div');
+      tip.className = 'sync-tip local';
+      tip.innerHTML = '<i></i><span>本地预览：显示的是本机缓存，真实数据请看线上地址</span>' +
+        (url ? '<a href="' + U.esc(url) + '">打开</a>' : '');
+      document.body.appendChild(tip);
+      return;
+    }
+
+    var view = document.getElementById('view');
+    if (!view) return;
+    view.innerHTML = '<div class="card" style="margin-top:40px;max-width:560px;margin-left:auto;margin-right:auto;text-align:center;padding:50px 24px">' +
+      '<h3 style="margin-bottom:10px">这是本地文件，连不上云端数据</h3>' +
+      '<p style="color:var(--text-2);font-size:13px;line-height:1.9">' +
+        '云端只接受从线上地址发来的请求（来源校验），所以直接双击打开这个文件读不到门店和任务。</p>' +
+      '<p style="color:var(--text-3);font-size:12px;line-height:1.9;margin:6px 0 20px">' +
+        '要查看或录入真实数据，请用线上地址；本地文件只用来改代码。</p>' +
+      '<div style="display:flex;gap:10px;justify-content:center">' + link +
+        '<button class="btn" onclick="location.reload()">重新加载</button></div></div>';
+  }
+
   function startApp() {
     /* 登录没完成前整个外壳是藏着的（body.booting），
        否则刷新时会先闪一下主界面，再退回登录页 */
@@ -526,6 +568,10 @@ window.App = (function () {
     }).catch(function (e) {
       syncing = false;
       window.UI.hideLoading();
+
+      /* 本地打开时云端必然拒绝（来源校验），这不是故障，单独说明 */
+      if (isLocalOpen()) { showLocalHint(painted); return; }
+
       window.UI.toast('数据加载失败：' + (e.message || e), 'error');
       var view = document.getElementById('view');
       if (view) {

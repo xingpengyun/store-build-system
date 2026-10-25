@@ -436,6 +436,9 @@
   box-shadow: 0 8px 24px rgba(19, 28, 49, .25);
 }
 .sync-tip.offline { background: rgba(240, 68, 56, .92); }
+.sync-tip.local { background: rgba(176, 116, 18, .94); }
+.sync-tip.local i { background: #fff; }
+.sync-tip a { color: #fff; text-decoration: underline; }
 .sync-tip i {
   width: 6px;
   height: 6px;

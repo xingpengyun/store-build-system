@@ -1821,3 +1821,100 @@ has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header
   `Failed to fetch` —— 这句话对排查几乎没有信息量，必须去抓控制台里的 CORS 原文。
 - 云端「凭据失效」的报告要打折看：先确认请求带上的是哪个 Origin。
   这个平台用 exact Origin match 做鉴权，Origin 不对和 key 不对报的是同一个错。
+
+---
+
+## 2026-10-26 z108：把「唯一」落成制度（?v=20261026z108）
+
+用户提出四条要求：**Git 只有一版最新的、云端数据只有一版最新的、地址只有一版最新的、
+换电脑也是这唯一一版**，并追问「代码是在云端还是本地」。逐条核对结果如下。
+
+### 一、Git：本来就只有一版，但之前没写清楚
+
+核对（不是假设）：
+
+```
+git ls-remote --heads origin   → 只有 refs/heads/main
+本地 HEAD = origin/main         → 领先 0 / 落后 0
+最新提交 a636efc               → z107
+```
+
+只有一条分支、本地与远程完全一致、没有游离提交。这一轮补了两条纪律写进 README：
+**发布只在本目录做**（发布工具按目录绑定应用，换路径发布会生成新链接+新云库），
+**换电脑只 clone 不发布**。
+
+### 二、云端数据：两套库逐表比对后确认「新库才是唯一最新」
+
+旧链接的库（`wbapp_JwWrDm3Xy5kxdaiR11r7FM`）昨天迁过一次，但「迁过」不等于「从此只在新库写」。
+所以这一轮把两边都读出来正面比（`.workbuddy/compare-clouds.js`）：
+
+| | 旧库 | 新库 |
+|---|---|---|
+| 门店 / 任务 / 成员 / 到货 | 1 / 6 / 6 / 9 | 1 / 6 / 6 / 9 |
+| 只在旧库有的行 | **0 条** | — |
+| 只在新库有的行 | — | **0 条** |
+| 同 id 但内容不同 | 13 条，全部无害 | 见下 |
+
+13 条差异只有两类，都不是业务数据：
+
+- `createdAt`：旧库 `2026-10-25`，新库 `2026-10-26` —— 迁移时 `created_at` 用了 `now()`；
+- `members[].animal`：旧库没有这个字段（z94 的代码不挂头像），新库有 —— 新代码 `normalized()` 挂上去的。
+
+设置（品牌、阶段、授权名单、成员头像映射）两边 `JSON.stringify` 完全相等。
+结论：**新库是唯一最新，旧库没有任何独有内容**。比对全量已存
+`.workbuddy/backup-old-cloud-full.json`（9.1 KB）与 `.workbuddy/backup-clouds-before-cleanup.json`。
+
+然后**把旧库的写权限收掉**，让它无法再分叉：
+
+```sql
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA public FROM anon, authenticated
+```
+
+旧链接现在只能看、不能改（改会失败进待发送队列）。可逆：`GRANT` 回来即可。
+
+### 三、地址：旧链接下不掉，但没有假装下掉
+
+`workbuddy_sites_unpublish` 是按**本地目录**找发布记录的，旧链接是另一台电脑
+（目录 `2026-10-21-14-47-18`，本机不存在）发布的，这里查不到记录：
+
+```
+{"status":"not_found","message":"未找到应用 wbapp_JwWrDm3Xy5kxdaiR11r7FM 的发布记录"}
+```
+
+所以做了能做的那一半：**冻结它的数据库**（上一节），旧链接从「能读能写」变成「只能读」。
+真正的下线要在那台电脑上（或「设置—数据管理—应用」里）操作。这件事写在回复里，没有含糊过去。
+
+### 四、换电脑：先验证了一个想当然的结论
+
+以前 README 写「双击 `index.html` 就能用」。实测（真 Edge，`.workbuddy/diag-file.js`）：
+
+```
+file:// 打开 → {"origin":"file://","head":"数据加载失败 TypeError: Failed to fetch","rows":0}
+网络失败 24 次 net::ERR_FAILED
+CORS: Access to fetch at '…/.cloud/database/rest/arrivals' from origin 'null' …
+```
+
+**本地文件读不到云端**：`file://` 的 Origin 是 `null`，云服务按来源域名校验，直接拒。
+localhost 预览同理。也就是说「换电脑」的唯一正确姿势是**打开线上链接**，
+本地代码只用于改代码。这条以前没写清，等于给用户埋了个坑（换台电脑 clone 下来一开就是报错页）。
+
+顺手把坑填了：`app.js` 加 `isLocalOpen()` / `showLocalHint()`
+
+- 识别 `file:` 与 `localhost / 127.0.0.1 / 0.0.0.0 / [::1]`；
+- 有缓存：界面照常画出来，底部挂一条琥珀色提示「本地预览：显示的是本机缓存，真实数据请看线上地址」+「打开」；
+- 无缓存：不再甩 `Failed to fetch`，而是一张说明卡「这是本地文件，连不上云端数据」+ **「打开线上地址」按钮**
+  （地址取自 `Cloud.config.siteUrl`，新增在 `CFG` 里 —— 唯一入口只维护一处）。
+
+### 五、回答「代码在云端还是本地」
+
+| | 存在哪 | 作用 |
+|---|---|---|
+| 代码（可编辑） | 本地目录 + GitHub `main` | 唯一的源文件；GitHub 是备份与换电脑取件处 |
+| 代码（线上副本） | 云托管 | 只读运行副本，用户访问的就是它 |
+| 数据 | **只在云端** | 本地 localStorage 是缓存，清掉不丢数据 |
+
+### 六、验证
+
+- `node --check js/*.js` 全过；九套探针 **219 条**全绿（25/21/27/22/31/30/25/16/22）。
+- 真 Edge：`file://` 打开显示新说明卡且带「打开线上地址」按钮（改前是 `Failed to fetch`）；线上仍 0 报错。
+- 版本号 `20261026z108`。

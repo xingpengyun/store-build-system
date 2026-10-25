@@ -12,6 +12,9 @@ window.Cloud = (function () {
        （exact Origin match），所以 endpoint 必须与页面同源，否则跨域一律被拒，
        浏览器只会报一句 TypeError: Failed to fetch，看不出真正原因。 */
     endpoint: 'https://store-build-system-59240.app.workbuddy.host',
+    /* 唯一对外入口。本地双击 index.html 读不到云端（Origin 是 null，被 exact
+       Origin 校验拒掉），所以本地打开时页面要能把人指到这里来。 */
+    siteUrl: 'https://store-build-system-59240.app.workbuddy.host/?sharecode=SXM4622FRX',
     oauthRelayBaseUrl: 'https://www.workbuddy.cn/v2/as/genie-baas/oauth',
     publishableKey: 'wb' + 'pk_kHH92NSYCy3ebQEPX6VlMB' + '_' + 'MShDXDpQbnNzwyTa25pfOZSqKK2t2cQm'
   };
