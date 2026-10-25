@@ -52,20 +52,19 @@ window.Pages.settings = (function () {
             '<div class="field"><label>团队称呼</label>' +
               '<input class="input" name="teamName" value="' + U.esc(set.teamName || '团队') + '" /></div>' +
             '<div class="field"><label>预警提前天数</label>' +
-              '<input class="input" type="number" min="1" max="30" name="warnDays" value="' + (set.warnDays || 3) + '" /></div>' +
+              '<input class="input" type="number" min="1" max="30" name="warnDays" value="' + (set.warnDays || 3) + '" ' +
+                'title="任务建议完成日的前 N 天就进「预警中心」：填 3 = 还有 3 天到期就提前亮出来" /></div>' +
           '</div>' +
-          '<div class="field-row">' +
+          '<div class="field-row cols-3">' +
             '<div class="field"><label>天气城市</label>' +
               '<input class="input" name="weatherCity" value="' + U.esc(set.weatherCity || '上海') + '" ' +
                 'placeholder="比如：上海" title="首页天气按这个城市取实时数据" /></div>' +
-            '<div class="field"><label>预警提前天数</label>' +
-              '<input class="input" type="number" min="1" max="30" name="warnDays" value="' + (set.warnDays || 3) + '" /></div>' +
-          '</div>' +
-          '<div class="field-row">' +
-            '<div class="field"><label>温度（取不到实时数据时显示）</label>' +
-              '<input class="input" type="number" name="weatherTemp" value="' + (set.weatherTemp || 26) + '" /></div>' +
-            '<div class="field"><label>天气（取不到实时数据时显示）</label>' +
-              '<input class="input" name="weatherText" value="' + U.esc(set.weatherText || '多云') + '" /></div>' +
+            '<div class="field"><label>温度（兜底）</label>' +
+              '<input class="input" type="number" name="weatherTemp" value="' + (set.weatherTemp || 26) + '" ' +
+                'title="实时天气取不到时，首页就显示这个温度" /></div>' +
+            '<div class="field"><label>天气（兜底）</label>' +
+              '<input class="input" name="weatherText" value="' + U.esc(set.weatherText || '多云') + '" ' +
+                'title="实时天气取不到时，首页就显示这个描述" /></div>' +
           '</div>' +
           '<button class="btn btn-primary" type="button" data-act="saveSetting">保存设置</button>' +
         '</form>' +

@@ -681,6 +681,8 @@
   grid-template-columns: 1fr 1fr;
   gap: 11px;
 }
+/* 三个短字段并排（天气城市 / 温度兜底 / 天气兜底） */
+.field-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
 
 .filter-bar {
   display: flex;
@@ -1404,6 +1406,8 @@
 @media (max-width: 860px) {
   .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .field-row { grid-template-columns: 1fr; }
+  /* 三列那行在窄屏也要竖着排（.cols-3 选择器更"重"，必须显式覆盖） */
+  .field-row.cols-3 { grid-template-columns: 1fr; }
   .desc-list { grid-template-columns: 1fr; }
   .hero { padding: 14px; }
   .hero-icon { width: 46px; height: 46px; flex-basis: 46px; font-size: 22px; }
