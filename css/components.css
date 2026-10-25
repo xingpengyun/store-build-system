@@ -127,11 +127,96 @@
   border-top: 1px dashed var(--line);
   font-size: 12px;
   color: var(--text-2);
-  display: flex;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  column-gap: 7px;
+  row-gap: 1px;
   align-items: center;
-  gap: 6px;
 }
 .hero-date .hd-weather b { color: var(--text); font-weight: 650; }
+
+/* ---- 天气图标：按实际天气动（太阳转、云漂、雨落、雪飘、雷闪、雾流） ----
+   只用 CSS 动画 + inline SVG，不引任何图标库；prefers-reduced-motion 时全站会停掉 */
+.hero-date .hd-weather .wx {
+  grid-row: 1 / span 2;
+  width: 28px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  line-height: 0;
+}
+.hero-date .hd-weather .wx-svg { width: 28px; height: 28px; overflow: visible; }
+.hero-date .hd-weather .wx-main {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hero-date .hd-weather .wx-sub {
+  font-size: 10.5px;
+  line-height: 1.3;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wx-sun {
+  transform-origin: 50% 50%;
+  animation: wxSpin 14s linear infinite;
+}
+@keyframes wxSpin { to { transform: rotate(360deg); } }
+
+.wx-moon { animation: wxFloat 5.6s ease-in-out infinite; transform-origin: 50% 50%; }
+@keyframes wxFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.2px); }
+}
+
+.wx-cloud { animation: wxDrift 4.4s ease-in-out infinite alternate; }
+.wx-cloud-2 { animation-delay: .9s; animation-duration: 5.6s; }
+@keyframes wxDrift {
+  from { transform: translateX(-1.4px); }
+  to { transform: translateX(1.4px); }
+}
+
+.wx-drop { animation: wxFall 1.15s linear infinite; }
+.wx-drop-big { animation-duration: .8s; }
+@keyframes wxFall {
+  0% { opacity: 0; transform: translateY(-2px); }
+  22% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(3.2px); }
+}
+
+.wx-flake { animation: wxFlake 2.8s ease-in-out infinite; }
+@keyframes wxFlake {
+  0% { opacity: 0; transform: translate(0, -2px); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translate(1.6px, 3px); }
+}
+
+/* 闪电平时也在（不然静态一眼看不出是雷雨），隔几秒亮一下 */
+.wx-bolt { animation: wxBolt 3.4s ease-in-out infinite; }
+@keyframes wxBolt {
+  0%, 82%, 100% { opacity: .7; }
+  84%, 90% { opacity: 1; }
+  92% { opacity: .35; }
+  94% { opacity: 1; }
+}
+
+.wx-fog {
+  animation: wxFog 4.6s ease-in-out infinite alternate;
+}
+@keyframes wxFog {
+  from { transform: translateX(-1.6px); opacity: .55; }
+  to { transform: translateX(1.6px); opacity: 1; }
+}
+
+/* 首屏还没取到天气时，云轻轻飘一下，别像个死图标 */
+.wx-loading .wx-svg { animation: wxDrift 4.4s ease-in-out infinite alternate; }
 
 /* ---------------- KPI 卡片组 ---------------- */
 .kpi-grid {
@@ -1192,6 +1277,86 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+}
+
+/* ---- 系统设置权限卡（谁能进这一页） ---- */
+.acc-owner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--primary-soft);
+  border: 1px solid #cfdcff;
+}
+.acc-role {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.acc-name { font-size: 13px; font-weight: 650; color: var(--text); }
+.acc-me {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--primary);
+  background: #fff;
+  border-radius: 20px;
+  padding: 1px 8px;
+}
+.acc-label {
+  margin: 12px 0 7px;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.acc-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-height: 26px;
+  align-items: center;
+}
+.acc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 4px 0 10px;
+  border-radius: 20px;
+  background: var(--card-2);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--text);
+}
+.acc-x {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-style: normal;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: .14s;
+}
+.acc-x:hover { background: var(--red-soft); color: var(--red); }
+.acc-empty { font-size: 12px; color: var(--text-3); }
+.acc-add {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.acc-add .input { height: 34px; font-size: 12.5px; }
+.acc-hint {
+  margin-top: 8px;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--text-3);
 }
 .mini-stat {
   padding: 11px 12px;

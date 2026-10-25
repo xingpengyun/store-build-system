@@ -1200,3 +1200,46 @@ function onEnter() { state.tab = 'all'; state.dtab = 'all'; state.q = ''; }
 - 做法：`git rebase --onto origin/main c8444c7` 丢弃 squash 提交、21 提交重放到真正 origin/main，
   无冲突；再补 2 个新提交（门禁六修 + bug fix）
 - `git push origin main` → `3e39c98..ef64a22` 成功；代理（sandbox-cli.exe）间歇 502，重试即通
+
+---
+
+## 2026-10-25 · z78 / z79：任务行悬停、登录姓名、真实天气、设置权限
+
+### z78（9e8bf74）
+- 任务清单每行 hover：整行提亮 + 行首 3px 主色竖条（常占透明位，不跳版）+ 任务名染主色
+- 登录页加「姓名」必填：2–20 字，只允许中文/字母/·；存 `localStorage.sbs.user`
+  （`{name, account, at}`），顶栏与设置页「当前账号」都显示这个姓名
+- `Cloud.simpleLogin(user, pass, name)` 多一个参数；新增 `simpleUser()` / `simpleUserName()`
+- app.js 启动：有登录态但没姓名 → 补填一次
+
+### z79（本轮）
+1. **首页天气改成真实数据 + 动效**
+   - 数据源 **Open-Meteo**（无需 key，响应头 `access-control-allow-origin: *`，
+     `file://` 双击打开也能取）；`page-home.js` 里 `WX_CODES` 做 WMO 天气码 → 文案/动效映射
+   - 城市取 `settings.weatherCity`（默认上海），内置 40 个常用城市坐标，表外城市走
+     `geocoding-api.open-meteo.com`；取不到就退回 `weatherTemp` / `weatherText` 手填值
+   - 缓存 `localStorage['sbs.weather.v1']` 20 分钟；改城市后清缓存
+   - 动效（纯 CSS，`components.css`）：太阳转 / 云漂 / 雨落 / 雪飘 / 雷闪 / 雾流，
+     `prefers-reduced-motion` 时全停
+   - 布局改成两行：`[图标] 23°C 晴间多云` / `上海 · 12:01`（图标 28px 才看得清动效）
+2. **「添加 50 家演示门店」下线**：按钮 + 确认流程 + 说明文案都删了；
+   `store.addDemoStores` / `seed.js` 保留（探针和备份导入还在用），只是不再有入口
+3. **系统设置权限**
+   - `settings.access = { owner, allow: [] }`，`owner` 出厂值 = **邢鹏昀**（store.js `SETTINGS_OWNER`）
+   - 身份认**登录时填的姓名**（账号统一 admin，区分不了人）
+   - Store：`accessOf / canSettings / isSettingsOwner / grantSettings / revokeSettings`
+   - app.js：无权限 → 导航里隐藏「系统设置」，直接敲 `#/settings` 会被送回首页并 toast
+   - 设置页新增「谁能进系统设置」卡：管理员 + 授权名单（chip + ×），只有 owner 能改
+   - 兜底：`page-settings.render` 开头再拦一次，防路由绕过
+
+### 验证
+- `node --check` 全通过
+- `.workbuddy/probe-z49.js` **151/151 PASS**（I 天气 20 项 / J 权限 17 项 / K 演示门店 5 项 + 旧回归）
+- 截图：`shots/z49-weather.png`、`z49-zoom-{clear,rain,thunder,snow,night}.png`、
+  `z49-access.png`、`z49-denied.png`
+- 包装页：`shot-in.html`（管理员 邢鹏昀）、`shot-in-li.html`（李四）、`shot-in-login.html`（无登录态）
+
+### 注意
+- 设置权限是**按姓名**的：同事登录时名字必须和 owner 在名单里加的一致，否则进不去。
+  写错名字的唯一解法是退出重新登录（或直接在设置里再加一个名字）。
+- 天气依赖外网；公司内网如果封了 `api.open-meteo.com`，会静默退到手填值（鼠标放上去有提示）。

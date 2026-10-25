@@ -19,6 +19,12 @@ window.App = (function () {
     return ROUTES.indexOf(name) >= 0 ? name : 'home';
   }
 
+  /* 我是谁：登录页填的姓名（手机模式下用 user.name / phone） */
+  function myName() {
+    if (!currentUser) return '';
+    return String(currentUser.name || currentUser.phone || currentUser.email || '').trim();
+  }
+
   function go(route, p) {
     params = p || {};
     if (location.hash === '#/' + route) {
@@ -34,6 +40,15 @@ window.App = (function () {
   function render(opts) {
     var keep = !!(opts && opts.keep);
     var route = currentRoute();
+
+    /* 系统设置是管理员的：没权限的人直接送回首页（导航里也看不到那一项） */
+    if (route === 'settings' && !S.canSettings(myName())) {
+      var own = S.accessOf().owner;
+      window.UI.toast('「系统设置」只有管理员能进，需要开权限请找 ' + own, 'error', 2800);
+      if (location.hash !== '#/home') { location.hash = '#/home'; return; }
+      route = 'home';
+    }
+
     var page = window.Pages[route] || window.Pages.home;
     var host = document.getElementById('view');
     if (!host) return;
@@ -93,6 +108,10 @@ window.App = (function () {
     }
     var nameEl = document.getElementById('topbarUserName');
     if (nameEl) nameEl.textContent = uname;
+
+    /* 没权限的人：导航里干脆不放「系统设置」，少一个点进去被弹回来的坑 */
+    var setItem = document.querySelector('.nav-item[data-route="settings"]');
+    if (setItem) setItem.classList.toggle('hidden', !S.canSettings(myName()));
 
     showSyncTip(!S.isOnline());
   }

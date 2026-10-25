@@ -16,6 +16,11 @@ window.Store = (function () {
   var syncTimer = null;
   var lastError = '';
 
+  /* 出厂管理员：系统设置只给这一个姓名 + 他授权的人进（2026-10-25 用户要求）
+     存在 settings.access = { owner, allow: [] }，跟着云端同步；
+     名字是在登录页填的那个「姓名」，不是账号（账号大家统一 admin）。 */
+  var SETTINGS_OWNER = '邢鹏昀';
+
   /* ================= 本地缓存 ================= */
 
   function cacheLocal() {
@@ -323,6 +328,20 @@ window.Store = (function () {
     if (!data.settings.slogan) data.settings.slogan = '让每一家门店，按时开业！';
     if (data.settings.warnDays == null) data.settings.warnDays = 3;
     if (!data.settings.teamName) data.settings.teamName = '阿蛮团队';
+
+    /* 系统设置的权限：没有就落一份默认（只有 SETTINGS_OWNER 能进） */
+    var ac = data.settings.access;
+    if (!ac || typeof ac !== 'object' || Array.isArray(ac) || !ac.owner) {
+      data.settings.access = {
+        owner: SETTINGS_OWNER,
+        allow: (ac && Array.isArray(ac.allow)) ? ac.allow.filter(Boolean) : []
+      };
+    } else if (!Array.isArray(ac.allow)) {
+      ac.allow = [];
+    }
+
+    /* 天气城市：没设过就先按上海（可在系统设置里改） */
+    if (!data.settings.weatherCity) data.settings.weatherCity = '上海';
 
     data.meta = data.meta || {};
     if ((data.meta.version || 1) < 2) {
@@ -1728,6 +1747,51 @@ window.Store = (function () {
     cacheLocal();
   }
 
+  /* ================= 系统设置权限 =================
+     谁看得到「系统设置」：管理员 + 授权名单。
+     身份认的是登录页填的姓名（账号统一 admin，区分不了人）。 */
+
+  function accessOf() {
+    var a = (state && state.settings) ? state.settings.access : null;
+    if (!a || typeof a !== 'object' || Array.isArray(a)) a = {};
+    return {
+      owner: String(a.owner || SETTINGS_OWNER).trim(),
+      allow: Array.isArray(a.allow) ? a.allow.map(function (x) { return String(x).trim(); }).filter(Boolean) : []
+    };
+  }
+
+  function canSettings(name) {
+    var nm = String(name || '').trim();
+    if (!nm) return false;
+    var a = accessOf();
+    return nm === a.owner || a.allow.indexOf(nm) >= 0;
+  }
+
+  function isSettingsOwner(name) {
+    return String(name || '').trim() === accessOf().owner;
+  }
+
+  /* 加 / 减授权名单；管理员换人也能改（owner 默认为出厂值） */
+  function grantSettings(name) {
+    var nm = String(name || '').trim();
+    if (!nm) return false;
+    var a = accessOf();
+    if (nm === a.owner || a.allow.indexOf(nm) >= 0) return false;
+    a.allow.push(nm);
+    setSetting('access', a);
+    return true;
+  }
+
+  function revokeSettings(name) {
+    var nm = String(name || '').trim();
+    var a = accessOf();
+    var i = a.allow.indexOf(nm);
+    if (i < 0) return false;
+    a.allow.splice(i, 1);
+    setSetting('access', a);
+    return true;
+  }
+
   /* ================= 筹建任务清单（完全自定义） =================
      一切以你自己编辑的清单为准：
      - 没有任何内置清单，也不会自动回退到系统默认
@@ -2653,6 +2717,11 @@ window.Store = (function () {
     toggleShipPin: toggleShipPin,
     toggleShipSent: toggleShipSent,
     setSetting: setSetting,
+    accessOf: accessOf,
+    canSettings: canSettings,
+    isSettingsOwner: isSettingsOwner,
+    grantSettings: grantSettings,
+    revokeSettings: revokeSettings,
     templates: templates,
     saveTemplates: saveTemplates,
     items: items,

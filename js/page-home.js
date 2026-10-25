@@ -253,6 +253,235 @@ window.Pages.home = (function () {
       '</svg></div>';
   }
 
+  /* ================= 天气：真实数据 + 按天气动起来 =================
+     数据源 Open-Meteo（不用 key，响应头带 access-control-allow-origin:*，
+     所以 file:// 双击打开也取得到）。城市取「系统设置 → 天气城市」，默认上海。
+     取不到就退回设置里手填的温度/描述，绝不让横幅上空一块。
+     缓存 20 分钟：open-meteo 的 current 每 15 分钟更新一次，没必要每次进首页都打。 */
+
+  var WX_KEY = 'sbs.weather.v1';
+  var WX_TTL = 20 * 60 * 1000;
+
+  /* WMO weather code → [中文文案, 动效类型] */
+  var WX_CODES = {
+    0: ['晴', 'clear'],
+    1: ['晴间多云', 'partly'],
+    2: ['多云', 'cloudy'],
+    3: ['阴', 'overcast'],
+    45: ['有雾', 'fog'],
+    48: ['雾凇', 'fog'],
+    51: ['小毛毛雨', 'drizzle'],
+    53: ['毛毛雨', 'drizzle'],
+    55: ['浓毛毛雨', 'drizzle'],
+    56: ['冻毛毛雨', 'drizzle'],
+    57: ['冻毛毛雨', 'drizzle'],
+    61: ['小雨', 'rain'],
+    63: ['中雨', 'rain'],
+    65: ['大雨', 'heavy'],
+    66: ['冻雨', 'rain'],
+    67: ['强冻雨', 'heavy'],
+    71: ['小雪', 'snow'],
+    73: ['中雪', 'snow'],
+    75: ['大雪', 'snow'],
+    77: ['米雪', 'snow'],
+    80: ['阵雨', 'rain'],
+    81: ['强阵雨', 'rain'],
+    82: ['暴雨', 'heavy'],
+    85: ['阵雪', 'snow'],
+    86: ['强阵雪', 'snow'],
+    95: ['雷阵雨', 'thunder'],
+    96: ['雷阵雨伴冰雹', 'thunder'],
+    99: ['雷暴伴冰雹', 'thunder']
+  };
+
+  /* 常用城市的坐标（省一次地理编码请求）；表里没有的城市走 geocoding 接口 */
+  var CITY_COORDS = {
+    上海: [31.23, 121.47], 北京: [39.90, 116.41], 广州: [23.13, 113.26], 深圳: [22.54, 114.06],
+    杭州: [30.27, 120.15], 南京: [32.06, 118.80], 苏州: [31.30, 120.58], 无锡: [31.49, 120.31],
+    宁波: [29.87, 121.55], 合肥: [31.82, 117.23], 成都: [30.57, 104.07], 重庆: [29.56, 106.55],
+    武汉: [30.59, 114.31], 长沙: [28.23, 112.94], 西安: [34.34, 108.94], 郑州: [34.75, 113.63],
+    济南: [36.65, 117.12], 青岛: [36.07, 120.38], 天津: [39.08, 117.20], 沈阳: [41.81, 123.43],
+    大连: [38.91, 121.61], 福州: [26.07, 119.30], 厦门: [24.48, 118.09], 昆明: [25.04, 102.72],
+    东莞: [23.02, 113.75], 佛山: [23.02, 113.12], 南昌: [28.68, 115.86], 贵阳: [26.65, 106.63],
+    南宁: [22.82, 108.32], 海口: [20.04, 110.32], 石家庄: [38.04, 114.51], 太原: [37.87, 112.55],
+    兰州: [36.06, 103.83], 哈尔滨: [45.80, 126.53], 长春: [43.82, 125.32], 乌鲁木齐: [43.83, 87.62],
+    呼和浩特: [40.84, 111.75], 温州: [28.00, 120.67], 常州: [31.81, 119.97], 徐州: [34.26, 117.19]
+  };
+
+  function wxCacheGet() {
+    try {
+      var o = JSON.parse(localStorage.getItem(WX_KEY) || 'null');
+      if (o && o.city && (Date.now() - o.at) < WX_TTL) return o;
+    } catch (e) {}
+    return null;
+  }
+
+  function wxCacheSet(o) {
+    try { localStorage.setItem(WX_KEY, JSON.stringify(o)); } catch (e) {}
+  }
+
+  function wxCityName() {
+    var set = (S.getState() && S.getState().settings) || {};
+    return String(set.weatherCity || '上海').trim() || '上海';
+  }
+
+  function wxCoordsOf(city) {
+    var hit = CITY_COORDS[city];
+    if (hit) return Promise.resolve({ lat: hit[0], lon: hit[1], name: city });
+    var url = 'https://geocoding-api.open-meteo.com/v1/search?count=1&language=zh&format=json&name=' +
+      encodeURIComponent(city);
+    return fetch(url, { mode: 'cors' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        var it = j && j.results && j.results[0];
+        if (!it) throw new Error('找不到这个城市');
+        return { lat: it.latitude, lon: it.longitude, name: it.name || city };
+      });
+  }
+
+  function wxFetch() {
+    var city = wxCityName();
+    return wxCoordsOf(city).then(function (pos) {
+      var url = 'https://api.open-meteo.com/v1/forecast' +
+        '?latitude=' + pos.lat + '&longitude=' + pos.lon +
+        '&current=temperature_2m,weather_code,is_day' +
+        '&timezone=Asia%2FShanghai&_=' + Date.now();
+      return fetch(url, { mode: 'cors' })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          var cur = j && j.current;
+          if (!cur || cur.temperature_2m == null) throw new Error('天气接口没返回数据');
+          var o = {
+            at: Date.now(),
+            city: pos.name,
+            temp: Math.round(cur.temperature_2m),
+            code: Number(cur.weather_code) || 0,
+            isDay: cur.is_day == null ? 1 : Number(cur.is_day)
+          };
+          wxCacheSet(o);
+          return o;
+        });
+    });
+  }
+
+  /* 一个 26×26 的小图标，元素带 .wx-* 类，动画全交给 CSS */
+  function wxIcon(kind, isDay) {
+    var sun = '<g class="wx-sun">' +
+      '<circle cx="13" cy="13" r="4.3" fill="#ffb02e"/>' +
+      '<g stroke="#ffb02e" stroke-width="1.5" stroke-linecap="round">' +
+        '<path d="M13 3.6v2.1M13 20.3v2.1M3.6 13h2.1M20.3 13h2.1' +
+              'M6.4 6.4l1.5 1.5M18.1 18.1l1.5 1.5M19.6 6.4l-1.5 1.5M7.9 18.1l-1.5 1.5"/>' +
+      '</g></g>';
+
+    var moon = '<g class="wx-moon">' +
+      '<path d="M17 16.2a5.7 5.7 0 0 1-7.2-7.4 6.7 6.7 0 1 0 7.2 7.4z" fill="#8492d6"/>' +
+      '<circle cx="18.4" cy="7.6" r=".8" fill="#c3cbf2"/>' +
+      '<circle cx="20.6" cy="11.2" r=".6" fill="#c3cbf2"/></g>';
+
+    var cloud = '<g class="wx-cloud">' +
+      '<path d="M7 18.6h10.6a3.3 3.3 0 0 0 .2-6.6 4.9 4.9 0 0 0-9.3-1.1A3.7 3.7 0 0 0 7 18.6z" ' +
+        'fill="#eaf0fb" stroke="#b3c2dd" stroke-width="1.1"/></g>';
+
+    var cloud2 = '<g class="wx-cloud wx-cloud-2">' +
+      '<path d="M4.4 15.2h7.4a2.6 2.6 0 0 0 .1-5.2 3.9 3.9 0 0 0-7.4-.9 2.9 2.9 0 0 0-.1 6.1z" ' +
+        'fill="#f4f7fe" stroke="#c3cfe6" stroke-width="1"/></g>';
+
+    function drops(n, cls, big) {
+      var out = '';
+      for (var i = 0; i < n; i++) {
+        var x = 8.6 + i * 2.9;
+        out += '<line class="wx-drop' + (big ? ' wx-drop-big' : '') + '" x1="' + x + '" y1="19.4" ' +
+          'x2="' + (x - 0.6) + '" y2="22.6" stroke="#3f8ae8" stroke-width="1.7" stroke-linecap="round" ' +
+          'style="animation-delay:' + (i * 0.28).toFixed(2) + 's"/>';
+      }
+      return out;
+    }
+
+    function flakes(n) {
+      var out = '';
+      for (var i = 0; i < n; i++) {
+        var x = 8.8 + i * 3.1;
+        out += '<circle class="wx-flake" cx="' + x + '" cy="21" r="1.25" fill="#8fbce9" ' +
+          'style="animation-delay:' + (i * 0.55).toFixed(2) + 's"/>';
+      }
+      return out;
+    }
+
+    var bolt = '<path class="wx-bolt" d="M14 16.8l-3 4.4h2.1l-1.2 3.6 4-5.2h-2.3l1.4-2.8z" ' +
+      'fill="#ffc53d" stroke="#f0a300" stroke-width=".6"/>';
+
+    var fogLines = '<g class="wx-fog" stroke="#b7c4dd" stroke-width="1.4" stroke-linecap="round">' +
+      '<path d="M5.2 19.6h13.6"/><path d="M7.4 22.4h9.4" style="animation-delay:-1.6s"/></g>';
+
+    var body;
+    if (kind === 'clear') body = isDay ? sun : moon;
+    else if (kind === 'partly') body = (isDay ? sun.replace('cx="13" cy="13" r="4.3"',
+      'cx="9.6" cy="9.6" r="3.6"') : moon) + cloud;
+    else if (kind === 'cloudy') body = cloud2 + cloud;
+    else if (kind === 'overcast') body = cloud.replace('fill="#eaf0fb"', 'fill="#dde5f4"') + cloud2;
+    else if (kind === 'fog') body = cloud + fogLines;
+    else if (kind === 'drizzle') body = cloud + drops(2, 'drizzle', false);
+    else if (kind === 'rain') body = cloud + drops(3, 'rain', false);
+    else if (kind === 'heavy') body = cloud + drops(4, 'heavy', true);
+    else if (kind === 'snow') body = cloud + flakes(3);
+    else if (kind === 'thunder') body = cloud + drops(2, 'thunder', false) + bolt;
+    else body = cloud;
+
+    return '<svg class="wx-svg" viewBox="0 0 26 26" fill="none" aria-hidden="true">' + body + '</svg>';
+  }
+
+  function wxHtml(w) {
+    var set = (S.getState() && S.getState().settings) || {};
+    if (!w) {
+      /* 还没取到：先显示手填的兜底值，取到会被原地替换 */
+      return '<span class="wx wx-loading"><svg class="wx-svg" viewBox="0 0 26 26" fill="none">' +
+          '<path d="M7 18.6h10.6a3.3 3.3 0 0 0 .2-6.6 4.9 4.9 0 0 0-9.3-1.1A3.7 3.7 0 0 0 7 18.6z" ' +
+          'fill="#eaf0fb" stroke="#b3c2dd" stroke-width="1.1"/></svg></span>' +
+        '<span class="wx-main"><b>' + (set.weatherTemp || 26) + '°C</b>' +
+          '<span>' + U.esc(set.weatherText || '多云') + '</span></span>' +
+        '<span class="wx-sub">' + U.esc(wxCityName()) + ' · 手动设置</span>';
+    }
+    var d = WX_CODES[w.code] || ['天气', 'cloudy'];
+    var hm = new Date(w.at);
+    var clock = U.pad2(hm.getHours()) + ':' + U.pad2(hm.getMinutes());
+    var tip = '数据来源 Open-Meteo · ' + clock + ' 更新';
+    return '<span class="wx wx-' + d[1] + '" title="' + tip + '">' + wxIcon(d[1], w.isDay) + '</span>' +
+      '<span class="wx-main"><b>' + w.temp + '°C</b>' +
+        '<span>' + U.esc(d[0]) + '</span></span>' +
+      '<span class="wx-sub">' + U.esc(w.city) + ' · ' + clock + '</span>';
+  }
+
+  /* 只换天气那一块，不整页重画（否则筛选、展开状态全没了） */
+  function paintWeather(root, w) {
+    var box = root && root.querySelector('.hd-weather');
+    if (!box) return;
+    box.innerHTML = wxHtml(w);
+  }
+
+  function loadWeather(root) {
+    var cached = wxCacheGet();
+    paintWeather(root, cached);
+
+    /* 没有 fetch（老浏览器 / 测试环境）：缓存或手填兜底已经画上去了，到此为止 */
+    if (typeof fetch !== 'function') return;
+
+    var p;
+    try { p = wxFetch(); } catch (e) { return; }
+
+    p.then(function (w) {
+      paintWeather(root, w);
+    }).catch(function (e) {
+      /* 取不到：有缓存就继续用缓存（比手填值新），没有才退回手填值 */
+      if (cached) return;
+      var box = root && root.querySelector('.hd-weather');
+      if (box) {
+        box.innerHTML = wxHtml(null);
+        box.setAttribute('title', '实时天气获取失败（' + ((e && e.message) || '网络不可用') +
+          '），现在显示的是系统设置里手填的温度和天气');
+      }
+    });
+  }
+
   function render() {
     var s = S.getState();
     var st = S.stats();
@@ -423,8 +652,7 @@ window.Pages.home = (function () {
       '<div class="hero-date">' +
         '<div class="hd-day">' + U.cnDate(t0) + '</div>' +
         '<div class="hd-week">' + U.weekdayCn(t0) + '</div>' +
-        '<div class="hd-weather"><span>☁️</span><b>' + (set.weatherTemp || 26) + '°C</b>' +
-          '<span>' + U.esc(set.weatherText || '多云') + '</span></div>' +
+        '<div class="hd-weather">' + wxHtml(wxCacheGet()) + '</div>' +
       '</div>' +
     '</section>' +
 
@@ -557,6 +785,9 @@ window.Pages.home = (function () {
   }
 
   function mount(root) {
+    /* 天气：先用手上的缓存/兜底值画出来，再异步换真实数据 */
+    loadWeather(root);
+
     /* 首次进首页引导一次：ⓘ 在哪、怎么用（之后不再打扰） */
     try {
       if (!localStorage.getItem('sbs.kpiHelpTip')) {

@@ -11,6 +11,19 @@ window.Pages.settings = (function () {
 
   function render() {
     var s = S.getState();
+
+    /* 兜底：没权限的人不该渲染出这一页（正常路径在 app.js render 里就拦掉了） */
+    if (!S.canSettings(meName())) {
+      return '<div class="page-head fade-up"><div><h1>系统设置</h1>' +
+          '<p>这一页只有管理员能进</p></div></div>' +
+        '<div class="card" style="text-align:center;padding:40px 20px">' +
+          '<h3 style="margin-bottom:8px">没有权限</h3>' +
+          '<p style="font-size:13px;color:var(--text-2)">系统设置由「' + U.esc(S.accessOf().owner) +
+            '」管理。需要开权限，找他把你登录时填的姓名加进名单。</p>' +
+          '<button class="btn btn-primary" style="margin-top:16px" data-act="goHome">回首页</button>' +
+        '</div>';
+    }
+
     var set = s.settings;
     var bytes = S.storageBytes();
     var user = (window.App && window.App.user) || {};
@@ -42,9 +55,16 @@ window.Pages.settings = (function () {
               '<input class="input" type="number" min="1" max="30" name="warnDays" value="' + (set.warnDays || 3) + '" /></div>' +
           '</div>' +
           '<div class="field-row">' +
-            '<div class="field"><label>天气温度（°C）</label>' +
+            '<div class="field"><label>天气城市</label>' +
+              '<input class="input" name="weatherCity" value="' + U.esc(set.weatherCity || '上海') + '" ' +
+                'placeholder="比如：上海" title="首页天气按这个城市取实时数据" /></div>' +
+            '<div class="field"><label>预警提前天数</label>' +
+              '<input class="input" type="number" min="1" max="30" name="warnDays" value="' + (set.warnDays || 3) + '" /></div>' +
+          '</div>' +
+          '<div class="field-row">' +
+            '<div class="field"><label>温度（取不到实时数据时显示）</label>' +
               '<input class="input" type="number" name="weatherTemp" value="' + (set.weatherTemp || 26) + '" /></div>' +
-            '<div class="field"><label>天气描述</label>' +
+            '<div class="field"><label>天气（取不到实时数据时显示）</label>' +
               '<input class="input" name="weatherText" value="' + U.esc(set.weatherText || '多云') + '" /></div>' +
           '</div>' +
           '<button class="btn btn-primary" type="button" data-act="saveSetting">保存设置</button>' +
@@ -67,13 +87,11 @@ window.Pages.settings = (function () {
         '<div style="display:flex;flex-direction:column;gap:8px">' +
           '<button class="btn" data-act="export">' + UI.icon('download') + '导出备份（JSON）</button>' +
           '<button class="btn" data-act="import">' + UI.icon('upload') + '从备份文件导入</button>' +
-          '<button class="btn btn-primary" data-act="addDemo">' + UI.icon('plus') + '添加 50 家演示门店</button>' +
           '<button class="btn" data-act="clearStores">' + UI.icon('refresh') + '清空门店与任务</button>' +
         '</div>' +
         '<p style="margin-top:8px;font-size:11.5px;color:var(--text-3);line-height:1.7">' +
-          '「添加演示门店」只往门店 / 任务 / 到货里加数据，' +
-          '<b>阶段时间线、筹建任务清单、到货物料清单、成员一个都不动</b>；' +
-          '「清空门店与任务」同样只清业务数据，配置留着。' +
+          '「清空门店与任务」只清门店 / 任务 / 到货这些业务数据，' +
+          '<b>阶段时间线、筹建任务清单、到货物料清单、成员一个都不动</b>。' +
         '</p>' +
         '<input type="file" id="importFile" accept=".json,application/json" style="display:none" />' +
         '<p style="margin-top:8px;font-size:11.5px;color:var(--text-3);line-height:1.7">' +
@@ -81,6 +99,8 @@ window.Pages.settings = (function () {
         '</p>' +
       '</div>' +
     '</section>' +
+
+    accessCard() +
 
     configCard() +
 
@@ -108,6 +128,58 @@ window.Pages.settings = (function () {
         '<div class="d-item"><div class="d-label">登录逻辑</div><div class="d-val">js/login.js</div></div>' +
         '<div class="d-item"><div class="d-label">数据读写</div><div class="d-val">js/store.js</div></div>' +
       '</div>' +
+    '</div>';
+  }
+
+  /* ================= 谁能进系统设置（2026-10-25 用户要求） =================
+     账号大家统一 admin / 123，区分不了人，所以权限认的是**登录时填的姓名**。
+     管理员（settings.access.owner，默认出厂值）+ 他授权的人能打开这一页；
+     其他人导航里看不到「系统设置」，直接敲地址也会被送回首页（见 app.js render）。 */
+
+  function meName() {
+    var u = (window.App && window.App.user) || {};
+    return String(u.name || u.phone || u.email || '').trim();
+  }
+
+  function accessCard() {
+    var me = meName();
+    var a = S.accessOf();
+    var iAmOwner = S.isSettingsOwner(me);
+    var allow = a.allow || [];
+
+    var chips = allow.length
+      ? allow.map(function (n) {
+          return '<span class="acc-chip">' + U.esc(n) +
+            (iAmOwner
+              ? '<i class="acc-x" data-act="revokeAccess" data-name="' + U.esc(n) + '" title="收回「' + U.esc(n) + '」的权限">×</i>'
+              : '') +
+            '</span>';
+        }).join('')
+      : '<span class="acc-empty">还没给任何人开权限</span>';
+
+    return '' +
+    '<div class="card fade-up" style="animation-delay:.06s">' +
+      '<div class="card-head"><h3>谁能进系统设置</h3>' +
+        '<span class="card-sub">' + (iAmOwner ? '你是管理员，可以给下面的人开 / 收权限' : '只有管理员能改这份名单') + '</span></div>' +
+
+      '<div class="acc-owner">' +
+        '<span class="acc-role">管理员</span>' +
+        '<span class="acc-name">' + U.esc(a.owner) + '</span>' +
+        (me && me === a.owner ? '<span class="acc-me">就是你</span>' : '') +
+      '</div>' +
+
+      '<div class="acc-label">已被授权（' + allow.length + ' 人）</div>' +
+      '<div class="acc-list">' + chips + '</div>' +
+
+      (iAmOwner
+        ? '<div class="acc-add">' +
+            '<input class="input" id="accName" maxlength="20" autocomplete="off" ' +
+              'placeholder="填对方的姓名（就是他登录时填的那个）" />' +
+            '<button class="btn btn-primary" type="button" data-act="grantAccess">给权限</button>' +
+          '</div>' +
+          '<p class="acc-hint">其他人的导航里看不到「系统设置」，直接敲地址也会被送回首页。' +
+            '<br>姓名要对得上：对方登录时填什么名字，这里就写什么（比如「李四」）。</p>'
+        : '<p class="acc-hint">想进系统设置，让管理员「' + U.esc(a.owner) + '」把你的姓名加进授权名单。</p>') +
     '</div>';
   }
 
@@ -145,7 +217,7 @@ window.Pages.settings = (function () {
     return '' +
     '<div class="card fade-up cfg-card" style="animation-delay:.062s">' +
       '<div class="card-head"><h3>我的工作流配置</h3>' +
-        '<span class="card-sub">点任意一张卡牌，直达它的调整入口；演示门店不会改动它们</span></div>' +
+        '<span class="card-sub">点任意一张卡牌，直达它的调整入口</span></div>' +
 
       '<div class="mini-stats cfg-stats">' +
         box('阶段时间线', stages.length + ' 个', subCount + ' 个二级阶段', 'stages',
@@ -492,6 +564,10 @@ window.Pages.settings = (function () {
         App.logout();
       }
 
+      else if (act === 'goHome') {
+        App.go('home');
+      }
+
       else if (act === 'addItem') {
         addItem();
       }
@@ -503,8 +579,11 @@ window.Pages.settings = (function () {
         st.slogan = UI.formValue(form, 'slogan');
         st.teamName = UI.formValue(form, 'teamName') || '阿蛮团队';
         st.warnDays = U.clamp(Number(UI.formValue(form, 'warnDays')) || 3, 1, 30);
+        st.weatherCity = UI.formValue(form, 'weatherCity') || '上海';
         st.weatherTemp = Number(UI.formValue(form, 'weatherTemp')) || 26;
         st.weatherText = UI.formValue(form, 'weatherText') || '多云';
+        /* 换了城市：旧缓存作废，回首页会重新取 */
+        try { localStorage.removeItem('sbs.weather.v1'); } catch (e) {}
         S.saveAll();
         UI.toast('设置已保存，团队其他人刷新后可见', 'success');
         App.refresh();
@@ -515,30 +594,32 @@ window.Pages.settings = (function () {
         UI.toast('备份文件已下载', 'success');
       }
 
-      else if (act === 'addDemo') {
-        var st0 = S.getState();
+      /* 给某个姓名开系统设置权限 */
+      else if (act === 'grantAccess') {
+        var nameInp = root.querySelector('#accName');
+        var nm = ((nameInp && nameInp.value) || '').trim();
+        if (!nm) { UI.toast('先填对方登录时用的姓名', 'error'); return; }
+        if (nm === S.accessOf().owner) { UI.toast('这个人是管理员，本来就能进', 'info'); return; }
+        if (S.canSettings(nm)) { UI.toast('「' + nm + '」已经在名单里了', 'info'); return; }
+        if (S.grantSettings(nm)) {
+          UI.toast('已给「' + nm + '」开权限，他刷新后就能进系统设置', 'success', 2800);
+          App.refresh({ keep: true });
+        } else {
+          UI.toast('没加成，再试一次', 'error');
+        }
+      }
+
+      else if (act === 'revokeAccess') {
+        var rn = el.getAttribute('data-name');
         UI.confirm({
-          title: '添加 50 家演示门店',
-          text: '会往现有数据里<b>再加 50 家演示门店</b>（各自的阶段、进度、到货日期都不一样），' +
-                '并给它们派任务、编发货计划。<br />' +
-                '<b>阶段时间线、筹建任务清单、到货物料清单、团队成员一个都不动</b>，' +
-                '演示门店直接按你现在的配置生成。',
-          warn: '现在系统里有 <b>' + st0.stores.length + ' 家门店</b>，加完会变成 ' +
-                (st0.stores.length + 50) + ' 家。只在演示 / 试用时用。',
-          okText: '加 50 家',
+          title: '收回权限',
+          text: '「' + rn + '」之后就看不到「系统设置」了，其他页面照常能用。',
+          okText: '收回',
           onOk: function () {
-            UI.loading('正在生成 50 家门店…');
-            var bundle = window.Seed({ count: 50 });
-            S.addDemoStores(bundle)
-              .then(function (r) {
-                UI.hideLoading();
-                UI.toast('已添加 ' + r.stores + ' 家门店、' + r.tasks + ' 条任务，配置没动', 'success', 2600);
-                setTimeout(function () { location.reload(); }, 800);
-              })
-              .catch(function (err) {
-                UI.hideLoading();
-                UI.toast('添加失败：' + (err.message || err), 'error');
-              });
+            if (S.revokeSettings(rn)) {
+              UI.toast('已收回「' + rn + '」的权限', 'success');
+              App.refresh({ keep: true });
+            }
           }
         });
       }
@@ -594,8 +675,8 @@ window.Pages.settings = (function () {
       /* 注意：原来的 data-act="reset"（wipeAll + 塞演示数据）已经删掉。
          wipeAll 会把 app_settings 整张清空 —— 阶段时间线、筹建任务清单、
          物料清单全在里面，用户真实的工作流就是这么被一起删掉的。
-         现在拆成「添加演示门店（addDemo）」和「清空门店（clearStores）」两步，
-         都不碰配置。需要彻底重置，用「从备份文件导入」或手动清库。 */
+         2026-10-25 起「生成演示门店」的入口也按用户要求下线，只留「清空门店（clearStores）」。
+         需要彻底重置，用「从备份文件导入」或手动清库。 */
     });
 
     /* ---------------- 阶段与子阶段管理（2026-10-24 从任务页时间线搬来） ----------------
