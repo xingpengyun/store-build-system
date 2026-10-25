@@ -86,10 +86,13 @@ window.App = (function () {
     if (barEl) barEl.style.width = Math.min(100, bytes / (5 * 1024 * 1024) * 100).toFixed(1) + '%';
 
     var userEl = document.querySelector('.topbar-user .avatar');
+    var uname = (currentUser && (currentUser.name || currentUser.phone)) || '我';
     if (userEl) {
-      var nm = (currentUser && (currentUser.name || currentUser.phone)) || '我';
-      userEl.textContent = String(nm).slice(-2);
+      userEl.textContent = String(uname).slice(-2);
+      userEl.title = uname + ' · 点击去设置';
     }
+    var nameEl = document.getElementById('topbarUserName');
+    if (nameEl) nameEl.textContent = uname;
 
     showSyncTip(!S.isOnline());
   }
@@ -283,7 +286,7 @@ window.App = (function () {
   function logout() {
     window.UI.confirm({
       title: '退出登录',
-      text: '退出后需要重新输入账号密码。',
+      text: '退出后需要重新填写姓名和账号密码。',
       okText: '退出',
       onOk: function () {
         S.stopAutoSync();
@@ -304,8 +307,12 @@ window.App = (function () {
 
     /* ---------- 简单账号密码模式 ---------- */
     if (window.Cloud.authMode !== 'phone') {
-      if (window.Cloud.isSimpleAuthed()) {
-        currentUser = { name: 'admin' };
+      var saved = window.Cloud.simpleUser ? window.Cloud.simpleUser() : null;
+
+      /* 有登录态、也留下了姓名 → 直接进；只剩老登录态没姓名的，补填一次姓名
+         （姓名现在是要显示的，缺了就不知道"当前是谁"） */
+      if (window.Cloud.isSimpleAuthed() && saved && saved.name) {
+        currentUser = { name: saved.name, account: saved.account || 'admin' };
         startApp();
         return;
       }

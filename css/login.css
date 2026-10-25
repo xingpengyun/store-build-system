@@ -54,6 +54,20 @@
 
 .login-form .field { margin-bottom: 15px; }
 .login-form .input { height: 40px; font-size: 14px; }
+.login-form .req {
+  color: var(--red);
+  font-style: normal;
+  font-weight: 700;
+  margin-left: 1px;
+}
+
+/* 姓名下的提示：字号比正文更小、颜色更淡，不抢跟输入框的关系 */
+.login-hint {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--text-3);
+}
 
 .login-code-row {
   display: flex;

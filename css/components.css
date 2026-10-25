@@ -2417,6 +2417,18 @@
   vertical-align: middle;
 }
 .sk-tbl tr:last-child td { border-bottom: 0; }
+
+/* 鼠标扫过任务行：整行提亮 + 左起一道主色竖条 + 任务名染色。
+   清单拉到十几行时，光靠"手型光标"看不出指着哪一行，
+   这里让被指的那行自己亮起来（竖条常占位、只是透明，悬停不跳版） */
+.sk-tbl tbody tr { transition: background-color .16s ease; }
+.sk-tbl tbody td:first-child {
+  border-left: 3px solid transparent;
+  transition: border-left-color .16s ease;
+}
+.sk-tbl tbody tr:hover { background: #f2f7ff; }
+.sk-tbl tbody tr:hover td:first-child { border-left-color: var(--primary); }
+.sk-tbl tbody tr:hover .sk-task-title { color: var(--primary); }
 .sk-task-title { font-size: 12.5px; color: var(--text); }
 .sk-prio { margin-top: 2px; font-size: 10px; color: var(--red); }
 .sk-body-empty { padding: 14px 2px 4px; font-size: 11.8px; color: var(--text-3); line-height: 1.7; }

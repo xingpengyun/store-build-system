@@ -22,10 +22,20 @@ window.Cloud = (function () {
   var SIMPLE_USER = 'admin';
   var SIMPLE_PASS = '123';
   var AUTH_KEY = 'sbs.auth';
+  var USER_KEY = 'sbs.user';   /* { name, account, at }：登录人姓名，退出后保留用于下次预填 */
 
-  function simpleLogin(user, pass) {
+  /* name 是必填的真实姓名（login.js 已校验），只用于显示"当前是谁" */
+  function simpleLogin(user, pass, name) {
     if (String(user).trim() === SIMPLE_USER && String(pass) === SIMPLE_PASS) {
-      try { localStorage.setItem(AUTH_KEY, '1'); } catch (e) {}
+      var nm = String(name == null ? '' : name).replace(/\s+/g, ' ').trim();
+      try {
+        localStorage.setItem(AUTH_KEY, '1');
+        if (nm) {
+          localStorage.setItem(USER_KEY, JSON.stringify({
+            name: nm, account: SIMPLE_USER, at: Date.now()
+          }));
+        }
+      } catch (e) {}
       return true;
     }
     return false;
@@ -33,6 +43,21 @@ window.Cloud = (function () {
 
   function isSimpleAuthed() {
     try { return localStorage.getItem(AUTH_KEY) === '1'; } catch (e) { return false; }
+  }
+
+  /* 登录人信息；老版本只写了 sbs.auth、没有姓名的，返回 null（会要求补填一次） */
+  function simpleUser() {
+    try {
+      var raw = localStorage.getItem(USER_KEY);
+      if (!raw) return null;
+      var o = JSON.parse(raw);
+      return (o && o.name) ? o : null;
+    } catch (e) { return null; }
+  }
+
+  function simpleUserName() {
+    var u = simpleUser();
+    return u ? u.name : '';
   }
 
   function simpleLogout() {
@@ -349,6 +374,8 @@ window.Cloud = (function () {
     authMode: AUTH_MODE,
     simpleLogin: simpleLogin,
     isSimpleAuthed: isSimpleAuthed,
+    simpleUser: simpleUser,
+    simpleUserName: simpleUserName,
     simpleLogout: simpleLogout,
     currentSession: currentSession,
     sendCode: sendCode,

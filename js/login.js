@@ -1,7 +1,7 @@
 /* ==========================================================
    login.js — 登录页
    两种模式（由 cloud.js 的 AUTH_MODE 决定）：
-     simple = 账号密码（admin / 123）
+     simple = 姓名 + 账号密码（admin / 123）
      phone  = 手机号 + 短信验证码
    ========================================================== */
 window.Login = (function () {
@@ -15,8 +15,22 @@ window.Login = (function () {
 
   function q(sel) { return layer ? layer.querySelector(sel) : null; }
 
+  function esc(s) {
+    if (window.Utils && window.Utils.esc) return window.Utils.esc(s);
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
   function isSimple() {
     return (window.Cloud && window.Cloud.authMode) !== 'phone';
+  }
+
+  /* 上次登录填过的姓名，预填省得每次重敲 */
+  function lastName() {
+    try {
+      return (window.Cloud && window.Cloud.simpleUserName && window.Cloud.simpleUserName()) || '';
+    } catch (e) { return ''; }
   }
 
   /* ---------------- 模板 ---------------- */
@@ -34,8 +48,15 @@ window.Login = (function () {
     return '<div class="login-card">' + head() +
       '<form class="login-form" id="lgForm" autocomplete="off">' +
         '<div class="field">' +
+          '<label>姓名 <i class="req">*</i></label>' +
+          '<input class="input" id="lgName" type="text" maxlength="20"' +
+          '       placeholder="请填写你的真实姓名" autocomplete="name"' +
+          '       value="' + esc(lastName()) + '" />' +
+          '<p class="login-hint">请填真实姓名，不要填昵称或缩写 —— 页面上显示的就是这个名字。</p>' +
+        '</div>' +
+        '<div class="field">' +
           '<label>账号</label>' +
-          '<input class="input" id="lgUser" type="text" placeholder="请输入账号" autocomplete="username" />' +
+          '<input class="input" id="lgUser" type="text" value="admin" autocomplete="username" />' +
         '</div>' +
         '<div class="field">' +
           '<label>密码</label>' +
@@ -98,30 +119,53 @@ window.Login = (function () {
     e.className = 'login-err' + (ok ? ' ok' : '');
   }
 
-  /* ---------------- 简单账号密码 ---------------- */
+  /* ---------------- 简单账号密码（+ 真实姓名） ---------------- */
+  /* 姓名只做"像不像个真名"的轻校验：2–20 个字、只能是中文/字母/间隔点，
+     不带数字和符号。真假没法机器判断，靠提示 + 页面上显示名字形成约束。 */
+  function checkName(raw) {
+    var nm = String(raw || '').replace(/\s+/g, ' ').trim();
+    if (!nm) return { err: '请先填写姓名' };
+    if (nm.length < 2) return { err: '姓名至少 2 个字，请填真实姓名' };
+    if (nm.length > 20) return { err: '姓名太长了，请在 20 个字以内' };
+    if (!/^[\u4e00-\u9fa5a-zA-Z][\u4e00-\u9fa5a-zA-Z· ]*$/.test(nm)) {
+      return { err: '姓名请用中文或字母填写，不要带数字和符号' };
+    }
+    return { name: nm };
+  }
+
   function bindSimple() {
     var form = q('#lgForm');
+    var nameEl = q('#lgName');
     var userEl = q('#lgUser');
+    var passEl = q('#lgPass');
 
-    setTimeout(function () { if (userEl) userEl.focus(); }, 120);
+    setTimeout(function () {
+      if (nameEl && !nameEl.value) nameEl.focus();
+      else if (passEl) passEl.focus();
+    }, 120);
 
+    nameEl.addEventListener('input', function () { err(''); });
     userEl.addEventListener('input', function () { err(''); });
-    q('#lgPass').addEventListener('input', function () { err(''); });
+    passEl.addEventListener('input', function () { err(''); });
 
     form.addEventListener('submit', function (e) {
       e.preventDefault();
-      var u = (q('#lgUser').value || '').trim();
-      var p = q('#lgPass').value || '';
+
+      var chk = checkName(nameEl.value);
+      if (chk.err) { err(chk.err); nameEl.focus(); return; }
+
+      var u = (userEl.value || '').trim();
+      var p = passEl.value || '';
 
       if (!u || !p) { err('请输入账号和密码'); return; }
 
-      if (window.Cloud.simpleLogin(u, p)) {
+      if (window.Cloud.simpleLogin(u, p, chk.name)) {
         hide();
-        if (onDone) onDone({ name: u });
+        if (onDone) onDone({ name: chk.name, account: u });
       } else {
         err('账号或密码不正确');
-        q('#lgPass').value = '';
-        q('#lgPass').focus();
+        passEl.value = '';
+        passEl.focus();
       }
     });
   }

@@ -170,7 +170,26 @@
   line-height: 1;
 }
 
+.topbar-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding-left: 4px;
+  border-radius: 20px;
+  transition: .16s;
+}
 .topbar-user .avatar { cursor: pointer; }
+.topbar-user-name {
+  max-width: 84px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.topbar-user:hover .topbar-user-name { color: var(--primary); }
 
 /* ---------------- 主体骨架 ---------------- */
 .shell {
@@ -334,6 +353,7 @@
 @media (max-width: 860px) {
   .topbar { padding: 0 14px; }
   .brand-slogan { display: none; }
+  .topbar-user-name { display: none; }
   .search-box { width: 150px; }
   .shell { flex-direction: column; }
   .sidebar {
