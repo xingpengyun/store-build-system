@@ -297,6 +297,22 @@ window.App = (function () {
     });
   }
 
+  /* ---------------- 自动同步时别打断正在输入的人 ----------------
+     同事同时在用时，每 45 秒会把云端最新数据拉回来重画。
+     如果这时候你正在某个输入框里打字（到货备注、门店名、表单…），
+     重画会把你打的字冲掉、光标也丢了。所以：
+     ① 正在输入就先不重画，记下来；
+     ② 等输入框失焦了再补上这次重画。 */
+  var pendingRerender = false;
+
+  function isEditing() {
+    var ae = document.activeElement;
+    if (!ae) return false;
+    if (ae.isContentEditable) return true;
+    var tag = ae.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+  }
+
   /* ---------------- 骨架事件 ---------------- */
   function bindShell() {
     document.querySelectorAll('.nav-item').forEach(function (el) {
@@ -328,6 +344,18 @@ window.App = (function () {
 
     bindSearch();
     window.addEventListener('hashchange', render);
+
+    /* 刚才因为在打字而推迟的重画，现在补上（他已经不编辑了） */
+    document.addEventListener('focusout', function () {
+      if (!pendingRerender) return;
+      setTimeout(function () {
+        if (!pendingRerender) return;
+        if (isEditing()) return;          /* 焦点只是挪到另一个输入框，继续等 */
+        pendingRerender = false;
+        render({ keep: true });
+        window.UI.toast('已同步团队其他人的更新', 'info');
+      }, 260);
+    });
   }
 
   /* ---------------- 启动流程 ---------------- */
@@ -362,7 +390,11 @@ window.App = (function () {
       }
 
       S.startAutoSync(45000, function () {
-        render({ keep: true });   /* 别人改了数据：重画但不打断当前操作 */
+        /* 别人改了数据：重画但不打断当前操作。
+           正在输入框里打字时先别重画 —— 重画会把光标里的字冲掉、
+           焦点也丢了。等他输入框失焦了再画（见 bindShell 里的 focusout）。 */
+        if (isEditing()) { pendingRerender = true; return; }
+        render({ keep: true });
         window.UI.toast('检测到团队其他人的更新，已刷新', 'info');
       });
     }).catch(function (e) {
