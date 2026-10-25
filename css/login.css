@@ -15,7 +15,12 @@
   justify-content: center;
   gap: 6px;
   padding: 24px;
-  background: linear-gradient(165deg, #f2fbf6 0%, #eef4fd 48%, #f6f1fe 100%);
+  /* 清新的多色渐变：薄荷绿 → 天蓝 → 淡紫 → 淡粉，再叠三团柔光色块 */
+  background:
+    radial-gradient(circle at 10% 14%, rgba(52, 199, 141, .34), transparent 52%),
+    radial-gradient(circle at 90% 12%, rgba(63, 140, 245, .34), transparent 52%),
+    radial-gradient(circle at 50% 104%, rgba(146, 111, 255, .30), transparent 56%),
+    linear-gradient(165deg, #d8f3e6 0%, #cde2ff 42%, #e6daff 76%, #ffe2ee 100%);
   overflow: auto;
 }
 
@@ -29,19 +34,19 @@
   pointer-events: none;
 }
 .login-layer::before {
-  width: 440px;
-  height: 440px;
-  left: -130px;
-  top: -150px;
-  background: radial-gradient(circle, rgba(52, 199, 141, .26), transparent 65%);
+  width: 520px;
+  height: 520px;
+  left: -140px;
+  top: -160px;
+  background: radial-gradient(circle, rgba(52, 199, 141, .42), transparent 65%);
   animation: lgFloat 12s ease-in-out infinite alternate;
 }
 .login-layer::after {
-  width: 500px;
-  height: 500px;
-  right: -150px;
-  bottom: -170px;
-  background: radial-gradient(circle, rgba(94, 140, 255, .22), transparent 65%);
+  width: 580px;
+  height: 580px;
+  right: -170px;
+  bottom: -190px;
+  background: radial-gradient(circle, rgba(94, 140, 255, .38), transparent 65%);
   animation: lgFloat 15s ease-in-out infinite alternate-reverse;
 }
 @keyframes lgFloat {
