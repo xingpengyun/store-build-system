@@ -258,7 +258,13 @@ window.Pages.tasks = (function () {
        先往后放 3 天，3 天后再提醒（可以重复点，一次加 3 天） */
     if (S.classify(t) === 'overdue') {
       return '<span class="tlink tlink-snooze" data-act="snooze" data-id="' + t.id + '"' +
-        ' title="不是我们的原因 / 老板不着急：往后放 3 天，3 天后再提醒">+3天</span>' + push;
+        ' title="不是我们的原因 / 老板不着急：往后放 3 天，3 天后再提醒">' +
+        '<i class="ts-ico" aria-hidden="true">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+            'stroke-linecap="round" stroke-linejoin="round">' +
+            '<circle cx="12" cy="12" r="8.4"></circle><path d="M12 7.4V12l3 1.8"></path>' +
+          '</svg>' +
+        '</i>+3天</span>' + push;
     }
 
     /* 延后过、现在还没到期：留个撤销口子，别一按就找不回来 */
@@ -466,6 +472,40 @@ window.Pages.tasks = (function () {
     }, 90);
 
     setTimeout(function () { completeTask(task); }, 640);
+  }
+
+  /* ================= 延后 3 天：也给个像样的反馈 =================
+     以前点一下「+3天」就立刻改数据、立刻重画 —— 药丸直接变成「延后 3 天」，
+     整行跟着闪一下，看着像出错。现在跟「完成」一个套路：
+     先按下 → 松手变绿打勾「已延后」→ 停一下再落库重画。 */
+
+  function doSnooze(task) {
+    var snDays = S.snoozeTask(task.id, 3);
+    var snDue = S.suggestDateOf(task);
+    UI.toast('已往后放 3 天（累计 ' + snDays + ' 天）' +
+      (snDue ? '，' + U.monthDay(snDue) + ' 再提醒' : ''), 'success');
+    App.refresh({ keep: true });
+  }
+
+  function playSnooze(el, task) {
+    var reduce = false;
+    try {
+      reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    } catch (e) {}
+
+    if (reduce || !el) { doSnooze(task); return; }
+
+    el.classList.add('is-pressed');
+    setTimeout(function () {
+      el.classList.remove('is-pressed');
+      el.classList.add('is-done');
+      el.innerHTML = '<i class="ts-tick" aria-hidden="true">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" ' +
+        'stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.6l4.2 4.2L19 7"></path></svg>' +
+        '</i>已延后';
+    }, 120);
+
+    setTimeout(function () { doSnooze(task); }, 620);
   }
 
   /* ================= 重开：把这次完成退回去 =================
@@ -1327,11 +1367,7 @@ window.Pages.tasks = (function () {
       else if (act === 'push' && task) {
         playComplete(el, task);
       } else if (act === 'snooze' && task) {
-        var snDays = S.snoozeTask(task.id, 3);
-        var snDue = S.suggestDateOf(task);
-        UI.toast('已往后放 3 天（累计 ' + snDays + ' 天）' +
-          (snDue ? '，' + U.monthDay(snDue) + ' 再提醒' : ''), 'success');
-        App.refresh({ keep: true });
+        playSnooze(el, task);
       } else if (act === 'unsnooze' && task) {
         S.unsnoozeTask(task.id);
         UI.toast('已撤销延后，回到原定日期', 'info');

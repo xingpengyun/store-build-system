@@ -662,7 +662,7 @@ window.Pages.home = (function () {
 
     /* 进度总览 + 团队 */
     '<section class="home-grid-2 fade-up" style="animation-delay:.08s">' +
-      '<div class="card">' +
+      '<div class="card accent-blue">' +
         '<div class="card-head">' +
           '<h3>门店筹建进度总览</h3>' +
           '<span class="card-sub" data-role="stageSub">' + subHtml(s) + '</span>' +
@@ -687,7 +687,7 @@ window.Pages.home = (function () {
         '<div class="stage-foot" data-role="stageFoot">' + footHtml(s) + '</div>' +
       '</div>' +
 
-      '<div class="card">' +
+      '<div class="card accent-green">' +
         '<div class="card-head">' +
           '<h3>团队工作台</h3><span class="card-sub">（' + st.team.length + '人）</span>' +
           '<div class="card-tools"><span class="link-more" data-go="team">全部成员 →</span></div>' +
@@ -698,7 +698,7 @@ window.Pages.home = (function () {
 
     /* 三小卡 */
     '<section class="home-grid-3 fade-up" style="animation-delay:.12s">' +
-      '<div class="card">' +
+      '<div class="card accent-red">' +
         '<div class="card-head">' +
           '<h3>今日重点关注</h3>' +
           '<span class="badge" style="color:var(--red);background:var(--red-soft)">' + st.focus.length + '</span>' +
@@ -707,7 +707,7 @@ window.Pages.home = (function () {
         '<div class="focus-list">' + focusHtml + '</div>' +
       '</div>' +
 
-      '<div class="card">' +
+      '<div class="card accent-violet">' +
         '<div class="card-head"><h3>任务状态分布</h3></div>' +
         '<div class="donut-wrap">' +
           Charts.donut(donutItems, { size: 132, centerLabel: '总任务', centerValue: tc.total }) +
@@ -715,7 +715,7 @@ window.Pages.home = (function () {
         '</div>' +
       '</div>' +
 
-      '<div class="card">' +
+      '<div class="card accent-teal">' +
         '<div class="card-head">' +
           '<h3>近 7 天到货量</h3>' +
           '<div class="card-tools"><span class="link-more" data-go="reports">明细 →</span></div>' +

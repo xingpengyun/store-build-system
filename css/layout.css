@@ -8,6 +8,10 @@
   flex-direction: column;
 }
 
+/* 登录没完成前把整个外壳藏起来（但保留占位，布局不跳）：
+   否则刷新时会先闪一下主界面，再退回登录页 —— 用户看着像闪屏 */
+body.booting .app { visibility: hidden; }
+
 /* ---------------- 顶栏 ---------------- */
 .topbar {
   height: 60px;

@@ -405,19 +405,35 @@ window.Pages.stores = (function () {
     var tasks = S.getState().tasks.filter(function (t) { return t.storeId === id; });
     var arrivals = S.getState().arrivals.filter(function (a) { return a.storeId === id; });
 
-    var taskRows = tasks.map(function (t) {
+    /* 筹建任务：不用表格了，改成「一叠卡片」——
+       每条任务一张卡，卡片互相错位叠着，鼠标移上去那张会抬起来露出下面的，
+       进场时从右侧一张张滑进来。任务少的时候比表格好看，一眼能扫到状态。 */
+    function stageColorOf(key) {
+      var c = '#98a2b8';
+      (C.STAGES || []).forEach(function (x) { if (x.key === key) c = x.color; });
+      return c;
+    }
+
+    var taskCards = tasks.map(function (t, i) {
       var cls = S.classify(t);
       var m = S.memberById(t.assigneeId);
       var due = S.suggestDateOf(t);
-      return '<tr>' +
-        '<td>' + U.esc(t.title) + '</td>' +
-        '<td>' + UI.stageBadge(t.stage) + '</td>' +
-        '<td class="muted">' + U.esc(m ? m.name : '未指派') + '</td>' +
-        '<td class="mono muted">' + (due
-          ? U.monthDay(due)
-          : '<span class="dim">开业前 ' + S.taskBeforeOf(t) + ' 天</span>') + '</td>' +
-        '<td>' + UI.statusBadge(cls) + '</td>' +
-      '</tr>';
+      var ini = (m && m.name) ? m.name.charAt(0) : '?';
+      return '<div class="tcard" style="animation-delay:' + (i * 55) + 'ms">' +
+        '<i class="tcard-rail" style="background:' + stageColorOf(t.stage) + '"></i>' +
+        '<div class="tcard-main">' +
+          '<div class="tcard-title">' + U.esc(t.title) + '</div>' +
+          '<div class="tcard-sub">' +
+            UI.stageBadge(t.stage) +
+            '<span class="tcard-who"><i class="tcard-ava">' + U.esc(ini) + '</i>' +
+              U.esc(m ? m.name : '未指派') + '</span>' +
+            '<span class="tcard-due">' + (due
+              ? U.monthDay(due) + ' 前完成'
+              : '开业前 ' + S.taskBeforeOf(t) + ' 天') + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="tcard-right">' + UI.statusBadge(cls) + '</div>' +
+      '</div>';
     }).join('');
 
     var stageObj = null;
@@ -449,11 +465,9 @@ window.Pages.stores = (function () {
         : '') +
       '<div class="section-title">筹建任务（' + tasks.length + '）</div>' +
       (tasks.length
-        ? '<div class="table-wrap"><table class="tbl" style="min-width:520px">' +
-            '<thead><tr><th>任务</th><th>阶段</th><th>负责人</th><th>截止</th><th>状态</th></tr></thead>' +
-            '<tbody>' + taskRows + '</tbody></table></div>'
+        ? '<div class="tstack">' + taskCards + '</div>'
         : UI.empty('还没有任务')) +
-      '<div class="section-title">物料到货（<span id="arrCount">' + arrivals.length + '</span>）</div>' +
+      '<div class="section-title" id="sdArrTitle">物料到货（<span id="arrCount">' + arrivals.length + '</span>）</div>' +
       '<div id="arrWrap">' + arrBody(store.id) + '</div>';
 
     UI.modal({

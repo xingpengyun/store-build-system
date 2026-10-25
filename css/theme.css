@@ -9,46 +9,42 @@
 
 /* ---------------- 1. 色板：整体加深一档 ---------------- */
 :root {
-  /* 表面：底色压深，白卡片才跳得出来 */
-  --bg: #e8edf9;
+  /* 表面：中性灰底（Radix Gray 2）。原来偏蓝的底色 + 满屏蓝紫，
+     看着就"单一"；底色退到中性，白卡片和各种彩色块才跳得出来。 */
+  --bg: #f7f8fa;
   --card: #ffffff;
-  --card-2: #f5f8ff;
+  --card-2: #fbfbfd;
 
   /* 分割线 */
-  --line: #dde5f4;
-  --line-2: #edf1fa;
+  --line: #e7e8ee;
+  --line-2: #f1f2f6;
 
-  /* 文字：正文更黑、次要色更实，读起来不糊 */
-  --text: #0e1830;
-  --text-2: #55627d;
-  --text-3: #828da6;
-  --text-4: #a8b2c6;
+  /* 文字 */
+  --text: #17181c;
+  --text-2: #5b5f6b;
+  --text-3: #8a8e99;
+  --text-4: #aeb1bc;
 
-  /* 主色：饱和度提上来，并配一个紫调做渐变搭档 */
-  --primary: #2f56f0;
-  --primary-2: #7b5cf6;
-  --primary-soft: #e7edff;
-  --primary-grad: linear-gradient(96deg, #2f56f0 0%, #7b5cf6 100%);
+  /* 主色：Radix Indigo 9，配 Violet 9 做渐变搭档 */
+  --primary: #3e63dd;
+  --primary-2: #5373e7;
+  --primary-soft: #e6edfe;
+  --primary-grad: linear-gradient(96deg, #3e63dd 0%, #7c4ee0 100%);
 
-  /* 语义色 */
-  --green: #0aa564;
-  --green-soft: #dcf7ea;
-  --yellow: #c18700;
-  --yellow-soft: #fdf3d6;
-  --orange: #e97a06;
-  --orange-soft: #fdecdb;
-  --red: #e83a2f;
-  --red-soft: #ffe6e3;
-  --purple: #6d3fe8;
-  --purple-soft: #ece5ff;
-  --cyan: #0190bf;
-  --cyan-soft: #d9f3fd;
-  --slate: #6d7893;
-  --slate-soft: #e8ecf6;
+  /* 语义色：全部换成 Radix Colors 的 9 号（文字/图标）+ 3 号（浅底） */
+  --green: #299764;   --green-soft: #ddf3e4;
+  --yellow: #b78010;  --yellow-soft: #fff4c2;
+  --orange: #f76b15;  --orange-soft: #fff1e8;
+  --red: #e5484d;     --red-soft: #ffe5e5;
+  --purple: #8e4ec6;  --purple-soft: #f3e7fc;
+  --cyan: #05a2c2;    --cyan-soft: #d8f3f6;
+  --teal: #12a594;    --teal-soft: #d9f3ee;
+  --pink: #e93d82;    --pink-soft: #fce5f3;
+  --slate: #8a8a8f;   --slate-soft: #f0f0f3;
 
-  /* 侧边栏：更深的靛蓝 */
-  --sidebar: #121a37;
-  --sidebar-2: #1b2549;
+  /* 侧边栏：深靛蓝（Radix Gray 12 + Indigo 暗调） */
+  --sidebar: #15182a;
+  --sidebar-2: #1e2340;
 
   /* 圆角略放大，观感更软 */
   --radius: 16px;
@@ -56,18 +52,23 @@
   --radius-xs: 7px;
 
   /* 阴影：多一层"贴地"的浅影，卡片不再像纸片 */
-  --shadow-1: 0 1px 2px rgba(14, 24, 48, .05), 0 6px 16px -14px rgba(14, 24, 48, .45);
-  --shadow-2: 0 10px 28px -18px rgba(14, 24, 48, .5);
-  --shadow-3: 0 26px 64px -24px rgba(14, 24, 48, .42);
-  --ring: 0 0 0 3px rgba(47, 86, 240, .2);
+  --shadow-1: 0 1px 2px rgba(23, 24, 28, .05), 0 6px 16px -14px rgba(23, 24, 28, .45);
+  --shadow-2: 0 10px 28px -18px rgba(23, 24, 28, .5);
+  --shadow-3: 0 26px 64px -24px rgba(23, 24, 28, .42);
+  --ring: 0 0 0 3px rgba(62, 99, 221, .2);
+
+  /* 每张卡可以指定自己的主色（页面里给各区块上不同颜色用） */
+  --accent: var(--primary);
+  --accent-soft: var(--primary-soft);
 }
 
 /* ---------------- 2. 画布：三团彩色光晕 ---------------- */
 body {
   background:
-    radial-gradient(1100px 520px at 6% -8%, #d5e2ff 0%, rgba(213, 226, 255, 0) 62%),
-    radial-gradient(880px 460px at 98% -4%, #e6ddff 0%, rgba(230, 221, 255, 0) 60%),
-    radial-gradient(760px 460px at 62% 106%, #d3f4e8 0%, rgba(211, 244, 232, 0) 62%),
+    radial-gradient(1000px 520px at 4% -10%, #dbe8ff 0%, rgba(219, 232, 255, 0) 60%),
+    radial-gradient(820px 460px at 99% -6%, #f0e0ff 0%, rgba(240, 224, 255, 0) 58%),
+    radial-gradient(760px 460px at 96% 104%, #d6f5ec 0%, rgba(214, 245, 236, 0) 60%),
+    radial-gradient(680px 420px at 18% 108%, #ffeeda 0%, rgba(255, 238, 218, 0) 60%),
     var(--bg);
   background-attachment: fixed;
 }
@@ -450,3 +451,57 @@ button:focus-visible,
 /* 空状态的图标也带点颜色，别全灰 */
 .empty svg { color: var(--primary); opacity: .32; }
 
+
+
+/* ==========================================================
+   13. 卡片主色：让整页不再是一个蓝
+   ------------------------------------------------------------
+   原来所有卡片的标题竖条都是同一个蓝紫渐变，一屏看下去全是同一个颜色。
+   现在每张卡可以带一个主色（accent-*），标题竖条、卡头底色、顶边都用它。
+   ========================================================== */
+.card.accent-blue   { --accent: #0091ff; --accent-soft: #e1f0ff; }
+.card.accent-green  { --accent: #30a46c; --accent-soft: #ddf3e4; }
+.card.accent-teal   { --accent: #12a594; --accent-soft: #d9f3ee; }
+.card.accent-orange { --accent: #f76b15; --accent-soft: #fff1e8; }
+.card.accent-amber  { --accent: #d1960c; --accent-soft: #fff4c2; }
+.card.accent-red    { --accent: #e5484d; --accent-soft: #ffe5e5; }
+.card.accent-pink   { --accent: #e93d82; --accent-soft: #fce5f3; }
+.card.accent-violet { --accent: #8e4ec6; --accent-soft: #f3e7fc; }
+.card.accent-plum   { --accent: #ab4aba; --accent-soft: #f9e5f9; }
+
+.card[class*="accent-"] {
+  border-top: 2px solid var(--accent);
+}
+.card[class*="accent-"] > .card-head {
+  background: linear-gradient(96deg, var(--accent-soft) 0%, rgba(255, 255, 255, 0) 66%);
+  border-radius: 14px 14px 0 0;
+}
+.card[class*="accent-"] .card-head h3::before {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+/* KPI 图标：同色光晕（原本就是这思路，色值换成 Radix 更透亮） */
+.kpi-icon { box-shadow: 0 10px 18px -12px currentColor, inset 0 0 0 1px rgba(255, 255, 255, .7); }
+
+/* 表格与输入框：底色偏中性，不再泛蓝 */
+.tbl thead th { background: #f4f4f7; color: #6a6e7a; }
+.tbl tbody tr:hover { background: #f7f8fb; }
+.input, .select, .textarea { background: #fcfcfd; }
+.input:hover, .select:hover, .textarea:hover { border-color: #d3d5dd; }
+.input:focus, .select:focus, .textarea:focus { border-color: var(--primary); }
+
+/* 侧边栏：靛蓝 → 紫，一眼看出是同一个色系的深浅 */
+.sidebar {
+  background:
+    radial-gradient(140% 55% at 18% -6%, #2f3d7a 0%, rgba(47, 61, 122, 0) 62%),
+    linear-gradient(180deg, #1b2143 0%, #171b38 52%, #12152c 100%);
+}
+.nav-item.active {
+  background: linear-gradient(96deg, #3e63dd 0%, #7c4ee0 100%);
+  box-shadow: 0 10px 22px -10px rgba(62, 99, 221, .95), inset 0 1px 0 rgba(255, 255, 255, .22);
+}
+.btn-primary { background: var(--primary-grad); box-shadow: 0 10px 20px -12px rgba(62, 99, 221, .95); }
+.btn-primary:hover { background: linear-gradient(96deg, #3457cf 0%, #6d42d3 100%); }
+.tabs { background: #f0f0f4; }
+.tabs .tab.active { background: var(--primary-grad); }

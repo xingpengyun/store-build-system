@@ -332,6 +332,9 @@ window.App = (function () {
 
   /* ---------------- 启动流程 ---------------- */
   function startApp() {
+    /* 登录没完成前整个外壳是藏着的（body.booting），
+       否则刷新时会先闪一下主界面，再退回登录页 */
+    document.body.classList.remove('booting');
     window.UI.loading('正在从云端加载数据…');
 
     S.load(function (done, total) {

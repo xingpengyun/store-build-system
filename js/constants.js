@@ -13,13 +13,13 @@ window.CONST = {
      二级（子阶段）在时间线或筹建任务清单里加，存 settings.stageSubs，
      任务的 stage 存成 "一级 / 二级" */
   STAGES: [
-    { key: '未出图',    color: '#6d7893', soft: '#e8ecf6' },
-    { key: '已出图',    color: '#3f56e8', soft: '#e3e9ff' },
-    { key: '资料/建档', color: '#6d3fe8', soft: '#ece5ff' },
-    { key: '施工/装修', color: '#e97a06', soft: '#fdecdb' },
-    { key: '物料/到货', color: '#2f56f0', soft: '#e3eaff' },
-    { key: '开业准备',  color: '#0190bf', soft: '#d9f3fd' },
-    { key: '已开业',    color: '#0aa564', soft: '#dcf7ea' }
+    { key: '未出图',    color: '#8a8a8f', soft: '#f0f0f3' },
+    { key: '已出图',    color: '#0091ff', soft: '#e1f0ff' },
+    { key: '资料/建档', color: '#8e4ec6', soft: '#f3e7fc' },
+    { key: '施工/装修', color: '#f76b15', soft: '#fff1e8' },
+    { key: '物料/到货', color: '#12a594', soft: '#d9f3ee' },
+    { key: '开业准备',  color: '#ab4aba', soft: '#f9e5f9' },
+    { key: '已开业',    color: '#299764', soft: '#ddf3e4' }
   ],
 
   /* 出厂就带好的二级（只有从没保存过二级时才会用它；
@@ -48,8 +48,8 @@ window.CONST = {
      在途、到店这些物流环节我们不管，也不记；
      发出去就打勾、沉到底，之后只看到货时间有没有到。 */
   SHIP_STATUS: [
-    { key: 'todo', label: '未发出', color: '#6d7893', soft: '#e8ecf6' },
-    { key: 'sent', label: '已发出', color: '#0aa564', soft: '#dcf7ea' }
+    { key: 'todo', label: '未发出', color: '#8a8a8f', soft: '#f0f0f3' },
+    { key: 'sent', label: '已发出', color: '#299764', soft: '#ddf3e4' }
   ],
 
   /* ---- 结束类阶段：不参与「筹建进度」的分母 ----
@@ -61,19 +61,19 @@ window.CONST = {
 
   /* ---- 风险等级 ---- */
   RISKS: {
-    normal:    { key: 'normal',    label: '正常', color: '#0aa564', soft: '#dcf7ea' },
-    attention: { key: 'attention', label: '关注', color: '#c18700', soft: '#fdf3d6' },
-    high:      { key: 'high',      label: '高危', color: '#e97a06', soft: '#fdecdb' },
-    overdue:   { key: 'overdue',   label: '逾期', color: '#e83a2f', soft: '#ffe6e3' }
+    normal:    { key: 'normal',    label: '正常', color: '#299764', soft: '#ddf3e4' },
+    attention: { key: 'attention', label: '关注', color: '#b78010', soft: '#fff4c2' },
+    high:      { key: 'high',      label: '高危', color: '#f76b15', soft: '#fff1e8' },
+    overdue:   { key: 'overdue',   label: '逾期', color: '#e5484d', soft: '#ffe5e5' }
   },
 
   /* ---- 任务状态 ---- */
   TASK_STATUS: {
-    pending: { key: 'pending', label: '未完成', color: '#6d7893', soft: '#e8ecf6' },
-    doing:   { key: 'doing',   label: '未完成', color: '#2f56f0', soft: '#e3eaff' },  /* 已废弃：流程里只有做完 / 没做完 */
-    done:    { key: 'done',    label: '已完成', color: '#0aa564', soft: '#dcf7ea' },
-    overdue: { key: 'overdue', label: '已逾期', color: '#e83a2f', soft: '#ffe6e3' },
-    risk:    { key: 'risk',    label: '风险任务', color: '#e97a06', soft: '#fdecdb' }
+    pending: { key: 'pending', label: '未完成', color: '#8a8a8f', soft: '#f0f0f3' },
+    doing:   { key: 'doing',   label: '未完成', color: '#3e63dd', soft: '#e6edfe' },  /* 已废弃：流程里只有做完 / 没做完 */
+    done:    { key: 'done',    label: '已完成', color: '#299764', soft: '#ddf3e4' },
+    overdue: { key: 'overdue', label: '已逾期', color: '#e5484d', soft: '#ffe5e5' },
+    risk:    { key: 'risk',    label: '风险任务', color: '#f76b15', soft: '#fff1e8' }
   },
 
   /* ---- 标准任务模板：每开一家店自动派这几件事 ----
@@ -130,16 +130,16 @@ window.CONST = {
 
   /* 新建一级阶段时按顺序取色（先用没被占的） */
   C.STAGE_PALETTE = [
-    { color: '#6d3fe8', soft: '#ece5ff' },
-    { color: '#e97a06', soft: '#fdecdb' },
-    { color: '#2f56f0', soft: '#e3eaff' },
-    { color: '#0190bf', soft: '#d9f3fd' },
-    { color: '#0aa564', soft: '#dcf7ea' },
+    { color: '#8e4ec6', soft: '#f3e7fc' },
+    { color: '#f76b15', soft: '#fff1e8' },
+    { color: '#3e63dd', soft: '#e6edfe' },
+    { color: '#05a2c2', soft: '#d8f3f6' },
+    { color: '#299764', soft: '#ddf3e4' },
     { color: '#e0559a', soft: '#fde6f0' },
-    { color: '#c18700', soft: '#fdf3d6' },
+    { color: '#b78010', soft: '#fff4c2' },
     { color: '#0d9b9b', soft: '#dcf5f5' },
     { color: '#7d4bd6', soft: '#efe7fd' },
-    { color: '#6d7893', soft: '#e8ecf6' }
+    { color: '#8a8a8f', soft: '#f0f0f3' }
   ];
 
   /* 拆成 { base, sub } */
