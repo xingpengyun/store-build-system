@@ -238,8 +238,19 @@ window.Pages.tasks = (function () {
     var tip = C.stageSplit(t.stage || '').base
       ? '这条做完了；门店阶段不跟着跳，等门店推进到「' + C.stageLabel(t.stage) + '」这一格时自动越过'
       : '这条做完了';
+
+    /* 完成按钮：圆圈 + 对勾，点下去先演一遍打勾（见 playComplete），
+       整行再扫一道绿、标题划线、淡出，然后才落库重画 */
     var push = '<span class="tlink tlink-push" data-act="push" data-id="' + t.id + '"' +
-      ' title="' + U.esc(tip) + '">完成</span>';
+      ' title="' + U.esc(tip) + '">' +
+      '<i class="tk-check" aria-hidden="true">' +
+        '<svg viewBox="0 0 24 24" fill="none">' +
+          '<circle class="tc-ring" cx="12" cy="12" r="8.6"></circle>' +
+          '<path class="tc-tick" d="M7.8 12.4l2.8 2.7 5.7-6"></path>' +
+        '</svg>' +
+      '</i>' +
+      '<span class="tc-label">完成</span>' +
+    '</span>';
     var sn = S.snoozeDaysOf(t);
 
     /* 逾期才给「+3天」：不是我们的原因 / 老板不着急，
@@ -405,6 +416,55 @@ window.Pages.tasks = (function () {
         });
       }
     });
+  }
+
+  /* ================= 点「完成」的那一下：先演完，再落库 =================
+     完成是这个系统里最重的动作（改任务状态 + 可能推进门店阶段 + 记回退点），
+     所以给它一套专属反馈，而不是"点完文字就没了"：
+
+       0–90ms   按钮缩一下（按下感）
+       90ms     圈圈填绿、对勾描出来、两圈涟漪荡开
+       0–520ms  整行扫一道绿、标题划一道线、慢慢淡下去
+       520ms    真正落库 + 重画（这时行已经"演完"了）
+
+     两个例外：
+       · 落点带二级的任务，点完成会先弹「落到哪一支」，那一下不能演打勾（会误导），
+         直接把选择框弹出来；
+       · prefers-reduced-motion 的人不做动画，一点就落库。
+     ========================================================== */
+
+  /* 与 completeTask 里的判断保持一致：这次点完成会不会先弹二级选择框 */
+  function willAskBranch(task) {
+    var store = S.storeById(task.storeId);
+    if (!store) return false;
+    var p = C.stageSplit(task.stage || '');
+    var tIdx = stageIndex(p.base);
+    var curIdx = stageIndex(C.stageSplit(store.stage).base);
+    var ahead = tIdx >= 0 && tIdx > curIdx;
+    return ahead && subsOfStage(p.base).length > 0 && !p.sub;
+  }
+
+  function playComplete(el, task) {
+    var row = el && el.closest ? el.closest('tr') : null;
+    var reduce = false;
+    try {
+      reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    } catch (e) {}
+
+    if (reduce || !row || willAskBranch(task) || row.classList.contains('is-completing')) {
+      completeTask(task);
+      return;
+    }
+
+    row.classList.add('is-completing');
+    el.classList.add('is-pressing');
+
+    setTimeout(function () {
+      el.classList.remove('is-pressing');
+      el.classList.add('is-done');
+    }, 90);
+
+    setTimeout(function () { completeTask(task); }, 640);
   }
 
   /* ================= 重开：把这次完成退回去 =================
@@ -1264,7 +1324,7 @@ window.Pages.tasks = (function () {
       else if (act === 'tpl') openTemplates();
       else if (act === 'edit' && task) openForm(task);
       else if (act === 'push' && task) {
-        completeTask(task);
+        playComplete(el, task);
       } else if (act === 'snooze' && task) {
         var snDays = S.snoozeTask(task.id, 3);
         var snDue = S.suggestDateOf(task);

@@ -615,6 +615,108 @@
 .tlink.danger { color: var(--red); }
 .tlink.danger:hover { background: var(--red-soft); }
 
+/* ================= 完成按钮：这是最重的动作，给它一套专属反馈 =================
+   静止：空心圆圈 + 「完成」；悬停：圈变绿、底变浅绿；
+   点下：缩一下 → 圈填绿 + 对勾描出来 + 两圈涟漪 → 整行扫一道绿、标题划线、淡出。
+   时间轴写在 page-tasks.js 的 playComplete() 里，动画全在这里。 */
+.tlink-push {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 9px 0 5px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  background: transparent;
+  font-weight: 600;
+  transition: background .16s ease, border-color .16s ease, box-shadow .16s ease,
+              transform .12s ease, color .16s ease;
+}
+.tlink-push:hover {
+  background: var(--green-soft);
+  border-color: #b6e7cf;
+  box-shadow: 0 5px 12px -8px rgba(10, 165, 100, .95);
+}
+.tlink-push:hover .tc-label { color: #078552; }
+
+/* 按下去的那一刻（还没松手）圈就动起来：纯 CSS 的 :active，不用等 JS，
+   手感上「我的手指被按钮接住了」；松手后由 .is-pressing 接 90ms 的班 */
+.tlink-push:active { transform: scale(.95); }
+.tlink-push:active .tc-ring {
+  stroke: var(--green);
+  stroke-dasharray: 20 34;
+  transform-origin: 12px 12px;
+  animation: tkRingSpin .5s linear infinite;
+}
+
+.tlink-push .tk-check {
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  line-height: 0;
+}
+.tlink-push .tk-check svg { width: 15px; height: 15px; overflow: visible; }
+.tlink-push .tc-ring {
+  stroke: #c3cddf;
+  stroke-width: 1.7;
+  transition: stroke .18s ease, fill .18s ease;
+}
+.tlink-push .tc-tick {
+  stroke: #fff;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 14;
+  stroke-dashoffset: 14;
+  transition: stroke-dashoffset .3s cubic-bezier(.3, .9, .3, 1) .04s;
+}
+.tlink-push:hover .tc-ring { stroke: var(--green); }
+
+/* 按下：圈先亮成一圈转动的弧，0.09 秒，短到不烦人 */
+.tlink-push.is-pressing { transform: scale(.94); }
+.tlink-push.is-pressing .tc-ring {
+  stroke: var(--green);
+  stroke-dasharray: 20 34;
+  transform-origin: 12px 12px;
+  animation: tkRingSpin .5s linear infinite;
+}
+
+/* 打勾完成态 */
+.tlink-push.is-done {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+  box-shadow: 0 6px 14px -8px rgba(10, 165, 100, 1);
+}
+.tlink-push.is-done .tc-label { color: #fff; }
+.tlink-push.is-done .tc-ring { stroke: var(--green); fill: var(--green); }
+.tlink-push.is-done .tc-tick { stroke: #fff; stroke-dashoffset: 0; }
+.tlink-push.is-done .tk-check { animation: tkPop .34s cubic-bezier(.34, 1.56, .64, 1); }
+.tlink-push.is-done::before,
+.tlink-push.is-done::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 20px;
+  border: 1.5px solid var(--green);
+  pointer-events: none;
+  animation: tkRipple .62s ease-out forwards;
+}
+.tlink-push.is-done::after { animation-delay: .11s; opacity: .6; }
+
+@keyframes tkRingSpin { to { transform: rotate(360deg); } }
+@keyframes tkPop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+@keyframes tkRipple {
+  0% { opacity: .9; transform: scale(.92); }
+  100% { opacity: 0; transform: scale(1.55); }
+}
+
 /* 逾期行多出来的「+3天」：不是我们的原因 / 老板不着急，往后放 3 天再提醒 */
 .tlink-snooze {
   color: var(--orange);
@@ -2599,6 +2701,35 @@
 .sk-tbl tbody tr:hover td:first-child { border-left-color: var(--primary); }
 .sk-tbl tbody tr:hover .sk-task-title { color: var(--primary); }
 .sk-task-title { font-size: 12.5px; color: var(--text); }
+
+/* 打完勾那一瞬：标题从左往右划一道线（线宽 0 → 100%） */
+.sk-tbl .sk-task-title { position: relative; }
+.sk-tbl .sk-task-title::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 54%;
+  height: 1.5px;
+  width: 0;
+  border-radius: 2px;
+  background: currentColor;
+  opacity: .55;
+  transition: width .32s ease;
+}
+
+/* 正在完成的那一行：绿从左扫过去 + 整行淡下去（640ms 后会被重画替换） */
+.sk-tbl tbody tr.is-completing {
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(220, 247, 234, .95) 0%, rgba(220, 247, 234, 0) 76%);
+  animation: tkRowDone .64s ease-out forwards;
+}
+.sk-tbl tbody tr.is-completing .sk-task-title { color: var(--text-3); }
+.sk-tbl tbody tr.is-completing .sk-task-title::after { width: 100%; }
+@keyframes tkRowDone {
+  0% { opacity: 1; }
+  68% { opacity: 1; }
+  100% { opacity: .35; }
+}
 .sk-prio { margin-top: 2px; font-size: 10px; color: var(--red); }
 .sk-body-empty { padding: 14px 2px 4px; font-size: 11.8px; color: var(--text-3); line-height: 1.7; }
 
@@ -2910,8 +3041,8 @@ body.sm-sorting,
 body.sm-sorting * { cursor: grabbing !important; user-select: none !important; }
 
 /* ================= 完成清单（门店阶段自动往前走） =================
-   点「完成」不再弹「选阶段」的大弹窗，只有落点带二级时才问一句是哪一支。 */
-.tlink-push { font-weight: 600; }
+   点「完成」不再弹「选阶段」的大弹窗，只有落点带二级时才问一句是哪一支。
+   按钮外观 / 打勾动效在文件上面 .tlink-push 那一段。 */
 
 /* 当前 → 完成后：一行说清这次点完成门店往哪儿走 */
 .cm-flow {
