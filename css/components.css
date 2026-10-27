@@ -4003,3 +4003,16 @@ body.sm-sorting * { cursor: grabbing !important; user-select: none !important; }
   font-size: 12.5px;
   color: var(--text-3);
 }
+
+/* 首页「团队工作台」卡：人多时列表限高，卡内上下滑动看（z117）
+   300px ≈ 6 行（每行 48px + 2px 间距），超出部分滚动，不把首页拉长 */
+.team-list-scroll {
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: #d7dfeb transparent;
+}
+.team-list-scroll::-webkit-scrollbar { width: 6px; }
+.team-list-scroll::-webkit-scrollbar-thumb { background: #d7dfeb; border-radius: 3px; }
+.team-list-scroll::-webkit-scrollbar-track { background: transparent; }
