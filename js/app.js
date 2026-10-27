@@ -544,12 +544,6 @@ window.App = (function () {
         window.UI.toast('已把本地 ' + r.imported + ' 家门店同步到云端', 'success');
       }
 
-      /* 筹建任务清单在别处改过 → 进系统时已经自动把新任务补到老门店，报一句账 */
-      if (r && r.tplSync && r.tplSync.added > 0) {
-        window.UI.toast('筹建清单有新任务，已补到 ' + r.tplSync.stores + ' 家已建门店（共 '
-          + r.tplSync.added + ' 条）', 'success');
-      }
-
       if (r && r.empty) {
         window.UI.toast('还没有数据，去「门店管理」添加第一家门店', 'info');
       }

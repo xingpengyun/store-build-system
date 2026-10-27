@@ -895,7 +895,6 @@ window.Store = (function () {
           return window.Cloud.importAll(local, onProgress).then(function () {
             state = normalized(JSON.parse(JSON.stringify(local)));
             alignTaskOwners();      /* 搬上来的老数据也按门店负责人收敛一次 */
-            ensureTemplatesApplied();   /* 搬上来的老门店同样补齐清单里的新任务 */
             markInitialized();
             cacheLocal();
             return { imported: local.stores.length, seeded: false };
@@ -916,13 +915,11 @@ window.Store = (function () {
          同一个人的名字下会挂着好几家别人负责的店，进系统先对齐一次。
          对齐后第二次就是 0 条，不会反复写云端。 */
       alignTaskOwners();
-      /* 清单变过（哪怕是在别的电脑 / 旧版页面里改的）→ 老门店一起补齐，别只补以后新建的 */
-      var tplSync = ensureTemplatesApplied();
       cacheLocal();
       snapshotSettings('load');   /* 每次进系统都留一份配置快照，误删可找回 */
       /* 刚才贴回来的改动，趁现在把队列补发掉 */
       flushOutbox();
-      return { imported: 0, seeded: false, tplSync: tplSync };
+      return { imported: 0, seeded: false };
     }).catch(function (e) {
       /* 网络失败 → 退回本地缓存，离线可用 */
       online = false;
@@ -1015,7 +1012,6 @@ window.Store = (function () {
         syncLastStamp = nextStamp;
         state = next;
         alignTaskOwners();           /* 别人还用旧版按角色派活时，拉回来也对齐一次 */
-        ensureTemplatesApplied();    /* 清单在别的电脑改过 → 这台机器拉到新清单也把老门店补齐 */
         cacheLocal();
         if (syncOnChange) syncOnChange();
       });
@@ -2706,31 +2702,8 @@ window.Store = (function () {
     if (createdTasks.length) pushMany('tasks', createdTasks);
     if (changedTasks.length || createdTasks.length) cacheLocal();
 
-    /* 记下「这一版清单已经落实到门店了」。下次打开系统靠它判断要不要补，
-       模板没变就什么都不做 —— 免得用户手动删掉的任务被反复重建。 */
-    setSetting('tplApplied', JSON.parse(JSON.stringify(newList || [])));
-
     out.stores = Object.keys(storesHit).length;
     return out;
-  }
-
-  /* 清单的「指纹」：标题 / 阶段 / 天数 / id 任一变，指纹就变 */
-  function tplSnapshotOf(list) {
-    return (list || []).map(function (t) {
-      return [t.id || '', String(t.title || '').trim(), t.stage || '', Number(t.before) || 0].join('\u0001');
-    }).join('\u0002');
-  }
-
-  /* 进系统时对一次账：清单变过 → 自动把差异补到所有已建门店（2026-10-27 用户要求）。
-     以前只在「清单弹窗里点保存」那一刻同步，别的路径会漏：
-     在旧版页面里改的、在另一台电脑改的、保存时断网的 —— 老门店就一直缺那条活。
-     现在不论清单是哪来的，只要和上次落实的不一样，进系统就自动补齐。 */
-  function ensureTemplatesApplied() {
-    var cur = templates();
-    var prev = state.settings && state.settings.tplApplied;
-    var prevList = Array.isArray(prev) ? prev : [];
-    if (tplSnapshotOf(cur) === tplSnapshotOf(prevList)) return null;
-    return syncTemplatesToStores(prevList, cur);
   }
 
   /* ---------------- 到货物料清单（设置里可改） ----------------
