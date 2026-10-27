@@ -146,6 +146,7 @@ window.Pages.stores = (function () {
           '<select class="select" name="ownerId">' +
             UI.options(S.getState().members, s.ownerId || '', 'id', 'name') +
           '</select>' +
+          (isNew ? '' : '<div class="field-hint" data-owner-hint style="display:none"></div>') +
         '</div>' +
         '<div class="field"><label>阶段进度 <span class="field-sub">按阶段自动算，不用填</span></label>' +
           '<div data-prog-preview>' + progPreviewHtml(s.stage || (C.STAGES[0] || {}).key) + '</div>' +
@@ -218,6 +219,28 @@ window.Pages.stores = (function () {
           });
         }
 
+        /* 换负责人：在保存前就把话说明白 —— 这家店没做完的任务会一起转过去。
+           不弹二次确认（弹窗是单例，会把正在编辑的表单顶掉），改成随下拉变化的内联提示。 */
+        var ownerSel = rootEl.querySelector('[name="ownerId"]');
+        var ownerHint = rootEl.querySelector('[data-owner-hint]');
+        function paintOwnerHint() {
+          if (!ownerSel || !ownerHint || !store) return;
+          if (ownerSel.value === store.ownerId) {
+            ownerHint.style.display = 'none';
+            ownerHint.textContent = '';
+            return;
+          }
+          var n = S.openTaskCountOfStore(store.id, ownerSel.value);
+          ownerHint.style.display = '';
+          ownerHint.textContent = n
+            ? '这家店还有 ' + n + ' 条没做完的任务，保存后一并转给新负责人（已完成的记录不动）。'
+            : '这家店没有待转的任务，换人只影响以后新派的活。';
+        }
+        if (ownerSel && ownerHint) {
+          ownerSel.addEventListener('change', paintOwnerHint);
+          paintOwnerHint();
+        }
+
         rootEl.querySelector('[data-act="save"]').onclick = function () {
           var name = UI.formValue(rootEl, 'name');
           if (!name) {
@@ -249,13 +272,19 @@ window.Pages.stores = (function () {
           } else {
             var before = store.stage;
             var forward = S.stageOrder(payload.stage) > S.stageOrder(before);
+            /* 换负责人前先数清楚：这次要跟着转走的未完成任务有几条（已完成的不算） */
+            var ownerChanged = !!payload.ownerId && payload.ownerId !== store.ownerId;
+            var movedCount = ownerChanged ? S.openTaskCountOfStore(store.id, payload.ownerId) : 0;
+            var newOwnerName = (S.memberById(payload.ownerId) || {}).name || '新负责人';
             S.updateStore(store.id, payload);
 
             /* 阶段往前挪了：沿「已完成任务」落点连续推进，把已经做完的格子越过去
                （推进到某一格、发现它已做完 → 继续跳到下一格）。越过了就右下角弹小卡片。 */
             var jumped = forward ? S.advanceStore(store.id) : null;
 
-            UI.toast('门店信息已更新', 'success');
+            UI.toast(movedCount
+              ? '门店信息已更新，' + movedCount + ' 条未完成任务已转给 ' + newOwnerName
+              : '门店信息已更新', 'success');
             if (jumped) {
               UI.stagePop({
                 store: jumped.store ? jumped.store.name : payload.name,

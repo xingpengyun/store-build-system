@@ -1637,14 +1637,44 @@ window.Store = (function () {
     var s = storeById(id);
     if (!s) return null;
     var oldOpen = s.openDate;
+    var oldOwner = s.ownerId;
     Object.keys(patch).forEach(function (k) { s[k] = patch[k]; });
     if (patch.progress != null) s.progress = U.clamp(Number(patch.progress) || 0, 0, 100);
     push('stores', s);
     cacheLocal();
 
+    /* 换负责人：这家店「没做完」的任务跟着转过去。
+       谁负责这家店，这店的待办就该在谁名下 —— 否则换了人，活还挂在原来那个人身上，
+       团队页的待办数就成了假的。已完成的（status==='done'）一律不动，历史归属不改写。 */
+    if (patch.ownerId != null && patch.ownerId !== oldOwner) {
+      reassignStoreTasks(id, patch.ownerId);
+    }
+
     /* 开业日变了（含清空）：这家店的任务建议完成日全部重算 */
     if (patch.openDate != null && patch.openDate !== oldOpen) resyncTaskDates(id);
     return s;
+  }
+
+  /* 这家店还有几条没做完的任务（换负责人前用它说清楚会转几条）。
+     exceptOwnerId：已经在这个人名下的不算，避免重复计数、toast 数字虚高 */
+  function openTaskCountOfStore(storeId, exceptOwnerId) {
+    return state.tasks.filter(function (t) {
+      return t.storeId === storeId && t.status !== 'done' &&
+        (!exceptOwnerId || t.assigneeId !== exceptOwnerId);
+    }).length;
+  }
+
+  /* 把一家店「没做完」的任务转给新负责人；已完成的不动。返回实际转了几条。 */
+  function reassignStoreTasks(storeId, newOwnerId) {
+    if (!storeId || !newOwnerId) return 0;
+    var hit = state.tasks.filter(function (t) {
+      return t.storeId === storeId && t.status !== 'done' && t.assigneeId !== newOwnerId;
+    });
+    if (!hit.length) return 0;
+    hit.forEach(function (t) { t.assigneeId = newOwnerId; });
+    pushMany('tasks', hit);
+    cacheLocal();
+    return hit.length;
   }
 
   function removeStore(id) {
@@ -3471,6 +3501,8 @@ window.Store = (function () {
     snoozeMap: snoozeMap,
     suggestFor: suggestFor,
     resyncTaskDates: resyncTaskDates,
+    reassignStoreTasks: reassignStoreTasks,
+    openTaskCountOfStore: openTaskCountOfStore,
     isEndStage: isEndStage,
     stageProgress: stageProgress,
     taskProgress: taskProgress,
