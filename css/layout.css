@@ -379,3 +379,66 @@ body.booting .app { visibility: hidden; }
   .nav { flex-direction: row; }
   .nav-item span { display: none; }
 }
+
+/* ---------------- 顶栏账号菜单 ----------------
+   点头像弹出的小面板：谁都能在这里「退出登录」，
+   管理员多一项「系统设置」。挂在 .topbar-user 里，靠 position:relative 定位。 */
+.topbar-user { position: relative; }
+.topbar-user.is-open { background: var(--primary-soft); }
+.user-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 60;
+  width: 196px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: 0 10px 26px rgba(19, 28, 49, .13);
+  animation: umIn .16s ease both;
+}
+@keyframes umIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.um-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 8px 9px;
+}
+.um-who { min-width: 0; line-height: 1.35; }
+.um-who b {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.um-who i { font-style: normal; font-size: 11px; color: var(--text-3); }
+.um-sep { height: 1px; margin: 4px 6px; background: var(--line-2); }
+.um-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 9px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: background .14s, color .14s;
+}
+.um-item svg { width: 15px; height: 15px; flex: none; color: var(--text-3); }
+.um-item:hover, .um-item:focus-visible { background: var(--primary-soft); color: var(--primary); }
+.um-item:hover svg, .um-item:focus-visible svg { color: var(--primary); }
+.um-item:focus-visible { outline: none; }
+.um-danger:hover, .um-danger:focus-visible { background: var(--red-soft); color: var(--red); }
+.um-danger:hover svg, .um-danger:focus-visible svg { color: var(--red); }

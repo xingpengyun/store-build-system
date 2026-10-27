@@ -156,7 +156,7 @@ window.App = (function () {
       el.style.background = art ? (UI.ANIMALS[art].bg || color) : color;
       el.innerHTML = art ? UI.animalSvg(art) : U.esc(String(uname).slice(-2));
     }
-    el.title = uname + ' · 点击去设置';
+    el.title = uname + ' · 点开有账号菜单';
   }
 
   function updateChrome() {
@@ -187,7 +187,7 @@ window.App = (function () {
     /* 头像的悬浮提示：管理员才能「点击去设置」，别人就只写当前登录人 */
     var topUserEl = document.querySelector('.topbar-user');
     if (topUserEl) {
-      topUserEl.title = S.canSettings(myName()) ? '当前登录人 · 点击去设置' : '当前登录人';
+      topUserEl.title = S.canSettings(myName()) ? '当前登录人 · 点开可去设置或退出' : '当前登录人 · 点开可退出';
     }
 
     /* 待发送角标：断网时改的东西进了队列，顶栏挂个数字，别让用户以为已经存上去了 */
@@ -381,13 +381,14 @@ window.App = (function () {
 
     var topUser = document.querySelector('.topbar-user');
     if (topUser) {
-      topUser.addEventListener('click', function () {
-        /* 没权限的人点头像：别跳到设置页再被弹回来，直接给个提示 */
-        if (!S.canSettings(myName())) {
-          window.UI.toast('「系统设置」只有管理员能进', 'error', 2400);
-          return;
-        }
-        go('settings');
+      topUser.addEventListener('click', function (e) {
+        e.stopPropagation();
+        toggleUserMenu();
+      });
+      /* 点别处 / 按 Esc 收起来；不然菜单会一直挂在那儿挡视线 */
+      document.addEventListener('click', function () { closeUserMenu(); });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeUserMenu();
       });
     }
 
@@ -631,6 +632,81 @@ window.App = (function () {
         });
       }
     });
+  }
+
+  /* ---------------- 顶栏账号菜单 ----------------
+     以前点头像是「管理员去设置 / 其他人弹一句没权限」—— 普通成员连退出的地方都没有，
+     因为「退出登录」只写在系统设置页，而那一页只有管理员能进。
+     现在点开是一个小菜单：谁都能看到「退出登录」，管理员多一项「系统设置」。 */
+  var userMenuEl = null;
+
+  function closeUserMenu() {
+    if (userMenuEl && userMenuEl.parentNode) userMenuEl.parentNode.removeChild(userMenuEl);
+    userMenuEl = null;
+    var host = document.querySelector('.topbar-user');
+    if (host) host.classList.remove('is-open');
+  }
+
+  function memberOf(uname) {
+    var list = (S.getState() || {}).members || [];
+    var nm = String(uname || '').trim();
+    for (var i = 0; i < list.length; i++) {
+      if (String(list[i].name || '').trim() === nm) return list[i];
+    }
+    return null;
+  }
+
+  /* 头像 HTML：跟顶栏那颗走同一套规则（配了动物画动物，没配就名字后两字） */
+  function avatarHtml(uname, size) {
+    var me = memberOf(uname);
+    var art = (me && me.animal && UI.ANIMALS[me.animal]) ? me.animal : '';
+    var color = (me && me.color) || '#3f6bf5';
+    var bg = art ? (UI.ANIMALS[art].bg || color) : color;
+    return '<span class="avatar ' + (size || 'avatar-md') + (art ? ' avatar-art' : '') +
+      '" style="background:' + U.esc(bg) + '">' +
+      (art ? UI.animalSvg(art) : U.esc(String(uname || '我').slice(-2))) + '</span>';
+  }
+
+  function toggleUserMenu() {
+    if (userMenuEl) { closeUserMenu(); return; }
+    var host = document.querySelector('.topbar-user');
+    if (!host) return;
+
+    var uname = myName() || '我';
+    var admin = S.canSettings(uname);
+
+    var el = document.createElement('div');
+    el.className = 'user-menu';
+    el.setAttribute('role', 'menu');
+    el.innerHTML =
+      '<div class="um-head">' + avatarHtml(uname, 'avatar-md') +
+        '<div class="um-who"><b>' + U.esc(uname) + '</b><i>' + (admin ? '管理员' : '团队成员') + '</i></div>' +
+      '</div>' +
+      (admin
+        ? '<button class="um-item" type="button" role="menuitem" data-um="settings">' +
+            UI.icon('gear') + '系统设置</button>'
+        : '') +
+      '<div class="um-sep"></div>' +
+      '<button class="um-item um-danger" type="button" role="menuitem" data-um="logout">' +
+        UI.icon('exit') + '退出登录</button>';
+
+    el.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var item = e.target.closest ? e.target.closest('[data-um]') : null;
+      if (!item) return;
+      var act = item.getAttribute('data-um');
+      closeUserMenu();
+      if (act === 'settings') go('settings');
+      else if (act === 'logout') logout();
+    });
+
+    host.appendChild(el);
+    userMenuEl = el;
+    host.classList.add('is-open');
+    /* 焦点故意留在触发它的头像按钮上，不往菜单里挪：
+       - 普通成员只有「退出登录」一项，焦点进去就把它顶成红色高亮，看着像已被按下；
+       - 面板本身不可点，给它套焦点环也是多余的。
+       菜单是接在头像后面的，键盘按 Tab 照样进得到菜单项；Esc 由 document 统一接。 */
   }
 
   function init() {

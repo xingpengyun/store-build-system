@@ -2307,3 +2307,49 @@ z123 改成「本机缓存 / 数据在云端，本机只留缓存」——就是
 （`newToken()` = 时间戳 + 随机串），结果写进去一个字符串 `NaN`。
 虽然前端只拿它做"相等比较"、功能上能自愈，但这是个脏值，已用同格式的新 token 覆盖修正。
 **以后动 rev，只能用 `newToken()` 那种格式生成，绝对不要做数值运算。**
+
+---
+
+## z126 · 顶栏头像下拉菜单：普通成员也能退出登录（2026-10-27）
+
+用户：「其他员工没有退出账号的按键」。
+
+### 根因
+
+「退出登录」只写在**系统设置页**里，而设置页只有管理员进得去（`canSettings()`），
+所以普通成员在整个系统里找不到任何退出入口 —— 想换个人用，只能去清浏览器缓存。
+
+### 改法
+
+顶栏那颗头像从「没权限弹 toast」改成**下拉小菜单**：
+
+- 面板头：头像 + 姓名 + 身份（`管理员` / `团队成员`）
+- 管理员多一项「系统设置」（点了跳 `#/settings`）
+- 所有人都有「退出登录」（红色，走原有 `logout()` 的二次确认）
+- 收起方式三种：点面板外 / 按 Esc / 再点一次头像；点页面空白和切路由也会关
+
+改动文件：`js/app.js`（`userMenuEl` / `closeUserMenu` / `memberOf` / `avatarHtml` / `toggleUserMenu`）、
+`js/ui.js`（新增 `gear` / `exit` 两个图标）、`css/layout.css`（`.user-menu` 全套）、
+`index.html` 版本号 → `20261027z126`。
+
+### 两个看着小、其实卡了半天的点
+
+1. **打开时别把焦点放进第一项。** 一开始我 `first.focus()`，普通成员只有「退出登录」一项，
+   一打开就是一块红色高亮，看着像已经按下了。改成把焦点挪到面板容器 → 又撞上
+   `theme.css` 的全局无障碍规范 `[tabindex]:focus-visible { outline: 2px solid var(--primary) }`，
+   整块面板套了个蓝框，而这条规范是**项目统一要的**，不该为这点事去覆盖它。
+   最终定案：**焦点就留在触发它的头像按钮上**，不往菜单里挪 —— 菜单是接在头像后面的，
+   键盘按 Tab 照样进得去；Esc 由 document 统一接。既没红块也没蓝框。
+2. **桩页的登录人必须在成员名单里。** 截图用的假数据里没有「赵六」，
+   `meAllowed()` 判定他已被移出团队，一进页面就弹「登录已失效」，把整页盖住。
+   `mk-shot-boot.js` 已改成「登录人不在名单就自动补进 `members`」，以后截谁的图都不会再踩。
+
+### 验证
+
+- 新增 `.workbuddy/probe-user-menu.js` **20/20**（真 Edge）：管理员两项、普通成员只有退出、
+  点「系统设置」跳到位、点「退出登录」弹确认、点取消**不登出**、三种收起方式、全程 0 报错
+- 回归 14 套全绿：user-menu 20/20、tpl-noauto 10/10、tpl-sync 23、owner-align 10、
+  owner-reassign 14、store-form 21、build-date 8、settings-fold 14、avatar 22、session 16、
+  fast-boot 25、write-queue 31/31、ship 27/27、art 22/22
+- 截图：`.workbuddy/menu-admin-z126.png`（张三·管理员）、`.workbuddy/menu-guest-z126.png`（赵六·团队成员），
+  另有 3 倍放大图 `.workbuddy/zoom-menu-admin.png` 核对间距
