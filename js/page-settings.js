@@ -35,7 +35,6 @@ window.Pages.settings = (function () {
         '<h1>系统设置</h1>' +
         '<p>数据存放在云端，团队共享同一份；本机只保留一份缓存</p>' +
       '</div>' +
-      '<button class="btn" data-act="logout">退出登录</button>' +
     '</div>' +
 
     '<section class="home-grid-2 fade-up" style="animation-delay:.05s">' +
@@ -613,11 +612,9 @@ window.Pages.settings = (function () {
       if (!el) return;
       var act = el.getAttribute('data-act');
 
-      if (act === 'logout') {
-        App.logout();
-      }
-
-      else if (act === 'goHome') {
+      /* 「退出登录」不放在这一页了：顶栏头像菜单里谁都能点到（z126），
+         这里再放一个同一个功能的按钮，只有管理员看得到，纯属两套入口 */
+      if (act === 'goHome') {
         App.go('home');
       }
 

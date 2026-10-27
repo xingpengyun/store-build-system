@@ -2360,3 +2360,35 @@ z123 改成「本机缓存 / 数据在云端，本机只留缓存」——就是
   ③ 全程 0 报错。线上 `index.html` 已是 `20261027z126`，`js/app.js` 里 `toggleUserMenu` 在位
 - **探针小坑**：登录页姓名框会用 `lastName()` 预填上次登录人，探针里直接 `type` 会变成
   「于欣邢鹏昀」这种拼接值，再被 `meAllowed()` 判定不在名单 —— 换人登录前要先清空输入框。
+
+---
+
+## z127 · 摘掉系统设置页那个「退出登录」按钮（2026-10-27）
+
+用户看着设置页右上角那个按钮说「主账号的这个可以取消了」。
+
+z126 之后**退出登录有两套入口**：顶栏头像菜单（谁都能点）+ 系统设置页右上角（只有管理员看得见）。
+后者是历史遗留 —— 当初正因为普通成员进不了设置页，才在顶栏补了菜单。现在留着只是重复。
+
+### 改了什么
+
+- `js/page-settings.js`：删掉页头那个 `<button data-act="logout">`，连带删掉点击分支里
+  `if (act === 'logout') App.logout();`（后面的 `else if` 链顺势收成 `if`）
+- `index.html` 版本号 → `20261027z127`
+- 退出登录能力本身没动：`App.logout()` 仍在，头像菜单照旧调它
+
+### 验证
+
+- 新增 `.workbuddy/probe-settings-logout.js` **10/10**：设置页里 `[data-act="logout"]` 已消失、
+  整页文字里不再出现「退出登录」、基本信息表单 / 筹建清单 / 权限卡片都还在、
+  头像菜单里「退出登录」仍在、从菜单进设置页正常、0 报错
+- 回归 **15 套全绿**（新加的 settings-logout 10、user-menu 20、tpl-noauto 10、tpl-sync 23、
+  owner-align 10、owner-reassign 14、store-form 21、build-date 8、settings-fold 14、avatar 22、
+  session 16、fast-boot 25、write-queue 31、ship 27、art 22）
+
+### 顺带查清的一件事（不是 bug）
+
+探针直接在地址栏带 `#/settings` 打开时会被弹回首页 —— 因为桩页的本地缓存里没写 `access`，
+第一帧 `canSettings()` 判不出版主，就走了「没权限送回首页」。
+线上真实缓存带 `access`，实测管理员带 `#/settings` 刷新**停在设置页不跳**（表单在、说明在）。
+结论：桩页缺陷，不是产品缺陷；探针改成「从头像菜单点进去」这条真实路径。
