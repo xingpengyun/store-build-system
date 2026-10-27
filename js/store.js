@@ -769,13 +769,13 @@ window.Store = (function () {
         enqueueMany((ids || list.map(function (x) { return x.id; })).map(function (id) {
           return { k: 'del', table: table, id: id };
         }));
-        if (window.UI) UI.toast('云端删除失败，' + list.length + ' 条已存进待发送队列', 'error');
       } else {
         enqueueMany(list.map(function (x) {
           return { k: 'put', table: table, id: x.id, row: x.row };
         }));
-        if (window.UI) UI.toast('云端连不上，' + list.length + ' 条改动已存进待发送队列', 'error');
       }
+      /* 2026-10-27：正式投用后不再弹红色「云端连不上」错误条吓同事 —— 改动静默
+         进待发送队列，状态由顶栏「离线模式」横幅 + 待发送角标承担，恢复后自动补发。 */
       return 0;
     }).then(function (n) {
       wqSending -= 1;
@@ -817,7 +817,7 @@ window.Store = (function () {
       online = false;
       console.error('[cloud] 设置保存失败', e);
       enqueue({ k: 'set', table: 'app_settings', id: 'main', value: value });
-      if (window.UI) UI.toast('云端连不上，设置已存进待发送队列，恢复后自动补发', 'error');
+      /* 同上：设置保存失败也静默进队列，不再弹红色错误条 */
       return false;
     });
   }
