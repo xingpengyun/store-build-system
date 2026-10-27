@@ -89,10 +89,16 @@ window.Pages.stores = (function () {
     if (s.province && provinceOptions.indexOf(s.province) < 0) provinceOptions.unshift(s.province);
 
     return '<form autocomplete="off">' +
+      /* ① 名称：整行，唯一必填 */
       '<div class="field">' +
         '<label>门店名称 <span class="req">*</span></label>' +
         '<input class="input" name="name" value="' + U.esc(s.name || '') + '" placeholder="例如：广州天河店" />' +
       '</div>' +
+
+      /* ② 地点：省份 + 门店地址。
+         原来地址单独占一整行、省份和开业日期并排（右边还带两行说明），
+         结果左边省份底下空一大块、下一行只剩左半边 —— 看着就是不齐。
+         现在按「同类信息同一行」配对，每行两格都有内容，没有半行。 */
       '<div class="field-row">' +
         '<div class="field"><label>省份</label>' +
           UI.comboHtml({
@@ -103,11 +109,24 @@ window.Pages.stores = (function () {
             placeholder: '打一个字，如「广」'
           }) +
         '</div>' +
-        '<div class="field"><label>计划开业日期 <span class="dim">（没定可以先空着）</span></label>' +
-          '<input class="input" type="date" name="openDate" value="' + (s.openDate || '') + '" />' +
-          '<div class="dim" style="font-size:11px;margin-top:4px">填了才能倒推任务日期；空着时清单只显示「开业前 N 天」，不判逾期。</div>' +
+        '<div class="field"><label>门店地址 <span class="field-sub">选填</span></label>' +
+          '<input class="input" name="address" value="' + U.esc(s.address || '') + '" placeholder="例如：天河路 1 号" />' +
         '</div>' +
       '</div>' +
+
+      /* ③ 时间：计划开业日期 + 建店时间。两格都带同样长度的一行说明，高度一致 */
+      '<div class="field-row">' +
+        '<div class="field"><label>计划开业日期 <span class="field-sub">没定可以先空着</span></label>' +
+          '<input class="input" type="date" name="openDate" value="' + (s.openDate || '') + '" />' +
+          '<div class="field-hint">填了才能倒推任务日期；空着时只显示「开业前 N 天」，不判逾期。</div>' +
+        '</div>' +
+        '<div class="field"><label>建店时间 <span class="field-sub">选填</span></label>' +
+          '<input class="input" type="date" name="buildDate" value="' + (s.buildDate || '') + '" />' +
+          '<div class="field-hint">立项开始筹建的时间，和开业日期分开记录。</div>' +
+        '</div>' +
+      '</div>' +
+
+      /* ④ 状态：当前阶段 + 风险等级 */
       '<div class="field-row">' +
         '<div class="field"><label>当前阶段</label>' +
           '<select class="select" name="stage">' +
@@ -118,24 +137,26 @@ window.Pages.stores = (function () {
           '<select class="select" name="risk">' + riskOptions(s.risk || 'normal') + '</select>' +
         '</div>' +
       '</div>' +
+
+      /* ⑤ 人 + 进度：负责人 + 只读进度（进度条压成一行，和下拉同高，
+         说明文字放到框外，避免原来「左边三行字、右边一个框」的高度错位） */
       '<div class="field-row">' +
-        '<div class="field"><label>阶段进度 <span class="dim">（按所在阶段自动算，不用填）</span></label>' +
-          '<div class="prog-prev" data-prog-preview>' + progPreviewHtml(s.stage || (C.STAGES[0] || {}).key) + '</div>' +
-        '</div>' +
         '<div class="field"><label>门店负责人</label>' +
           '<select class="select" name="ownerId">' +
             UI.options(S.getState().members, s.ownerId || '', 'id', 'name') +
           '</select>' +
         '</div>' +
+        '<div class="field"><label>阶段进度 <span class="field-sub">按阶段自动算，不用填</span></label>' +
+          '<div data-prog-preview>' + progPreviewHtml(s.stage || (C.STAGES[0] || {}).key) + '</div>' +
+        '</div>' +
       '</div>' +
-      '<div class="field"><label>门店地址</label>' +
-        '<input class="input" name="address" value="' + U.esc(s.address || '') + '" placeholder="选填" />' +
-      '</div>' +
-      '<div class="field"><label>备注</label>' +
-        '<textarea class="textarea" name="remark" placeholder="选填，比如选址情况、特殊要求">' + U.esc(s.remark || '') + '</textarea>' +
+
+      /* ⑥ 备注：整行 */
+      '<div class="field"><label>备注 <span class="field-sub">选填</span></label>' +
+        '<textarea class="textarea" name="remark" placeholder="选址情况、特殊要求等">' + U.esc(s.remark || '') + '</textarea>' +
       '</div>' +
       (isNew && S.templates().length
-        ? '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);margin-top:4px">' +
+        ? '<label class="form-check">' +
             '<input type="checkbox" name="autoTasks" checked /> 建店后自动派发清单里的 ' + S.templates().length + ' 条任务（不需要就取消勾选）' +
           '</label>'
         : '') +
@@ -152,9 +173,11 @@ window.Pages.stores = (function () {
       ? '收尾阶段不占进度，筹建部分已走完 → 100%'
       : p.ended
         ? '已经是最后一个筹建阶段，进度 100%'
-        : p.label + '，' + p.total + ' 个筹建阶段各占 ' + per + '%，推到最后一个就是 100%';
-    return UI.progress(p.pct) +
-      '<span class="prog-prev-tip">' + U.esc(tip) + '</span>';
+        : p.label + '，每格约 ' + per + '%，推到最后一格就是 100%';
+    /* 进度条单独占一行（和旁边的下拉框同高），说明文字放到框外统一走 .field-hint，
+       否则「左边三行小字 + 右边一个下拉」必然一高一矮。 */
+    return '<div class="prog-prev">' + UI.progress(p.pct) + '</div>' +
+      '<div class="field-hint">' + U.esc(tip) + '</div>';
   }
 
   /* 风险下拉需要正确的 value/label，单独生成 */
@@ -209,6 +232,7 @@ window.Pages.stores = (function () {
             risk: UI.formValue(rootEl, 'risk'),
             ownerId: UI.formValue(rootEl, 'ownerId'),
             openDate: UI.formValue(rootEl, 'openDate'),
+            buildDate: UI.formValue(rootEl, 'buildDate'),
             address: UI.formValue(rootEl, 'address'),
             remark: UI.formValue(rootEl, 'remark')
           };
@@ -456,6 +480,9 @@ window.Pages.stores = (function () {
           ? store.openDate + ' <span class="dim" style="font-weight:400">（' +
             (days >= 0 ? '还剩 ' + days + ' 天' : '已过 ' + (-days) + ' 天') + '）</span>'
           : '<span class="dim">未设置（任务只按「开业前 N 天」计，不算逾期）</span>') + '</div></div>' +
+        '<div class="d-item"><div class="d-label">建店时间</div><div class="d-val mono">' + (store.buildDate
+          ? store.buildDate
+          : '<span class="dim">未记录</span>') + '</div></div>' +
         '<div class="d-item"><div class="d-label">任务进度</div><div class="d-val">' +
           UI.progress(S.progressValue(store), null, S.progressTip(store)) +
           '<span class="dim" style="font-weight:400;margin-left:8px">' +

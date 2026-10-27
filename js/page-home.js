@@ -699,7 +699,7 @@ window.Pages.home = (function () {
           '<h3>团队工作台</h3><span class="card-sub">（' + st.team.length + '人）</span>' +
           '<div class="card-tools"><span class="link-more" data-go="team">全部成员 →</span></div>' +
         '</div>' +
-        '<div class="team-list">' + (teamHtml || UI.empty('还没有成员')) + '</div>' +
+        '<div class="team-list team-list-scroll">' + (teamHtml || UI.empty('还没有成员')) + '</div>' +
       '</div>' +
     '</section>' +
 

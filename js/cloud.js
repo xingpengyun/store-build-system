@@ -7,16 +7,14 @@ window.Cloud = (function () {
   'use strict';
 
   var CFG = {
-    /* 2026-10-26：发布链接换成 store-build-system-59240.app.workbuddy.host 后，
-       云端应用也随之换成「本目录自己的那一个」。云端只认自己那个域名
-       （exact Origin match），所以 endpoint 必须与页面同源，否则跨域一律被拒，
-       浏览器只会报一句 TypeError: Failed to fetch，看不出真正原因。 */
-    endpoint: 'https://store-build-system-59240.app.workbuddy.host',
-    /* 唯一对外入口。本地双击 index.html 读不到云端（Origin 是 null，被 exact
-       Origin 校验拒掉），所以本地打开时页面要能把人指到这里来。 */
-    siteUrl: 'https://store-build-system-59240.app.workbuddy.host/?sharecode=SXM4622FRX',
-    oauthRelayBaseUrl: 'https://www.workbuddy.cn/v2/as/genie-baas/oauth',
-    publishableKey: 'wb' + 'pk_kHH92NSYCy3ebQEPX6VlMB' + '_' + 'MShDXDpQbnNzwyTa25pfOZSqKK2t2cQm'
+    /* 2026-10-27：后端从 WorkBuddy 云切到腾讯云 CloudBase PostgreSQL（用户自己名下）。
+       数据、权限、发布都不再绑定某台电脑 / 某个 WorkBuddy 应用。 */
+    env: 'efficient-tiglon-d0ejcn14037eba3',
+    region: 'ap-shanghai',
+    accessKey: 'eyJhbGciOiJSUzI1NiIsImtpZCI6ImM4Y2E2NDdiLTM3MzYtNGVlYi1iZDM2LTI2YzI5N2FjNjEyMCJ9.eyJpc3MiOiJodHRwczovL2VmZmljaWVudC10aWdsb24tZDBlamNuMTQwMzdlYmEzLmFwLXNoYW5naGFpLnRjYi1hcGkudGVuY2VudGNsb3VkYXBpLmNvbSIsInN1YiI6ImFub24iLCJhdWQiOiJlZmZpY2llbnQtdGlnbG9uLWQwZWpjbjE0MDM3ZWJhMyIsImV4cCI6NDA5Njc3Mzg3MiwiaWF0IjoxNzkzMDkwNjcyLCJub25jZSI6IjhWVW1Qb2hPUTdlWnFRV3pXZjdHT2ciLCJhdF9oYXNoIjoiOFZVbVBvaE9RN2VacVFXeldmN0dPZyIsIm5hbWUiOiJBbm9ueW1vdXMiLCJzY29wZSI6ImFub255bW91cyIsInByb2plY3RfaWQiOiJlZmZpY2llbnQtdGlnbG9uLWQwZWpjbjE0MDM3ZWJhMyIsIm1ldGEiOnsicGxhdGZvcm0iOiJQdWJsaXNoYWJsZUtleSJ9LCJyb2xlIjoiYW5vbiIsImlzX2Fub255bW91cyI6dHJ1ZSwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiYW5vbnltb3VzIiwicHJvdmlkZXJzIjpbImFub255bW91cyJdfSwidXNlcl9tZXRhZGF0YSI6eyJuYW1lIjoiQW5vbnltb3VzIn0sInVzZXJfdHlwZSI6IiIsImNsaWVudF90eXBlIjoiY2xpZW50X3VzZXIiLCJpc19zeXN0ZW1fYWRtaW4iOmZhbHNlfQ.yZDKgnfsuOF1ganzU7xgwk1FSzR_u7nKMQURVs6D2OH74BbjD7pPnrPhww6b_vG6mzhNgK-1JhkmiDJAfJCA6UO7QOmFI27wL4KT0dNbdFjGfxD2ydrz3h7mw5_o4-VxpY9PVjIk7jzKChJp4XynvUhiFBeYqzgwH_CI08Rr8GREThU9F6En2Pafw6Y-iAX23sdghXusXczCrgkYFzGI-OXElfCXy_292GKAXWSnK3g-WG-My5tVNht3FPLaNefrnjaQrg_cii9-JajF-qtv1Zxfr-O7jn34AUhtbGbLpAKYgVJY2KeLHVnDTaRKx5d0i2YnKy22qkS1DXZMVfletw',
+    auth: { detectSessionInUrl: true },
+    /* 唯一对外入口（CloudBase 静态托管默认域名） */
+    siteUrl: 'https://store-build-efficient-tiglon-d0ejcn14037eba3.webapps.tcloudbase.com'
   };
 
   var client = null;
@@ -219,8 +217,9 @@ window.Cloud = (function () {
 
   function api() {
     if (!client) {
-      if (!window.WorkBuddyCloud) throw new Error('云服务 SDK 未加载');
-      client = window.WorkBuddyCloud.createWorkBuddyCloud(CFG);
+      if (!window.cloudbase || !window.cloudbase.init) throw new Error('CloudBase SDK 未加载');
+      var app = window.cloudbase.init(CFG);
+      client = { database: app.rdb(), auth: app.auth };
     }
     return client;
   }
@@ -231,6 +230,11 @@ window.Cloud = (function () {
       throw new Error(e.message || e.kind || '云端请求失败');
     }
     return res ? res.data : null;
+  }
+
+  /* upsert 的冲突列：业务表主键是 id，配置表主键是 key */
+  function conflictOf(table) {
+    return table === 'app_settings' ? 'key' : 'id';
   }
 
   /* ---------------- 登录 ---------------- */
@@ -272,6 +276,7 @@ window.Cloud = (function () {
           progress: Number(s.progress) || 0,
           manager_id: s.ownerId || '',
           open_date: s.openDate || null,
+          build_date: s.buildDate || null,
           address: s.address || '',
           remark: s.remark || ''
         };
@@ -286,6 +291,7 @@ window.Cloud = (function () {
           progress: r.progress || 0,
           ownerId: r.manager_id || '',
           openDate: r.open_date || '',
+          buildDate: r.build_date || '',
           address: r.address || '',
           remark: r.remark || '',
           createdAt: String(r.created_at || '').slice(0, 10)
@@ -473,7 +479,7 @@ window.Cloud = (function () {
 
   function upsert(table, obj) {
     var row = MAP[table].toRow(obj);
-    return api().database.from(table).upsert(row).then(function (r) {
+    return api().database.from(table).upsert(row, { onConflict: conflictOf(table) }).then(function (r) {
       if (r.error) throw new Error(r.error.message || '保存失败');
       return true;
     });
@@ -488,7 +494,7 @@ window.Cloud = (function () {
     var done = 0;
     return batches.reduce(function (p, batch) {
       return p.then(function () {
-        return api().database.from(table).upsert(batch).then(function (r) {
+        return api().database.from(table).upsert(batch, { onConflict: conflictOf(table) }).then(function (r) {
           if (r.error) throw new Error(r.error.message || (table + ' 保存失败'));
           done += batch.length;
         });
@@ -540,7 +546,7 @@ window.Cloud = (function () {
   function saveSettings(settings, alertsRead) {
     var payload = JSON.stringify({ settings: settings, alertsRead: alertsRead || [] });
     return api().database.from('app_settings')
-      .upsert({ key: 'main', value: payload, updated_at: new Date().toISOString() })
+      .upsert({ key: 'main', value: payload, updated_at: new Date().toISOString() }, { onConflict: 'key' })
       .then(function (r) {
         if (r.error) throw new Error(r.error.message || '设置保存失败');
         return true;
@@ -598,7 +604,7 @@ window.Cloud = (function () {
       var token = newToken();
       try {
         api().database.from('app_settings')
-          .upsert({ key: REV_KEY, value: token, updated_at: new Date().toISOString() })
+          .upsert({ key: REV_KEY, value: token, updated_at: new Date().toISOString() }, { onConflict: 'key' })
           .then(function (r) { if (!r.error) lastRev = token; })
           .catch(function () { /* 换不成就退回全量拉，不影响数据正确性 */ });
       } catch (e) { /* 同上 */ }
@@ -634,7 +640,7 @@ window.Cloud = (function () {
 
     return batches.reduce(function (p, batch) {
       return p.then(function () {
-        return api().database.from(table).upsert(batch).then(function (r) {
+        return api().database.from(table).upsert(batch, { onConflict: conflictOf(table) }).then(function (r) {
           if (r.error) throw new Error(r.error.message || (table + ' 导入失败'));
           done += batch.length;
           if (onProgress) onProgress(done, rows.length);
@@ -720,7 +726,7 @@ window.Cloud = (function () {
     if (!op || !op.k) return Promise.resolve(true);
     var db = api().database;
     if (op.k === 'put') {
-      return db.from(op.table).upsert(op.row).then(function (r) {
+      return db.from(op.table).upsert(op.row, { onConflict: conflictOf(op.table) }).then(function (r) {
         if (r.error) throw new Error(r.error.message || '保存失败');
         return true;
       });
@@ -735,7 +741,7 @@ window.Cloud = (function () {
     }
     if (op.k === 'set') {
       return db.from('app_settings')
-        .upsert({ key: 'main', value: op.value, updated_at: new Date().toISOString() })
+        .upsert({ key: 'main', value: op.value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
         .then(function (r) {
           if (r.error) throw new Error(r.error.message || '设置保存失败');
           return true;

@@ -521,20 +521,18 @@
 }
 
 /* 门店表单里的「阶段进度」只读预览：进度条 + 一句说明，两行排 */
+/* 门店表单里的「阶段进度」只读预览：一条进度条，和旁边的下拉框一样高。
+   说明文字放到框外走 .field-hint，左右两列才不会一高一矮。 */
 .prog-prev {
   display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: 7px 10px;
+  align-items: center;
+  height: 34px;
+  padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--slate-soft);
 }
-.prog-prev-tip {
-  font-size: 11px;
-  line-height: 1.5;
-  color: var(--text-3);
-}
+.prog-prev .mini-progress { flex: 1; min-width: 0; }
 
 /* ---------------- 徽章 ---------------- */
 .badge {
@@ -789,9 +787,31 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 11px;
+  align-items: start;   /* 两格各自按内容高度顶对齐，别被拉伸出多余的空白 */
+  margin-bottom: 13px;  /* 行间距只由这里控制，行内字段不再自带 margin */
 }
+.field-row > .field { margin-bottom: 0; }
+.field-row:last-child { margin-bottom: 0; }
 /* 三个短字段并排（天气城市 / 温度兜底 / 天气兜底） */
 .field-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+/* 字段下面的一行说明：统一字号 / 行高 / 颜色。
+   以前是行内 style 拼的 dim，字号行高各写各的，两列之间就参差不齐。 */
+.field-hint {
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-3);
+}
+/* 表单里的单行勾选（新建门店时的「自动派发任务」） */
+.form-check {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
 
 .filter-bar {
   display: flex;
@@ -4003,3 +4023,16 @@ body.sm-sorting * { cursor: grabbing !important; user-select: none !important; }
   font-size: 12.5px;
   color: var(--text-3);
 }
+
+/* 首页「团队工作台」卡：人多时列表限高，卡内上下滑动看（z117）
+   300px ≈ 6 行（每行 48px + 2px 间距），超出部分滚动，不把首页拉长 */
+.team-list-scroll {
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: #d7dfeb transparent;
+}
+.team-list-scroll::-webkit-scrollbar { width: 6px; }
+.team-list-scroll::-webkit-scrollbar-thumb { background: #d7dfeb; border-radius: 3px; }
+.team-list-scroll::-webkit-scrollbar-track { background: transparent; }
