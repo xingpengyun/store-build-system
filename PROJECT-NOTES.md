@@ -2107,3 +2107,54 @@ toast 文案正确；0 报错。
 - 桩页面任务页**默认折叠门店**，`[data-act="edit"]` 一个都没有；要先点 `[data-srow="s1"]` 展开。
 - `alignTaskOwners` 若放进 `normalized()`（纯函数里就地纠正），后面的对齐函数永远看到 0 条差异，
   **改不回云端**。所以纠正落盘必须留在 `load()` / `syncOnce()` 的路径上。
+
+---
+
+## 2026-10-27 夜 · 线上「任务还是旧归属」的两个真相
+
+用户截图指着团队页「范婧 的任务」6 条问「怎么还是之前的」。查完是两件事叠在一起。
+
+### 一、云端数据确实是错的（已直接修正）
+
+`stores.manager_id` = 于欣（`user_mvqh0mwx_1`），6 条任务的 `assignee_id` 全是范婧
+（`user_mvnz24mg_1`）—— 正是旧版「按角色派单」留下的账。z122 的口径是「任务只跟门店负责人」，
+但线上跑的不是 z122，所以界面上看还是错的。
+
+没有等发版，直接用 CloudBase 的 REST 接口把 6 条任务全部改成门店负责人，并把 `app_settings.rev`
+从 0 递增到 1，在线的页面下一轮增量同步（45s 内）就会拉新数据，不用手动刷新。
+
+- 脚本：`.workbuddy/cb-fix-owners.js`（默认预览，`--apply` 才写；改完再跑一次会显示「归属不对 0 条」）
+- 结果：6/6 条 `assignee_id` → 于欣，复核按 assignee 统计只有 `{user_mvqh0mwx_1: 6}`
+
+### 二、真正的线上入口搞错了（纠正之前的说法）
+
+之前一直说「线上是 z110」，那查的是 `store-build-system-59240.app.workbuddy.host` ——
+**旧入口**。真正的入口是 `store-build-efficient-tiglon-d0ejcn14037eba3.webapps.tcloudbase.com`
+（`js/cloud.js` 里的 `CFG.siteUrl`），它跑的是 **z117**。
+
+两者都不能读 CloudBase 数据吗？实测 CORS 白名单是 **exact match**：
+
+| Origin | 预检结果 |
+|---|---|
+| `…webapps.tcloudbase.com` | `204` + `access-control-allow-origin` 回显 |
+| `…app.workbuddy.host` | `403 Forbidden`（tcbgw） |
+
+所以**换域名这条路是死的**，必须发布到同一台 CloudBase 静态托管。
+
+### 三、这台电脑发不了版（卡点）
+
+- 没有 `tcb` CLI → 已装 `@cloudbase/cli@3.8.9` 到 `~/.workbuddy/binaries/node/workspace`
+- `tcb login --cloudbase-api-key <key> -e <env>` 校验失败。解 JWT 才知道原因：
+  `cloud.js` 里那个 key 的 payload 是 `scope: anonymous` / `meta.platform: PublishableKey`
+  —— **是前端匿名凭证，不是环境管理员 apiKey**。它能读能写业务表（说明这些表的 RLS 对 anon 全开），
+  但没有部署静态托管的权限
+- `POST /capi/credential` 校验不过 → 不是代理问题（绕代理重试同样失败）
+
+**结论：要发 z118–z122，必须有环境级管理凭证**（控制台 → 环境 → API Key / 或 SecretId+SecretKey）。
+
+### 四、顺带发现的两个隐患（待处理）
+
+1. **数据表对匿名全开**：用 PublishableKey 就能 PATCH 任意任务，不需要登录。登录只是前端挡人，
+   服务端没有 RLS 兜底 —— 违反「RLS 必须开」的铁律，后面要收
+2. **tcloudbase 测试域名有拦截页**：每台新电脑首次访问要先点「确定访问」，不适合正式交付；
+   要绑自定义域名才好用
