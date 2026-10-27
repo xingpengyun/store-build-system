@@ -4036,3 +4036,43 @@ body.sm-sorting * { cursor: grabbing !important; user-select: none !important; }
 .team-list-scroll::-webkit-scrollbar { width: 6px; }
 .team-list-scroll::-webkit-scrollbar-thumb { background: #d7dfeb; border-radius: 3px; }
 .team-list-scroll::-webkit-scrollbar-track { background: transparent; }
+
+/* ---------------- 折叠区（设置页「数据与备份」这类不常用操作） ----------------
+   原生 <details>：不写一行 JS，键盘也能开合。默认收起，把导出/导入/清空
+   这类「一个月点一次」的操作从显眼位置挪走，顺带降低误点清空的风险。 */
+.fold {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.fold-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  border-radius: 6px;
+}
+.fold-head::-webkit-details-marker { display: none; }
+.fold-head::marker { content: ''; }
+.fold-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.fold-sub { font-size: 11.5px; color: var(--text-3); }
+.fold-arrow {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  margin-left: auto;
+  color: var(--text-3);
+  transition: transform .18s ease;
+}
+.fold[open] > .fold-head .fold-arrow { transform: rotate(90deg); }
+.fold-head:hover .fold-title { color: var(--primary); }
+.fold-body { margin-top: 10px; }
+.fold-note {
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: var(--text-3);
+  line-height: 1.7;
+}

@@ -83,17 +83,30 @@ window.Pages.settings = (function () {
           '<div class="mini-stat"><div class="ms-label">任务</div><div class="ms-val">' + s.tasks.length + '</div></div>' +
         '</div>' +
 
-        '<div style="display:flex;flex-direction:column;gap:8px">' +
-          '<button class="btn" data-act="export">' + UI.icon('download') + '导出备份（JSON）</button>' +
-          '<button class="btn" data-act="import">' + UI.icon('upload') + '从备份文件导入</button>' +
-          '<button class="btn" data-act="clearStores">' + UI.icon('refresh') + '清空门店与任务</button>' +
-        '</div>' +
-        '<p style="margin-top:8px;font-size:11.5px;color:var(--text-3);line-height:1.7">' +
-          '「清空门店与任务」只清门店 / 任务 / 到货这些业务数据，' +
-          '<b>阶段时间线、筹建任务清单、到货物料清单、成员一个都不动</b>。' +
-        '</p>' +
+        /* 导出 / 导入 / 清空：一个月才点一次的操作，折起来。
+           数据只在云端一份、云端没有回收站，所以功能必须留（这是唯一的后悔药），
+           但没必要天天摆在最显眼的位置；顺带也降低误点「清空」的概率。 */
+        '<details class="fold">' +
+          '<summary class="fold-head">' +
+            '<span class="fold-title">数据与备份</span>' +
+            '<span class="fold-sub">导出 / 导入 / 清空，日常用不到</span>' +
+            '<svg class="fold-arrow" viewBox="0 0 20 20" fill="none" stroke="currentColor"' +
+              ' stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l5 5-5 5"/></svg>' +
+          '</summary>' +
+          '<div class="fold-body">' +
+            '<div style="display:flex;flex-direction:column;gap:8px">' +
+              '<button class="btn" data-act="export">' + UI.icon('download') + '导出备份（JSON）</button>' +
+              '<button class="btn" data-act="import">' + UI.icon('upload') + '从备份文件导入</button>' +
+              '<button class="btn" data-act="clearStores">' + UI.icon('refresh') + '清空门店与任务</button>' +
+            '</div>' +
+            '<p class="fold-note">' +
+              '「清空门店与任务」只清门店 / 任务 / 到货这些业务数据，' +
+              '<b>阶段时间线、筹建任务清单、到货物料清单、成员一个都不动</b>。' +
+            '</p>' +
+          '</div>' +
+        '</details>' +
         '<input type="file" id="importFile" accept=".json,application/json" style="display:none" />' +
-        '<p style="margin-top:8px;font-size:11.5px;color:var(--text-3);line-height:1.7">' +
+        '<p class="fold-note">' +
           '数据实时保存在云端，换电脑、清缓存都不会丢。本机缓存约 ' + U.bytes(bytes) + '，仅用于断网时应急。' +
         '</p>' +
       '</div>' +

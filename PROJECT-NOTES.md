@@ -2022,3 +2022,34 @@ toast 文案正确；0 报错。
 
 按角色派单意味着「售前同事手上一定有别人负责的店的活」。若以后要「一家店的活只归一个人」，
 需要把 `TASK_TPL[].role` 派单改成全部给 `store.ownerId`，那是一个口径变更，不是修 bug。
+
+---
+
+## z121 · 把「导出 / 导入 / 清空」折进「数据与备份」（2026-10-27）
+
+用户看着设置页那三个大按钮问「已经上传到数据库了，这个还需要吗」。判断：**功能必须留**——
+数据只在云端一份，云端没有回收站、没有历史版本，导出备份是唯一的后悔药；有导出没导入等于假保险。
+真正的问题只是它们平铺在设置页最显眼处，而这类操作一个月才点一次。
+
+改动（全是界面层，功能一行没动）：
+
+- `js/page-settings.js`：「账号与数据」卡片里，三个按钮收进原生 `<details class="fold">`，
+  标题「数据与备份」，副标题「导出 / 导入 / 清空，日常用不到」，默认收起，箭头随开合转动。
+  清空范围那段说明跟着进折叠区；「数据实时存云端」那段留在外面（它是常读信息）。
+- `#importFile` 刻意放在 `<details>` **外面**：收起状态下也要能点，避免依赖隐藏子树里的元素。
+- 不用二次确认弹窗、不加 JS：原生 `<details>` 自带键盘开合，`data-act` 按钮仍走 root 上的事件委托，
+  一行绑定都不用改。
+- `css/components.css`：新增 `.fold / .fold-head / .fold-arrow / .fold-body / .fold-note` 一组样式，
+  颜色全走变量（`--line` / `--text` / `--text-3` / `--primary`），两套主题都跟得上。
+- 版本号 `20261027z121`。
+
+验证：新增 `.workbuddy/probe-settings-fold.js` **14/14**（真 Edge）——默认收起、三个按钮收起时不可见、
+点开都可见、点「导出备份」真触发下载、再点收回、file input 在折叠区外、0 报错。
+
+### 两个踩坑（写下来省下一次）
+
+1. **不能直接开 `#/settings`**：首屏 state 还没加载完，`App.render` 里 `canSettings(myName())` 判 false，
+   会被踢回 `#/home`。探针要先落 `#/home` 等 1.5s，再 `location.hash = '#/settings'`。
+2. **closed `<details>` 的子树在 Chrome 是 `content-visibility: hidden`**，
+   `getBoundingClientRect().height` 仍会给真实高度，用它判断「是否可见」会误判。
+   要用 `el.checkVisibility({ checkVisibilityCSS: true, checkOpacity: true })`。
