@@ -145,3 +145,67 @@ git pull
 
 **Q：.gitignore 里忽略了什么？**
 只忽略了 `.workbuddy/`（AI 工作笔记）和系统临时文件。所有代码、样式、README 都会提交。
+
+---
+
+## 附：发布到线上（腾讯云 CloudBase 静态托管）
+
+线上地址（**唯一入口**）：
+
+```
+https://store-build-efficient-tiglon-d0ejcn14037eba3.webapps.tcloudbase.com
+```
+
+环境 ID：`efficient-tiglon-d0ejcn14037eba3`
+
+### 为什么不能用别的域名
+
+CloudBase 网关的跨域白名单是**精确匹配**（实测：`webapps.tcloudbase.com` 预检 204 放行，
+`app.workbuddy.host` 403）。所以页面必须发布到上面这个域名，换域名数据一定读不出来。
+
+### 发布步骤
+
+1. 装一次 CLI（只用装一次）：
+
+```bash
+npm install @cloudbase/cli --registry=https://registry.npmmirror.com
+```
+
+2. 登录（需要**环境管理员级的 API Key**；`js/cloud.js` 里那把是前端匿名 key，只能读写数据表，不能发版）：
+
+```bash
+tcb login --cloudbase-api-key "<管理员 API Key>" -e efficient-tiglon-d0ejcn14037eba3
+```
+
+3. 只把站点文件装进一个干净的暂存目录（**不要整目录上传**，否则 README / PROJECT-NOTES / .workbuddy 都会变成公开文件）：
+
+```bash
+mkdir -p .workbuddy/_deploy
+cp index.html .workbuddy/_deploy/ && cp -r css js .workbuddy/_deploy/
+```
+
+4. 发布（`--safe` 会先备份、失败自动回滚；`--verify` 上传后逐项校验）：
+
+```bash
+tcb hosting deploy .workbuddy/_deploy -e efficient-tiglon-d0ejcn14037eba3 --safe --verify
+```
+
+5. 验证：
+
+```bash
+curl -s -H "Cache-Control: no-cache" "https://store-build-efficient-tiglon-d0ejcn14037eba3.webapps.tcloudbase.com/index.html" | grep -oE "20261027z[0-9]+"
+```
+
+版本号对上了才算发成功（`index.html` 里的 `?v=` 会跟着换，浏览器不会吃旧缓存）。
+
+### 两个必须记住的坑
+
+- **不要加 `--prune`**：那个参数会删掉"不属于本次发布"的远端文件，`__auth/`（登录用）和别人的
+  `cloud-admin/` 都会被一起清掉。
+- **不要整目录 `tcb hosting deploy .`**：项目根目录有 `PROJECT-NOTES.md`（内部笔记）、
+  `.workbuddy/`（探针脚本）、`.git/`，整传等于把内部笔记全公开了。上面的「只传 index.html + css + js」是正解。
+
+### API Key 怎么保管
+
+- 只放在命令行参数 / 临时文件里，**不写进项目任何文件**，也不提交到 Git
+- 控制台 → 环境 → API Key 里可以随时吊销重建
