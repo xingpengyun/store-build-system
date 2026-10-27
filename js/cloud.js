@@ -16,7 +16,7 @@ window.Cloud = (function () {
        Origin 校验拒掉），所以本地打开时页面要能把人指到这里来。 */
     siteUrl: 'https://store-build-system.app.workbuddy.host/?sharecode=ZVHDE3E4G6',
     oauthRelayBaseUrl: 'https://www.workbuddy.cn/v2/as/genie-baas/oauth',
-    publishableKey: 'wb' + 'pk_kHH92NSYCy3ebQEPX6VlMB' + '_' + 'MShDXDpQbnNzwyTa25pfOZSqKK2t2cQm'
+    publishableKey: 'wbpk_TyRdTt7Rq1uaicdS83z0NH_' + 'CEQP0y1tj0pviPq3mSI2VhQ16AX5riMJ'
   };
 
   var client = null;
