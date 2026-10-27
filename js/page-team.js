@@ -112,9 +112,10 @@ window.Pages.team = (function () {
           '<div class="field-row">' +
             '<div class="field"><label>姓名 <span class="req">*</span></label>' +
               '<input class="input" name="name" value="' + U.esc(m.name || '') + '" placeholder="例如：张三" /></div>' +
-            '<div class="field"><label>负责模块</label>' +
+            '<div class="field"><label>岗位称呼 <span class="field-sub">只作标注，不影响派单</span></label>' +
               '<input class="input" name="role" list="roleList" value="' + U.esc(m.role || '') + '" placeholder="例如：售前" />' +
               '<datalist id="roleList">' + ROLES.map(function (r) { return '<option value="' + r + '"></option>'; }).join('') + '</datalist>' +
+              '<div class="field-hint">任务一律派给门店负责人，这里填什么都不改变谁拿到活。</div>' +
             '</div>' +
           '</div>' +
           '<div class="field"><label>头像 <span class="field-sub">选一只小动物，或者用颜色 + 姓氏首字</span></label>' +

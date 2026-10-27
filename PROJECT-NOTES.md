@@ -2053,3 +2053,57 @@ toast 文案正确；0 报错。
 2. **closed `<details>` 的子树在 Chrome 是 `content-visibility: hidden`**，
    `getBoundingClientRect().height` 仍会给真实高度，用它判断「是否可见」会误判。
    要用 `el.checkVisibility({ checkVisibilityCSS: true, checkOpacity: true })`。
+
+---
+
+## z122 · 口径变更：任务负责人只有一个来源 = 门店负责人（2026-10-27）
+
+用户明确：**「售前 / 售后只是一个称谓，在该系统目前没有作用」**，并且「变更负责人，
+门店名字和改负责人有关系的都变为新的负责人」。这是 z120 那条「遗留的产品口径」
+的正解 —— 当时选择「仍按角色派单」，现在正式改成「一律跟门店负责人」。
+
+### 规则
+
+| 场景 | 现在的行为 |
+|---|---|
+| 新建门店派任务 | 每条都派给 `store.ownerId`（原来按 `tpl.role` 找对应角色的人） |
+| 改门店负责人 | 这家店**全部**任务（含已完成的）转给新负责人 |
+| 任务编辑 | 「负责人」不再可选，只读显示门店负责人 |
+| 任务挪到别的门店 | 负责人自动跟新门店的负责人 |
+| 新建任务 | 直接派给所选门店的负责人 |
+| 历史数据 | 载入时自动对齐一次（幂等，第二次 0 条） |
+
+### 代码
+
+- `js/store.js`
+  - `addStore()` / `dispatchTemplates()` 派单去掉 `roleToId`，一律 `assigneeId: store.ownerId`
+  - `openTaskCountOfStore` → `taskCountOfStore`（不再排除已完成，口径变了）
+  - `reassignStoreTasks()` 去掉 `status !== 'done'` 过滤：整店任务全转
+  - 新增 `ownerOfStoreId()`、`alignTaskOwners(persist)`
+  - `updateTask()` / `addTask()` 里负责人一律按所属门店的负责人算
+  - `load()` 三条路径（云数据 / 首次上云 / 离线缓存）+ `syncOnce()` 都调 `alignTaskOwners()`
+- `js/page-stores.js`：换负责人提示改「这家店 N 条任务（含已完成的）保存后全部转到新负责人名下」，
+  保存 toast 改「N 条任务已转到 XXX 名下」
+- `js/page-tasks.js`：任务表单「负责人」改成只读说明（`data-owner-of-store`，
+  换所属门店时实时跟着变）；模板清单「默认模块」→「备注标签」，并写明不参与派单
+- `js/page-team.js`：成员「负责模块」→「岗位称呼 / 只作标注，不影响派单」
+
+### 顺带做了：筹建任务清单改完同步到已建门店
+
+用户追问「如果我变动了东西，同步到已创建的门店」—— 以前改清单只管以后新建的门店，
+老门店还挂着旧任务，两头对不上。现在保存清单后按差异同步：
+
+- 新加一条 → 每家店补派一条（同名跳过，不重复）
+- 改名 / 改阶段 / 改开业前天数 → 该店同名任务跟着改；**日期只重算未完成的**，已完成的日期不动
+- 从清单里删一条 → **不删已有门店的任务**（会连已完成记录一起没），只停止以后派
+- 模板条目新增 `id` 字段，靠它认出「这条被改名了」而不是「删一条 + 加一条」（老清单第一次保存时补 id）
+- 保存后 toast 报账：「已同步到 N 家已建门店：补派 X 条、改名 Y 条…」
+
+验证：新增 `.workbuddy/probe-owner-align.js` **10/10**、`.workbuddy/probe-tpl-sync.js` **23/23**；
+`probe-owner-reassign` 按新口径重写断言后 **14/14**；回归 12 套共 **233 条全绿**。
+
+### 踩坑
+
+- 桩页面任务页**默认折叠门店**，`[data-act="edit"]` 一个都没有；要先点 `[data-srow="s1"]` 展开。
+- `alignTaskOwners` 若放进 `normalized()`（纯函数里就地纠正），后面的对齐函数永远看到 0 条差异，
+  **改不回云端**。所以纠正落盘必须留在 `load()` / `syncOnce()` 的路径上。

@@ -848,6 +848,7 @@ window.Store = (function () {
     if (local0 && local0.stores && local0.tasks && local0.members && onCached) {
       try {
         state = normalized(JSON.parse(JSON.stringify(local0)));
+        alignTaskOwners(false);    /* 缓存里可能是旧版按角色派的活，先对齐再画 */
         onCached();
       } catch (e) {
         state = null;      /* 缓存坏了就当没有，老老实实等云端 */
@@ -893,6 +894,7 @@ window.Store = (function () {
         if (hasLocal) {
           return window.Cloud.importAll(local, onProgress).then(function () {
             state = normalized(JSON.parse(JSON.stringify(local)));
+            alignTaskOwners();      /* 搬上来的老数据也按门店负责人收敛一次 */
             markInitialized();
             cacheLocal();
             return { imported: local.stores.length, seeded: false };
@@ -909,6 +911,10 @@ window.Store = (function () {
       state = normalized(data);
       lastFullAt = Date.now();     /* 这一轮刚全量拉过，增量同步从这一刻算起 */
       syncRev = revAtStart || '';  /* 基线票据：这轮拉的就是「这个票据」对应的数据 */
+      /* 任务负责人一律跟门店负责人：老数据是按「售前 / 售后 / 接单」派出去的，
+         同一个人的名字下会挂着好几家别人负责的店，进系统先对齐一次。
+         对齐后第二次就是 0 条，不会反复写云端。 */
+      alignTaskOwners();
       cacheLocal();
       snapshotSettings('load');   /* 每次进系统都留一份配置快照，误删可找回 */
       /* 刚才贴回来的改动，趁现在把队列补发掉 */
@@ -921,6 +927,7 @@ window.Store = (function () {
       var local = readLocal();
       if (local) {
         state = normalized(local);
+        alignTaskOwners(false);   /* 离线只纠正内存，不往队列里灌东西 */
         return { imported: 0, seeded: false, offline: true };
       }
       throw e;
@@ -1004,6 +1011,7 @@ window.Store = (function () {
         if (nextStamp === syncLastStamp) return;
         syncLastStamp = nextStamp;
         state = next;
+        alignTaskOwners();           /* 别人还用旧版按角色派活时，拉回来也对齐一次 */
         cacheLocal();
         if (syncOnChange) syncOnChange();
       });
@@ -1600,8 +1608,6 @@ window.Store = (function () {
 
     var tpls = templates();
     if (data.autoTasks !== false && tpls.length) {
-      var roleToId = {};
-      state.members.forEach(function (m) { roleToId[m.role] = m.id; });
       var created = [];
       var beforePairs = [];
       tpls.forEach(function (tpl) {
@@ -1614,7 +1620,10 @@ window.Store = (function () {
           storeId: store.id,
           title: tpl.title,
           stage: tpl.stage,
-          assigneeId: roleToId[tpl.role] || store.ownerId,
+          /* 一律派给门店负责人：售前 / 售后 / 接单只是人事称谓，不参与派单
+             （2026-10-27 口径变更，原来按 tpl.role 找人，会出现「别人负责的店，
+             活却挂在我名下」） */
+          assigneeId: store.ownerId,
           dueDate: due,
           status: 'pending',
           priority: 'normal',
@@ -1643,9 +1652,10 @@ window.Store = (function () {
     push('stores', s);
     cacheLocal();
 
-    /* 换负责人：这家店「没做完」的任务跟着转过去。
-       谁负责这家店，这店的待办就该在谁名下 —— 否则换了人，活还挂在原来那个人身上，
-       团队页的待办数就成了假的。已完成的（status==='done'）一律不动，历史归属不改写。 */
+    /* 换负责人：这家店的任务全部跟着转过去（含已完成的记录）。
+       2026-10-27 口径变更：任务的负责人只有一个来源 —— 门店负责人。
+       谁负责这家店，这店的活就全在谁名下；否则换了人，活还挂着原来的名字，
+       团队页的待办数就成了假的。 */
     if (patch.ownerId != null && patch.ownerId !== oldOwner) {
       reassignStoreTasks(id, patch.ownerId);
     }
@@ -1655,25 +1665,47 @@ window.Store = (function () {
     return s;
   }
 
-  /* 这家店还有几条没做完的任务（换负责人前用它说清楚会转几条）。
-     exceptOwnerId：已经在这个人名下的不算，避免重复计数、toast 数字虚高 */
-  function openTaskCountOfStore(storeId, exceptOwnerId) {
+  /* 这家店有几条任务要跟着负责人走（换人前用它说清楚会转几条）。
+     exceptOwnerId：已经在这个人名下的不算，避免重复计数、提示数字虚高 */
+  function taskCountOfStore(storeId, exceptOwnerId) {
     return state.tasks.filter(function (t) {
-      return t.storeId === storeId && t.status !== 'done' &&
+      return t.storeId === storeId &&
         (!exceptOwnerId || t.assigneeId !== exceptOwnerId);
     }).length;
   }
 
-  /* 把一家店「没做完」的任务转给新负责人；已完成的不动。返回实际转了几条。 */
+  /* 把一家店的任务全部转给新负责人，返回实际转了几条。
+     含已完成的：口径是「这店的活归这店的人」，不按历史归属分裂，
+     否则团队页会同时出现「新负责人的待办」和「旧负责人名下的这家店」。 */
   function reassignStoreTasks(storeId, newOwnerId) {
     if (!storeId || !newOwnerId) return 0;
     var hit = state.tasks.filter(function (t) {
-      return t.storeId === storeId && t.status !== 'done' && t.assigneeId !== newOwnerId;
+      return t.storeId === storeId && t.assigneeId !== newOwnerId;
     });
     if (!hit.length) return 0;
     hit.forEach(function (t) { t.assigneeId = newOwnerId; });
     pushMany('tasks', hit);
     cacheLocal();
+    return hit.length;
+  }
+
+  /* 任务负责人和门店负责人对齐（一次性收敛历史数据）。
+     以前按「售前 / 售后 / 接单」角色派活，同一个人的名下会挂着好几家别人负责的店。
+     口径改成「任务一律跟门店负责人」之后，加载完对齐一遍，界面上立刻自洽；
+     对齐后第二次就是 0 条，不会反复写云端。
+     persist=false：只改内存不写云端（离线兜底路径用，别在断网时往队列里灌东西） */
+  function alignTaskOwners(persist) {
+    if (!state) return 0;
+    var owner = {};
+    state.stores.forEach(function (s) { owner[s.id] = s.ownerId || ''; });
+    var hit = [];
+    state.tasks.forEach(function (t) {
+      var want = owner[t.storeId];
+      if (want && t.assigneeId !== want) { t.assigneeId = want; hit.push(t); }
+    });
+    if (!hit.length) return 0;
+    if (persist !== false) pushMany('tasks', hit);
+    if (persist !== false) cacheLocal();
     return hit.length;
   }
 
@@ -1727,6 +1759,12 @@ window.Store = (function () {
 
   /* ================= 任务 CRUD ================= */
 
+  /* 这家店的负责人是谁（任务负责人的唯一来源） */
+  function ownerOfStoreId(storeId) {
+    var s = storeById(storeId);
+    return s ? (s.ownerId || '') : '';
+  }
+
   function addTask(data) {
     /* 开业前 N 天：优先用传进来的，没传就按标题去清单里找，再不行用兜底 30 天 */
     var before = (data.before != null && data.before !== '' && !isNaN(Number(data.before)))
@@ -1740,7 +1778,7 @@ window.Store = (function () {
       storeId: data.storeId,
       title: (data.title || '未命名任务').trim(),
       stage: data.stage || ((C.STAGES[0] || {}).key || '未出图'),
-      assigneeId: data.assigneeId || (state.members[0] || {}).id,
+      assigneeId: ownerOfStoreId(data.storeId) || data.assigneeId || (state.members[0] || {}).id,
       dueDate: data.dueDate || suggestFor(data.storeId, data.stage, before),
       status: data.status === 'doing' ? 'pending' : (data.status || 'pending'),
       priority: data.priority || 'normal',
@@ -1767,6 +1805,11 @@ window.Store = (function () {
     var stageChanged = patch.stage != null && patch.stage !== t.stage;
     var storeChanged = patch.storeId != null && patch.storeId !== t.storeId;
     var beforeChanged = patch.before != null && Number(patch.before) !== curBefore;
+
+    /* 负责人不单独指派：一律跟着所属门店的负责人走。
+       任务挪到别的门店 → 负责人跟着换成那家店的负责人。 */
+    patch.assigneeId = ownerOfStoreId(patch.storeId != null ? patch.storeId : t.storeId) ||
+      patch.assigneeId || t.assigneeId;
 
     /* 天数：显式传了就用传的；原本自己定死的（清单里有 / 单独调过），改阶段也不动它；
        都没有的，退回兜底 30 天 */
@@ -2533,9 +2576,13 @@ window.Store = (function () {
   function saveTemplates(list) {
     var clean = (list || []).map(function (t) {
       return {
+        /* id 是给「改完清单同步到已建门店」用的：靠它认出「这一条被改名了」，
+           而不是当成「删一条 + 新加一条」。老清单没有 id，第一次保存时补上 */
+        id: t.id || U.uid('tpl'),
         title: String(t.title || '').trim(),
         stage: t.stage || '',
         before: Math.max(0, Number(t.before) || 0),
+        /* role 留着只为兼容老数据，不参与派单（任务一律派给门店负责人） */
         role: t.role || ''
       };
     }).filter(function (t) { return !!t.title; });
@@ -2543,6 +2590,120 @@ window.Store = (function () {
     /* 空数组也照存：这是"我就是要空清单"的明确意图，不是"没设置过" */
     setSetting('taskTemplates', clean);
     return templates();
+  }
+
+  /* 筹建任务清单改了 → 把差异同步到「已经建好的门店」（2026-10-27 用户要求）。
+     以前改清单只对以后新建的门店生效，老门店还挂着旧任务，两头对不上。
+     三类差异这样处理：
+       · 新加一条      → 每家店补派一条（同名已存在就跳过，不会重复）
+       · 改名 / 改阶段 / 改「开业前 N 天」
+                       → 该店同名任务跟着改；日期只重算未完成的（已完成的历史日期不动）
+       · 从清单里删一条 → 已有门店的任务不删（删了会连已完成的记录一起没），只是以后不再派
+     返回 { stores, added, renamed, restaged, redated }，数字给界面报账用 */
+  function syncTemplatesToStores(oldList, newList) {
+    var out = { stores: 0, added: 0, renamed: 0, restaged: 0, redated: 0 };
+    if (!state.stores.length) return out;
+
+    /* 老清单 → 新清单配对：先认 id，老数据没 id 就退回标题 */
+    var olds = (oldList || []).slice();
+    var used = {};
+    function pairOf(nt) {
+      var i;
+      for (i = 0; i < olds.length; i++) {
+        if (!used[i] && nt.id && olds[i].id === nt.id) { used[i] = true; return olds[i]; }
+      }
+      for (i = 0; i < olds.length; i++) {
+        if (!used[i] && String(olds[i].title || '').trim() === String(nt.title || '').trim()) {
+          used[i] = true;
+          return olds[i];
+        }
+      }
+      return null;
+    }
+    var pairs = (newList || []).map(function (nt) {
+      return { old: pairOf(nt), now: nt };
+    });
+
+    var createdTasks = [];
+    var changedTasks = [];
+    var beforePairs = [];     /* 天数写回 settings（云端 tasks 表没这一列） */
+    var redateTargets = [];   /* 写完天数之后再算日期，否则 suggestDateOf 拿到的还是旧值 */
+    var storesHit = {};
+
+    state.stores.forEach(function (store) {
+      var exist = {};
+      state.tasks.forEach(function (t) { if (t.storeId === store.id) exist[t.title] = true; });
+
+      pairs.forEach(function (p) {
+        var nt = p.now;
+        var ot = p.old;
+        var title = String(nt.title || '').trim();
+        if (!title) return;
+
+        /* ① 清单里新加的：这家店没有同名任务就补一条 */
+        if (!ot) {
+          if (exist[title]) return;
+          var bNew = Math.max(0, Number(nt.before) || 0);
+          var fresh = {
+            id: U.uid('task'),
+            storeId: store.id,
+            title: title,
+            stage: nt.stage || '',
+            assigneeId: store.ownerId || '',
+            dueDate: store.openDate ? U.addDays(store.openDate, -bNew) : '',
+            status: 'pending',
+            priority: 'normal',
+            remark: '',
+            createdAt: U.today()
+          };
+          state.tasks.push(fresh);
+          createdTasks.push(fresh);
+          beforePairs.push({ id: fresh.id, before: bNew });
+          exist[title] = true;
+          out.added++;
+          storesHit[store.id] = true;
+          return;
+        }
+
+        /* ② 已有的一条：改名 / 改阶段 / 改天数 */
+        var oldTitle = String(ot.title || '').trim();
+        var bOld = Math.max(0, Number(ot.before) || 0);
+        var bNow = Math.max(0, Number(nt.before) || 0);
+        var renamed = oldTitle !== title;
+        var restaged = (ot.stage || '') !== (nt.stage || '');
+        var redate = bOld !== bNow;
+        if (!renamed && !restaged && !redate) return;
+
+        state.tasks.forEach(function (t) {
+          if (t.storeId !== store.id || t.title !== oldTitle) return;
+          if (renamed) { t.title = title; out.renamed++; }
+          if (restaged) { t.stage = nt.stage || ''; out.restaged++; }
+          if (redate) {
+            beforePairs.push({ id: t.id, before: bNow });
+            redateTargets.push(t);
+          }
+          changedTasks.push(t);
+          storesHit[store.id] = true;
+        });
+        exist[title] = true;
+      });
+    });
+
+    if (beforePairs.length) setTaskBeforeMany(beforePairs);
+
+    /* 日期重算放在天数落盘之后，走 suggestDateOf 保留「手动延后过的天数」 */
+    redateTargets.forEach(function (t) {
+      if (t.status === 'done') return;    /* 已完成的历史日期不动 */
+      var due = suggestDateOf(t);
+      if (t.dueDate !== due) { t.dueDate = due; out.redated++; }
+    });
+
+    if (changedTasks.length) pushMany('tasks', changedTasks);
+    if (createdTasks.length) pushMany('tasks', createdTasks);
+    if (changedTasks.length || createdTasks.length) cacheLocal();
+
+    out.stores = Object.keys(storesHit).length;
+    return out;
   }
 
   /* ---------------- 到货物料清单（设置里可改） ----------------
@@ -3106,9 +3267,6 @@ window.Store = (function () {
       if (t.storeId === storeId) exist[t.title] = true;
     });
 
-    var roleToId = {};
-    state.members.forEach(function (m) { roleToId[m.role] = m.id; });
-
     var created = [];
     var beforePairs = [];
     tpls.forEach(function (tpl) {
@@ -3120,7 +3278,8 @@ window.Store = (function () {
         storeId: storeId,
         title: tpl.title,
         stage: tpl.stage,
-        assigneeId: roleToId[tpl.role] || store.ownerId,
+        /* 一律派给门店负责人，同 addStore（售前 / 售后 只是称谓） */
+        assigneeId: store.ownerId,
         dueDate: due,
         status: 'pending',
         priority: 'normal',
@@ -3502,7 +3661,10 @@ window.Store = (function () {
     suggestFor: suggestFor,
     resyncTaskDates: resyncTaskDates,
     reassignStoreTasks: reassignStoreTasks,
-    openTaskCountOfStore: openTaskCountOfStore,
+    taskCountOfStore: taskCountOfStore,
+    alignTaskOwners: alignTaskOwners,
+    ownerOfStoreId: ownerOfStoreId,
+    syncTemplatesToStores: syncTemplatesToStores,
     isEndStage: isEndStage,
     stageProgress: stageProgress,
     taskProgress: taskProgress,

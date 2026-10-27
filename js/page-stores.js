@@ -219,7 +219,7 @@ window.Pages.stores = (function () {
           });
         }
 
-        /* 换负责人：在保存前就把话说明白 —— 这家店没做完的任务会一起转过去。
+        /* 换负责人：在保存前就把话说明白 —— 这家店的任务会一条不剩地转过去。
            不弹二次确认（弹窗是单例，会把正在编辑的表单顶掉），改成随下拉变化的内联提示。 */
         var ownerSel = rootEl.querySelector('[name="ownerId"]');
         var ownerHint = rootEl.querySelector('[data-owner-hint]');
@@ -230,11 +230,11 @@ window.Pages.stores = (function () {
             ownerHint.textContent = '';
             return;
           }
-          var n = S.openTaskCountOfStore(store.id, ownerSel.value);
+          var n = S.taskCountOfStore(store.id, ownerSel.value);
           ownerHint.style.display = '';
           ownerHint.textContent = n
-            ? '这家店还有 ' + n + ' 条没做完的任务，保存后一并转给新负责人（已完成的记录不动）。'
-            : '这家店没有待转的任务，换人只影响以后新派的活。';
+            ? '这家店 ' + n + ' 条任务（含已完成的）保存后全部转到新负责人名下。'
+            : '这家店还没有任务，换人只影响以后再派的活。';
         }
         if (ownerSel && ownerHint) {
           ownerSel.addEventListener('change', paintOwnerHint);
@@ -272,9 +272,9 @@ window.Pages.stores = (function () {
           } else {
             var before = store.stage;
             var forward = S.stageOrder(payload.stage) > S.stageOrder(before);
-            /* 换负责人前先数清楚：这次要跟着转走的未完成任务有几条（已完成的不算） */
+            /* 换负责人前先数清楚：这家店有几条任务要跟着转（含已完成的） */
             var ownerChanged = !!payload.ownerId && payload.ownerId !== store.ownerId;
-            var movedCount = ownerChanged ? S.openTaskCountOfStore(store.id, payload.ownerId) : 0;
+            var movedCount = ownerChanged ? S.taskCountOfStore(store.id, payload.ownerId) : 0;
             var newOwnerName = (S.memberById(payload.ownerId) || {}).name || '新负责人';
             S.updateStore(store.id, payload);
 
@@ -283,7 +283,7 @@ window.Pages.stores = (function () {
             var jumped = forward ? S.advanceStore(store.id) : null;
 
             UI.toast(movedCount
-              ? '门店信息已更新，' + movedCount + ' 条未完成任务已转给 ' + newOwnerName
+              ? '门店信息已更新，' + movedCount + ' 条任务已转到 ' + newOwnerName + ' 名下'
               : '门店信息已更新', 'success');
             if (jumped) {
               UI.stagePop({

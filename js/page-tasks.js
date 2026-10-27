@@ -841,6 +841,14 @@ window.Pages.tasks = (function () {
       '开业日或这个天数一改，这里跟着变。</span>';
   }
 
+  /* 任务负责人 = 所属门店的负责人（唯一来源，2026-10-27 口径变更）。
+     售前 / 售后 / 接单只是人事称谓，不再参与派单，所以这里只读展示。 */
+  function ownerNameOf(storeId) {
+    var st = S.storeById(storeId);
+    var m = st ? S.memberById(st.ownerId) : null;
+    return (m ? m.name : '未设置') + '　·　跟门店负责人走';
+  }
+
   function formHtml(task) {
     var isNew = !task;
     var t = task || {};
@@ -868,7 +876,9 @@ window.Pages.tasks = (function () {
       '</div>' +
       '<div class="field-row">' +
         '<div class="field"><label>负责人</label>' +
-          '<select class="select" name="assigneeId">' + UI.options(S.getState().members, t.assigneeId || '', 'id', 'name') + '</select>' +
+          /* 不再单独指派：任务负责人只有一个来源 —— 所属门店的负责人 */
+          '<div class="push-none-tip" data-owner-of-store title="任务负责人一律跟门店负责人走，改人去「门店管理 → 编辑门店」">' +
+            U.esc(ownerNameOf(initStoreId)) + '</div>' +
         '</div>' +
         '<div class="field"><label>开业前（天） <span class="dim">（清单里那列的默认值）</span></label>' +
           '<input class="input" type="number" min="0" max="365" step="1" name="before" value="' + beforeVal + '" />' +
@@ -936,6 +946,9 @@ window.Pages.tasks = (function () {
             title: UI.formValue(rootEl, 'title'),
             before: bv === '' ? null : bv
           });
+          /* 换了所属门店，负责人跟着变成那家店的负责人 */
+          var ownBox = rootEl.querySelector('[data-owner-of-store]');
+          if (ownBox) ownBox.textContent = ownerNameOf(UI.formValue(rootEl, 'storeId'));
         }
         ['storeId', 'stage', 'before', 'title'].forEach(function (name) {
           var el = rootEl.querySelector('[name="' + name + '"]');
@@ -956,7 +969,8 @@ window.Pages.tasks = (function () {
             title: title,
             storeId: sid,
             stage: UI.formValue(rootEl, 'stage'),
-            assigneeId: UI.formValue(rootEl, 'assigneeId'),
+            /* 负责人不单独选：跟所属门店的负责人走 */
+            assigneeId: S.ownerOfStoreId(sid) || (task ? task.assigneeId : ''),
             before: Math.max(0, Number(UI.formValue(rootEl, 'before')) || 0),
             status: UI.formValue(rootEl, 'status'),
             priority: UI.formValue(rootEl, 'priority')
@@ -1005,7 +1019,7 @@ window.Pages.tasks = (function () {
     var stage = t.stage || defaultStage();
     var role = t.role || TPL_ROLES[0];
 
-    return '<div class="tpl-row">' +
+    return '<div class="tpl-row" data-id="' + U.esc(t.id || '') + '">' +
       '<span class="tpl-grip" title="按住上下拖动，调整任务顺序">' + UI.icon('grip') + '</span>' +
       '<div class="tpl-name">' +
         '<input class="input" data-k="title" value="' + U.esc(t.title || '') + '" placeholder="例如：办理营业执照" />' +
@@ -1035,11 +1049,15 @@ window.Pages.tasks = (function () {
         '<p class="tpl-tip">这份清单<b>完全由你自己维护</b>，系统不带任何内置任务。' +
           '新建门店时如果勾选「一并派发筹建任务」，就按这里生成；截止日期 = 门店开业日往前推你填的天数。' +
           '<b>按住左侧 ⠿ 可以上下拖动调整顺序</b>（派任务时按这个顺序生成）。' +
-          '<b>改动只影响之后新建的门店，已有门店的任务不会被改。</b><br />' +
+          '<b>保存后会同步到已经建好的门店</b>：改名 / 改阶段 / 改天数，对应任务跟着变' +
+          '（已完成的任务只改名字和阶段，日期不动），新加的条目会给每家店补派一条；' +
+          '从清单里删掉一条只停止以后再派，<b>不会删已有门店的任务</b>。<br />' +
           '<b>「完成后进到」= 这条做完，等于「完成」了这个阶段</b>：' +
           '比如「图纸」做完等于完成「已出图」，「营业执照」做完等于完成「建档资料」。' +
           '<b>它只是记账</b>：点「完成」不会把门店阶段拽过去，阶段照样按门店实际进度走；' +
           '等门店推进到这一格，发现它已经做完，就会自动越过到下一格。<br />' +
+          '<b>「备注标签」只是给人看的标记</b>（售前 / 售后 这类岗位叫法），<b>不参与派单</b>：' +
+          '任务一律派给门店负责人，换负责人时整店的任务跟着转。<br />' +
           '<b>这一列用的就是左侧那条阶段时间线</b>：点开只能选一级或二级，' +
           '二级要加 / 改名 / 删除，请去左侧「阶段时间线」里做，那边改完这里立刻同步。<br />' +
           '<b>「任务名称」右边的小按钮只列这个阶段的二级</b>：完成后进到是「已出图」，就只给' +
@@ -1050,7 +1068,7 @@ window.Pages.tasks = (function () {
             : '') +
         '</p>' +
         '<div class="tpl-head" id="tplHead"' + (list.length ? '' : ' hidden') + '>' +
-          '<span></span><span>任务名称</span><span>完成后进到</span><span>开业前(天)</span><span>默认模块</span><span></span>' +
+          '<span></span><span>任务名称</span><span>完成后进到</span><span>开业前(天)</span><span>备注标签</span><span></span>' +
         '</div>' +
         '<div class="tpl-rows" id="tplRows">' + list.map(tplRowHtml).join('') + '</div>' +
         '<div class="tpl-empty" id="tplEmpty"' + (list.length ? ' hidden' : '') + '>' +
@@ -1087,6 +1105,8 @@ window.Pages.tasks = (function () {
           var out = [];
           rowsBox.querySelectorAll('.tpl-row').forEach(function (r) {
             out.push({
+              /* id 用来认出「这一条是改过的」而不是「删了重加」，保存时缺就补一个 */
+              id: r.getAttribute('data-id') || '',
               title: r.querySelector('[data-k="title"]').value,
               stage: r.querySelector('[data-stage-pick]').getAttribute('data-v'),
               before: r.querySelector('[data-k="before"]').value,
@@ -1235,13 +1255,28 @@ window.Pages.tasks = (function () {
             var clean = readRows();
             var before = subsSnapshot();
 
-            /* 存盘 + 提示时间线同步情况（新增了哪些二级，让人确认两边真的连上了） */
+            /* 存盘 + 同步到已建门店 + 提示时间线同步情况 */
             var commit = function (list, tip) {
+              var oldList = S.templates().slice();
               S.saveTemplates(list);
+              /* 改完清单不是只管以后新建的门店：已有门店的任务跟着改名 / 改阶段 / 重算日期，
+                 清单里新加的条目会给每家店补派一条（同名的不重复派）。 */
+              var delta = S.syncTemplatesToStores(oldList, S.templates());
               var added = subsSnapshot().filter(function (v) { return before.indexOf(v) < 0; });
               close();
               App.refresh({ keep: true });
               UI.toast(tip, 'success');
+
+              var bits = [];
+              if (delta.added) bits.push('补派 ' + delta.added + ' 条');
+              if (delta.renamed) bits.push('改名 ' + delta.renamed + ' 条');
+              if (delta.restaged) bits.push('改阶段 ' + delta.restaged + ' 条');
+              if (delta.redated) bits.push('重算日期 ' + delta.redated + ' 条');
+              if (bits.length) {
+                UI.toast('已同步到 ' + delta.stores + ' 家已建门店：' + bits.join('、'),
+                  'info', 4200);
+              }
+
               if (added.length) {
                 UI.toast('阶段时间线已同步，新增二级：' +
                   added.map(function (v) { return '「' + C.stageLabel(v) + '」'; }).join('、'),
