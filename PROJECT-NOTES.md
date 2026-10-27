@@ -2353,3 +2353,10 @@ z123 改成「本机缓存 / 数据在云端，本机只留缓存」——就是
   fast-boot 25、write-queue 31/31、ship 27/27、art 22/22
 - 截图：`.workbuddy/menu-admin-z126.png`（张三·管理员）、`.workbuddy/menu-guest-z126.png`（赵六·团队成员），
   另有 3 倍放大图 `.workbuddy/zoom-menu-admin.png` 核对间距
+- **线上实测**（`.workbuddy/probe-live-menu.js`，真站点真登录）**18/18**：
+  ①「于欣」= 团队成员 → 菜单只有「退出登录」；确认框点取消 → 还在系统里、`sbs.auth` 没动；
+  再来一次点「退出」→ 回登录页、`sbs.auth` 已删（`sbs.user` 是「上次登录人」，故意留着预填姓名）
+  ②「邢鹏昀」= 管理员 → 多一项「系统设置」，点了跳 `#/settings`，菜单自动收起
+  ③ 全程 0 报错。线上 `index.html` 已是 `20261027z126`，`js/app.js` 里 `toggleUserMenu` 在位
+- **探针小坑**：登录页姓名框会用 `lastName()` 预填上次登录人，探针里直接 `type` 会变成
+  「于欣邢鹏昀」这种拼接值，再被 `meAllowed()` 判定不在名单 —— 换人登录前要先清空输入框。
