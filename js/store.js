@@ -769,13 +769,13 @@ window.Store = (function () {
         enqueueMany((ids || list.map(function (x) { return x.id; })).map(function (id) {
           return { k: 'del', table: table, id: id };
         }));
-        if (window.UI) UI.toast('云端删除失败，' + list.length + ' 条已存进待发送队列', 'error');
       } else {
         enqueueMany(list.map(function (x) {
           return { k: 'put', table: table, id: x.id, row: x.row };
         }));
-        if (window.UI) UI.toast('云端连不上，' + list.length + ' 条改动已存进待发送队列', 'error');
       }
+      /* 2026-10-27：正式投用后不再弹红色「云端连不上」错误条吓同事 —— 改动静默
+         进待发送队列，状态由顶栏「离线模式」横幅 + 待发送角标承担，恢复后自动补发。 */
       return 0;
     }).then(function (n) {
       wqSending -= 1;
@@ -817,7 +817,7 @@ window.Store = (function () {
       online = false;
       console.error('[cloud] 设置保存失败', e);
       enqueue({ k: 'set', table: 'app_settings', id: 'main', value: value });
-      if (window.UI) UI.toast('云端连不上，设置已存进待发送队列，恢复后自动补发', 'error');
+      /* 同上：设置保存失败也静默进队列，不再弹红色错误条 */
       return false;
     });
   }
@@ -949,6 +949,17 @@ window.Store = (function () {
   var FULL_EVERY = 45000;
   var syncSkipped = 0;      /* 跳过次数：给「省了多少次请求」留个可观测的数 */
 
+  /* 云端答得上话了：把「离线」标记翻回来、补发队列、重画一次摘掉横幅。
+     2026-10-27 修复：以前一次保存失败把 online 翻成 false 后，只有
+     「浏览器报网络恢复」或「下一次保存成功」才会翻回来 —— 网络抖一下
+     （代理 / DNS 瞬断，浏览器不报 online 事件），红横幅就一直挂着。 */
+  function markCloudUp() {
+    if (online) return;
+    online = true;
+    flushOutbox();                      /* 断网期间攒的改动，现在就补发 */
+    if (syncOnChange) syncOnChange();   /* 重画，离线横幅消失 */
+  }
+
   /* 这次要不要真拉：返回 Promise<boolean> */
   function needPull() {
     if (!lastFullAt || Date.now() - lastFullAt > FULL_EVERY) return Promise.resolve(true);
@@ -957,6 +968,7 @@ window.Store = (function () {
     var p;
     try { p = window.Cloud.pullRev(); } catch (e) { return Promise.resolve(true); }
     return p.then(function (rev) {
+      markCloudUp();                                     /* 票据都读得到 = 云端通 */
       if (!rev) return true;                             /* 读不到票据：保守全量 */
       if (rev === syncRev) return false;                 /* 票据没变：谁都没改过 */
       /* 票据变了，但正是我们自己刚才写出去那份（写完换的）→ 本地已经有了，不用拉 */
@@ -985,6 +997,7 @@ window.Store = (function () {
       if (!p || !p.then) return null;
       return p.then(function (data) {
         lastFullAt = Date.now();
+        markCloudUp();               /* 全量拉成功 = 云端通，顺手摘离线横幅 */
         applyPending(data);          /* 待发送的改动先贴回去，别被同步冲掉 */
         var next = normalized(data);
         var nextStamp = fingerprintOf(next);
