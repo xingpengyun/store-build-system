@@ -114,15 +114,16 @@ window.Pages.stores = (function () {
         '</div>' +
       '</div>' +
 
-      /* ③ 时间：计划开业日期 + 建店时间。两格都带同样长度的一行说明，高度一致 */
+      /* ③ 时间：计划开业日期 + 建档时间。两格都带同样长度的一行说明，高度一致 */
       '<div class="field-row">' +
         '<div class="field"><label>计划开业日期 <span class="field-sub">没定可以先空着</span></label>' +
           '<input class="input" type="date" name="openDate" value="' + (s.openDate || '') + '" />' +
           '<div class="field-hint">填了才能倒推任务日期；空着时只显示「开业前 N 天」，不判逾期。</div>' +
         '</div>' +
-        '<div class="field"><label>建店时间 <span class="field-sub">选填</span></label>' +
-          '<input class="input" type="date" name="buildDate" value="' + (s.buildDate || '') + '" />' +
-          '<div class="field-hint">立项开始筹建的时间，和开业日期分开记录。</div>' +
+        '<div class="field"><label>建档时间 <span class="field-sub">系统自动填</span></label>' +
+          '<input class="input" type="date" name="buildDate" value="' +
+            (s.buildDate || (isNew ? U.today() : '')) + '" />' +
+          '<div class="field-hint">系统建档时间，默认取建档当天，和开业日期分开记录。</div>' +
         '</div>' +
       '</div>' +
 
@@ -480,7 +481,7 @@ window.Pages.stores = (function () {
           ? store.openDate + ' <span class="dim" style="font-weight:400">（' +
             (days >= 0 ? '还剩 ' + days + ' 天' : '已过 ' + (-days) + ' 天') + '）</span>'
           : '<span class="dim">未设置（任务只按「开业前 N 天」计，不算逾期）</span>') + '</div></div>' +
-        '<div class="d-item"><div class="d-label">建店时间</div><div class="d-val mono">' + (store.buildDate
+        '<div class="d-item"><div class="d-label">建档时间</div><div class="d-val mono">' + (store.buildDate
           ? store.buildDate
           : '<span class="dim">未记录</span>') + '</div></div>' +
         '<div class="d-item"><div class="d-label">任务进度</div><div class="d-val">' +
