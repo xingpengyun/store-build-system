@@ -276,6 +276,7 @@ window.Cloud = (function () {
           progress: Number(s.progress) || 0,
           manager_id: s.ownerId || '',
           open_date: s.openDate || null,
+          build_date: s.buildDate || null,
           address: s.address || '',
           remark: s.remark || ''
         };
@@ -290,6 +291,7 @@ window.Cloud = (function () {
           progress: r.progress || 0,
           ownerId: r.manager_id || '',
           openDate: r.open_date || '',
+          buildDate: r.build_date || '',
           address: r.address || '',
           remark: r.remark || '',
           createdAt: String(r.created_at || '').slice(0, 10)

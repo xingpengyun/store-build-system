@@ -109,6 +109,12 @@ window.Pages.stores = (function () {
         '</div>' +
       '</div>' +
       '<div class="field-row">' +
+        '<div class="field"><label>建店时间 <span class="dim">（选填）</span></label>' +
+          '<input class="input" type="date" name="buildDate" value="' + (s.buildDate || '') + '" />' +
+          '<div class="dim" style="font-size:11px;margin-top:4px">这家店什么时候立项开始筹建的，和开业时间分开记录。</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="field-row">' +
         '<div class="field"><label>当前阶段</label>' +
           '<select class="select" name="stage">' +
             UI.options(C.STAGES.map(function (x) { return x.key; }), s.stage || (C.STAGES[0] || {}).key) +
@@ -209,6 +215,7 @@ window.Pages.stores = (function () {
             risk: UI.formValue(rootEl, 'risk'),
             ownerId: UI.formValue(rootEl, 'ownerId'),
             openDate: UI.formValue(rootEl, 'openDate'),
+            buildDate: UI.formValue(rootEl, 'buildDate'),
             address: UI.formValue(rootEl, 'address'),
             remark: UI.formValue(rootEl, 'remark')
           };
@@ -456,6 +463,9 @@ window.Pages.stores = (function () {
           ? store.openDate + ' <span class="dim" style="font-weight:400">（' +
             (days >= 0 ? '还剩 ' + days + ' 天' : '已过 ' + (-days) + ' 天') + '）</span>'
           : '<span class="dim">未设置（任务只按「开业前 N 天」计，不算逾期）</span>') + '</div></div>' +
+        '<div class="d-item"><div class="d-label">建店时间</div><div class="d-val mono">' + (store.buildDate
+          ? store.buildDate
+          : '<span class="dim">未记录</span>') + '</div></div>' +
         '<div class="d-item"><div class="d-label">任务进度</div><div class="d-val">' +
           UI.progress(S.progressValue(store), null, S.progressTip(store)) +
           '<span class="dim" style="font-weight:400;margin-left:8px">' +
