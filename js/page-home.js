@@ -12,8 +12,7 @@ window.Pages.home = (function () {
 
   /* 当前阶段筛选（空 = 全部）。存在模块里，刷新数据后不会被重置 */
   var filterStage = '';
-  var ROW_LIMIT = 8;        /* 未筛选时首页只放 8 条 */
-  var ROW_LIMIT_ON = 15;    /* 筛了阶段最多放 15 条 */
+  /* 进度总览表格：z131 起不再截断，改卡内滚动显示全部门店 */
 
   function stageObjOf(key) {
     for (var i = 0; i < C.STAGES.length; i++) {
@@ -189,8 +188,6 @@ window.Pages.home = (function () {
     return active.concat(opened);
   }
 
-  function limitNow() { return filterStage ? ROW_LIMIT_ON : ROW_LIMIT; }
-
   function subHtml(s) {
     if (!filterStage) return '点击上方色块或图例，可直接筛出该阶段的门店';
     var n = pickedStores(s).length;
@@ -199,24 +196,23 @@ window.Pages.home = (function () {
   }
 
   function footHtml(s) {
-    var rest = pickedStores(s).length - limitNow();
-    if (rest <= 0) return '';
-    return '下面还有 <b>' + rest + '</b> 家未显示' +
+    var n = pickedStores(s).length;
+    if (!n) return '';
+    return '共 <b>' + n + '</b> 家 · 表格内上下滚动查看全部' +
       '<span class="stage-foot-link" data-go="stores">去门店管理查看全部 →</span>';
   }
 
   function rowsHtml(s) {
     var list = pickedStores(s);
-    var shown = list.slice(0, limitNow());
 
-    if (!shown.length) {
+    if (!list.length) {
       return '<tr><td colspan="8">' + UI.empty(
         filterStage ? '「' + filterStage + '」暂无门店' : '还没有门店',
         filterStage ? '换个阶段看看，或点右上角「清除」' : '去门店管理添加第一家门店'
       ) + '</td></tr>';
     }
 
-    return shown.map(function (store) {
+    return list.map(function (store) {
       var owner = S.memberById(store.ownerId);
       var stageObj = stageObjOf(store.stage);
       return '<tr data-store="' + store.id + '">' +
@@ -696,7 +692,7 @@ window.Pages.home = (function () {
         '</div>' +
         Charts.stackBar(st.stageCounts, { clickable: true, active: filterStage }) +
         '<div class="stage-legend">' + legend + '</div>' +
-        '<div class="table-wrap"><table class="tbl">' +
+        '<div class="table-wrap stage-scroll"><table class="tbl">' +
           '<thead><tr>' +
             '<th>门店名称</th><th>省份</th><th>开业日期</th><th title="已完成任务 / 任务总计">整体进度</th>' +
             '<th>当前阶段</th><th>风险等级</th><th>负责人</th><th>操作</th>' +
