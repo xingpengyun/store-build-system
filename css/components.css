@@ -4024,10 +4024,16 @@ body.sm-sorting * { cursor: grabbing !important; user-select: none !important; }
   color: var(--text-3);
 }
 
-/* 首页「团队工作台」卡：人多时列表限高，卡内上下滑动看（z117）
-   300px ≈ 6 行（每行 48px + 2px 间距），超出部分滚动，不把首页拉长 */
+/* 首页「团队工作台」卡：列表随卡片高度自适应（z128）
+   卡片和左侧进度总览同高；列表区 flex:1 填满，人多时卡内上下滚动，
+   底部加一条全队概览，不再留一大块空白 */
+.home-grid-2 .card.accent-green {
+  display: flex;
+  flex-direction: column;
+}
 .team-list-scroll {
-  max-height: 300px;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   padding-right: 4px;
   scrollbar-width: thin;
@@ -4036,6 +4042,30 @@ body.sm-sorting * { cursor: grabbing !important; user-select: none !important; }
 .team-list-scroll::-webkit-scrollbar { width: 6px; }
 .team-list-scroll::-webkit-scrollbar-thumb { background: #d7dfeb; border-radius: 3px; }
 .team-list-scroll::-webkit-scrollbar-track { background: transparent; }
+
+.team-foot {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+.team-foot-stats { display: flex; gap: 8px; margin-bottom: 10px; }
+.tf-stat {
+  flex: 1;
+  text-align: center;
+  background: var(--card-2);
+  border-radius: 8px;
+  padding: 9px 4px;
+}
+.tf-stat b {
+  display: block;
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  color: var(--text);
+}
+.tf-stat span { font-size: 11px; color: var(--text-3); }
 
 /* ---------------- 折叠区（设置页「数据与备份」这类不常用操作） ----------------
    原生 <details>：不写一行 JS，键盘也能开合。默认收起，把导出/导入/清空

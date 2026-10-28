@@ -591,6 +591,18 @@ window.Pages.home = (function () {
       '</div>';
     }).join('');
 
+    /* 团队卡底部概览：全队待办 / 逾期汇总，把卡片垫到和左侧进度总览持平 */
+    var teamTodo = 0, teamLate = 0;
+    st.team.forEach(function (m) { teamTodo += (m.todo || 0); teamLate += (m.late || 0); });
+    var teamFootHtml = '<div class="team-foot">' +
+      '<div class="team-foot-stats">' +
+        '<div class="tf-stat"><b>' + teamTodo + '</b><span>全队待办</span></div>' +
+        '<div class="tf-stat"><b style="color:' + (teamLate > 0 ? 'var(--red)' : 'var(--text)') + '">' + teamLate + '</b><span>逾期</span></div>' +
+        '<div class="tf-stat"><b>' + st.team.length + '</b><span>成员</span></div>' +
+      '</div>' +
+      '<button class="btn btn-ghost btn-block" data-go="team">查看全部成员</button>' +
+    '</div>';
+
     /* ---- 今日关注 ---- */
     var focusHtml = st.focus.length ? st.focus.map(function (f) {
       var late = f.late;
@@ -700,6 +712,7 @@ window.Pages.home = (function () {
           '<div class="card-tools"><span class="link-more" data-go="team">全部成员 →</span></div>' +
         '</div>' +
         '<div class="team-list team-list-scroll">' + (teamHtml || UI.empty('还没有成员')) + '</div>' +
+        (st.team.length ? teamFootHtml : '') +
       '</div>' +
     '</section>' +
 
