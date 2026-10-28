@@ -4059,6 +4059,7 @@ body.sm-sorting * { cursor: grabbing !important; user-select: none !important; }
 .team-list-scroll {
   flex: 1 1 auto;
   min-height: 0;
+  max-height: 464px; /* z133：固定最多 8 行（实测行高 56.25px × 8 + 间距 2px × 7），超出滚动 */
   overflow-y: auto;
   padding-right: 4px;
   scrollbar-width: thin;
