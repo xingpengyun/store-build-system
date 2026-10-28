@@ -120,10 +120,10 @@ window.Pages.stores = (function () {
           '<input class="input" type="date" name="openDate" value="' + (s.openDate || '') + '" />' +
           '<div class="field-hint">填了才能倒推任务日期；空着时只显示「开业前 N 天」，不判逾期。</div>' +
         '</div>' +
-        '<div class="field"><label>建档时间 <span class="field-sub">系统自动填</span></label>' +
+        '<div class="field"><label>建档时间 <span class="field-sub">选填</span></label>' +
           '<input class="input" type="date" name="buildDate" value="' +
-            (s.buildDate || (isNew ? U.today() : '')) + '" />' +
-          '<div class="field-hint">系统建档时间，默认取建档当天，和开业日期分开记录。</div>' +
+            (s.buildDate || '') + '" />' +
+          '<div class="field-hint">这家店什么时候建档的，选填，和开业日期分开记录。</div>' +
         '</div>' +
       '</div>' +
 
