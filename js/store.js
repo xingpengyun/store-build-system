@@ -1597,7 +1597,7 @@ window.Store = (function () {
       ownerId: data.ownerId || (state.members[0] || {}).id,
       /* 开业日允许空：没定就先不填，任务只显示「开业前 N 天」，不硬算日期 */
       openDate: data.openDate || '',
-      /* 建档时间：这条门店记录进系统的时间，选填，和开业日分开 */
+      /* 建档提交时间：这条门店记录进系统的时间，选填，和开业日分开 */
       buildDate: data.buildDate || '',
       address: data.address || '',
       remark: data.remark || '',
