@@ -1930,7 +1930,7 @@
 .stage-scroll {
   flex: 1 1 auto;
   min-height: 0;
-  max-height: 500px;
+  max-height: 412px; /* z134：固定一次显示 8 行（表头 35.25px + 行高 47px × 8 ≈ 411px），超出滚动看全部 */
   overflow-y: auto;
   overflow-x: auto;
   scrollbar-width: thin;
