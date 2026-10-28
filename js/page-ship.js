@@ -552,6 +552,11 @@ window.Pages.ship = (function () {
           Pages.stores.openDetail(id);
           setTimeout(function () {
             var t = document.getElementById('sdArrTitle');
+            if (t) {
+              /* 物料到货分组是折叠的，先展开再定位，否则定位到一个收起的小标题 */
+              var head = t.closest('.sec-fold-head');
+              if (head && !head.classList.contains('is-open')) head.click();
+            }
             if (t && t.scrollIntoView) t.scrollIntoView({ block: 'center', behavior: 'smooth' });
           }, 320);
         });

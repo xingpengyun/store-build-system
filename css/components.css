@@ -1659,6 +1659,35 @@
 }
 .section-title:first-child { margin-top: 0; }
 
+/* 门店详情弹窗里的可折叠分组（z136）：筹建任务 / 物料到货 默认收起，点标题展开/收起，
+   弹窗打开时不再被一长串列表撑得老长 */
+.section-title.sec-fold-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 8px;
+  margin: 14px 0 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+  transition: background .14s;
+}
+.section-title.sec-fold-head:hover { background: var(--primary-soft); }
+.section-title.sec-fold-head .sec-fold-arrow {
+  flex: none;
+  width: 0;
+  height: 0;
+  margin-right: 2px;
+  border-left: 5px solid var(--text-2);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transition: transform .18s ease;
+}
+.section-title.sec-fold-head.is-open .sec-fold-arrow { transform: rotate(90deg); }
+.sec-body { display: none; }
+.sec-body.is-open { display: block; }
+
 /* 响应式 */
 @media (max-width: 1500px) {
   .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }

@@ -525,12 +525,18 @@ window.Pages.stores = (function () {
             (store.remark ? '<div>备注：' + U.esc(store.remark) + '</div>' : '') +
           '</div>'
         : '') +
-      '<div class="section-title">筹建任务（' + tasks.length + '）</div>' +
-      (tasks.length
-        ? '<div class="tstack">' + taskCards + '</div>'
-        : UI.empty('还没有任务')) +
-      '<div class="section-title" id="sdArrTitle">物料到货（<span id="arrCount">' + arrivals.length + '</span>）</div>' +
-      '<div id="arrWrap">' + arrBody(store.id) + '</div>';
+      '<div class="section-title sec-fold-head" data-fold="tasks">' +
+        '<span>筹建任务（' + tasks.length + '）</span><i class="sec-fold-arrow"></i>' +
+      '</div>' +
+      '<div class="sec-body" data-fold-body="tasks">' +
+        (tasks.length ? '<div class="tstack">' + taskCards + '</div>' : UI.empty('还没有任务')) +
+      '</div>' +
+      '<div class="section-title sec-fold-head" id="sdArrTitle" data-fold="arr">' +
+        '<span>物料到货（<span id="arrCount">' + arrivals.length + '</span>）</span><i class="sec-fold-arrow"></i>' +
+      '</div>' +
+      '<div class="sec-body" data-fold-body="arr">' +
+        '<div id="arrWrap">' + arrBody(store.id) + '</div>' +
+      '</div>';
 
     UI.modal({
       title: store.name,
@@ -542,6 +548,23 @@ window.Pages.stores = (function () {
         (S.templates().length ? '<button class="btn" data-act="dispatch">按清单补派任务</button>' : '') +
         '<button class="btn btn-primary" data-act="edit">编辑门店</button>',
       onMount: function (rootEl, close) {
+        /* ---- 折叠：筹建任务 / 物料到货 两个分组可收起，默认收起不把弹窗拉太长 ---- */
+        function setFold(key, open) {
+          var head = rootEl.querySelector('.sec-fold-head[data-fold="' + key + '"]');
+          var bodyEl = rootEl.querySelector('.sec-body[data-fold-body="' + key + '"]');
+          if (head) head.classList.toggle('is-open', !!open);
+          if (bodyEl) bodyEl.classList.toggle('is-open', !!open);
+        }
+        rootEl.addEventListener('click', function (e) {
+          var head = e.target.closest('.sec-fold-head');
+          if (!head || !rootEl.contains(head)) return;
+          var key = head.getAttribute('data-fold');
+          var bodyEl = rootEl.querySelector('.sec-body[data-fold-body="' + key + '"]');
+          if (!bodyEl) return;
+          var willOpen = !bodyEl.classList.contains('is-open');
+          setFold(key, willOpen);
+        });
+
         /* ---- 物料到货：增 / 改 / 标记完成 / 删 ---- */
         var arrWrap = rootEl.querySelector('#arrWrap');
         function repaintArr() {
