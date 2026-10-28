@@ -349,6 +349,14 @@ window.Pages.stores = (function () {
     return s.slice(0, 4) === String(new Date().getFullYear()) ? s.slice(5) : s;
   }
 
+  /* 温度分类：normal=常温 / frozen=冻品（到货时间按这两类分开填、分开筛） */
+  function catOf(a) { return a && a.cat === 'frozen' ? 'frozen' : 'normal'; }
+  function catDot(cat) {
+    return cat === 'frozen'
+      ? '<span class="arr-cat-dot frozen" title="冻品"></span>'
+      : '<span class="arr-cat-dot normal" title="常温"></span>';
+  }
+
   /* 清单里还没加进这家门店的物料 */
   function arrMissing(storeId) {
     var have = {};
@@ -394,10 +402,11 @@ window.Pages.stores = (function () {
           (wait ? '<span class="arr-sum-i">还早 <b>' + wait + '</b></span>' : '') +
           (ok ? '<span class="arr-sum-i ok">已通知 <b>' + ok + '</b></span>' : '') +
         '</div>' +
-        '<div class="table-wrap"><table class="tbl arr-tbl" style="min-width:640px">' +
-          '<thead><tr><th style="width:140px">物料 / 供应商</th><th>备注</th>' +
-            '<th style="width:52px">数量</th><th style="width:168px">登记的到货时间</th>' +
-            '<th style="width:92px">通知</th><th style="width:28px"></th></tr></thead>' +
+        '<div class="table-wrap"><table class="tbl arr-tbl" style="min-width:760px">' +
+          '<thead><tr><th style="width:130px">物料 / 供应商</th><th>备注</th>' +
+            '<th style="width:48px">数量</th>' +
+            '<th style="width:128px">常温到货时间</th><th style="width:128px">冻品到货时间</th>' +
+            '<th style="width:88px">通知</th><th style="width:28px"></th></tr></thead>' +
           '<tbody>' + list.map(function (a) {
             var done = S.arrNotified(a);
             var d = arrDays(a);
@@ -415,6 +424,7 @@ window.Pages.stores = (function () {
             /* 第一列：定好就不能改、也没有下拉（2026-10-24 用户要求）。
                只有还没填物料名的新行才让打字，填好失焦后就锁上。 */
             var itemLocked = !!a.item;
+            var cat = catOf(a);
 
             return '<tr data-arr="' + U.esc(a.id) + '" class="' +
                 (done ? 'is-done' : w === 'late' ? 'is-late' : w === 'soon' ? 'is-soon' : '') + '">' +
@@ -426,12 +436,22 @@ window.Pages.stores = (function () {
                 'data-arr-field="remark" value="' + U.esc(S.arrRemarkOf(a.id)) + '" ' +
                 'placeholder="比如：等门店确认收货人" title="这一行的备注，比如「先发招牌，货架后发」" /></td>' +
               '<td><input class="arr-in mono" type="number" min="0" step="1" data-arr-field="qty" value="' + (a.qty ? a.qty : '') + '" placeholder="—" title="数量可以不填" /></td>' +
-              '<td><div class="arr-eta">' +
-                '<input class="arr-in mono" type="text" inputmode="numeric" autocomplete="off" ' +
-                  'data-arr-field="etaDate" value="' + U.esc(etaDisplay(a.etaDate)) + '" placeholder="如 10/25" ' +
-                  'title="到货日直接打字就行：10/25、10-25、10月25、1025、2026/10/25 都认；不带年份按今年算。改日期 = 对方给了新承诺" />' +
-                tag +
-              '</div></td>' +
+              (cat === 'normal'
+                ? '<td class="arr-eta-td"><div class="arr-eta">' + catDot(cat) +
+                    '<input class="arr-in mono" type="text" inputmode="numeric" autocomplete="off" ' +
+                      'data-arr-field="etaDate" value="' + U.esc(etaDisplay(a.etaDate)) + '" placeholder="如 10/25" ' +
+                      'title="常温到货日：10/25、10-25、10月25、1025、2026/10/25 都认；不带年份按今年算" />' +
+                    tag +
+                  '</div></td>'
+                : '<td class="arr-eta-td is-off"><button type="button" class="arr-cat-switch" data-arr-cat="normal" title="这条是冻品，点一下转到常温">转常温</button></td>') +
+              (cat === 'frozen'
+                ? '<td class="arr-eta-td"><div class="arr-eta">' + catDot(cat) +
+                    '<input class="arr-in mono" type="text" inputmode="numeric" autocomplete="off" ' +
+                      'data-arr-field="etaDate" value="' + U.esc(etaDisplay(a.etaDate)) + '" placeholder="如 10/25" ' +
+                      'title="冻品到货日：10/25、10-25、10月25、1025、2026/10/25 都认；不带年份按今年算" />' +
+                    tag +
+                  '</div></td>'
+                : '<td class="arr-eta-td is-off"><button type="button" class="arr-cat-switch" data-arr-cat="frozen" title="这条是常温，点一下转到冻品">转冻品</button></td>') +
               '<td><button type="button" class="arr-btn' + (done ? ' done' : '') + '" data-arr-done title="' +
                 (done ? '点一下改回「待通知」' : '打电话 / 发微信让对方发货后点一下，这条就不用再催了') + '">' +
                 (done ? '✓ 已通知' : '通知供应商') + '</button></td>' +
@@ -681,6 +701,14 @@ window.Pages.stores = (function () {
             UI.toast(was
               ? '已改回待通知，继续按登记的到货时间提醒你'
               : '已记下：' + (rec.item || '该物料') + ' 已通知供应商', 'success');
+            return;
+          }
+
+          if (e.target.closest('[data-arr-cat]')) {
+            var toCat = e.target.closest('[data-arr-cat]').getAttribute('data-arr-cat');
+            S.updateArrival(aid, { cat: toCat });
+            repaintArr();
+            UI.toast('已转到' + (toCat === 'frozen' ? '冻品' : '常温') + '，日期先留着，按实际改一下就行', 'success');
             return;
           }
 

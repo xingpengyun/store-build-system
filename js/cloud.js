@@ -346,6 +346,7 @@ window.Cloud = (function () {
           item: a.item || '',
           qty: Number(a.qty) || 0,
           eta_date: a.etaDate || null,
+          cat: a.cat === 'frozen' ? 'frozen' : 'normal',
           status: a.status || 'pending'
         };
       },
@@ -356,6 +357,7 @@ window.Cloud = (function () {
           item: r.item || '',
           qty: r.qty || 0,
           etaDate: r.eta_date || '',
+          cat: r.cat === 'frozen' ? 'frozen' : 'normal',
           status: r.status || 'pending'
         };
       }

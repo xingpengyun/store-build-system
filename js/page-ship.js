@@ -15,7 +15,7 @@ window.Pages.ship = (function () {
   var S = window.Store;
   var C = window.CONST;
 
-  var state = { tab: 'all', q: '', view: 'store', dtab: 'all' };
+  var state = { tab: 'all', q: '', view: 'store', dtab: 'all', cat: 'all' };
 
   /* 顶部这排既能看数，也能点进去只看这一类 */
   var TABS = [
@@ -47,9 +47,10 @@ window.Pages.ship = (function () {
   }
 
   function dStats(rows) {
-    var s = { all: rows.length, late: 0, today: 0, soon: 0, noeta: 0, notified: 0, pending: 0, stores: {}, pendingStores: {} };
+    var s = { all: rows.length, late: 0, today: 0, soon: 0, noeta: 0, notified: 0, pending: 0, normal: 0, frozen: 0, stores: {}, pendingStores: {} };
     rows.forEach(function (r) {
       s.stores[r.storeId] = 1;
+      if (r.cat === 'frozen') s.frozen += 1; else s.normal += 1;
       if (r.notified) { s.notified += 1; return; }
       s.pending += 1;
       s.pendingStores[r.storeId] = 1;
@@ -67,6 +68,7 @@ window.Pages.ship = (function () {
     var q = String(state.q || '').trim().toLowerCase();
     return rows.filter(function (r) {
       if (!hitD(r, state.dtab)) return false;
+      if (state.cat && state.cat !== 'all' && r.cat !== state.cat) return false;
       if (!q) return true;
       return (r.storeName + ' ' + r.province + ' ' + r.item + ' ' + r.owner)
         .toLowerCase().indexOf(q) >= 0;
@@ -346,6 +348,7 @@ window.Pages.ship = (function () {
         '<span class="sd-province">' + U.esc(r.province) + '</span>' +
       '</td>' +
       '<td class="sd-item-cell">' + U.esc(r.item) +
+        (r.cat === 'frozen' ? '<span class="sd-cat frozen">冻品</span>' : '<span class="sd-cat normal">常温</span>') +
         (r.qty ? '<span class="sd-qty">×' + r.qty + '</span>' : '') + '</td>' +
       '<td class="sd-open-cell">' + U.esc(openTxt) + '</td>' +
       '<td class="sd-act-cell">' +
@@ -448,6 +451,20 @@ window.Pages.ship = (function () {
       return '<div class="tab' + (state.dtab === t.key ? ' active' : '') + '" data-dtab="' + t.key + '">' +
         t.label + '<span class="cnt">' + (n[t.key] || 0) + '</span></div>';
     }).join('');
+  }
+
+  /* 常温 / 冻品 到货时间筛选（z130）：只看某一类物料的到货时间线 */
+  function catFilterHtml(s) {
+    var cats = [
+      { k: 'all', label: '全部', v: s.all },
+      { k: 'normal', label: '常温', v: s.normal },
+      { k: 'frozen', label: '冻品', v: s.frozen }
+    ];
+    return '<div class="ship-cat">' + cats.map(function (c) {
+      return '<button type="button" class="ship-cat-btn' + (state.cat === c.k ? ' is-on' : '') + '" data-ship-cat="' + c.k + '"' +
+        ' title="只看' + (c.k === 'all' ? '全部物料' : c.label + '物料') + '的到货时间">' +
+        c.label + '<em>' + (c.v || 0) + '</em></button>';
+    }).join('') + '</div>';
   }
 
   function dateBannerHtml(s) {
@@ -638,6 +655,7 @@ window.Pages.ship = (function () {
         '<div class="ship-bar">' +
           '<div class="tabs" id="shipTabs">' + dateTabsHtml(ds) + '</div>' +
           '<div class="ship-tools">' +
+            catFilterHtml(ds) +
             '<div class="mini-search">' + UI.icon('search') +
               '<input id="shipQ" placeholder="搜门店 / 物料 / 负责人" value="' + U.esc(state.q) + '" />' +
             '</div>' +
@@ -738,6 +756,7 @@ window.Pages.ship = (function () {
           state.q = '';
           state.tab = 'all';
           state.dtab = 'all';
+          state.cat = 'all';
           App.refresh({ keep: true });
           window.scrollTo(0, 0);
         }
@@ -753,6 +772,14 @@ window.Pages.ship = (function () {
       var dtab = e.target.closest('[data-dtab]');
       if (dtab && root.contains(dtab)) {
         state.dtab = dtab.getAttribute('data-dtab');
+        App.refresh({ keep: true });
+        return;
+      }
+
+      /* 常温 / 冻品 到货时间筛选 */
+      var shipCat = e.target.closest('[data-ship-cat]');
+      if (shipCat && root.contains(shipCat)) {
+        state.cat = shipCat.getAttribute('data-ship-cat');
         App.refresh({ keep: true });
         return;
       }

@@ -2119,6 +2119,8 @@ window.Store = (function () {
       qty: (q === '' || q === null || q === undefined) ? 0 : Math.max(0, Number(q) || 0),
       /* 到货时间只认登记的那个日期：没填就留空，绝不替门店编一个（编了就会误报 / 漏报） */
       etaDate: data.etaDate || '',
+      /* 温度分类：normal=常温（默认）/ frozen=冻品，到货时间按这两类分开筛 */
+      cat: data.cat === 'frozen' ? 'frozen' : 'normal',
       status: data.status || 'pending'
     };
     state.arrivals.push(a);
@@ -2405,6 +2407,7 @@ window.Store = (function () {
         item: (a.item || '').trim() || '未命名物料',
         qty: Number(a.qty) || 0,
         eta: a.etaDate || '',
+        cat: a.cat === 'frozen' ? 'frozen' : 'normal',
         hasEta: hasEta,
         d: d,
         notified: notified,

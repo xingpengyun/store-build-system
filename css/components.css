@@ -2296,6 +2296,30 @@
 .arr-eta { display: flex; align-items: center; gap: 5px; }
 .arr-eta .arr-in { flex: 1 1 auto; min-width: 0; }
 
+/* 常温/冻品 两列到货时间（z130） */
+.arr-eta-td { vertical-align: middle; }
+.arr-cat-dot {
+  flex: 0 0 auto;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+}
+.arr-cat-dot.normal { background: #12a594; box-shadow: 0 0 0 3px rgba(18, 165, 148, .14); }
+.arr-cat-dot.frozen { background: #3f6bf5; box-shadow: 0 0 0 3px rgba(63, 107, 245, .14); }
+.arr-cat-switch {
+  height: 24px;
+  padding: 0 8px;
+  border: 1px dashed #cdd7e8;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  font-family: inherit;
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: .14s;
+}
+.arr-cat-switch:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+
 /* 第一列是只读文字（定好不能改、也没有下拉），只有新行可输入 */
 .arr-item[readonly] { cursor: default; color: var(--text); }
 .arr-item[readonly]:hover { border-color: transparent; background: transparent; }
@@ -3324,6 +3348,47 @@ body.sm-sorting * { cursor: grabbing !important; user-select: none !important; }
 }
 .ship-tools { display: flex; align-items: center; gap: 8px; }
 
+/* 常温 / 冻品 到货时间筛选（z130） */
+.ship-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line-2);
+  border-radius: 9px;
+  background: var(--card-2);
+}
+.ship-cat-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+  font-family: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: .14s;
+}
+.ship-cat-btn em {
+  font-style: normal;
+  font-size: 10.5px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.ship-cat-btn:hover { color: var(--primary); }
+.ship-cat-btn.is-on {
+  background: #fff;
+  color: var(--primary);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, .08);
+  font-weight: 600;
+}
+.ship-cat-btn.is-on em { color: var(--primary); }
+
 /* ---------------- 表 ---------------- */
 .ship-tbl { min-width: 1080px; }
 /* 几十家店要能一屏看更多行：表头钉住，表体自己滚 */
@@ -3453,6 +3518,19 @@ body.sm-sorting * { cursor: grabbing !important; user-select: none !important; }
 .sd-store:hover { color: var(--primary); text-decoration: underline; }
 .sd-province { margin-left: 6px; font-size: 10.5px; color: var(--text-3); }
 .sd-item-cell { color: var(--text-2); }
+.sd-cat {
+  margin-left: 6px;
+  padding: 0 5px;
+  height: 16px;
+  line-height: 16px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  vertical-align: 1px;
+}
+.sd-cat.normal { color: #0d8a78; background: rgba(18, 165, 148, .12); }
+.sd-cat.frozen { color: #3f6bf5; background: rgba(63, 107, 245, .12); }
 .sd-qty { margin-left: 6px; font-size: 10.5px; color: var(--text-3); }
 .sd-open-cell { font-size: 11.5px; color: var(--text-3); }
 
