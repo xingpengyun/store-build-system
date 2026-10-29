@@ -102,31 +102,21 @@
 }
 .hero-art svg { width: 148px; height: 78px; }
 
-/* ---------------- Hero 小人「小蛮」：趴在横幅底边（虚线边框上），悬停爬出来 ---------------- */
+/* ---------------- Hero 小人「小蛮」：趴在横幅底边，悬停爬出来 ---------------- */
 .hero-mascot {
   position: absolute;
-  bottom: 0;                   /* 虚线贴到横幅底边（红线标注的边框位置） */
+  bottom: 0;                   /* 贴到横幅底边（用户红线标注的位置，无虚线） */
   left: 0;
   right: 0;
-  height: 72px;                /* 趴着：露出帽子+整张脸+一点身体，脚藏到虚线下面 */
+  height: 72px;                /* 趴着：露出帽子+整张脸+一点身体，下身藏到底边下 */
   overflow: hidden;
   z-index: 1;
   pointer-events: none;
   transition: height .42s cubic-bezier(.2, .85, .3, 1.12);
 }
-/* 小蛮趴着的这条虚线边框（横跨整条横幅） */
-.hero-mascot::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  border-bottom: 2px dashed #a8c0ee;
-  pointer-events: none;
-}
-/* 鼠标移到横幅（边缘线/框内）→ 小人完整爬出来 */
+/* 鼠标移到横幅（框内）→ 小人完整爬出来 */
 .hero:hover .hero-mascot {
-  height: 90px;              /* 身体椭圆底部(y=204)正好落在虚线上，不悬空 */
+  height: 90px;              /* 身体椭圆底部(y=204)正好落在底边上，不悬空 */
 }
 .hero-mascot-svg {
   position: absolute;
