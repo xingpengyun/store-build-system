@@ -696,7 +696,7 @@ button:focus-visible,
   bottom: 0;
   width: 320px;
   height: 320px;
-  opacity: .55;
+  opacity: .52;
 }
 /* 网丝很细，单独压一点亮度，别在深色/彩色卡片上显脏 */
 .hw-web-silk { stroke: #8a7bc0; }
