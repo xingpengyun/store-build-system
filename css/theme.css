@@ -686,14 +686,24 @@ button:focus-visible,
   pointer-events: none;
   z-index: 3;              /* 浮在卡片边缘之上，但低于顶栏(60)/弹窗/toast */
 }
+/* 蜘蛛网：一整张完整的圆网，贴在屏幕右下角。
+   关键在「附着点」——盒子 right/bottom 都是 0，SVG 里那几根锚丝的终点正好落在
+   viewBox 的 x=320 / y=320 上，也就是屏幕右边缘和底边缘，线头不会悬在半空。
+   320 见方，比原来那个 110 的角落网大一圈多。 */
 .hw-web {
   position: absolute;
-  top: 152px;
-  right: 8px;
-  width: 110px;
-  height: 110px;
-  opacity: .5;
+  right: 0;
+  bottom: 0;
+  width: 320px;
+  height: 320px;
+  opacity: .55;
 }
+/* 网丝很细，单独压一点亮度，别在深色/彩色卡片上显脏 */
+.hw-web-silk { stroke: #8a7bc0; }
+/* 窄屏别让 320 的网占掉半屏内容 */
+@media (max-width: 1280px) { .hw-web { width: 250px; height: 250px; } }
+@media (max-width: 900px)  { .hw-web { width: 180px; height: 180px; opacity: .42; } }
+@media (max-width: 680px)  { .hw-web { display: none; } }
 .hw-bat-fly {
   position: absolute;
   top: 40%;
@@ -706,7 +716,7 @@ button:focus-visible,
 .hw-pumpkin-fly {
   position: absolute;
   bottom: 16px;
-  right: 26px;
+  left: 26px;              /* 右下角让给蜘蛛网，南瓜挪到左下 */
   width: 42px;
   height: 42px;
   opacity: .9;
