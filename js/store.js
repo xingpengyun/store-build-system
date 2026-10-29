@@ -1414,7 +1414,8 @@ window.Store = (function () {
       if (a.late !== b.late) return a.late ? -1 : 1;
       return a.days - b.days;
     });
-    focus = focus.slice(0, 5);
+    /* z137：不再截断成 5 条，全部返回；首页卡片里固定显示 5 条、超出滚动 */
+    focus = focus.slice(0, 30);
 
     return {
       totalStores: st.stores.length,

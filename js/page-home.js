@@ -249,6 +249,101 @@ window.Pages.home = (function () {
       '</svg></div>';
   }
 
+  /* 首页 hero 顶部的小人「小蛮」：和登录页同一个角色，但加了
+     - 喜怒哀乐 4 组表情自动循环切换（纯 CSS）；
+     - 眼睛瞳孔跟随鼠标看（JS mousemove）；
+     - 点击一下会弹跳 + 瞳孔放大 + 惊讶嘴（JS click）；
+     - 平时趴在横幅顶部边缘只露上半身，鼠标移进横幅后完整爬出来（纯 CSS 悬停）。
+     表情组在 <g class="hm-exp hm-xx"> 里，惊讶嘴独立一层，瞳孔用 <g class="hm-pupil"> 方便整体位移。 */
+  function heroMascot() {
+    return '<div class="hero-mascot" aria-hidden="true">' +
+      '<svg class="hero-mascot-svg" viewBox="0 0 200 220" focusable="false">' +
+      '<defs><linearGradient id="hmBody" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0" stop-color="#8aa2ff"/><stop offset="1" stop-color="#5b7cff"/>' +
+      '</linearGradient></defs>' +
+      '<ellipse class="mascot-glow" cx="100" cy="120" rx="72" ry="64" fill="#cfe0ff" opacity=".45"/>' +
+      '<ellipse class="mascot-shadow" cx="100" cy="206" rx="46" ry="9" fill="#1f3d5a" opacity=".10"/>' +
+      '<ellipse cx="46" cy="160" rx="13" ry="24" fill="#5b7cff" transform="rotate(20 46 160)"/>' +
+      '<ellipse cx="100" cy="150" rx="56" ry="54" fill="url(#hmBody)"/>' +
+      '<ellipse cx="100" cy="174" rx="30" ry="20" fill="#ffffff" opacity=".14"/>' +
+      '<ellipse cx="82" cy="128" rx="9" ry="10" fill="#ffffff"/>' +
+      '<ellipse cx="118" cy="128" rx="9" ry="10" fill="#ffffff"/>' +
+      '<g class="hm-pupil"><circle cx="82" cy="128" r="3.6" fill="#2b2f4a"/><circle cx="83.3" cy="126" r="1.2" fill="#ffffff"/></g>' +
+      '<g class="hm-pupil"><circle cx="118" cy="128" r="3.6" fill="#2b2f4a"/><circle cx="119.3" cy="126" r="1.2" fill="#ffffff"/></g>' +
+      '<ellipse cx="68" cy="144" rx="9" ry="5" fill="#ff9db0" opacity=".5"/>' +
+      '<ellipse cx="132" cy="144" rx="9" ry="5" fill="#ff9db0" opacity=".5"/>' +
+      '<g class="hm-exp hm-joy">' +
+        '<path d="M90 138 Q100 147 110 138" stroke="#2b2f4a" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+      '</g>' +
+      '<g class="hm-exp hm-angry">' +
+        '<path d="M74 116 L89 122" stroke="#2b2f4a" stroke-width="4" stroke-linecap="round"/>' +
+        '<path d="M126 116 L111 122" stroke="#2b2f4a" stroke-width="4" stroke-linecap="round"/>' +
+        '<path d="M90 143 Q100 133 110 143" stroke="#2b2f4a" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+      '</g>' +
+      '<g class="hm-exp hm-sad">' +
+        '<path d="M82 140 c -5 5 -5 11 0 16 c 5 -5 5 -11 0 -16 z" fill="#bfe3ff"/>' +
+        '<path d="M118 140 c -5 5 -5 11 0 16 c 5 -5 5 -11 0 -16 z" fill="#bfe3ff"/>' +
+        '<path d="M90 144 Q100 132 110 144" stroke="#2b2f4a" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+      '</g>' +
+      '<g class="hm-exp hm-happy">' +
+        '<path d="M88 136 Q100 158 112 136 Z" fill="#2b2f4a"/>' +
+        '<path d="M95 150 Q100 156 105 150 Z" fill="#ff8fa3"/>' +
+      '</g>' +
+      '<ellipse class="hm-shock-mouth" cx="100" cy="141" rx="6.5" ry="8" fill="#2b2f4a"/>' +
+      '<g class="mascot-arm"><ellipse cx="158" cy="138" rx="12" ry="23" fill="#5b7cff" transform="rotate(30 158 138)"/></g>' +
+      '<path d="M60 92 a40 30 0 0 1 80 0 z" fill="#ffd23f"/>' +
+      '<ellipse cx="100" cy="95" rx="48" ry="9" fill="#f0b429"/>' +
+      '<path d="M72 80 a28 18 0 0 1 56 0" stroke="#ffffff" stroke-width="3" fill="none" opacity=".5" stroke-linecap="round"/>' +
+      '<g transform="translate(30,52)"><path class="mascot-spark s1" d="M0 -6.5 L1.7 -1.7 L6.5 0 L1.7 1.7 L0 6.5 L-1.7 1.7 L-6.5 0 L-1.7 -1.7 Z" fill="#ffd23f"/></g>' +
+      '<g transform="translate(176,64)"><path class="mascot-spark s2" d="M0 -5 L1.3 -1.3 L5 0 L1.3 1.3 L0 5 L-1.3 1.3 L-5 0 L-1.3 -1.3 Z" fill="#7c9cff"/></g>' +
+      '<g transform="translate(24,116)"><path class="mascot-spark s3" d="M0 -4 L1 -1 L4 0 L1 1 L0 4 L-1 1 L-4 0 L-1 -1 Z" fill="#34c78b"/></g>' +
+      '<g transform="translate(182,126)"><path class="mascot-spark s4" d="M0 -4.5 L1.2 -1.2 L4.5 0 L1.2 1.2 L0 4.5 L-1.2 1.2 L-4.5 0 L-1.2 -1.2 Z" fill="#ff9db0"/></g>' +
+      '</svg></div>';
+  }
+
+  /* 小人交互：瞳孔跟随鼠标 + 点击弹跳。用 document 委托、只绑一次（模块级标志），
+     切页面/重渲染也不会重复绑定或泄漏。 */
+  var hmState = { ox: 0, oy: 0, scale: 1 };
+  function hmPaint(svg) {
+    var pupils = svg.querySelectorAll('.hm-pupil');
+    for (var i = 0; i < pupils.length; i++) {
+      pupils[i].style.transform = 'translate(' + hmState.ox + 'px,' + hmState.oy + 'px) scale(' + hmState.scale + ')';
+    }
+  }
+  function initHeroMascot() {
+    if (initHeroMascot._done) return;
+    initHeroMascot._done = true;
+
+    document.addEventListener('mousemove', function (e) {
+      var svg = document.querySelector('.hero-mascot-svg');
+      if (!svg) return;
+      var r = svg.getBoundingClientRect();
+      var cx = r.left + r.width / 2;
+      var cy = r.top + r.height * 0.58;
+      var dx = (e.clientX - cx) / Math.max(1, r.width);
+      var dy = (e.clientY - cy) / Math.max(1, r.height);
+      hmState.ox = Math.max(-3.5, Math.min(3.5, dx * 7));
+      hmState.oy = Math.max(-2.5, Math.min(2.5, dy * 5));
+      hmPaint(svg);
+    });
+
+    document.addEventListener('click', function (e) {
+      var t = e.target;
+      var svg = t && t.closest ? t.closest('.hero-mascot-svg') : null;
+      if (!svg) return;
+      hmState.scale = 1.45;
+      hmPaint(svg);
+      svg.classList.remove('hm-jump');
+      void svg.offsetWidth;
+      svg.classList.add('hm-jump');
+      setTimeout(function () {
+        hmState.scale = 1;
+        hmPaint(svg);
+        svg.classList.remove('hm-jump');
+      }, 560);
+    });
+  }
+
   /* ================= 天气：真实数据 + 按天气动起来 =================
      数据源 Open-Meteo（不用 key，响应头带 access-control-allow-origin:*，
      所以 file:// 双击打开也取得到）。城市取「系统设置 → 天气城市」，默认上海。
@@ -646,6 +741,13 @@ window.Pages.home = (function () {
       });
     })();
 
+    /* 近 7 天到货量卡底部统计：7 天总到货、今日到货 */
+    var trendSum = 0, trendToday = 0;
+    st.trend.forEach(function (t, i) {
+      trendSum += t.count;
+      if (i === st.trend.length - 1) trendToday = t.count;
+    });
+
     return '' +
     /* Hero */
     '<section class="hero fade-up">' +
@@ -663,6 +765,7 @@ window.Pages.home = (function () {
            '<b class="warn">' + st.riskStores + '</b> 家门店存在风险，本周共 ' +
            '<b>' + st.weekTasks + '</b> 项待推进。</p>' +
       '</div>' +
+      heroMascot() +
       heroArt() +
       '<div class="hero-date">' +
         '<div class="hd-day">' + U.cnDate(t0) + '</div>' +
@@ -726,8 +829,13 @@ window.Pages.home = (function () {
       '<div class="card accent-violet">' +
         '<div class="card-head"><h3>任务状态分布</h3></div>' +
         '<div class="donut-wrap">' +
-          Charts.donut(donutItems, { size: 132, centerLabel: '总任务', centerValue: tc.total }) +
+          Charts.donut(donutItems, { size: 150, centerLabel: '总任务', centerValue: tc.total }) +
           '<div class="donut-legend">' + donutLegend + '</div>' +
+        '</div>' +
+        '<div class="donut-foot">' +
+          '<div class="tf-stat"><b>' + U.pct(tc.done, tc.total) + '</b><span>完成率</span></div>' +
+          '<div class="tf-stat"><b>' + st.todayTasks + '</b><span>今日待办</span></div>' +
+          '<div class="tf-stat"><b>' + st.weekTasks + '</b><span>本周待推进</span></div>' +
         '</div>' +
       '</div>' +
 
@@ -740,6 +848,11 @@ window.Pages.home = (function () {
         '<div class="arrival-foot">' +
           '<span>即将到货（7 天内）</span>' +
           '<span><b>' + upcomingStores + '</b> <span class="dim" style="font-size:12px">家</span></span>' +
+        '</div>' +
+        '<div class="arrival-stats">' +
+          '<div class="tf-stat"><b>' + trendSum + '</b><span>7 天到货</span></div>' +
+          '<div class="tf-stat"><b>' + trendToday + '</b><span>今日到货</span></div>' +
+          '<div class="tf-stat"><b>' + st.arrivals7 + '</b><span>待通知</span></div>' +
         '</div>' +
       '</div>' +
     '</section>';
@@ -803,6 +916,9 @@ window.Pages.home = (function () {
   function mount(root) {
     /* 天气：先用手上的缓存/兜底值画出来，再异步换真实数据 */
     loadWeather(root);
+
+    /* 首页小人：瞳孔跟随鼠标 + 点击弹跳（只绑一次） */
+    initHeroMascot();
 
     /* 先按当前宽度把每个判断逻辑气泡定好位（2026-10-25 z105）。
        气泡宽 254px，默认从 ⓘ 往右展开；最右边那张卡的气泡即使没展开

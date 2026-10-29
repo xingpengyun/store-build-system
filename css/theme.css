@@ -604,8 +604,8 @@ button:focus-visible,
   100% { opacity: 0; transform: translateY(-52px) scale(1.15); }
 }
 
-/* 横幅里的内容要压在装饰上面 */
-.hero > *:not(.hero-fx) { position: relative; z-index: 1; }
+/* 横幅里的内容要压在装饰上面（小人 hero-mascot 例外：它用绝对定位趴在顶部边缘） */
+.hero > *:not(.hero-fx):not(.hero-mascot) { position: relative; z-index: 1; }
 
 /* 开了「减少动效」就把装饰停住（不闪、不动） */
 @media (prefers-reduced-motion: reduce) {
