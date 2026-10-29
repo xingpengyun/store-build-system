@@ -195,11 +195,15 @@ html { scroll-behavior: smooth; }
 }
 .page-head p { color: var(--text-2); }
 
-/* Hero 横幅：淡蓝 → 淡紫 → 淡薄荷 */
+/* Hero 横幅：万圣夜配色（深紫夜空 → 暗酒红，配橙月与南瓜灯的暖光）
+   注意：theme.css 是最后一层，这条会盖掉 components.css 里那份基础背景，改配色改这里。 */
 .hero {
-  background: linear-gradient(104deg, #e6edff 0%, #ebe4ff 46%, #def6ec 100%);
-  border-color: #dbe6fb;
-  box-shadow: 0 12px 30px -24px rgba(14, 24, 48, .6);
+  background:
+    radial-gradient(520px 260px at 88% 118%, rgba(255, 150, 54, .18), transparent 68%),
+    radial-gradient(460px 240px at 16% -30%, rgba(126, 78, 200, .34), transparent 70%),
+    linear-gradient(104deg, #221a36 0%, #2c1e44 34%, #38234a 64%, #452838 100%);
+  border-color: rgba(255, 172, 82, .20);
+  box-shadow: inset 0 1px 0 rgba(255, 222, 176, .09), 0 10px 26px -18px rgba(28, 18, 46, .8);
 }
 
 /* ---------------- 5. KPI：图标带同色光晕 ---------------- */
@@ -522,12 +526,12 @@ button:focus-visible,
   z-index: 0;
 }
 
-/* 点阵：整层缓慢横移，像有风在吹 */
+/* 点阵：整层缓慢横移，像有风在吹（万圣夜改成暖色微光点，别在深紫底上显冷） */
 .hero-fx::before {
   content: '';
   position: absolute;
   inset: -30% -10%;
-  background-image: radial-gradient(circle, rgba(99, 124, 214, .16) 1.1px, transparent 1.2px);
+  background-image: radial-gradient(circle, rgba(255, 196, 128, .13) 1.1px, transparent 1.2px);
   background-size: 20px 20px;
   -webkit-mask-image: linear-gradient(100deg, transparent 8%, #000 42%, #000 78%, transparent 98%);
   mask-image: linear-gradient(100deg, transparent 8%, #000 42%, #000 78%, transparent 98%);
@@ -550,7 +554,7 @@ button:focus-visible,
   height: 240px;
   left: 26%;
   top: -60%;
-  background: radial-gradient(circle, rgba(124, 78, 224, .34), transparent 68%);
+  background: radial-gradient(circle, rgba(150, 100, 235, .40), transparent 68%);
   animation: hfDrift1 22s ease-in-out infinite alternate;
 }
 .hf-b2 {
@@ -558,7 +562,7 @@ button:focus-visible,
   height: 200px;
   left: 52%;
   top: 40%;
-  background: radial-gradient(circle, rgba(240, 150, 40, .20), transparent 68%);
+  background: radial-gradient(circle, rgba(255, 160, 60, .26), transparent 68%);
   animation: hfDrift2 27s ease-in-out infinite alternate;
 }
 .hf-b3 {
@@ -566,7 +570,7 @@ button:focus-visible,
   height: 170px;
   left: 8%;
   top: 30%;
-  background: radial-gradient(circle, rgba(88, 56, 150, .20), transparent 68%);
+  background: radial-gradient(circle, rgba(126, 74, 190, .28), transparent 68%);
   animation: hfDrift3 31s ease-in-out infinite alternate;
 }
 @keyframes hfDrift1 {
@@ -582,14 +586,14 @@ button:focus-visible,
   to   { transform: translate(30px, -26px) scale(1.12); }
 }
 
-/* 星光：几点小光斑缓缓上浮（呼应「门店陆续开业」） */
+/* 星光：几点小光斑缓缓上浮（呼应「门店陆续开业」）—— 夜空里换成暖黄星点 */
 .hf-spark {
   position: absolute;
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 0 10px 2px rgba(255, 255, 255, .85);
+  background: #ffe9b8;
+  box-shadow: 0 0 10px 2px rgba(255, 214, 150, .8);
   opacity: 0;
   animation: hfRise 7s ease-in-out infinite;
 }
@@ -604,14 +608,18 @@ button:focus-visible,
   100% { opacity: 0; transform: translateY(-52px) scale(1.15); }
 }
 
-/* ---------------- 万圣节装饰：蜘蛛网 / 蝙蝠 / 幽灵 / 南瓜灯（hero 内） ---------------- */
+/* ---------------- 万圣节装饰：蜘蛛网 / 蝙蝠 / 幽灵 / 南瓜灯（hero 内） ----------------
+   底色已经是深紫夜色，这几个装饰的取色跟着换：
+   网丝提亮（不然深底上看不见）、蝙蝠压成纯黑剪影 + 一层南瓜色轮廓光、
+   幽灵加暖白光晕。 */
 .hw-hero-web {
   position: absolute;
   top: -4px;
   left: 6px;
   width: 88px;
   height: 88px;
-  opacity: .42;
+  opacity: .55;
+  stroke: #c3b0f5;
 }
 .hw-hero-moon {
   position: absolute;
@@ -619,28 +627,32 @@ button:focus-visible,
   bottom: 2px;
   width: 190px;
   height: 95px;           /* 半圆大半月：从横幅底边露出半个圆 */
-  opacity: .96;
-  filter: drop-shadow(0 0 30px rgba(232, 137, 42, .5));
+  opacity: 1;
+  filter: drop-shadow(0 0 38px rgba(255, 150, 52, .58));
   animation: hwMoon 7s ease-in-out infinite;
 }
 .hw-bat {
   position: absolute;
   width: 34px;
   height: 20px;
-  opacity: .78;
+  opacity: .92;
   transform-origin: center;
+  filter: drop-shadow(0 0 7px rgba(255, 168, 74, .40));
   animation: hwFlap 1.6s ease-in-out infinite;
 }
 .hw-bat1 { top: 5%; left: 46%; }
 .hw-bat2 { top: 15%; left: 62%; width: 24px; height: 14px; animation-delay: .5s; animation-duration: 2.1s; }
+/* 蝙蝠压成纯黑剪影 —— 原色 #3a2f4d 在深紫底上几乎看不出来，
+   靠上面那层南瓜色轮廓光把形状拉出来（眼睛是 circle，不在此列，仍是橙的） */
+.hw-bat path, .hw-bat ellipse { fill: #1b1229; }
 .hw-ghost {
   position: absolute;
   width: 30px;
   height: 36px;
   top: 16%;
   right: 29%;
-  opacity: .9;
-  filter: drop-shadow(0 2px 5px rgba(96, 70, 170, .28));
+  opacity: .96;
+  filter: drop-shadow(0 0 12px rgba(255, 238, 205, .55));
   animation: hwFloat 4.2s ease-in-out infinite;
 }
 .hw-pumpkin {
@@ -667,6 +679,32 @@ button:focus-visible,
 
 /* 横幅里的内容要压在装饰上面 */
 .hero > *:not(.hero-fx) { position: relative; z-index: 1; }
+
+/* 窄屏：内容区一窄，190px 的大月亮就跑到文字底下压住数字了（1280 下来回擦、
+   手机上「本周共 2 项」的 2 整个落在橙色月面上，对比度掉一半）。
+   分三段处理：
+   - 1400~1181：日期卡和房子都在，右边被占满，月亮没地方站 → 先收起来
+     （硬塞到日期卡后面的话，卡片比月亮矮，会从卡底下露出一条橙色，很脏）
+   - 1180~900：日期卡和房子都隐藏了，右端空出来 → 缩小放过去
+   - 900 往下再小一档；680 以下文字要换行，放哪都压字 → 不显示 */
+@media (max-width: 1400px) and (min-width: 1181px) {
+  .hw-hero-moon { display: none; }
+}
+@media (max-width: 1180px) {
+  .hw-hero-moon { width: 150px; height: 75px; left: auto; right: 26px; opacity: .82; }
+}
+@media (max-width: 900px) {
+  .hw-hero-moon { width: 116px; height: 58px; right: 16px; opacity: .68; }
+  .hw-hero-web { width: 62px; height: 62px; opacity: .34; }
+  .hw-ghost { display: none; }
+  .hw-bat2 { display: none; }
+}
+@media (max-width: 680px) {
+  .hw-hero-moon { display: none; }
+  .hw-bat { display: none; }
+  .hw-hero-web { display: none; }
+  .hw-pumpkin { width: 26px; height: 26px; left: 1%; bottom: 1%; }
+}
 
 /* 开了「减少动效」就把装饰停住（不闪、不动） */
 @media (prefers-reduced-motion: reduce) {

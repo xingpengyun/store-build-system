@@ -233,19 +233,23 @@ window.Pages.home = (function () {
   }
 
   function heroArt() {
+    /* 夜景版：深紫墙 + 南瓜橙屋顶 + 暖黄窗户。
+       原来是白墙蓝顶的白天房子，压在万圣夜色底上像贴上去的。 */
     return '<div class="hero-art"><svg viewBox="0 0 148 78" fill="none">' +
-      '<ellipse cx="74" cy="71" rx="54" ry="5" fill="#d9e2f5" opacity=".75"/>' +
-      '<rect x="47" y="34" width="54" height="34" rx="3" fill="#ffffff" stroke="#cbd8ef"/>' +
-      '<path d="M41 36l33-21 33 21z" fill="#7d9df0"/>' +
-      '<path d="M41 36h66l-4 6H45z" fill="#5b81e8"/>' +
-      '<rect x="56" y="48" width="14" height="20" rx="2" fill="#e4edfd" stroke="#c3d4f2"/>' +
-      '<rect x="78" y="48" width="16" height="10" rx="2" fill="#e4edfd" stroke="#c3d4f2"/>' +
-      '<rect x="66" y="26" width="16" height="6" rx="1.5" fill="#ffffff" opacity=".9"/>' +
-      '<circle cx="118" cy="46" r="11" fill="#cfe3c8"/>' +
-      '<rect x="116.5" y="56" width="3" height="9" rx="1.5" fill="#b7cfae"/>' +
-      '<circle cx="28" cy="52" r="8" fill="#d7e3d0"/>' +
-      '<rect x="26.8" y="59" width="2.4" height="7" rx="1.2" fill="#c2d4ba"/>' +
-      '<path d="M96 22h6l2 4h-10z" fill="#c9d8f5"/>' +
+      '<ellipse cx="74" cy="71" rx="54" ry="5" fill="#1b1229" opacity=".85"/>' +
+      '<rect x="47" y="34" width="54" height="34" rx="3" fill="#3b2b53" stroke="#63497f"/>' +
+      '<path d="M41 36l33-21 33 21z" fill="#e8892a"/>' +
+      '<path d="M41 36h66l-4 6H45z" fill="#c46912"/>' +
+      '<rect x="56" y="48" width="14" height="20" rx="2" fill="#2a1e3d" stroke="#5b4278"/>' +
+      '<rect x="78" y="48" width="16" height="10" rx="2" fill="#ffce6b" stroke="#e8a33c"/>' +
+      '<circle cx="82" cy="53" r="1.2" fill="#ff8a5c" opacity=".9"/>' +
+      '<circle cx="90" cy="53" r="1.2" fill="#ff8a5c" opacity=".9"/>' +
+      '<rect x="66" y="26" width="16" height="6" rx="1.5" fill="#ffe0a8" opacity=".92"/>' +
+      '<circle cx="118" cy="46" r="11" fill="#4a3a63"/>' +
+      '<rect x="116.5" y="56" width="3" height="9" rx="1.5" fill="#3a2c50"/>' +
+      '<circle cx="28" cy="52" r="8" fill="#443456"/>' +
+      '<rect x="26.8" y="59" width="2.4" height="7" rx="1.2" fill="#37294c"/>' +
+      '<path d="M96 22h6l2 4h-10z" fill="#63497f"/>' +
       '</svg></div>';
   }
 

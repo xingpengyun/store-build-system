@@ -43,6 +43,8 @@
 .link-more:hover { color: var(--primary); }
 
 /* ---------------- Hero 横幅 ---------------- */
+/* 万圣夜配色：底色从深紫夜空过渡到暗酒红（远处南瓜灯的余光），
+   这样月亮 / 蝙蝠 / 南瓜灯这些暖色装饰才是"长在夜色里"，不是贴在浅蓝白板上。 */
 .hero {
   position: relative;
   display: flex;
@@ -50,8 +52,12 @@
   gap: 18px;
   padding: 18px 20px;
   border-radius: var(--radius);
-  background: linear-gradient(100deg, #eef2fb 0%, #eff4fd 42%, #f3f6fd 100%);
-  border: 1px solid #e4eaf7;
+  background:
+    radial-gradient(520px 260px at 88% 118%, rgba(255, 150, 54, .18), transparent 68%),
+    radial-gradient(460px 240px at 16% -30%, rgba(126, 78, 200, .34), transparent 70%),
+    linear-gradient(104deg, #221a36 0%, #2c1e44 34%, #38234a 64%, #452838 100%);
+  border: 1px solid rgba(255, 172, 82, .20);
+  box-shadow: inset 0 1px 0 rgba(255, 222, 176, .09), 0 10px 26px -18px rgba(28, 18, 46, .8);
   overflow: hidden;
   min-height: 104px;
 }
@@ -63,7 +69,7 @@
   width: 220px;
   height: 220px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(120, 155, 255, .16), transparent 70%);
+  background: radial-gradient(circle, rgba(255, 170, 74, .17), transparent 70%);
   pointer-events: none;
 }
 
@@ -72,9 +78,9 @@
   height: 60px;
   flex: 0 0 60px;
   border-radius: 18px;
-  background: linear-gradient(150deg, #ffffff, #e9f0ff);
-  border: 1px solid #fff;
-  box-shadow: 0 6px 16px rgba(75, 110, 220, .12);
+  background: linear-gradient(150deg, rgba(86, 58, 124, .95), rgba(48, 32, 72, .95));
+  border: 1px solid rgba(255, 184, 96, .34);
+  box-shadow: 0 8px 20px rgba(12, 6, 24, .45), inset 0 1px 0 rgba(255, 255, 255, .10);
   display: grid;
   place-items: center;
   font-size: 28px;
@@ -86,13 +92,15 @@
   font-weight: 700;
   letter-spacing: .2px;
   margin-bottom: 5px;
+  color: #fff4e3;
+  text-shadow: 0 1px 12px rgba(255, 168, 74, .18);
 }
 .hero-main p {
   font-size: 12.5px;
-  color: var(--text-2);
+  color: rgba(226, 214, 242, .80);
 }
-.hero-main p b { color: var(--primary); font-weight: 700; }
-.hero-main p b.warn { color: var(--orange); }
+.hero-main p b { color: #ffb45c; font-weight: 700; }
+.hero-main p b.warn { color: #ff8a5c; }
 
 .hero-art {
   margin-left: auto;
@@ -104,36 +112,40 @@
 
 .hero-date {
   flex: 0 0 176px;
-  background: #fff;
+  /* 深色玻璃卡：衬在夜空底上，别用一块纯白把夜色劈开 */
+  background: rgba(26, 18, 42, .60);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border-radius: 12px;
-  border: 1px solid #e7edf9;
+  border: 1px solid rgba(255, 178, 92, .22);
   padding: 12px 14px;
   z-index: 1;
-  box-shadow: 0 2px 10px rgba(52, 84, 160, .05);
+  box-shadow: 0 8px 22px rgba(10, 5, 20, .38), inset 0 1px 0 rgba(255, 255, 255, .07);
 }
 .hero-date .hd-day {
   font-size: 13px;
   font-weight: 650;
   letter-spacing: .1px;
+  color: #fff2e0;
 }
 .hero-date .hd-week {
   font-size: 11.5px;
-  color: var(--text-3);
+  color: rgba(219, 206, 242, .74);
   margin-top: 2px;
 }
 .hero-date .hd-weather {
   margin-top: 9px;
   padding-top: 9px;
-  border-top: 1px dashed var(--line);
+  border-top: 1px dashed rgba(255, 178, 92, .22);
   font-size: 12px;
-  color: var(--text-2);
+  color: rgba(226, 214, 242, .82);
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
   column-gap: 7px;
   row-gap: 1px;
   align-items: center;
 }
-.hero-date .hd-weather b { color: var(--text); font-weight: 650; }
+.hero-date .hd-weather b { color: #ffe9c9; font-weight: 650; }
 
 /* ---- 天气图标：按实际天气动（太阳转、云漂、雨落、雪飘、雷闪、雾流） ----
    只用 CSS 动画 + inline SVG，不引任何图标库；prefers-reduced-motion 时全站会停掉 */
@@ -158,7 +170,7 @@
 .hero-date .hd-weather .wx-sub {
   font-size: 10.5px;
   line-height: 1.3;
-  color: var(--text-3);
+  color: rgba(214, 200, 238, .66);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
