@@ -682,17 +682,26 @@ window.Pages.home = (function () {
           '<path d="M0 0 L100 0"/><path d="M0 0 L85 45"/><path d="M0 0 L55 85"/><path d="M0 0 L0 100"/>' +
           '<path d="M18 0 Q20 18 0 18"/><path d="M38 0 Q46 38 0 38"/><path d="M58 0 Q72 58 0 58"/><path d="M78 0 Q98 78 0 78"/>' +
         '</svg>' +
-        '<svg class="hw-bat hw-bat1" viewBox="0 0 44 26" aria-hidden="true">' +
-          '<path d="M22 12 Q14 4 5 5 Q1 6 3 10 Q6 13 12 12 Q17 11 22 12 Z" fill="#3a2f4d"/>' +
-          '<path d="M22 12 Q30 4 39 5 Q43 6 41 10 Q38 13 32 12 Q27 11 22 12 Z" fill="#3a2f4d"/>' +
-          '<ellipse cx="22" cy="13" rx="3" ry="4" fill="#3a2f4d"/>' +
-          '<circle cx="21" cy="12" r="1" fill="#f6a11c"/><circle cx="23" cy="12" r="1" fill="#f6a11c"/>' +
+        /* z160：这两格原来飞的是纯黑蝙蝠 —— 深紫夜空上就剩两个小黑点，只有橙眼睛亮着
+           （用户原话「背景黑色不太明显」）。黑剪影压黑底天生没救，换成深色底上照样跳出来的：
+           一颗白骷髅头 + 一只南瓜橙的蝙蝠（蝙蝠还留着，只是不再是黑的）。 */
+        '<svg class="hw-skull" viewBox="0 0 40 44" aria-hidden="true">' +
+          '<ellipse cx="20" cy="17" rx="15.5" ry="15" fill="#f4efff"/>' +
+          '<path d="M11.5 25 L28.5 25 L28.5 33.6 Q28.5 37 25 37 L15 37 Q11.5 37 11.5 33.6 Z" fill="#f4efff"/>' +
+          '<ellipse cx="13.8" cy="17.4" rx="4.3" ry="4.9" fill="#2a1e42"/>' +
+          '<ellipse cx="26.2" cy="17.4" rx="4.3" ry="4.9" fill="#2a1e42"/>' +
+          '<circle cx="13.8" cy="18" r="1.7" fill="#f6a11c"/><circle cx="26.2" cy="18" r="1.7" fill="#f6a11c"/>' +
+          '<path d="M20 22.2 L21.9 26.4 L18.1 26.4 Z" fill="#2a1e42"/>' +
+          '<path d="M15.4 30 L15.4 36.4 M20 30 L20 36.4 M24.6 30 L24.6 36.4" stroke="#2a1e42" stroke-width="1.3" stroke-linecap="round"/>' +
         '</svg>' +
-        '<svg class="hw-bat hw-bat2" viewBox="0 0 44 26" aria-hidden="true">' +
-          '<path d="M22 12 Q14 4 5 5 Q1 6 3 10 Q6 13 12 12 Q17 11 22 12 Z" fill="#3a2f4d"/>' +
-          '<path d="M22 12 Q30 4 39 5 Q43 6 41 10 Q38 13 32 12 Q27 11 22 12 Z" fill="#3a2f4d"/>' +
-          '<ellipse cx="22" cy="13" rx="3" ry="4" fill="#3a2f4d"/>' +
-          '<circle cx="21" cy="12" r="1" fill="#f6a11c"/><circle cx="23" cy="12" r="1" fill="#f6a11c"/>' +
+        '<svg class="hw-bat-light" viewBox="0 0 48 30" aria-hidden="true">' +
+          '<path d="M24 14 Q14.6 4.4 5.6 5.4 Q1.4 6.2 3.9 11 Q6.6 15.6 12.8 13.6 Q18.4 12 24 14 Z" fill="#ffb45c"/>' +
+          '<path d="M24 14 Q33.4 4.4 42.4 5.4 Q46.6 6.2 44.1 11 Q41.4 15.6 35.2 13.6 Q29.6 12 24 14 Z" fill="#ffb45c"/>' +
+          /* 耳朵：短而宽的三角，细尖的那种放大看像两根天线，不像蝙蝠 */
+          '<path d="M20.2 11.2 L18.6 5.6 L23 9.4 Z" fill="#ffb45c"/>' +
+          '<path d="M27.8 11.2 L29.4 5.6 L25 9.4 Z" fill="#ffb45c"/>' +
+          '<circle cx="24" cy="14.6" r="5.4" fill="#ffb45c"/>' +
+          '<circle class="hw-bat-eye" cx="22.2" cy="14.2" r="1.3" fill="#2a1e42"/><circle class="hw-bat-eye" cx="25.8" cy="14.2" r="1.3" fill="#2a1e42"/>' +
         '</svg>' +
         '<svg class="hw-ghost" viewBox="0 0 40 48" aria-hidden="true">' +
           '<path d="M20 4 Q32 4 32 18 L32 38 Q28 34 24 38 Q20 42 16 38 Q12 34 8 38 L8 18 Q8 4 20 4 Z" fill="#f7f4ff" stroke="#c9bde8" stroke-width="1" opacity=".95"/>' +

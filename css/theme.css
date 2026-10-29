@@ -631,20 +631,30 @@ button:focus-visible,
   filter: drop-shadow(0 0 38px rgba(255, 150, 52, .58));
   animation: hwMoon 7s ease-in-out infinite;
 }
-.hw-bat {
+/* z160：横幅夜空里原来飞两只纯黑蝙蝠 —— 深紫底 + 黑剪影 = 两个小黑点，
+   只有橙眼睛亮着（用户：「背景黑色不太明显」）。黑压黑没救，直接换元素：
+   白骷髅头（白在深紫上最跳）+ 南瓜橙蝙蝠（蝙蝠这个符号留着，颜色换成橙金，自带光晕）。 */
+.hw-skull {
   position: absolute;
-  width: 34px;
-  height: 20px;
-  opacity: .92;
-  transform-origin: center;
-  filter: drop-shadow(0 0 7px rgba(255, 168, 74, .40));
-  animation: hwFlap 1.6s ease-in-out infinite;
+  top: 4%;
+  left: 41%;
+  width: 38px;
+  height: 42px;
+  opacity: .96;
+  filter: drop-shadow(0 0 14px rgba(244, 239, 255, .45));
+  animation: hwFloat 5.4s ease-in-out infinite;
 }
-.hw-bat1 { top: 5%; left: 46%; }
-.hw-bat2 { top: 15%; left: 62%; width: 24px; height: 14px; animation-delay: .5s; animation-duration: 2.1s; }
-/* 蝙蝠压成纯黑剪影 —— 原色 #3a2f4d 在深紫底上几乎看不出来，
-   靠上面那层南瓜色轮廓光把形状拉出来（眼睛是 circle，不在此列，仍是橙的） */
-.hw-bat path, .hw-bat ellipse { fill: #1b1229; }
+.hw-bat-light {
+  position: absolute;
+  top: 5%;
+  left: 60%;
+  width: 48px;
+  height: 30px;
+  opacity: .95;
+  transform-origin: center;
+  filter: drop-shadow(0 0 10px rgba(255, 150, 52, .7));
+  animation: hwFlap 1.9s ease-in-out infinite;
+}
 .hw-ghost {
   position: absolute;
   width: 30px;
@@ -692,16 +702,18 @@ button:focus-visible,
 }
 @media (max-width: 1180px) {
   .hw-hero-moon { width: 150px; height: 75px; left: auto; right: 26px; opacity: .82; }
+  /* 这一档横幅只剩 104px 高，文字往上顶，41% 处的骷髅会啃到文案 —— 收起来（和幽灵同待遇） */
+  .hw-skull { display: none; }
 }
 @media (max-width: 900px) {
   .hw-hero-moon { width: 116px; height: 58px; right: 16px; opacity: .68; }
   .hw-hero-web { width: 62px; height: 62px; opacity: .34; }
   .hw-ghost { display: none; }
-  .hw-bat2 { display: none; }
+  .hw-bat-light { display: none; }
 }
 @media (max-width: 680px) {
   .hw-hero-moon { display: none; }
-  .hw-bat { display: none; }
+  .hw-skull { display: none; }
   .hw-hero-web { display: none; }
   .hw-pumpkin { width: 26px; height: 26px; left: 1%; bottom: 1%; }
 }
@@ -712,7 +724,8 @@ button:focus-visible,
   .hf-blob,
   .hf-spark,
   .hw-hero-moon,
-  .hw-bat,
+  .hw-skull,
+  .hw-bat-light,
   .hw-ghost,
   .hw-pumpkin { animation: none !important; }
 }
