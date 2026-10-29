@@ -249,100 +249,8 @@ window.Pages.home = (function () {
       '</svg></div>';
   }
 
-  /* 首页 hero 顶部的小人「小蛮」：和登录页同一个角色，但加了
-     - 喜怒哀乐 4 组表情自动循环切换（纯 CSS）；
-     - 眼睛瞳孔跟随鼠标看（JS mousemove）；
-     - 点击一下会弹跳 + 瞳孔放大 + 惊讶嘴（JS click）；
-     - 平时趴在横幅顶部边缘只露上半身，鼠标移进横幅后完整爬出来（纯 CSS 悬停）。
-     表情组在 <g class="hm-exp hm-xx"> 里，惊讶嘴独立一层，瞳孔用 <g class="hm-pupil"> 方便整体位移。 */
-  function heroMascot() {
-    return '<div class="hero-mascot" aria-hidden="true">' +
-      '<svg class="hero-mascot-svg" viewBox="0 0 200 220" focusable="false">' +
-      '<defs><linearGradient id="hmBody" x1="0" y1="0" x2="0" y2="1">' +
-        '<stop offset="0" stop-color="#8aa2ff"/><stop offset="1" stop-color="#5b7cff"/>' +
-      '</linearGradient></defs>' +
-      '<ellipse class="mascot-glow" cx="100" cy="120" rx="72" ry="64" fill="#cfe0ff" opacity=".45"/>' +
-      '<ellipse class="mascot-shadow" cx="100" cy="206" rx="46" ry="9" fill="#1f3d5a" opacity=".10"/>' +
-      '<ellipse cx="46" cy="160" rx="13" ry="24" fill="#5b7cff" transform="rotate(20 46 160)"/>' +
-      '<ellipse cx="100" cy="150" rx="56" ry="54" fill="url(#hmBody)"/>' +
-      '<ellipse cx="100" cy="174" rx="30" ry="20" fill="#ffffff" opacity=".14"/>' +
-      '<ellipse cx="82" cy="128" rx="9" ry="10" fill="#ffffff"/>' +
-      '<ellipse cx="118" cy="128" rx="9" ry="10" fill="#ffffff"/>' +
-      '<g class="hm-pupil"><circle cx="82" cy="128" r="3.6" fill="#2b2f4a"/><circle cx="83.3" cy="126" r="1.2" fill="#ffffff"/></g>' +
-      '<g class="hm-pupil"><circle cx="118" cy="128" r="3.6" fill="#2b2f4a"/><circle cx="119.3" cy="126" r="1.2" fill="#ffffff"/></g>' +
-      '<ellipse cx="68" cy="144" rx="9" ry="5" fill="#ff9db0" opacity=".5"/>' +
-      '<ellipse cx="132" cy="144" rx="9" ry="5" fill="#ff9db0" opacity=".5"/>' +
-      '<g class="hm-exp hm-joy">' +
-        '<path d="M90 138 Q100 147 110 138" stroke="#2b2f4a" stroke-width="4" fill="none" stroke-linecap="round"/>' +
-      '</g>' +
-      '<g class="hm-exp hm-angry">' +
-        '<path d="M74 116 L89 122" stroke="#2b2f4a" stroke-width="4" stroke-linecap="round"/>' +
-        '<path d="M126 116 L111 122" stroke="#2b2f4a" stroke-width="4" stroke-linecap="round"/>' +
-        '<path d="M90 143 Q100 133 110 143" stroke="#2b2f4a" stroke-width="4" fill="none" stroke-linecap="round"/>' +
-      '</g>' +
-      '<g class="hm-exp hm-sad">' +
-        '<path d="M82 140 c -5 5 -5 11 0 16 c 5 -5 5 -11 0 -16 z" fill="#bfe3ff"/>' +
-        '<path d="M118 140 c -5 5 -5 11 0 16 c 5 -5 5 -11 0 -16 z" fill="#bfe3ff"/>' +
-        '<path d="M90 144 Q100 132 110 144" stroke="#2b2f4a" stroke-width="4" fill="none" stroke-linecap="round"/>' +
-      '</g>' +
-      '<g class="hm-exp hm-happy">' +
-        '<path d="M88 136 Q100 158 112 136 Z" fill="#2b2f4a"/>' +
-        '<path d="M95 150 Q100 156 105 150 Z" fill="#ff8fa3"/>' +
-      '</g>' +
-      '<ellipse class="hm-shock-mouth" cx="100" cy="141" rx="6.5" ry="8" fill="#2b2f4a"/>' +
-      '<g class="mascot-arm"><ellipse cx="158" cy="138" rx="12" ry="23" fill="#5b7cff" transform="rotate(30 158 138)"/></g>' +
-      '<path d="M60 92 a40 30 0 0 1 80 0 z" fill="#ffd23f"/>' +
-      '<ellipse cx="100" cy="95" rx="48" ry="9" fill="#f0b429"/>' +
-      '<path d="M72 80 a28 18 0 0 1 56 0" stroke="#ffffff" stroke-width="3" fill="none" opacity=".5" stroke-linecap="round"/>' +
-      '<g transform="translate(30,52)"><path class="mascot-spark s1" d="M0 -6.5 L1.7 -1.7 L6.5 0 L1.7 1.7 L0 6.5 L-1.7 1.7 L-6.5 0 L-1.7 -1.7 Z" fill="#ffd23f"/></g>' +
-      '<g transform="translate(176,64)"><path class="mascot-spark s2" d="M0 -5 L1.3 -1.3 L5 0 L1.3 1.3 L0 5 L-1.3 1.3 L-5 0 L-1.3 -1.3 Z" fill="#7c9cff"/></g>' +
-      '<g transform="translate(24,116)"><path class="mascot-spark s3" d="M0 -4 L1 -1 L4 0 L1 1 L0 4 L-1 1 L-4 0 L-1 -1 Z" fill="#34c78b"/></g>' +
-      '<g transform="translate(182,126)"><path class="mascot-spark s4" d="M0 -4.5 L1.2 -1.2 L4.5 0 L1.2 1.2 L0 4.5 L-1.2 1.2 L-4.5 0 L-1.2 -1.2 Z" fill="#ff9db0"/></g>' +
-      '</svg></div>';
-  }
 
-  /* 小人交互：瞳孔跟随鼠标 + 点击弹跳。用 document 委托、只绑一次（模块级标志），
-     切页面/重渲染也不会重复绑定或泄漏。 */
-  var hmState = { ox: 0, oy: 0, scale: 1 };
-  function hmPaint(svg) {
-    var pupils = svg.querySelectorAll('.hm-pupil');
-    for (var i = 0; i < pupils.length; i++) {
-      pupils[i].style.transform = 'translate(' + hmState.ox + 'px,' + hmState.oy + 'px) scale(' + hmState.scale + ')';
-    }
-  }
-  function initHeroMascot() {
-    if (initHeroMascot._done) return;
-    initHeroMascot._done = true;
 
-    document.addEventListener('mousemove', function (e) {
-      var svg = document.querySelector('.hero-mascot-svg');
-      if (!svg) return;
-      var r = svg.getBoundingClientRect();
-      var cx = r.left + r.width / 2;
-      var cy = r.top + r.height * 0.58;
-      var dx = (e.clientX - cx) / Math.max(1, r.width);
-      var dy = (e.clientY - cy) / Math.max(1, r.height);
-      hmState.ox = Math.max(-3.5, Math.min(3.5, dx * 7));
-      hmState.oy = Math.max(-2.5, Math.min(2.5, dy * 5));
-      hmPaint(svg);
-    });
-
-    document.addEventListener('click', function (e) {
-      var t = e.target;
-      var svg = t && t.closest ? t.closest('.hero-mascot-svg') : null;
-      if (!svg) return;
-      hmState.scale = 1.45;
-      hmPaint(svg);
-      svg.classList.remove('hm-jump');
-      void svg.offsetWidth;
-      svg.classList.add('hm-jump');
-      setTimeout(function () {
-        hmState.scale = 1;
-        hmPaint(svg);
-        svg.classList.remove('hm-jump');
-      }, 560);
-    });
-  }
 
   /* ================= 天气：真实数据 + 按天气动起来 =================
      数据源 Open-Meteo（不用 key，响应头带 access-control-allow-origin:*，
@@ -757,6 +665,45 @@ window.Pages.home = (function () {
         '<i class="hf-blob hf-b1"></i><i class="hf-blob hf-b2"></i><i class="hf-blob hf-b3"></i>' +
         '<i class="hf-spark hf-s1"></i><i class="hf-spark hf-s2"></i><i class="hf-spark hf-s3"></i>' +
         '<i class="hf-spark hf-s4"></i>' +
+        /* 万圣节大满月：深橙色半圆月，落在横幅中段空白处（纯 SVG + CSS 动画） */
+        '<svg class="hw-hero-moon" viewBox="0 0 190 95" aria-hidden="true">' +
+          '<path d="M5 95 A90 90 0 0 1 185 95 Z" fill="#e8892a"/>' +
+          '<circle cx="62" cy="66" r="11" fill="#c46912" opacity=".5"/>' +
+          '<circle cx="95" cy="46" r="8" fill="#c46912" opacity=".45"/>' +
+          '<circle cx="128" cy="70" r="10" fill="#c46912" opacity=".5"/>' +
+          '<circle cx="155" cy="52" r="6" fill="#c46912" opacity=".4"/>' +
+        '</svg>' +
+        /* 万圣节漂浮装饰：蜘蛛网 + 2 只蝙蝠 + 1 只幽灵 + 1 盏南瓜灯（纯 SVG + CSS 动画） */
+        '<svg class="hw-hero-web" viewBox="0 0 100 100" fill="none" stroke="#8a7bc0" stroke-width="1.3" aria-hidden="true">' +
+          '<path d="M0 0 L100 0"/><path d="M0 0 L85 45"/><path d="M0 0 L55 85"/><path d="M0 0 L0 100"/>' +
+          '<path d="M18 0 Q20 18 0 18"/><path d="M38 0 Q46 38 0 38"/><path d="M58 0 Q72 58 0 58"/><path d="M78 0 Q98 78 0 78"/>' +
+        '</svg>' +
+        '<svg class="hw-bat hw-bat1" viewBox="0 0 44 26" aria-hidden="true">' +
+          '<path d="M22 12 Q14 4 5 5 Q1 6 3 10 Q6 13 12 12 Q17 11 22 12 Z" fill="#3a2f4d"/>' +
+          '<path d="M22 12 Q30 4 39 5 Q43 6 41 10 Q38 13 32 12 Q27 11 22 12 Z" fill="#3a2f4d"/>' +
+          '<ellipse cx="22" cy="13" rx="3" ry="4" fill="#3a2f4d"/>' +
+          '<circle cx="21" cy="12" r="1" fill="#f6a11c"/><circle cx="23" cy="12" r="1" fill="#f6a11c"/>' +
+        '</svg>' +
+        '<svg class="hw-bat hw-bat2" viewBox="0 0 44 26" aria-hidden="true">' +
+          '<path d="M22 12 Q14 4 5 5 Q1 6 3 10 Q6 13 12 12 Q17 11 22 12 Z" fill="#3a2f4d"/>' +
+          '<path d="M22 12 Q30 4 39 5 Q43 6 41 10 Q38 13 32 12 Q27 11 22 12 Z" fill="#3a2f4d"/>' +
+          '<ellipse cx="22" cy="13" rx="3" ry="4" fill="#3a2f4d"/>' +
+          '<circle cx="21" cy="12" r="1" fill="#f6a11c"/><circle cx="23" cy="12" r="1" fill="#f6a11c"/>' +
+        '</svg>' +
+        '<svg class="hw-ghost" viewBox="0 0 40 48" aria-hidden="true">' +
+          '<path d="M20 4 Q32 4 32 18 L32 38 Q28 34 24 38 Q20 42 16 38 Q12 34 8 38 L8 18 Q8 4 20 4 Z" fill="#f7f4ff" stroke="#c9bde8" stroke-width="1" opacity=".95"/>' +
+          '<circle cx="16" cy="18" r="2.6" fill="#3a2f4d"/><circle cx="24" cy="18" r="2.6" fill="#3a2f4d"/>' +
+          '<ellipse cx="20" cy="26" rx="3" ry="3.4" fill="#3a2f4d"/>' +
+        '</svg>' +
+        '<svg class="hw-pumpkin" viewBox="0 0 40 40" aria-hidden="true">' +
+          '<path d="M19 2 Q20 0 21 2 L21 5 L19 5 Z" fill="#7a4a12"/>' +
+          '<ellipse cx="20" cy="21" rx="16" ry="15" fill="#f6a11c"/>' +
+          '<ellipse cx="12" cy="21" rx="6" ry="14" fill="#e8892a"/>' +
+          '<ellipse cx="28" cy="21" rx="6" ry="14" fill="#e8892a"/>' +
+          '<path d="M12 15 L17 19 L13 22 Z" fill="#3a2f4d"/>' +
+          '<path d="M28 15 L23 19 L27 22 Z" fill="#3a2f4d"/>' +
+          '<path d="M12 27 Q16 24 20 27 Q24 24 28 27 L28 32 L12 32 Z" fill="#3a2f4d"/>' +
+        '</svg>' +
       '</div>' +
       '<div class="hero-icon">🏪</div>' +
       '<div class="hero-main">' +
@@ -765,7 +712,6 @@ window.Pages.home = (function () {
            '<b class="warn">' + st.riskStores + '</b> 家门店存在风险，本周共 ' +
            '<b>' + st.weekTasks + '</b> 项待推进。</p>' +
       '</div>' +
-      heroMascot() +
       heroArt() +
       '<div class="hero-date">' +
         '<div class="hd-day">' + U.cnDate(t0) + '</div>' +
@@ -917,8 +863,6 @@ window.Pages.home = (function () {
     /* 天气：先用手上的缓存/兜底值画出来，再异步换真实数据 */
     loadWeather(root);
 
-    /* 首页小人：瞳孔跟随鼠标 + 点击弹跳（只绑一次） */
-    initHeroMascot();
 
     /* 先按当前宽度把每个判断逻辑气泡定好位（2026-10-25 z105）。
        气泡宽 254px，默认从 ⓘ 往右展开；最右边那张卡的气泡即使没展开

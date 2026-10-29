@@ -102,68 +102,6 @@
 }
 .hero-art svg { width: 148px; height: 78px; }
 
-/* ---------------- Hero 小人「小蛮」：趴在横幅底边，悬停爬出来 ---------------- */
-.hero-mascot {
-  position: absolute;
-  bottom: 0;                   /* 贴到横幅底边（用户红线标注的位置，无虚线） */
-  left: 0;
-  right: 0;
-  height: 72px;                /* 趴着：露出帽子+整张脸+一点身体，下身藏到底边下 */
-  overflow: hidden;
-  z-index: 1;
-  pointer-events: none;
-  transition: height .42s cubic-bezier(.2, .85, .3, 1.12);
-}
-/* 鼠标移到横幅（框内）→ 小人完整爬出来 */
-.hero:hover .hero-mascot {
-  height: 90px;              /* 身体椭圆底部(y=204)正好落在底边上，不悬空 */
-}
-.hero-mascot-svg {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  margin-left: -44px;
-  width: 88px;
-  height: 97px;
-  pointer-events: auto;
-  filter: drop-shadow(0 6px 12px rgba(31, 61, 90, .14));
-  cursor: pointer;
-  animation: hmBob 3.4s ease-in-out infinite;
-}
-@keyframes hmBob {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-5px); }
-}
-.hero-mascot-svg.hm-jump { animation: hmJump .55s ease; }
-@keyframes hmJump {
-  0% { transform: translateY(0); }
-  30% { transform: translateY(-12px) scale(1.06); }
-  60% { transform: translateY(3px) scale(.98); }
-  100% { transform: translateY(0); }
-}
-/* 喜怒哀乐：4 组表情各显示 2.5s，交叉淡入淡出（10s 一个循环） */
-.hm-exp { opacity: 0; }
-.hm-joy   { animation: hmExp 10s ease-in-out infinite 0s; }
-.hm-angry { animation: hmExp 10s ease-in-out infinite 2.5s; }
-.hm-sad   { animation: hmExp 10s ease-in-out infinite 5s; }
-.hm-happy { animation: hmExp 10s ease-in-out infinite 7.5s; }
-@keyframes hmExp {
-  0% { opacity: 0; }
-  6% { opacity: 1; }
-  25% { opacity: 1; }
-  31% { opacity: 0; }
-  100% { opacity: 0; }
-}
-/* 惊讶嘴默认隐藏；点击弹跳时暂停表情循环、只露惊讶嘴 */
-.hm-shock-mouth { opacity: 0; }
-.hero-mascot-svg.hm-jump .hm-shock-mouth { opacity: 1; }
-.hero-mascot-svg.hm-jump .hm-exp { animation: none; opacity: 0; }
-/* 瞳孔：JS 用 transform 位移（跟随鼠标）+ scale（点击放大） */
-.hm-pupil {
-  transform-box: fill-box;
-  transform-origin: center;
-}
-
 .hero-date {
   flex: 0 0 176px;
   background: #fff;
@@ -1815,7 +1753,6 @@
   .hero { padding: 14px; }
   .hero-icon { width: 46px; height: 46px; flex-basis: 46px; font-size: 22px; }
   .hero-main h2 { font-size: 15.5px; }
-  .hero-mascot { display: none; }
 }
 
 /* ---------------- 首页栅格 ---------------- */

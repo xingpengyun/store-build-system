@@ -62,13 +62,13 @@
   --accent-soft: var(--primary-soft);
 }
 
-/* ---------------- 2. 画布：三团彩色光晕 ---------------- */
+/* ---------------- 2. 画布：万圣节夜色光晕（紫 + 南瓜橙） ---------------- */
 body {
   background:
-    radial-gradient(1000px 520px at 4% -10%, #dbe8ff 0%, rgba(219, 232, 255, 0) 60%),
-    radial-gradient(820px 460px at 99% -6%, #f0e0ff 0%, rgba(240, 224, 255, 0) 58%),
-    radial-gradient(760px 460px at 96% 104%, #d6f5ec 0%, rgba(214, 245, 236, 0) 60%),
-    radial-gradient(680px 420px at 18% 108%, #ffeeda 0%, rgba(255, 238, 218, 0) 60%),
+    radial-gradient(1000px 520px at 4% -10%, #e7dbf6 0%, rgba(231, 219, 246, 0) 62%),
+    radial-gradient(820px 460px at 99% -6%, #f6ddba 0%, rgba(246, 221, 186, 0) 60%),
+    radial-gradient(760px 460px at 96% 104%, #dcc8ee 0%, rgba(220, 200, 238, 0) 62%),
+    radial-gradient(680px 420px at 18% 108%, #f8e3b8 0%, rgba(248, 227, 184, 0) 62%),
     var(--bg);
   background-attachment: fixed;
 }
@@ -550,7 +550,7 @@ button:focus-visible,
   height: 240px;
   left: 26%;
   top: -60%;
-  background: radial-gradient(circle, rgba(124, 78, 224, .32), transparent 68%);
+  background: radial-gradient(circle, rgba(124, 78, 224, .34), transparent 68%);
   animation: hfDrift1 22s ease-in-out infinite alternate;
 }
 .hf-b2 {
@@ -558,7 +558,7 @@ button:focus-visible,
   height: 200px;
   left: 52%;
   top: 40%;
-  background: radial-gradient(circle, rgba(63, 107, 245, .26), transparent 68%);
+  background: radial-gradient(circle, rgba(240, 150, 40, .20), transparent 68%);
   animation: hfDrift2 27s ease-in-out infinite alternate;
 }
 .hf-b3 {
@@ -566,7 +566,7 @@ button:focus-visible,
   height: 170px;
   left: 8%;
   top: 30%;
-  background: radial-gradient(circle, rgba(18, 165, 148, .22), transparent 68%);
+  background: radial-gradient(circle, rgba(88, 56, 150, .20), transparent 68%);
   animation: hfDrift3 31s ease-in-out infinite alternate;
 }
 @keyframes hfDrift1 {
@@ -604,12 +604,127 @@ button:focus-visible,
   100% { opacity: 0; transform: translateY(-52px) scale(1.15); }
 }
 
-/* 横幅里的内容要压在装饰上面（小人 hero-mascot 例外：它用绝对定位趴在顶部边缘） */
-.hero > *:not(.hero-fx):not(.hero-mascot) { position: relative; z-index: 1; }
+/* ---------------- 万圣节装饰：蜘蛛网 / 蝙蝠 / 幽灵 / 南瓜灯（hero 内） ---------------- */
+.hw-hero-web {
+  position: absolute;
+  top: -4px;
+  left: 6px;
+  width: 88px;
+  height: 88px;
+  opacity: .42;
+}
+.hw-hero-moon {
+  position: absolute;
+  left: 45%;
+  bottom: 2px;
+  width: 190px;
+  height: 95px;           /* 半圆大半月：从横幅底边露出半个圆 */
+  opacity: .96;
+  filter: drop-shadow(0 0 30px rgba(232, 137, 42, .5));
+  animation: hwMoon 7s ease-in-out infinite;
+}
+.hw-bat {
+  position: absolute;
+  width: 34px;
+  height: 20px;
+  opacity: .78;
+  transform-origin: center;
+  animation: hwFlap 1.6s ease-in-out infinite;
+}
+.hw-bat1 { top: 5%; left: 46%; }
+.hw-bat2 { top: 15%; left: 62%; width: 24px; height: 14px; animation-delay: .5s; animation-duration: 2.1s; }
+.hw-ghost {
+  position: absolute;
+  width: 30px;
+  height: 36px;
+  top: 16%;
+  right: 29%;
+  opacity: .9;
+  filter: drop-shadow(0 2px 5px rgba(96, 70, 170, .28));
+  animation: hwFloat 4.2s ease-in-out infinite;
+}
+.hw-pumpkin {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  bottom: 2%;
+  left: 3%;
+  transform-origin: 50% 100%;
+  animation: hwSway 3.4s ease-in-out infinite;
+}
+@keyframes hwFlap {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  50%      { transform: translateY(-4px) scaleY(.55); }
+}
+@keyframes hwFloat {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50%      { transform: translateY(-10px) rotate(2deg); }
+}
+@keyframes hwSway {
+  0%, 100% { transform: rotate(-3deg); }
+  50%      { transform: rotate(3deg); }
+}
+
+/* 横幅里的内容要压在装饰上面 */
+.hero > *:not(.hero-fx) { position: relative; z-index: 1; }
 
 /* 开了「减少动效」就把装饰停住（不闪、不动） */
 @media (prefers-reduced-motion: reduce) {
   .hero-fx::before,
   .hf-blob,
-  .hf-spark { animation: none !important; }
+  .hf-spark,
+  .hw-hero-moon,
+  .hw-bat,
+  .hw-ghost,
+  .hw-pumpkin { animation: none !important; }
+}
+
+/* ---------------- 全局背景万圣节装饰（fixed，不挡交互）：蜘蛛网 + 蝙蝠 + 南瓜 ---------------- */
+.hw-scene {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;              /* 浮在卡片边缘之上，但低于顶栏(60)/弹窗/toast */
+}
+.hw-web {
+  position: absolute;
+  top: 152px;
+  right: 8px;
+  width: 110px;
+  height: 110px;
+  opacity: .5;
+}
+.hw-bat-fly {
+  position: absolute;
+  top: 40%;
+  right: 12px;
+  width: 40px;
+  height: 24px;
+  opacity: .8;
+  animation: hwBatFly 5s ease-in-out infinite;
+}
+.hw-pumpkin-fly {
+  position: absolute;
+  bottom: 16px;
+  right: 26px;
+  width: 42px;
+  height: 42px;
+  opacity: .9;
+  transform-origin: 50% 100%;
+  animation: hwPumpkinSway 3.6s ease-in-out infinite;
+}
+@keyframes hwMoon {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
+}
+@keyframes hwBatFly {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  50%      { transform: translate(-14px, -16px) rotate(-7deg); }
+}
+@keyframes hwPumpkinSway {
+  0%, 100% { transform: rotate(-4deg); }
+  50%      { transform: rotate(4deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hw-bat-fly, .hw-pumpkin-fly { animation: none !important; }
 }

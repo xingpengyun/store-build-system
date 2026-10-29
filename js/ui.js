@@ -127,7 +127,16 @@ window.UI = (function () {
     chick:   { name: '小鸡', bg: '#FFFAE3', fur: '#FFE07F', line: '#8A6A1F', blush: '#FFC8A6', ear: 'chick' },
     koala:   { name: '考拉', bg: '#F2F5FA', fur: '#B9C4D4', line: '#4B5568', blush: '#F2B7C4', ear: 'koala' },
     tiger:   { name: '小虎', bg: '#FFF4DE', fur: '#FFC46B', line: '#6B4423', blush: '#FFC7A0', ear: 'bear', stripe: 1 },
-    penguin: { name: '企鹅', bg: '#EEF4FF', fur: '#3E4A63', line: '#EAF0FA', blush: '#FFB3C9', ear: 'none', belly: 1 }
+    penguin: { name: '企鹅', bg: '#EEF4FF', fur: '#3E4A63', line: '#EAF0FA', blush: '#FFB3C9', ear: 'none', belly: 1 },
+
+    /* —— 万圣节限定：可选头像里加一组节日角色（南瓜灯/幽灵/蝙蝠/骷髅/黑猫/女巫）——
+       它们不是「动物戴帽子」，而是独立的新头像，造型走 halloweenSvg() 单独画。 */
+    pumpkin:  { name: '南瓜灯', bg: '#4A2810', fur: '#FF9D2E', line: '#3A1F04', hw: 'pumpkin' },
+    ghost:    { name: '幽灵',   bg: '#2B2440', fur: '#FFFFFF', line: '#2B2440', hw: 'ghost' },
+    bat:      { name: '蝙蝠',   bg: '#2B2440', fur: '#241D3A', line: '#3A2F4D', hw: 'bat' },
+    skull:    { name: '骷髅',   bg: '#232A38', fur: '#F2F4F8', line: '#1F2430', hw: 'skull' },
+    blackcat: { name: '黑猫',   bg: '#3A2A55', fur: '#2A2342', line: '#1F1B2E', hw: 'blackcat' },
+    witch:    { name: '女巫',   bg: '#1F3A24', fur: '#8FD98B', line: '#1F3A24', hw: 'witch' }
   };
   var ART_KEYS = Object.keys(ART);
 
@@ -185,9 +194,83 @@ window.UI = (function () {
     }
   }
 
+  /* 万圣节头像：6 个节日角色单独画（40×40 viewBox，深色夜色底 + 黄月亮，主题更鲜明） */
+  function halloweenSvg(key) {
+    var s = '<svg viewBox="0 0 40 40" class="ava-art" aria-hidden="true">';
+    /* 右上角黄月亮：给暗色系角色统一挂一轮，一眼「万圣节夜晚」 */
+    var moon = '<circle cx="31" cy="8" r="5.5" fill="#ffd94a"/>' +
+               '<circle cx="29" cy="6.8" r="1.3" fill="#e3a400" opacity=".7"/>' +
+               '<circle cx="33" cy="10" r="1" fill="#e3a400" opacity=".7"/>';
+    switch (key) {
+      case 'pumpkin':
+        s += '<path d="M19 3 Q20 1 21 3 L21 6 L19 6 Z" fill="#9ccc3f"/>' +
+             '<ellipse cx="20" cy="23" rx="15" ry="13" fill="#ff9d2e"/>' +
+             '<ellipse cx="12" cy="23" rx="5.5" ry="12.5" fill="#f07b1a"/>' +
+             '<ellipse cx="28" cy="23" rx="5.5" ry="12.5" fill="#f07b1a"/>' +
+             '<ellipse cx="20" cy="23" rx="2.4" ry="12.5" fill="#f07b1a" opacity=".5"/>' +
+             '<path d="M13 15 L18 19 L13 22 Z" fill="#3a1f04"/>' +
+             '<path d="M27 15 L22 19 L27 22 Z" fill="#3a1f04"/>' +
+             '<path d="M13.5 16.5 L17.5 18.5 L13.5 20.5 Z" fill="#ffe27a"/>' +
+             '<path d="M26.5 16.5 L22.5 18.5 L26.5 20.5 Z" fill="#ffe27a"/>' +
+             '<path d="M12 27 Q16 23 20 27 Q24 23 28 27 L28 32 L12 32 Z" fill="#3a1f04"/>';
+        break;
+      case 'ghost':
+        s += moon +
+             '<path d="M20 4 Q31 4 31 17 L31 32 Q27.5 28.5 24 32 Q20 35.5 16 32 Q12.5 28.5 9 32 L9 17 Q9 4 20 4 Z" fill="#ffffff" stroke="#cfc4ec" stroke-width="1"/>' +
+             '<circle cx="16" cy="16" r="2.6" fill="#2b2440"/><circle cx="24" cy="16" r="2.6" fill="#2b2440"/>' +
+             '<ellipse cx="20" cy="23" rx="3" ry="3.4" fill="#2b2440"/>';
+        break;
+      case 'bat':
+        s += moon +
+             '<path d="M20 14 Q12 7 5 8 Q2 9 4 12 Q7 15 13 14 Q17 13 20 14 Z" fill="#241d3a"/>' +
+             '<path d="M20 14 Q28 7 35 8 Q38 9 36 12 Q33 15 27 14 Q23 13 20 14 Z" fill="#241d3a"/>' +
+             '<path d="M13.5 13 L12 4 L18.5 9.5 Z" fill="#241d3a"/>' +
+             '<path d="M26.5 13 L28 4 L21.5 9.5 Z" fill="#241d3a"/>' +
+             '<circle cx="20" cy="19" r="9.5" fill="#241d3a"/>' +
+             '<circle cx="17" cy="18" r="1.8" fill="#ffb82e"/><circle cx="23" cy="18" r="1.8" fill="#ffb82e"/>' +
+             '<path d="M16.5 24 L17.6 26.2 L18.7 24 Z" fill="#ffffff"/>' +
+             '<path d="M21.3 24 L22.4 26.2 L23.5 24 Z" fill="#ffffff"/>';
+        break;
+      case 'skull':
+        s += '<path d="M20 3 Q31 3 31 16 Q31 26 25 31 L15 31 Q9 26 9 16 Q9 3 20 3 Z" fill="#f2f4f8" stroke="#c9d2e0" stroke-width="1"/>' +
+             '<ellipse cx="15" cy="16" rx="3.6" ry="4.2" fill="#1f2430"/>' +
+             '<ellipse cx="25" cy="16" rx="3.6" ry="4.2" fill="#1f2430"/>' +
+             '<path d="M20 22 L18.5 25 L21.5 25 Z" fill="#1f2430"/>' +
+             '<path d="M13 28 H27" stroke="#1f2430" stroke-width="1.2"/>' +
+             '<path d="M15 28 V31 M18.5 28 V31 M20 28 V31 M21.5 28 V31 M25 28 V31" stroke="#1f2430" stroke-width="1" stroke-linecap="round"/>';
+        break;
+      case 'blackcat':
+        s += moon +
+             '<path d="M8.4 13 L11.2 3.4 L18.6 9.4 Z" fill="#2a2342"/>' +
+             '<path d="M31.6 13 L28.8 3.4 L21.4 9.4 Z" fill="#2a2342"/>' +
+             '<path d="M11.6 10.4 L12.7 6.6 L15.9 9.4 Z" fill="#7d6fb0" opacity=".7"/>' +
+             '<path d="M28.4 10.4 L27.3 6.6 L24.1 9.4 Z" fill="#7d6fb0" opacity=".7"/>' +
+             '<circle cx="20" cy="22.4" r="13.4" fill="#2a2342" stroke="rgba(0,0,0,.15)" stroke-width="1"/>' +
+             '<circle cx="15.4" cy="21.2" r="2.4" fill="#ffc93c"/><circle cx="24.6" cy="21.2" r="2.4" fill="#ffc93c"/>' +
+             '<circle cx="15.4" cy="21.2" r="1" fill="#1f1b2e"/><circle cx="24.6" cy="21.2" r="1" fill="#1f1b2e"/>' +
+             '<ellipse cx="20" cy="26" rx="1.7" ry="1.3" fill="#ff9db0"/>' +
+             '<path d="M17.4 28.6 q2.6 2 5.2 0" fill="none" stroke="#0f0c1c" stroke-width="1.1" stroke-linecap="round" opacity=".7"/>' +
+             '<path d="M4.8 23.4 H9 M4.8 26.2 H9 M35.2 23.4 H31 M35.2 26.2 H31" stroke="#7d6fb0" stroke-width="1" stroke-linecap="round" opacity=".6"/>';
+        break;
+      case 'witch':
+        s += moon +
+             '<path d="M12 13 Q13 5 23 1.5 Q25 5 28 13 Z" fill="#241d3a"/>' +
+             '<ellipse cx="20" cy="14" rx="15" ry="3.5" fill="#1b1530"/>' +
+             '<path d="M6 12 Q20 16.5 34 12" stroke="#ff9d2e" stroke-width="2.4" fill="none" stroke-linecap="round"/>' +
+             '<circle cx="20" cy="23" r="12.5" fill="#8fd98b" stroke="rgba(0,0,0,.15)" stroke-width="1"/>' +
+             '<circle cx="15.5" cy="21" r="1.9" fill="#1f3a24"/><circle cx="24.5" cy="21" r="1.9" fill="#1f3a24"/>' +
+             '<path d="M20 23 L20 28 L22 28.5" stroke="#1f3a24" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+             '<circle cx="22.6" cy="28.6" r="1.3" fill="#5da14a"/>' +
+             '<path d="M16 30 Q20 33 24 30" fill="none" stroke="#1f3a24" stroke-width="1.3" stroke-linecap="round"/>';
+        break;
+    }
+    return s + '</svg>';
+  }
+
   function animalSvg(key) {
     var d = ART[key];
     if (!d) return '';
+    if (d.hw) return halloweenSvg(key);
     var dark = d.ear === 'penguin' ? '#2b3246' : '#2b3246';
     var eyeFill = d.ear === 'penguin' ? '#FFFFFF' : dark;
     var s = '<svg viewBox="0 0 40 40" class="ava-art" aria-hidden="true">';
