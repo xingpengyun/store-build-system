@@ -2510,3 +2510,79 @@ z126 之后**退出登录有两套入口**：顶栏头像菜单（谁都能点�
   标题对比度 **12.8**、正文 **7.0**、强调数字 **7.9**（都过 AA）；
   日期卡 `rgba(26,18,42,.6)`、月亮 `#e8892a`、蝙蝠剪影 `rgb(27,18,41)`、房子屋顶 `#e8892a`；
   1440/1280/1180/900/680/430 六个宽度逐个验月亮不压字、横幅不溢出；全程 0 报错
+
+## z159 · 南瓜灯从屏幕左下角挪进侧边栏空白带（2026-10-29）
+
+### 用户的原话
+
+截图指着侧边栏底部那颗南瓜 —— 它一半叠在「数据在云端，本机只留缓存」这行灰蓝小字上：
+
+> 这个放到别的地方吧，放这里不明显
+
+### 病根：它根本不是侧边栏的一部分
+
+`.hw-pumpkin-fly` 当时在 `.hw-scene`（`position:fixed; inset:0; pointer-events:none`）里，
+写的是 `position:absolute; left:26px; bottom:16px` —— 相对**视口**左下角定位。
+而侧边栏的 `.storage-card` 恰好也在左下角：实测南瓜 `(26,841)-(71,886)`、
+缓存卡 `(28,802)-(204,872)`，**整块重叠**。
+
+橙色南瓜压在灰蓝 10.5px 小字上，两边都看不清：字被挡，南瓜也被切进小字里不像南瓜。
+这也解释了用户说的「不明显」—— 不是它太小，是它跟文字搅在一起了。
+
+### 改法：从「浮层」变成「侧边栏里的普通元素」
+
+没有挪坐标（`left` 换个数还是会在别的窗口高度下撞上什么），而是直接换了归属：
+
+1. `index.html`：把那个 `<svg class="hw-pumpkin-fly">` 从 `.hw-scene` 里剪出来，
+   插到 `.sidebar` 内、`</nav>` 之后、`.sidebar-foot` 之前。
+2. `css/theme.css`：`position:absolute; left/bottom` 全部删掉，改成普通流元素：
+
+```css
+.hw-pumpkin-fly {
+  display: block;
+  align-self: center;   /* 锁住水平居中，align-items:stretch 拉不宽它 */
+  flex: 0 0 auto;
+  width: 52px;          /* 42 → 52，深蓝底上更清楚 */
+  height: 52px;
+  margin: auto 0 20px;  /* 上下 auto 与 .sidebar-foot 的 margin-top:auto 平分留白 */
+  pointer-events: none;
+  transform-origin: 50% 100%;
+  animation: hwPumpkinSway 3.6s ease-in-out infinite;
+  filter: drop-shadow(0 6px 12px rgba(246, 161, 28, .18));
+}
+```
+
+关键就是那两个 `auto`：侧边栏是 flex column，南瓜和缓存卡各带一个 `margin-top:auto`，
+浏览器自动把「导航下方 → 缓存卡上方」这段空白**平分**，南瓜稳定落在空白带中间。
+窗口变高变矮它都跟着走，不会像绝对定位那样在某个分辨率下又撞上文字。
+
+3. 窄屏两档：
+   - `≤1180`：侧边栏收成 62px 图标条 → 南瓜 `34px`，`margin-bottom:12px`
+   - `≤860`：侧边栏变横向导航条，南瓜会横插在图标之间 → `display:none`
+
+### 顺带的发现
+
+南瓜搬走以后，登录页左下角那颗也没了（原来它挂在 `hw-scene` 上，登录页也会跟着显示）。
+登录页是浅色干净页，本来就没有别的万圣元素，少一颗飘着的南瓜反而更整齐 —— 没再补。
+
+### 验证
+
+- 新增 `.workbuddy/probe-pumpkin-side.js` **19/19**（1440 / 1100 / 820 三档视口）：
+  在 `.sidebar` 内且不在 `.hw-scene` 内、`position:static`、**与缓存卡零相交**、
+  与任何导航项零相交、在导航下方且在缓存卡上方留缝、52×52、水平居中（差 0px）、
+  摇摆动画在、`pointer-events:none`；1180 下 34×34 且不出侧边栏；820 下 `display:none`
+- 回归 **7 套全绿**：`probe-hw-web` 14/14、`probe-hero-hw` 47/47、`probe-art` 22/22、
+  `probe-build-date` 8/8、`probe-user-menu` 20/20、`probe-settings-logout` 10/10、
+  `probe-tpl-noauto` 10/10
+- `probe-hw-web` 里那条「南瓜已让到左边」的旧断言按新事实改写成
+  「已移出固定装饰层、搬进侧边栏」
+- **线上实测**（`.workbuddy/probe-live-pumpkin.js`，真站点真登录）**14/14**：
+  线上 = `20261029z159`；南瓜在侧边栏内、`static`、52×52、居中差 0px；
+  **与缓存卡零相交、不压「数据在云端，本机只留缓存」那行字**、与卡片留缝 175px
+
+### 两个探针上的坑（记下来省下次的时间）
+
+1. **SVG 没有 `offsetWidth` / `offsetLeft`** —— 想量它的布局尺寸只能读
+   `getComputedStyle(el).width`；直接写 `el.offsetWidth` 得到 `undefined`，`Math.round` 成 `NaN`。
+2. **`getBoundingClientRect` 会把 rotate 动画算进去** —— 52×52 的南瓜在摇摆中量出来是 55×55。
+   探针里先记下 `animationName`，再把 `style.animation` 设成 `none` 后才量矩形，否则尺寸断言必挂。
