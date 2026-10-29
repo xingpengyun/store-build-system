@@ -717,7 +717,8 @@ button:focus-visible,
   .hw-pumpkin { animation: none !important; }
 }
 
-/* ---------------- 全局背景万圣节装饰（fixed，不挡交互）：蜘蛛网 + 蝙蝠 + 南瓜 ---------------- */
+/* ---------------- 全局背景万圣节装饰（fixed，不挡交互）：蜘蛛网 + 蝙蝠 ----------------
+   注：南瓜灯 z159 起不再在这层里，改成了侧边栏内的普通元素（见 .hw-pumpkin-fly） */
 .hw-scene {
   position: fixed;
   inset: 0;
@@ -751,16 +752,28 @@ button:focus-visible,
   opacity: .8;
   animation: hwBatFly 5s ease-in-out infinite;
 }
+/* 南瓜灯：z159 挪进侧边栏内部，站在「导航」和「本机缓存卡」之间的空白带上。
+   原来它 fixed 在 left:26/bottom:16 —— 正好压住缓存卡那行「数据在云端，本机只留缓存」，
+   橙色南瓜挤在灰蓝小字里，既挡字又看不出是个南瓜。
+   现在不进 fixed 层：改成侧边栏里的普通流元素，上下 auto 留白自动落在空白带中间，
+   谁都遮不到；align-self 锁住水平居中，align-items:stretch 也拉不宽它。 */
 .hw-pumpkin-fly {
-  position: absolute;
-  bottom: 16px;
-  left: 26px;              /* 右下角让给蜘蛛网，南瓜挪到左下 */
-  width: 42px;
-  height: 42px;
-  opacity: .9;
+  display: block;
+  align-self: center;
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  margin: auto 0 20px;
+  opacity: .92;
+  pointer-events: none;   /* 纯装饰，别在侧边栏空白处挡出点击热区 */
   transform-origin: 50% 100%;
   animation: hwPumpkinSway 3.6s ease-in-out infinite;
+  filter: drop-shadow(0 6px 12px rgba(246, 161, 28, .18));
 }
+/* 1180 以下侧边栏收成 62px 图标条，南瓜收到 34 才不会顶到两边 */
+@media (max-width: 1180px) { .hw-pumpkin-fly { width: 34px; height: 34px; margin-bottom: 12px; } }
+/* 860 以下侧边栏变成横向导航条，南瓜会横插在图标之间 —— 直接不显示 */
+@media (max-width: 860px)  { .hw-pumpkin-fly { display: none; } }
 @keyframes hwMoon {
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(-5px); }
