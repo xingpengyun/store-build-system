@@ -954,7 +954,7 @@ button:focus-visible,
 }
 
 /* ---------------- 全局背景万圣节装饰（fixed，不挡交互）：蜘蛛网 + 蝙蝠 ----------------
-   注：南瓜灯 z159 起不在这一层里，z173 换成血迹、z174 换成枯树（见 .hw-tree） */
+   注：南瓜灯 z159 起不在这一层里（z173 血迹 → z174 枯树 → z199 城堡，见 .hw-castle） */
 .hw-scene {
   position: fixed;
   inset: 0;
@@ -1020,46 +1020,31 @@ button:focus-visible,
 @media (max-width: 900px) {
   .hw-bat-fly { display: none; }
 }
-/* 万圣节枯枝（z186 定稿）：顶替血迹的位置 —— 导航和「本机缓存卡」之间的空白带。
-   z174~z185 试过用分形递归"长出"一棵树（竖着、斜着、横着共十几版），
-   缩小到这个尺寸都像"蛇骨"或"插在土里的树棍"。最后改成直接沿用横幅顶部
-   那根手绘枯枝的路径 —— 横枝 + 几根长短不一的下垂细枝，两处同一个形体，
-   也算成套。横着放正好铺满这条空白带，不占高度。
-   仍然不进 fixed 层，走侧边栏里的普通流元素，align-self 锁水平居中。
-   宽高按 viewBox 比例（220 × 62）—— 只给宽度会让 SVG 按 1:1 拉变形。 */
-.hw-tree {
+/* 万圣节城堡剪影（z199）：顶替 z186 那棵枯枝，位置还是导航与「本机缓存卡」之间
+   那条空白带。走向变了 —— 现在是一座从左边界的框外延伸进来的城堡：
+   viewBox 里塔身从 x<0 起笔，右侧地面一路下沉，底部再用渐变化进侧边栏底色，
+   所以右边和底边都没有硬边（正是用户给的"过渡"参考）。
+   摆位：侧边栏 padding 是 14px 10px，靠左右各 -10px 的负 margin 把 196 铺满整条
+   面板，x<0 那截正好被面板左边缘切掉 —— 看着才像"从外面蔓延进来"的。
+   高度写死不跟随：viewBox 是 196×150，宽度已经是 196，1:1 不缩放。 */
+.hw-castle {
   display: block;
-  align-self: center;
   flex: 0 0 auto;
-  width: 170px;
-  height: 47.9px;        /* = 170 × 62 / 220，和 viewBox 同比例 */
-  margin: auto 0 16px;
+  align-self: stretch;
+  height: 150px;
+  /* 只给上边 auto：和缓存卡的 margin-top:auto 平分空白，城堡大致落在这一带的中间偏下。
+     上下都写 auto 的话，缓存卡自己那个 auto 会再叠一层，城堡会被顶得太高。 */
+  margin: auto -10px 6px;
   pointer-events: none;  /* 纯装饰，别在侧边栏空白处挡出点击热区 */
-  /* 沿枝的暖色轮廓光：纯黑剪影压在深蓝侧边栏上几乎读不出来，得有一圈淡月光勾边。
-     用 drop-shadow 而不是 background 的径向渐变 —— 渐变画在元素盒上，盒子四角
-     必然还留一点不透明度，屏幕上就是一个硬边矩形。drop-shadow 贴着枝的形状走，
-     没有盒子边界。 */
-  filter: drop-shadow(0 0 3.5px rgba(255, 194, 130, .34));
-}
-/* 枝下倒挂的两只小蝙蝠（z196）。蝙蝠本身是死的，但它们挂在枝上不动会像两颗果子，
-   所以只给"挂着的那个 g"加一点点摆动：旋转中心取爪子挂点（top center），
-   摆幅 ±3.2°、周期 7.2s，看着像被侧边栏那点气流带着晃，不会喧宾夺主。
-   树干本身仍然不动 —— 树会摇就假了。 */
-.hw-bat-hang {
-  transform-box: fill-box;
-  transform-origin: top center;
-  /* 一小圈暖色勾边：蝙蝠压在同样黑的树枝上，没有边光就只是一块鼓包 */
-  filter: drop-shadow(0 0 1.5px rgba(255, 196, 132, .38));
-  animation: hwHangSway 7.2s ease-in-out infinite;
-}
-.hw-bat-hang.b2 { animation-delay: -3.1s; }
-@keyframes hwHangSway {
-  0%, 100% { transform: rotate(-3.2deg); }
-  50%      { transform: rotate(3.2deg); }
+  /* 很淡的暖色边光：纯黑剪影压在深蓝面板上会糊成一块死斑，
+     但它是剪纸不是灯，光只给一点点，靠窗户去撑画面。 */
+  filter: drop-shadow(0 0 4px rgba(255, 190, 124, .16));
 }
 
-/* 1180 以下侧边栏收成 62px 图标条，横枝会顶到两边 —— 直接不显示 */
-@media (max-width: 1180px) { .hw-tree { display: none; } }
+/* 1180 以下侧边栏收成 62px 图标条 —— 直接不显示。
+   高度不够时也让位：1366×768 这类屏幕侧边栏只有 676px，城堡塞进去会顶到缓存卡。 */
+@media (max-width: 1180px) { .hw-castle { display: none; } }
+@media (max-height: 800px) { .hw-castle { display: none; } }
 @keyframes hwMoon {
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(-5px); }
@@ -1072,5 +1057,4 @@ button:focus-visible,
   .hw-bat-fly { animation: none !important; }
   .hw-bat-fly .hw-wl,
   .hw-bat-fly .hw-wr { animation: none !important; }
-  .hw-bat-hang { animation: none !important; }
 }
