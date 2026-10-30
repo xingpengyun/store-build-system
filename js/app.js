@@ -146,7 +146,7 @@ window.App = (function () {
       if (String(list[i].name || '').trim() === nm) { me = list[i]; break; }
     }
 
-    var art = (me && me.animal && UI.ANIMALS[me.animal]) ? me.animal : '';
+    var art = (me && me.animal && UI.ANIMALS[UI.normArt(me.animal)]) ? UI.normArt(me.animal) : '';
     var color = (me && me.color) || '#3f6bf5';
 
     var sig = art + '|' + nm;
@@ -659,7 +659,7 @@ window.App = (function () {
   /* 头像 HTML：跟顶栏那颗走同一套规则（配了动物画动物，没配就名字后两字） */
   function avatarHtml(uname, size) {
     var me = memberOf(uname);
-    var art = (me && me.animal && UI.ANIMALS[me.animal]) ? me.animal : '';
+    var art = (me && me.animal && UI.ANIMALS[UI.normArt(me.animal)]) ? UI.normArt(me.animal) : '';
     var color = (me && me.color) || '#3f6bf5';
     var bg = art ? (UI.ANIMALS[art].bg || color) : color;
     return '<span class="avatar ' + (size || 'avatar-md') + (art ? ' avatar-art' : '') +

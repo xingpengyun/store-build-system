@@ -152,19 +152,51 @@ window.UI = (function () {
     d_panda:    { name: '3D 熊猫',  file: 'a3d_a_panda.webp',    bg: '#F3F6FB' },
     d_shiba:    { name: '3D 柴犬',  file: 'a3d_a_shiba.webp',    bg: '#FFF5EC' },
     d_fox:      { name: '3D 狐狸',  file: 'a3d_a_fox.webp',      bg: '#FFF1E7' },
+    d_rabbit:   { name: '3D 小兔',  file: 'a3d_a_rabbit.webp',   bg: '#FFF1F6' },
+    d_bear:     { name: '3D 小熊',  file: 'a3d_a_bear.webp',     bg: '#FFF6EA' },
+    d_pig:      { name: '3D 小猪',  file: 'a3d_a_pig.webp',      bg: '#FFF0F5' },
+    d_frog:     { name: '3D 青蛙',  file: 'a3d_a_frog.webp',     bg: '#EFFAEF' },
+    d_chick:    { name: '3D 小鸡',  file: 'a3d_a_chick.webp',    bg: '#FFFAE3' },
+    d_koala:    { name: '3D 考拉',  file: 'a3d_a_koala.webp',    bg: '#F2F5FA' },
+    d_tiger:    { name: '3D 小虎',  file: 'a3d_a_tiger.webp',    bg: '#FFF4DE' },
+    d_penguin:  { name: '3D 企鹅',  file: 'a3d_a_penguin.webp',  bg: '#EEF4FF' },
     d_pumpkin:  { name: '3D 南瓜灯', file: 'a3d_h_pumpkin.webp',  bg: '#3A2A55' },
     d_ghost:    { name: '3D 幽灵',  file: 'a3d_h_ghost.webp',    bg: '#2B2440' },
     d_witch:    { name: '3D 女巫',  file: 'a3d_h_witch.webp',    bg: '#1F3A24' },
-    d_blackcat: { name: '3D 黑猫',  file: 'a3d_h_blackcat.webp', bg: '#3A2A55' }
+    d_blackcat: { name: '3D 黑猫',  file: 'a3d_h_blackcat.webp', bg: '#3A2A55' },
+    d_bat:      { name: '3D 蝙蝠',  file: 'a3d_h_bat.webp',      bg: '#F2EEFF' },
+    d_skull:    { name: '3D 骷髅',  file: 'a3d_h_skull.webp',    bg: '#F7F4EE' }
   };
   Object.keys(ART_3D).forEach(function (k) {
     ART[k] = { name: ART_3D[k].name, bg: ART_3D[k].bg, img: ART_3D[k].file };
   });
 
+  /* 老头像升级（2026-10-30 z168）：原来那 12 只扁平 SVG 小动物 + 6 个 SVG 万圣节角色
+     全部换成上面这套 3D。已经选过 cat / dog 这类老 key 的成员**不用重选**——
+     显示时先过一道别名，自动换成对应的 3D 图；老 key 仍留在 ART 里做兜底，
+     只是不再出现在选择器（选择器只铺 ART_GROUPS 里列的 key）。 */
+  var ART_ALIAS = {
+    cat: 'd_cat', dog: 'd_shiba', rabbit: 'd_rabbit', bear: 'd_bear',
+    panda: 'd_panda', fox: 'd_fox', pig: 'd_pig', frog: 'd_frog',
+    chick: 'd_chick', koala: 'd_koala', tiger: 'd_tiger', penguin: 'd_penguin',
+    pumpkin: 'd_pumpkin', ghost: 'd_ghost', bat: 'd_bat', skull: 'd_skull',
+    blackcat: 'd_blackcat', witch: 'd_witch'
+  };
+  function normArt(k) { return ART_ALIAS[k] || k || ''; }
+
+  /* 选择器的分组与顺序：全部是 3D 图，按人物 / 动物 / 万圣节排，
+     组内顺序是手调的（先放最常用的），不跟 ART 的声明顺序走 */
+  var ART_GROUPS = [
+    { title: '人物', keys: ['d_glasses', 'd_longhair', 'd_ponytail', 'd_beard'] },
+    { title: '动物', keys: ['d_cat', 'd_panda', 'd_shiba', 'd_fox', 'd_rabbit', 'd_bear',
+                            'd_pig', 'd_frog', 'd_chick', 'd_koala', 'd_tiger', 'd_penguin'] },
+    { title: '万圣节', keys: ['d_pumpkin', 'd_ghost', 'd_witch', 'd_blackcat', 'd_bat', 'd_skull'] }
+  ];
+
   var ART_KEYS = Object.keys(ART);
 
   /* 换头像图片时改这个版本号，img 的 ?v= 跟着变，浏览器才会重新拉图 */
-  var ART_VER = '20261030z167';
+  var ART_VER = '20261030z168';
 
   /* 耳朵：都在头圆之前画，等于压在后面。
      每片耳朵都描一道极淡的边 —— 同色的耳朵压在圆脸上才看得出形状（尤其小狗垂耳）。 */
@@ -294,6 +326,7 @@ window.UI = (function () {
   }
 
   function animalSvg(key) {
+    key = normArt(key);
     var d = ART[key];
     if (!d) return '';
     /* 3D 头像走图片，不走手绘 SVG —— 圆是父级裁的，img 铺满即可。
@@ -364,6 +397,7 @@ window.UI = (function () {
 
   /* 头像：传了动物 key 就画小动物，没传还是原来那颗「颜色 + 姓氏首字」 */
   function avatar(name, color, size, animal) {
+    animal = normArt(animal);           /* 老 key（cat / dog …）自动换成 3D 版 */
     var d = animal && ART[animal];
     if (d) {
       return '<span class="avatar avatar-' + (size || 'md') + ' avatar-art" style="background:' + d.bg +
@@ -1128,8 +1162,10 @@ window.UI = (function () {
     statusBadge: statusBadge,
     avatar: avatar,
     animalSvg: animalSvg,
-    ANIMALS: ART,          /* { key: { name, bg, fur … } }，团队页头像选择器按这个铺 */
+    ANIMALS: ART,          /* { key: { name, bg, file … } }，所有头像的总表 */
     ANIMAL_KEYS: ART_KEYS,
+    ART_GROUPS: ART_GROUPS, /* 选择器用：按组 + 手调顺序铺，全是 3D 图 */
+    normArt: normArt,       /* 老头像 key → 对应 3D key */
     progress: progress,
     empty: empty,
     toast: toast,

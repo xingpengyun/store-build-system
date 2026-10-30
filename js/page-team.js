@@ -82,7 +82,7 @@ window.Pages.team = (function () {
     var isNew = !member;
     var m = member || {};
     var picked = m.color || COLORS[0];
-    var pickedArt = m.animal || '';
+    var pickedArt = UI.normArt(m.animal);   /* 老 key（cat / dog…）落到对应的 3D 头像上 */
 
     var colorDots = COLORS.map(function (c) {
       return '<label class="color-opt" style="display:inline-flex;margin-right:6px;cursor:pointer">' +
@@ -93,21 +93,18 @@ window.Pages.team = (function () {
       '</label>';
     }).join('');
 
-    /* 头像分三组：3D 头像（图片，新）→ 经典小动物（手绘 SVG）→ 万圣节角色。
-       三组都是 name="art" 的 radio，跨组互斥，选中的那颗描蓝边。 */
+    /* 头像全是 3D 图，按 UI.ART_GROUPS 分三组：人物 / 动物 / 万圣节。
+       都是 name="art" 的 radio，跨组互斥，选中的那颗描蓝边。 */
     function artOpt(k) {
       return '<label class="art-opt" title="' + U.esc(UI.ANIMALS[k].name) + '">' +
         '<input type="radio" name="art" value="' + k + '"' + (k === pickedArt ? ' checked' : '') + ' />' +
         UI.avatar(m.name || '新', picked, 'md', k) +
       '</label>';
     }
-    var g3d = [];
-    var gClassic = [];
-    var gHw = [];
-    UI.ANIMAL_KEYS.forEach(function (k) {
-      var d = UI.ANIMALS[k];
-      (d.img ? g3d : (d.hw ? gHw : gClassic)).push(k);
-    });
+    var groupsHtml = UI.ART_GROUPS.map(function (g) {
+      return '<div class="art-group"><div class="art-group-head">' + g.title + '</div>' +
+        '<div class="art-grid is-3d">' + g.keys.map(artOpt).join('') + '</div></div>';
+    }).join('');
     var noneDot = '<label class="art-opt is-none" title="不用动物，只用颜色 + 姓氏首字">' +
       '<input type="radio" name="art" value=""' + (pickedArt ? '' : ' checked') + ' />' +
       UI.avatar(m.name || '新', picked, 'md') +
@@ -126,14 +123,9 @@ window.Pages.team = (function () {
               '<div class="field-hint">任务一律派给门店负责人，这里填什么都不改变谁拿到活。</div>' +
             '</div>' +
           '</div>' +
-          '<div class="field"><label>头像 <span class="field-sub">3D 头像 / 经典小动物 / 万圣节，或者用颜色 + 姓氏首字</span></label>' +
+          '<div class="field"><label>头像 <span class="field-sub">人物 / 动物 / 万圣节，或者用颜色 + 姓氏首字</span></label>' +
             '<div id="artPicker" class="art-scroll">' +
-              '<div class="art-group"><div class="art-group-head">3D 头像</div>' +
-                '<div class="art-grid is-3d">' + g3d.map(artOpt).join('') + '</div></div>' +
-              '<div class="art-group"><div class="art-group-head">经典小动物</div>' +
-                '<div class="art-grid">' + gClassic.map(artOpt).join('') + '</div></div>' +
-              '<div class="art-group"><div class="art-group-head">万圣节</div>' +
-                '<div class="art-grid">' + gHw.map(artOpt).join('') + '</div></div>' +
+              groupsHtml +
               /* 「不用头像」单独一组：它跟 3D 头像排一起时，老被当成某个头像点 */
               '<div class="art-group"><div class="art-group-head">不用头像（颜色 + 姓氏首字）</div>' +
                 '<div class="art-grid">' + noneDot + '</div></div>' +

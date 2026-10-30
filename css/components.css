@@ -906,7 +906,7 @@
 
 /* 头像分三组（3D / 经典 / 万圣节）后一次铺 30 颗，弹窗会被拉得很长 → 这里限制高度滚动。
    分组标题右边拖一条细线，视觉上把组与组分开，但不用画一整条边框。 */
-.art-scroll { max-height: 352px; overflow-y: auto; padding-right: 6px; }
+.art-scroll { max-height: 400px; overflow-y: auto; padding-right: 6px; }
 .art-group + .art-group { margin-top: 13px; }
 .art-group-head {
   display: flex; align-items: center; gap: 8px;
@@ -915,9 +915,10 @@
 }
 .art-group-head::after { content: ''; flex: 1; height: 1px; background: var(--line-2); }
 
-/* 3D 头像那组单独放大到 38px：30px 下图片的质感全糊了，看着跟扁平 SVG 没差 */
-.art-grid.is-3d { grid-template-columns: repeat(6, 38px); gap: 11px 12px; }
-.art-grid.is-3d .art-opt .avatar { width: 38px; height: 38px; flex: 0 0 38px; }
+/* 全 3D 之后统一放大到 44px：30px 下图片的质感全糊了，44px 才看得出软胶的立体感。
+   6 列刚好一排铺满：动物 12 个 = 2 行，万圣节 6 个 = 1 行，人物 4 个 = 1 行。 */
+.art-grid.is-3d { grid-template-columns: repeat(6, 44px); gap: 13px 14px; }
+.art-grid.is-3d .art-opt .avatar { width: 44px; height: 44px; flex: 0 0 44px; }
 .art-opt { cursor: pointer; line-height: 0; }
 .art-opt input { display: none; }
 .art-opt .avatar {
@@ -931,8 +932,8 @@
 }
 /* 「不用动物」那颗：显示成颜色 + 首字，跟原来的头像一致 */
 .art-opt.is-none .avatar {
-  width: 30px; height: 30px; flex: 0 0 30px;
-  font-size: 12px; font-weight: 600; color: #fff;
+  width: 44px; height: 44px; flex: 0 0 44px;
+  font-size: 15px; font-weight: 600; color: #fff;
   display: grid; place-items: center;
 }
 
