@@ -1280,7 +1280,7 @@
   to { opacity: 1; transform: none; }
 }
 .modal.modal-lg { max-width: 700px; }
-/* z161：门店详情的「更多」叠一层更大的弹窗，装全档案 + 几线价格 */
+/* z161：门店详情的「详细信息」叠一层更大的弹窗，装全档案 + 几线价格 */
 .modal.modal-xl { max-width: 940px; }
 @media (max-width: 1020px) { .modal.modal-xl { max-width: 100%; } }
 
@@ -1322,7 +1322,7 @@
 }
 .modal-foot .foot-left { margin-right: auto; }
 
-/* ---------------- 门店「更多」：全档案 + 几线价格（z161） ---------------- */
+/* ---------------- 门店「详细信息」：全档案 + 几线价格（z161） ---------------- */
 .desc-list.is-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
 /* 几线价格：一个下拉选档位，右边只读显示价目表里那一档的金额 */

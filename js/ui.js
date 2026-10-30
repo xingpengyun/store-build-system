@@ -476,7 +476,7 @@ window.UI = (function () {
 
   /* ---------------- 弹窗 ---------------- */
   var openModal = null;
-  /* 弹窗可以叠（opts.stack = true）：门店详情点「更多」会再叠一层大的上去，
+  /* 弹窗可以叠（opts.stack = true）：门店详情点「详细信息」会再叠一层大的上去，
      下面那层不关。Esc / 关全部都只认栈。 */
   var modalStack = [];
 

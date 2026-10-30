@@ -145,7 +145,7 @@ window.Pages.settings = (function () {
   }
 
   /* ================= 门店档案字段（z161） =================
-     门店详情「更多」里显示什么，这一页说了算：
+     门店详情「详细信息」里显示什么，这一页说了算：
        - 字段名 / 类型 / 下拉选项都能改，能加能删
        - 几线价格是一块固定矩阵，但行名（版本）和列名（线级）在这里改
      点「保存字段」写进 settings（跟着云端同步），所有人刷新后可见。 */
@@ -182,10 +182,10 @@ window.Pages.settings = (function () {
 
     return '<div class="card fade-up" id="fldCard" style="animation-delay:.09s">' +
       '<div class="card-head"><h3>门店档案字段</h3>' +
-        '<span class="card-sub">门店详情 →「更多」里显示的内容，共 <b>' + fields.length + '</b> 个字段</span></div>' +
+        '<span class="card-sub">门店详情 →「详细信息」里显示的内容，共 <b>' + fields.length + '</b> 个字段</span></div>' +
 
       '<p class="muted" style="margin:-2px 0 12px;font-size:12px;color:var(--text-3);line-height:1.8">' +
-        '门店详情点「更多」，会按下面这份清单铺出输入框；填的值存在云端，按门店分开。' +
+        '门店详情点「详细信息」，会按下面这份清单铺出输入框；填的值存在云端，按门店分开。' +
         '「三档金额」= 一线 / 二线 / 三线 各填一个数（列名跟着下面价目表前 3 行），适合加盟费、管理费。' +
       '</p>' +
 

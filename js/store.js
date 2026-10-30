@@ -2840,7 +2840,7 @@ window.Store = (function () {
     return s;
   }
 
-  /* ---------------- 门店「更多」：自定义档案字段 + 几线价格（z161） ----------------
+  /* ---------------- 门店「详细信息」：自定义档案字段 + 几线价格（z161） ----------------
      用户在「系统设置 → 门店档案字段」里自己维护，不用改代码：
        settings.storeFields    = [{ id, name, type, options: [], show: true }]
        settings.storeFieldVals = { storeId: { fieldId: value } }

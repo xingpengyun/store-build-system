@@ -544,7 +544,7 @@ window.Pages.stores = (function () {
       size: 'lg',
       body: body,
       footer:
-        '<button class="btn foot-left" data-act="more">更多</button>' +
+        '<button class="btn foot-left" data-act="more">详细信息</button>' +
         '<button class="btn" data-act="close">关闭</button>' +
         (S.templates().length ? '<button class="btn" data-act="dispatch">按清单补派任务</button>' : '') +
         '<button class="btn btn-primary" data-act="edit">编辑门店</button>',
@@ -736,7 +736,7 @@ window.Pages.stores = (function () {
           }
         };
 
-        /* 更多：再叠一层更大的弹窗，下面这层详情不关 */
+        /* 详细信息：再叠一层更大的弹窗，下面这层详情不关 */
         rootEl.querySelector('[data-act="more"]').onclick = function () {
           openMore(store.id);
         };
@@ -744,8 +744,8 @@ window.Pages.stores = (function () {
     });
   }
 
-  /* ---------------- 更多：叠一层的「全档案」弹窗（z161） ----------------
-     详情弹窗底部左边的「更多」→ 再叠一层更大的弹窗（UI.modal 的 stack），
+  /* ---------------- 详细信息：叠一层的「全档案」弹窗（z161） ----------------
+     详情弹窗底部左边的「详细信息」→ 再叠一层更大的弹窗（UI.modal 的 stack），
      下面那层详情不关，关掉这层就回到详情。放详情里塞不下的东西：
        1) 完整档案（阶段 / 风险 / 开业 / 建档时间 / 地址 / 备注）
        2) 几线价格：版本 × 线级 的矩阵，行列名在设置里改
@@ -930,7 +930,7 @@ window.Pages.stores = (function () {
 
     UI.modal({
       title: store.name,
-      sub: (stageObj ? stageObj.key + ' · ' : '') + '全档案',
+      sub: (stageObj ? stageObj.key + ' · ' : '') + '详细信息',
       size: 'xl',
       stack: true,
       body: body,
