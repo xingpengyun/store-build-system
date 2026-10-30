@@ -382,6 +382,123 @@ window.Pages.home = (function () {
       '</g></svg>';
   }
 
+  /* 横幅左侧的图标：城市 CBD 夜景（z195 起替换掉原来的便利店 emoji）。
+     52×52 坐标系、基线 y=45：六栋楼高低错开，窗点按行列铺开后随机挑亮暗，
+     暖白为主、冷蓝点缀；主楼带退台 + 天线 + 顶冠灯，两盏红色航空障碍灯缓慢呼吸。
+     图形别手改 —— 生成脚本在 .workbuddy/gen-cbd.py，改参数后重跑。 */
+  function heroGlyph() {
+    return '<div class="hero-icon" aria-hidden="true">' +
+      '<svg class="cbd-svg" viewBox="0 0 52 52" fill="none">' +
+      '<defs><linearGradient id="cbdSky" x1=".25" y1="0" x2=".75" y2="1">' +
+      '<stop offset="0" stop-color="#241640"/><stop offset=".55" stop-color="#37214f"/>' +
+      '<stop offset="1" stop-color="#5b3350"/></linearGradient>' +
+      '<radialGradient id="cbdHaze" cx=".5" cy="1" r=".62">' +
+      '<stop offset="0" stop-color="#ffa257" stop-opacity=".26"/>' +
+      '<stop offset=".5" stop-color="#ff8b4a" stop-opacity=".12"/>' +
+      '<stop offset="1" stop-color="#ff8b4a" stop-opacity="0"/></radialGradient>' +
+      '<radialGradient id="cbdGlow" cx=".5" cy=".5" r=".5">' +
+      '<stop offset="0" stop-color="#8f7bff" stop-opacity=".30"/>' +
+      '<stop offset="1" stop-color="#8f7bff" stop-opacity="0"/></radialGradient>' +
+      '<linearGradient id="cbdBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0c0718"/>' +
+      '<stop offset="1" stop-color="#1a1130"/></linearGradient>' +
+      '<linearGradient id="cbdCrown" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0" stop-color="#fff6de"/>' +
+      '<stop offset="1" stop-color="#ffcf85" stop-opacity=".18"/></linearGradient></defs>' +
+      '<rect width="52" height="52" fill="url(#cbdSky)"/>' +
+      '<ellipse cx="26" cy="30" rx="25" ry="18" fill="url(#cbdGlow)"/>' +
+      '<circle cx="41.2" cy="8.8" r=".62" fill="#ffeccb" opacity=".34"/>' +
+      '<circle cx="7.2" cy="12.6" r=".5" fill="#ffeccb" opacity=".26"/>' +
+      '<rect x="1.20" y="30.00" width="7.80" height="15.00" fill="url(#cbdBody)"/>' +
+      '<rect x="10.00" y="21.00" width="8.00" height="24.00" fill="url(#cbdBody)"/>' +
+      '<rect x="12.15" y="16.80" width="3.7" height="4.2" fill="url(#cbdBody)"/>' +
+      '<rect x="19.20" y="12.20" width="10.20" height="32.80" fill="url(#cbdBody)"/>' +
+      '<rect x="22.30" y="6.40" width="4.0" height="5.8" fill="url(#cbdBody)"/>' +
+      '<rect x="23.88" y=".8" width=".85" height="5.60" fill="url(#cbdBody)"/>' +
+      '<rect x="30.20" y="18.80" width="7.40" height="26.20" fill="url(#cbdBody)"/>' +
+      '<rect x="32.15" y="15.20" width="3.5" height="3.6" fill="url(#cbdBody)"/>' +
+      '<rect x="38.60" y="25.80" width="7.20" height="19.20" fill="url(#cbdBody)"/>' +
+      '<rect x="46.60" y="32.40" width="5.40" height="12.60" fill="url(#cbdBody)"/>' +
+      '<rect x="1.20" y="30.00" width=".5" height="15.00" fill="#7c66b4" opacity=".18"/>' +
+      '<rect x="10.00" y="21.00" width=".5" height="24.00" fill="#7c66b4" opacity=".18"/>' +
+      '<rect x="19.20" y="12.20" width=".5" height="32.80" fill="#7c66b4" opacity=".18"/>' +
+      '<rect x="30.20" y="18.80" width=".5" height="26.20" fill="#7c66b4" opacity=".18"/>' +
+      '<rect x="38.60" y="25.80" width=".5" height="19.20" fill="#7c66b4" opacity=".18"/>' +
+      '<rect x="46.60" y="32.40" width=".5" height="12.60" fill="#7c66b4" opacity=".18"/>' +
+      '<rect x="2.50" y="32.80" width="1.5" height="1.55" rx=".3" fill="#ffb457" opacity="1.00"/>' +
+      '<rect x="2.50" y="35.95" width="1.5" height="1.55" rx=".3" fill="#ffc275" opacity="1.00"/>' +
+      '<rect x="5.50" y="32.80" width="1.5" height="1.55" rx=".3" fill="#ffb457" opacity="1.00"/>' +
+      '<rect x="5.50" y="35.95" width="1.5" height="1.55" rx=".3" fill="#ffc275" opacity="1.00"/>' +
+      '<rect x="5.50" y="39.10" width="1.5" height="1.55" rx=".3" fill="#8fe3ff" opacity="0.95"/>' +
+      '<rect x="11.40" y="23.80" width="1.5" height="1.55" rx=".3" fill="#ffb457" opacity="1.00"/>' +
+      '<rect x="11.40" y="26.95" width="1.5" height="1.55" rx=".3" fill="#ffd79a" opacity="1.00"/>' +
+      '<rect x="11.40" y="30.10" width="1.5" height="1.55" rx=".3" fill="#ffc275" opacity="1.00"/>' +
+      '<rect x="11.40" y="33.25" width="1.5" height="1.55" rx=".3" fill="#ffb457" opacity="1.00"/>' +
+      '<rect x="11.40" y="36.40" width="1.5" height="1.55" rx=".3" fill="#ffd79a" opacity="1.00"/>' +
+      '<rect x="11.40" y="39.55" width="1.5" height="1.55" rx=".3" fill="#ffc275" opacity="1.00"/>' +
+      '<rect x="14.40" y="26.95" width="1.5" height="1.55" rx=".3" fill="#ffc275" opacity="1.00"/>' +
+      '<rect x="14.40" y="30.10" width="1.5" height="1.55" rx=".3" fill="#ffc275" opacity="1.00"/>' +
+      '<rect x="14.40" y="33.25" width="1.5" height="1.55" rx=".3" fill="#ffd79a" opacity="1.00"/>' +
+      '<rect x="14.40" y="36.40" width="1.5" height="1.55" rx=".3" fill="#ffd79a" opacity="1.00"/>' +
+      '<rect x="20.45" y="15.00" width="1.5" height="1.55" rx=".3" fill="#ffb457" opacity="1.00"/>' +
+      '<rect x="20.45" y="18.15" width="1.5" height="1.55" rx=".3" fill="#ffb457" opacity="1.00"/>' +
+      '<rect x="20.45" y="24.45" width="1.5" height="1.55" rx=".3" fill="#ffd79a" opacity="1.00"/>' +
+      '<rect x="20.45" y="27.60" width="1.5" height="1.55" rx=".3" fill="#8fe3ff" opacity="0.95"/>' +
+      '<rect x="20.45" y="30.75" width="1.5" height="1.55" rx=".3" fill="#ffb457" opacity="1.00"/>' +
+      '<rect x="20.45" y="33.90" width="1.5" height="1.55" rx=".3" fill="#ffb457" opacity="1.00"/>' +
+      '<rect x="20.45" y="37.05" width="1.5" height="1.55" rx=".3" fill="#ffd79a" opacity="1.00"/>' +
+      '<rect x="20.45" y="40.20" width="1.5" height="1.55" rx=".3" fill="#a8d8ff" opacity="0.95"/>' +
+      '<rect x="23.40" y="15.00" width="1.5" height="1.55" rx=".3" fill="#ffb457" opacity="1.00"/>' +
+      '<rect x="23.40" y="18.15" width="1.5" height="1.55" rx=".3" fill="#ffb457" opacity="1.00"/>' +
+      '<rect x="23.40" y="21.30" width="1.5" height="1.55" rx=".3" fill="#ffb457" opacity="1.00"/>' +
+      '<rect x="23.40" y="24.45" width="1.5" height="1.55" rx=".3" fill="#ffd79a" opacity="1.00"/>' +
+      '<rect x="23.40" y="37.05" width="1.5" height="1.55" rx=".3" fill="#a8d8ff" opacity="0.95"/>' +
+      '<rect x="23.40" y="40.20" width="1.5" height="1.55" rx=".3" fill="#ffb457" opacity="1.00"/>' +
+      '<rect x="26.35" y="15.00" width="1.5" height="1.55" rx=".3" fill="#ffd79a" opacity="1.00"/>' +
+      '<rect x="26.35" y="18.15" width="1.5" height="1.55" rx=".3" fill="#ffd79a" opacity="1.00"/>' +
+      '<rect x="26.35" y="21.30" width="1.5" height="1.55" rx=".3" fill="#ffd79a" opacity="1.00"/>' +
+      '<rect x="26.35" y="27.60" width="1.5" height="1.55" rx=".3" fill="#ffd79a" opacity="1.00"/>' +
+      '<rect x="26.35" y="30.75" width="1.5" height="1.55" rx=".3" fill="#ffc275" opacity="1.00"/>' +
+      '<rect x="26.35" y="33.90" width="1.5" height="1.55" rx=".3" fill="#ffc275" opacity="1.00"/>' +
+      '<rect x="26.35" y="37.05" width="1.5" height="1.55" rx=".3" fill="#ffd79a" opacity="0.50"/>' +
+      '<rect x="31.50" y="21.60" width="1.5" height="1.55" rx=".3" fill="#ffc275" opacity="1.00"/>' +
+      '<rect x="31.50" y="27.90" width="1.5" height="1.55" rx=".3" fill="#8fe3ff" opacity="0.95"/>' +
+      '<rect x="31.50" y="31.05" width="1.5" height="1.55" rx=".3" fill="#8fe3ff" opacity="0.95"/>' +
+      '<rect x="31.50" y="40.50" width="1.5" height="1.55" rx=".3" fill="#ffb457" opacity="1.00"/>' +
+      '<rect x="34.45" y="21.60" width="1.5" height="1.55" rx=".3" fill="#ffc275" opacity="1.00"/>' +
+      '<rect x="34.45" y="24.75" width="1.5" height="1.55" rx=".3" fill="#ffc275" opacity="1.00"/>' +
+      '<rect x="34.45" y="27.90" width="1.5" height="1.55" rx=".3" fill="#ffb457" opacity="1.00"/>' +
+      '<rect x="34.45" y="34.20" width="1.5" height="1.55" rx=".3" fill="#ffd79a" opacity="1.00"/>' +
+      '<rect x="34.45" y="37.35" width="1.5" height="1.55" rx=".3" fill="#ffc275" opacity="1.00"/>' +
+      '<rect x="34.45" y="40.50" width="1.5" height="1.55" rx=".3" fill="#ffb457" opacity="1.00"/>' +
+      '<rect x="39.85" y="28.60" width="1.5" height="1.55" rx=".3" fill="#ffd79a" opacity="1.00"/>' +
+      '<rect x="39.85" y="38.05" width="1.5" height="1.55" rx=".3" fill="#ffb457" opacity="1.00"/>' +
+      '<rect x="42.80" y="28.60" width="1.5" height="1.55" rx=".3" fill="#ffd79a" opacity="1.00" class="cbd-tw" style="animation-delay:-2.3s"/>' +
+      '<rect x="42.80" y="31.75" width="1.5" height="1.55" rx=".3" fill="#ffb457" opacity="1.00"/>' +
+      '<rect x="42.80" y="34.90" width="1.5" height="1.55" rx=".3" fill="#ffc275" opacity="1.00"/>' +
+      '<rect x="48.10" y="35.20" width="1.5" height="1.55" rx=".3" fill="#a8d8ff" opacity="0.95" class="cbd-tw" style="animation-delay:-4.6s"/>' +
+      '<rect x="2.60" y="42.7" width="5.00" height="1.5" fill="#ffb95f" opacity="0.55"/>' +
+      '<rect x="11.40" y="42.7" width="5.20" height="1.5" fill="#ffb95f" opacity="0.80"/>' +
+      '<rect x="20.60" y="42.7" width="7.40" height="1.5" fill="#ffb95f" opacity="0.80"/>' +
+      '<rect x="31.60" y="42.7" width="4.60" height="1.5" fill="#ffb95f" opacity="0.80"/>' +
+      '<rect x="40.00" y="42.7" width="4.40" height="1.5" fill="#ffb95f" opacity="0.80"/>' +
+      '<rect x="48.00" y="42.7" width="2.60" height="1.5" fill="#ffb95f" opacity="0.55"/>' +
+      '<rect x="10.55" y="21.12" width="6.90" height=".62" rx=".3" fill="#ffe6b8" opacity="0.55"/>' +
+      '<rect x="12.45" y="16.90" width="3.1" height=".58" rx=".28" fill="#ffe6b8" opacity=".5"/>' +
+      '<rect x="19.75" y="12.32" width="9.10" height=".62" rx=".3" fill="#ffe6b8" opacity="0.85"/>' +
+      '<rect x="22.30" y="6.40" width="4.0" height=".95" fill="url(#cbdCrown)"/>' +
+      '<rect x="19.80" y="11.65" width="9.00" height=".5" fill="#ffe6b8" opacity=".8"/>' +
+      '<rect x="30.75" y="18.92" width="6.30" height=".62" rx=".3" fill="#ffe6b8" opacity="0.55"/>' +
+      '<rect x="39.15" y="25.92" width="6.10" height=".62" rx=".3" fill="#ffe6b8" opacity="0.55"/>' +
+      '<circle class="cbd-bcn" cx="24.3" cy="2.6" r=".8" fill="#ff5a63"/>' +
+      '<circle class="cbd-bcn b2" cx="33.9" cy="15.4" r=".7" fill="#ff5a63"/>' +
+      '<ellipse cx="26" cy="44.5" rx="27" ry="9.5" fill="url(#cbdHaze)"/>' +
+      '<rect y="45" width="52" height="7" fill="#0a0514" opacity=".92"/>' +
+      '<ellipse cx="26" cy="45.6" rx="19" ry="1.15" fill="#ffa257" opacity=".15"/>' +
+      '<ellipse cx="24" cy="47.5" rx="11" ry=".8" fill="#ffa257" opacity=".05"/>' +
+      '</svg>' +
+    '</div>';
+  }
+
   function heroArt() {
     return '<div class="hero-art"><svg viewBox="0 0 150 80" fill="none">' +
       '<defs>' +
@@ -850,7 +967,7 @@ window.Pages.home = (function () {
       /* 装饰层：一块「万圣夜室内窗景」——远（月 + 云/雾 + 山影）、中（枯枝 + 蝙蝠 + 幽灵）、
          近（南瓜灯 + 蜘蛛）。纯 CSS 动画，pointer-events:none，不挡任何内容。 */
       hwScene() +
-      '<div class="hero-icon">🏪</div>' +
+      heroGlyph() +
       '<div class="hero-main">' +
         '<h2>' + U.greeting() + '，' + U.esc(set.teamName || '阿蛮团队') + '！</h2>' +
         '<p>今天有 <b>' + st.todayTasks + '</b> 项任务需要处理，' +

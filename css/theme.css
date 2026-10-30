@@ -206,6 +206,44 @@ html { scroll-behavior: smooth; }
   box-shadow: inset 0 1px 0 rgba(255, 222, 176, .09), 0 10px 26px -18px rgba(28, 18, 46, .8);
 }
 
+/* 横幅左侧的小图标：城市 CBD 夜景（z195 起换掉原来的便利店 emoji）。
+   60px 的方格子里塞一张 52px 的 SVG，夜景底色在 SVG 里，方块只负责"窗口"：
+   底色压成深夜紫、裁掉 SVG 的直角（overflow:hidden），再补一圈很淡的暖光晕，
+   让它在深色横幅上稍微"亮"一点，不至于沉进背景。 */
+.hero-icon {
+  background: #160f2b;
+  border-color: rgba(255, 186, 106, .42);
+  overflow: hidden;
+  box-shadow:
+    0 8px 20px rgba(12, 6, 24, .45),
+    0 0 16px rgba(255, 170, 82, .18),
+    inset 0 1px 0 rgba(255, 255, 255, .07);
+}
+.hero-icon .cbd-svg { display: block; width: 52px; height: 52px; }
+/* 窄屏方块缩到 46，SVG 不跟着缩就会被裁掉两只楼 */
+@media (max-width: 860px) {
+  .hero-icon .cbd-svg { width: 40px; height: 40px; }
+}
+
+/* 航空障碍灯呼吸 + 两三扇窗慢慢亮灭：CBD 夜景里"还有人加班"的那点活气。
+   只动 opacity，元素个位数，开销可以忽略。 */
+.cbd-bcn { animation: cbdBcn 3.8s ease-in-out infinite; }
+.cbd-bcn.b2 { animation-delay: -1.4s; }
+@keyframes cbdBcn {
+  0%, 100% { opacity: .32; }
+  46%      { opacity: 1; }
+  62%      { opacity: .55; }
+}
+.cbd-tw { animation: cbdTw 7.5s ease-in-out infinite; }
+@keyframes cbdTw {
+  0%, 100% { opacity: 1; }
+  48%      { opacity: .3; }
+  56%      { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cbd-bcn, .cbd-tw { animation: none !important; }
+}
+
 /* ---------------- 5. KPI：图标带同色光晕 ---------------- */
 .kpi {
   position: relative;
@@ -971,6 +1009,23 @@ button:focus-visible,
      没有盒子边界。 */
   filter: drop-shadow(0 0 3.5px rgba(255, 194, 130, .34));
 }
+/* 枝下倒挂的两只小蝙蝠（z196）。蝙蝠本身是死的，但它们挂在枝上不动会像两颗果子，
+   所以只给"挂着的那个 g"加一点点摆动：旋转中心取爪子挂点（top center），
+   摆幅 ±3.2°、周期 7.2s，看着像被侧边栏那点气流带着晃，不会喧宾夺主。
+   树干本身仍然不动 —— 树会摇就假了。 */
+.hw-bat-hang {
+  transform-box: fill-box;
+  transform-origin: top center;
+  /* 一小圈暖色勾边：蝙蝠压在同样黑的树枝上，没有边光就只是一块鼓包 */
+  filter: drop-shadow(0 0 1.5px rgba(255, 196, 132, .38));
+  animation: hwHangSway 7.2s ease-in-out infinite;
+}
+.hw-bat-hang.b2 { animation-delay: -3.1s; }
+@keyframes hwHangSway {
+  0%, 100% { transform: rotate(-3.2deg); }
+  50%      { transform: rotate(3.2deg); }
+}
+
 /* 1180 以下侧边栏收成 62px 图标条，横枝会顶到两边 —— 直接不显示 */
 @media (max-width: 1180px) { .hw-tree { display: none; } }
 @keyframes hwMoon {
@@ -983,4 +1038,5 @@ button:focus-visible,
 }
 @media (prefers-reduced-motion: reduce) {
   .hw-bat-fly { animation: none !important; }
+  .hw-bat-hang { animation: none !important; }
 }
