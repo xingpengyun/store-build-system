@@ -48,6 +48,26 @@ window.Login = (function () {
     return '<div class="login-mascot">' + (window.UI.mascot('login-mascot-svg')) + '</div>';
   }
 
+  /* 登录页空场里飞的蝙蝠（z198）：跟横幅、全局层同一只剪影 —— 半翼镜像 + 三个翼缘缺口。
+     登录页是薄荷→天蓝→淡紫的浅渐变，纯黑会脏、纯白会像云絮，
+     所以用和吉祥物同族的板岩紫 #6a5acd 压在 .2 上，远看是"雾里透出来的一只"。
+     只放在四角空场，不压卡片和吉祥物。 */
+  var LG_HALF = 'M32 12.6C25.4 6 15 3 4.6 4.8L9.4 14.2Q12.4 8.6 15.4 12L19.2 16.4' +
+    'Q22.4 9.8 25.6 13.2L28.6 16.2Q30.6 11.6 32 12.6z';
+  function lgBat(cls) {
+    return '<svg class="lg-bat ' + cls + '" viewBox="0 0 64 30" aria-hidden="true">' +
+      '<g fill="#6a5acd">' +
+        '<g class="hw-wl"><path d="' + LG_HALF + '"/></g>' +
+        '<g class="hw-wr"><path d="' + LG_HALF + '" transform="translate(64,0) scale(-1,1)"/></g>' +
+        '<ellipse cx="32" cy="16" rx="4.2" ry="5.6"/>' +
+        '<circle cx="32" cy="9.4" r="4"/>' +
+        '<path d="M28.6 7.6 27 2.6l4.4 3zM35.4 7.6 37 2.6l-4.4 3z"/>' +
+      '</g></svg>';
+  }
+  function bats() {
+    return '<div class="lg-bats" aria-hidden="true">' + lgBat('lb1') + lgBat('lb2') + lgBat('lb3') + '</div>';
+  }
+
   /* 2026-10-25：卡片底部那行说明（「没在名单里的姓名登不进来…数据保存在云端…」）
      用户要求去掉，登录页只留姓名 / 账号 / 密码三个框和登录按钮，不再解释规则。 */
   function tplSimple() {
@@ -104,7 +124,7 @@ window.Login = (function () {
 
     layer = document.createElement('div');
     layer.className = 'login-layer';
-    layer.innerHTML = mascot() + (isSimple() ? tplSimple() : tplPhone());
+    layer.innerHTML = mascot() + bats() + (isSimple() ? tplSimple() : tplPhone());
     document.body.appendChild(layer);
 
     if (isSimple()) bindSimple();

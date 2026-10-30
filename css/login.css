@@ -446,3 +446,39 @@
   background: #4ade80;
 }
 .sync-tip.offline i { background: #fff; }
+
+/* ==========================================================
+   z198：登录页空场里飞的蝙蝠
+   —— 和横幅 / 全局层是同一只剪影（半翼镜像 + 三个翼缘缺口），
+      只把颜色换成和吉祥物同族的板岩紫 #6a5acd 并压到 .14~.20：
+      这个页面是薄荷→天蓝→淡紫的浅渐变，纯黑会像污点，纯白像云絮，
+      淡紫才像"从雾里透出来的一只"。
+      只放四角空场，卡片和吉祥物由 DOM 顺序压在它们上面。
+   ========================================================== */
+.lg-bats { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.lg-bat {
+  position: absolute;
+  height: auto;                 /* 只给宽度：写死高度会把翼展纵向拉长 */
+  animation: lgBatFly 6.8s ease-in-out infinite;
+}
+.lg-bat .hw-wl,
+.lg-bat .hw-wr { transform-origin: 32px 13px; }
+.lg-bat .hw-wl { animation: hwFlapL 2.1s ease-in-out infinite; }
+.lg-bat .hw-wr { animation: hwFlapR 2.1s ease-in-out infinite; }
+.lg-bat.lb1 { left: 8%;  top: 13%;    width: 52px; opacity: .34; }
+.lg-bat.lb2 { right: 9%; top: 21%;    width: 36px; opacity: .28;
+  animation-delay: -2.4s; }
+.lg-bat.lb2 .hw-wl, .lg-bat.lb2 .hw-wr { animation-duration: 2.6s; }
+.lg-bat.lb3 { left: 15%; bottom: 16%; width: 28px; opacity: .22;
+  animation-delay: -4.1s; }
+.lg-bat.lb3 .hw-wl, .lg-bat.lb3 .hw-wr { animation-duration: 2.35s; }
+@keyframes lgBatFly {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  50%      { transform: translate(-10px, -12px) rotate(-6deg); }
+}
+@media (max-width: 900px) {
+  .lg-bat.lb3 { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lg-bat, .lg-bat .hw-wl, .lg-bat .hw-wr { animation: none !important; }
+}

@@ -979,14 +979,46 @@ button:focus-visible,
 @media (max-width: 1280px) { .hw-web { width: 250px; height: 250px; } }
 @media (max-width: 900px)  { .hw-web { width: 180px; height: 180px; opacity: .42; } }
 @media (max-width: 680px)  { .hw-web { display: none; } }
+/* 全局层的飞行蝙蝠（z198）：形体换成横幅那只带缺口翼缘的剪影。
+   旧版是两片椭圆翅膀 + 两颗橙点，40px 下像只蝴蝶结；
+   现在翅膀左右分组摆（复用 hwFlapL/R），整只的漂移加在 <svg> 上。
+   四只沿右边缘由高到低排开：越靠下越小、越淡，像一群散开的蝙蝠。
+   height 必须 auto —— 只给宽度时浏览器按 1:1 撑高，翼展会被纵向拉伸。 */
 .hw-bat-fly {
   position: absolute;
-  top: 40%;
   right: 12px;
-  width: 40px;
-  height: 24px;
-  opacity: .8;
-  animation: hwBatFly 5s ease-in-out infinite;
+  height: auto;
+  pointer-events: none;
+  animation: hwBatFly 5.6s ease-in-out infinite;
+}
+.hw-bat-fly .hw-wl,
+.hw-bat-fly .hw-wr { transform-origin: 32px 13px; }
+.hw-bat-fly .hw-wl { animation: hwFlapL 1.7s ease-in-out infinite; }
+.hw-bat-fly .hw-wr { animation: hwFlapR 1.7s ease-in-out infinite; }
+
+/* 五只的站位：四只贴右边缘外侧（卡片到屏幕边只剩 20px 缝，停在卡片中间会像污点），
+   一只单独放进左侧深色侧边栏的空白带 —— 那里底色深，用浅一号的紫。
+   速度/相位错开，否则五只会像同一个图章一起呼吸。 */
+.hw-bat-fly.fb1 { top: 27%; right: 5px;  width: 26px; opacity: .40; animation-duration: 6.4s; }
+.hw-bat-fly.fb1 .hw-wl, .hw-bat-fly.fb1 .hw-wr { animation-duration: 1.95s; }
+.hw-bat-fly.fb2 { top: 34%; right: 2px; width: 16px; opacity: .24;
+  animation-duration: 7.8s; animation-delay: -2.1s; }
+.hw-bat-fly.fb2 .hw-wl, .hw-bat-fly.fb2 .hw-wr { animation-duration: 2.3s; }
+.hw-bat-fly.fb3 { top: 45%; right: 3px;  width: 38px; opacity: .56;
+  animation-delay: -1.4s; }
+.hw-bat-fly.fb4 { top: 57%; right: 2px; width: 20px; opacity: .28;
+  animation-duration: 6.9s; animation-delay: -3.2s; }
+.hw-bat-fly.fb4 .hw-wl, .hw-bat-fly.fb4 .hw-wr { animation-duration: 2.15s; }
+.hw-bat-fly.fb5 { top: 58%; right: auto; left: 36px; width: 34px; opacity: .34;
+  animation-duration: 7.2s; animation-delay: -4.6s; }
+.hw-bat-fly.fb5 .hw-wl, .hw-bat-fly.fb5 .hw-wr { animation-duration: 2.6s; }
+
+/* 窄屏：侧边栏先收成 62px 图标条（fb5 会让位），再窄就整层让位给内容 */
+@media (max-width: 1180px) {
+  .hw-bat-fly.fb2, .hw-bat-fly.fb4, .hw-bat-fly.fb5 { display: none; }
+}
+@media (max-width: 900px) {
+  .hw-bat-fly { display: none; }
 }
 /* 万圣节枯枝（z186 定稿）：顶替血迹的位置 —— 导航和「本机缓存卡」之间的空白带。
    z174~z185 试过用分形递归"长出"一棵树（竖着、斜着、横着共十几版），
@@ -1038,5 +1070,7 @@ button:focus-visible,
 }
 @media (prefers-reduced-motion: reduce) {
   .hw-bat-fly { animation: none !important; }
+  .hw-bat-fly .hw-wl,
+  .hw-bat-fly .hw-wr { animation: none !important; }
   .hw-bat-hang { animation: none !important; }
 }
