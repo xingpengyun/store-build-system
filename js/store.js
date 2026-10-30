@@ -2855,7 +2855,6 @@ window.Store = (function () {
     { key: 'money',    label: '金额' },
     { key: 'select',   label: '下拉选择' },
     { key: 'date',     label: '日期' },
-    { key: 'tier3',    label: '三档金额' },
     { key: 'textarea', label: '多行文本' }
   ];
 
@@ -3015,7 +3014,6 @@ window.Store = (function () {
     { id: 'p6', name: 'N×三线', price: '' }
   ];
 
-  var T3_FALLBACK = ['一线', '二线', '三线'];
 
   function moneyStr(v) {
     return String(v == null ? '' : v).replace(/[^\d.]/g, '');
@@ -3073,13 +3071,6 @@ window.Store = (function () {
     pushSettings();
     cacheLocal();
     return priceRows();
-  }
-
-  /* 「三档金额」字段（加盟费/管理费）用的三列名 —— 跟着价目表前 3 行走 */
-  function priceTierNames() {
-    var names = priceRows().map(function (r) { return r.name; }).slice(0, 3);
-    while (names.length < 3) names.push(T3_FALLBACK[names.length]);
-    return names;
   }
 
   /* 门店当前选的档位 + 该档价格（没选 / 档位被删 → rowId 空） */
@@ -3916,7 +3907,6 @@ window.Store = (function () {
     setStoreFieldVal: setStoreFieldVal,
     priceRows: priceRows,
     savePriceRows: savePriceRows,
-    priceTierNames: priceTierNames,
     storePrice: storePrice,
     setStorePrice: setStorePrice,
     setStoreStage: setStoreStage,

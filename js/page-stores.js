@@ -816,7 +816,6 @@ window.Pages.stores = (function () {
     var owner = S.memberById(store.ownerId);
     /* 几线价格：门店只选档位，金额从设置里的价目表带出 */
     var priceSel = S.storePrice(store);
-    var tierNames = S.priceTierNames();
     var fields = S.storeFields().filter(function (f) { return f.show !== false; });
     var vals = S.storeFieldVals(store);
 
@@ -846,19 +845,6 @@ window.Pages.stores = (function () {
     /* ---- 自定义档案字段 ---- */
     var fieldHtml = fields.map(function (f) {
       var cur = vals[f.id];
-
-      if (f.type === 'tier3') {
-        var obj = (cur && typeof cur === 'object' && !Array.isArray(cur)) ? cur : {};
-        var cells = tierNames.map(function (t) {
-          return '<label class="mf-tier"><span>' + U.esc(t) + '</span>' +
-            '<input class="input mono" type="text" inputmode="decimal" ' +
-              'data-fid="' + U.esc(f.id) + '" data-ftype="tier3" data-tier="' + U.esc(t) + '" ' +
-              'value="' + U.esc(obj[t] == null ? '' : obj[t]) + '" placeholder="—" /></label>';
-        }).join('');
-        return '<div class="mf-item is-wide"><div class="mf-label">' + U.esc(f.name) + '</div>' +
-          '<div class="mf-tier-row">' + cells + '</div></div>';
-      }
-
       var v = (cur == null || typeof cur === 'object') ? '' : String(cur);
       return '<div class="mf-item"><div class="mf-label">' + U.esc(f.name) + '</div>' +
         fieldInput(f, v) + '</div>';
@@ -936,23 +922,6 @@ window.Pages.stores = (function () {
           var el = e.target;
           var fid = el.getAttribute && el.getAttribute('data-fid');
           if (!fid) return;
-
-          var ft = el.getAttribute('data-ftype');
-          if (ft === 'tier3') {
-            /* 三档金额：把同组三格收集成一个对象 */
-            var box = {};
-            Array.prototype.forEach.call(
-              rootEl.querySelectorAll('[data-fid="' + fid + '"][data-ftype="tier3"]'),
-              function (x) {
-                var t = x.getAttribute('data-tier');
-                var v = String(x.value || '').replace(/[^\d.]/g, '');
-                if (v) box[t] = v;
-              }
-            );
-            S.setStoreFieldVal(store.id, fid, box);
-            return;
-          }
-
           var val = String(el.value == null ? '' : el.value).trim();
           S.setStoreFieldVal(store.id, fid, val);
         });
