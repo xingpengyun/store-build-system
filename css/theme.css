@@ -969,7 +969,7 @@ button:focus-visible,
      用 drop-shadow 而不是 background 的径向渐变 —— 渐变画在元素盒上，盒子四角
      必然还留一点不透明度，屏幕上就是一个硬边矩形。drop-shadow 贴着枝的形状走，
      没有盒子边界。 */
-  filter: drop-shadow(0 0 3.5px rgba(255, 194, 130, .30));
+  filter: drop-shadow(0 0 3.5px rgba(255, 194, 130, .34));
 }
 /* 1180 以下侧边栏收成 62px 图标条，横枝会顶到两边 —— 直接不显示 */
 @media (max-width: 1180px) { .hw-tree { display: none; } }
