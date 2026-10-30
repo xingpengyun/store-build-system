@@ -2844,8 +2844,8 @@ window.Store = (function () {
      用户在「系统设置 → 门店档案字段」里自己维护，不用改代码：
        settings.storeFields    = [{ id, name, type, options: [], show: true }]
        settings.storeFieldVals = { storeId: { fieldId: value } }
-       settings.priceCfg       = { tiers: ['一线','二线','三线'], versions: ['V1'…'V6'] }
-       settings.storePrices    = { storeId: [ ['', '', ''], … ] }   // 行 = 版本，列 = 线级
+       settings.priceRows      = [{ id, name, price }]     // 价目表，默认 6 档
+       settings.storePrices    = { storeId: rowId }        // 门店选了哪一档（单选）
      - stores 表没有这些列，和 storeSubs 一个路子：全放 settings 里跟着云端同步，不用改表
      - 金额按原样字符串存：门店报价常带小数、或者按「万」口头说，转 number 会把 0 和小数吃掉
      ------------------------------------------------------------------------------- */
@@ -2868,11 +2868,6 @@ window.Store = (function () {
     { id: 'f_join',   name: '加盟费',     type: 'tier3' },
     { id: 'f_mgmt',   name: '管理费',     type: 'tier3' }
   ];
-
-  var DEFAULT_PRICE_CFG = {
-    tiers: ['一线', '二线', '三线'],
-    versions: ['V1', 'V2', 'V3', 'V4', 'V5', 'V6']
-  };
 
   function fieldTypeOk(t) {
     return FIELD_TYPES.some(function (x) { return x.key === t; });
@@ -2943,83 +2938,118 @@ window.Store = (function () {
     cacheLocal();
   }
 
-  /* ---------------- 几线价格：版本 × 线级 的矩阵 ---------------- */
+  /* ---------------- 几线价格：门店选一档，价格从价目表带出来 ----------------
+     用户口径（2026-10-30）：「不是矩阵，就是下拉六个选项，
+     一线 / 二线 / 三线 / N×一线 / N×二线 / N×三线。」
 
-  function priceCfg() {
-    var c = state.settings && state.settings.priceCfg;
-    var tiers = (c && Array.isArray(c.tiers) && c.tiers.length)
-      ? c.tiers.map(function (x) { return String(x == null ? '' : x).trim() || '未命名'; })
-      : DEFAULT_PRICE_CFG.tiers.slice();
-    var versions = (c && Array.isArray(c.versions) && c.versions.length)
-      ? c.versions.map(function (x) { return String(x == null ? '' : x).trim() || '未命名'; })
-      : DEFAULT_PRICE_CFG.versions.slice();
-    return { tiers: tiers, versions: versions };
+     所以：
+       - 设置里维护一张**价目表**（档位名 + 金额），改价只改这一处，全店共用
+       - 门店上只有一个下拉：选了哪一档，旁边自动带出那一档的金额（只读）
+       - 金额按原样字符串存，转 number 会把小数和末尾的 0 吃掉
+     -------------------------------------------------------------------- */
+
+  var DEFAULT_PRICE_ROWS = [
+    { id: 'p1', name: '一线',   price: '' },
+    { id: 'p2', name: '二线',   price: '' },
+    { id: 'p3', name: '三线',   price: '' },
+    { id: 'p4', name: 'N×一线', price: '' },
+    { id: 'p5', name: 'N×二线', price: '' },
+    { id: 'p6', name: 'N×三线', price: '' }
+  ];
+
+  var T3_FALLBACK = ['一线', '二线', '三线'];
+
+  function moneyStr(v) {
+    return String(v == null ? '' : v).replace(/[^\d.]/g, '');
   }
 
-  function savePriceCfg(cfg) {
-    var next = {
-      tiers: ((cfg && cfg.tiers) || []).map(function (x) {
-        return String(x == null ? '' : x).trim();
-      }).filter(Boolean),
-      versions: ((cfg && cfg.versions) || []).map(function (x) {
-        return String(x == null ? '' : x).trim();
-      }).filter(Boolean)
+  function normalizePriceRow(r, i) {
+    var id = String((r && r.id) || '').trim();
+    return {
+      id: id || U.uid('pr'),
+      name: String((r && r.name) || '').trim() || ('未命名' + (i + 1)),
+      price: moneyStr(r && r.price)
     };
-    if (!next.tiers.length) next.tiers = DEFAULT_PRICE_CFG.tiers.slice();
-    if (!next.versions.length) next.versions = DEFAULT_PRICE_CFG.versions.slice();
-
-    state.settings = state.settings || {};
-    state.settings.priceCfg = next;
-    pushSettings();
-    cacheLocal();
-    return priceCfg();
   }
 
-  function storePriceMatrix(store) {
-    var cfg = priceCfg();
-    var all = (state.settings && state.settings.storePrices) || {};
-    var rec = store ? all[store.id] : null;
-
-    var rows = [];
-    for (var r = 0; r < cfg.versions.length; r++) {
-      var row = [];
-      for (var c = 0; c < cfg.tiers.length; c++) {
-        var v = (rec && Array.isArray(rec[r])) ? rec[r][c] : '';
-        row.push(v == null ? '' : String(v));
-      }
-      rows.push(row);
+  /* 没配过就返回出厂 6 档（id 固定，门店选了存得下） */
+  function priceRows() {
+    var list = state.settings && state.settings.priceRows;
+    if (!Array.isArray(list) || !list.length) {
+      return DEFAULT_PRICE_ROWS.map(function (r) {
+        return { id: r.id, name: r.name, price: r.price };
+      });
     }
-    return { tiers: cfg.tiers, versions: cfg.versions, rows: rows };
+    return list.map(normalizePriceRow);
   }
 
-  function setStorePriceCell(storeId, r, c, value) {
-    if (!storeId) return null;
-    var cfg = priceCfg();
-    var all = (state.settings && state.settings.storePrices) || {};
-    var rec = (all[storeId] && Array.isArray(all[storeId])) ? all[storeId] : [];
-
-    /* 先按当前配置把矩阵拉齐，再改那一格 —— 增删版本/线级后不会错位 */
-    var rows = [];
-    for (var i = 0; i < cfg.versions.length; i++) {
-      var row = [];
-      for (var j = 0; j < cfg.tiers.length; j++) {
-        var v = (Array.isArray(rec[i]) && rec[i][j] != null) ? String(rec[i][j]) : '';
-        row.push(v);
-      }
-      rows.push(row);
-    }
-    if (rows[r]) rows[r][c] = (value == null ? '' : String(value));
-
-    var any = rows.some(function (row) {
-      return row.some(function (v) { return !!v; });
+  function savePriceRows(list) {
+    var seen = {};
+    var out = (Array.isArray(list) ? list : []).filter(function (r) {
+      return r && (String(r.name || '').trim() || moneyStr(r.price));
+    }).map(function (r, i) {
+      var row = normalizePriceRow(r, i);
+      if (seen[row.id]) row.id = U.uid('pr');
+      seen[row.id] = 1;
+      return row;
     });
-    if (any) all[storeId] = rows; else delete all[storeId];
+    if (!out.length) {
+      out = DEFAULT_PRICE_ROWS.map(function (r) {
+        return { id: r.id, name: r.name, price: r.price };
+      });
+    }
 
     state.settings = state.settings || {};
-    state.settings.storePrices = all;
+    state.settings.priceRows = out;
+    delete state.settings.priceCfg;      /* z161 的旧结构，清掉免得留垃圾 */
+
+    /* 档位被删了，门店上指向它的选择一并清掉，不然下拉会空着 */
+    var alive = {};
+    out.forEach(function (r) { alive[r.id] = 1; });
+    var map = state.settings.storePrices || {};
+    Object.keys(map).forEach(function (k) {
+      if (!alive[map[k]]) delete map[k];
+    });
+    state.settings.storePrices = map;
+
     pushSettings();
     cacheLocal();
-    return storePriceMatrix(storeById(storeId));
+    return priceRows();
+  }
+
+  /* 「三档金额」字段（加盟费/管理费）用的三列名 —— 跟着价目表前 3 行走 */
+  function priceTierNames() {
+    var names = priceRows().map(function (r) { return r.name; }).slice(0, 3);
+    while (names.length < 3) names.push(T3_FALLBACK[names.length]);
+    return names;
+  }
+
+  /* 门店当前选的档位 + 该档价格（没选 / 档位被删 → rowId 空） */
+  function storePrice(store) {
+    var rows = priceRows();
+    var map = (state.settings && state.settings.storePrices) || {};
+    var id = store ? String(map[store.id] || '') : '';
+    var hit = null;
+    rows.forEach(function (r) { if (r.id === id) hit = r; });
+    return {
+      rows: rows,
+      rowId: hit ? hit.id : '',
+      name: hit ? hit.name : '',
+      price: hit ? hit.price : ''
+    };
+  }
+
+  function setStorePrice(storeId, rowId) {
+    if (!storeId) return null;
+    var map = (state.settings && state.settings.storePrices) || {};
+    var ok = priceRows().some(function (r) { return r.id === rowId; });
+    if (ok) map[storeId] = rowId; else delete map[storeId];
+
+    state.settings = state.settings || {};
+    state.settings.storePrices = map;
+    pushSettings();
+    cacheLocal();
+    return storePrice(storeById(storeId));
   }
 
   /* ================= 完成任务只是「记账」，阶段照样按门店实际进度走 =================
@@ -3824,10 +3854,11 @@ window.Store = (function () {
     fieldTypes: fieldTypes,
     storeFieldVals: storeFieldVals,
     setStoreFieldVal: setStoreFieldVal,
-    priceCfg: priceCfg,
-    savePriceCfg: savePriceCfg,
-    storePriceMatrix: storePriceMatrix,
-    setStorePriceCell: setStorePriceCell,
+    priceRows: priceRows,
+    savePriceRows: savePriceRows,
+    priceTierNames: priceTierNames,
+    storePrice: storePrice,
+    setStorePrice: setStorePrice,
     setStoreStage: setStoreStage,
     stageOrder: stageOrder,
     gateSubOf: gateSubOf,

@@ -152,7 +152,7 @@ window.Pages.settings = (function () {
 
   function fieldCard() {
     var fields = S.storeFields();
-    var cfg = S.priceCfg();
+    var priceRows = S.priceRows();
     var types = S.fieldTypes();
 
     var rows = fields.map(function (f, i) {
@@ -170,12 +170,14 @@ window.Pages.settings = (function () {
       '</div>';
     }).join('');
 
-    var tierInputs = cfg.tiers.map(function (t, i) {
-      return '<input class="input" data-cfg-tier="' + i + '" value="' + U.esc(t) + '" />';
-    }).join('');
-
-    var verInputs = cfg.versions.map(function (v, i) {
-      return '<input class="input" data-cfg-ver="' + i + '" value="' + U.esc(v) + '" />';
+    var priceHtml = priceRows.map(function (r, i) {
+      return '<div class="price-row" data-pid="' + U.esc(r.id) + '">' +
+        '<span class="fld-idx">' + (i + 1) + '</span>' +
+        '<input class="input" data-pr="name" value="' + U.esc(r.name) + '" placeholder="档位名，比如 一线" />' +
+        '<input class="input mono" data-pr="price" value="' + U.esc(r.price) + '" ' +
+          'inputmode="decimal" placeholder="金额，比如 128000" />' +
+        '<button class="fld-del" type="button" data-act="delPrice" title="删掉这一档">×</button>' +
+      '</div>';
     }).join('');
 
     return '<div class="card fade-up" id="fldCard" style="animation-delay:.09s">' +
@@ -184,7 +186,7 @@ window.Pages.settings = (function () {
 
       '<p class="muted" style="margin:-2px 0 12px;font-size:12px;color:var(--text-3);line-height:1.8">' +
         '门店详情点「更多」，会按下面这份清单铺出输入框；填的值存在云端，按门店分开。' +
-        '「按线级三档金额」= 一线 / 二线 / 三线 各填一个数，适合加盟费、管理费。' +
+        '「三档金额」= 一线 / 二线 / 三线 各填一个数（列名跟着下面价目表前 3 行），适合加盟费、管理费。' +
       '</p>' +
 
       '<div class="fld-list" id="fldList">' +
@@ -193,19 +195,15 @@ window.Pages.settings = (function () {
 
       '<div class="fld-add">' +
         '<button class="btn" type="button" data-act="addField">+ 添加字段</button>' +
-        '<button class="btn btn-primary" type="button" data-act="saveFields">保存字段</button>' +
+        '<button class="btn btn-primary" type="button" data-act="saveFields">保存</button>' +
       '</div>' +
 
-      '<div class="cfg-label">几线价格 · 线级（列名）</div>' +
-      '<div class="cfg-row" id="cfgTiers">' + tierInputs + '</div>' +
-
-      '<div class="cfg-label">几线价格 · 版本（行名）</div>' +
-      '<div class="cfg-row-6" id="cfgVers">' + verInputs + '</div>' +
+      '<div class="cfg-label">几线价格 · 价目表（门店里就选这几档之一）</div>' +
+      '<div class="fld-list" id="priceList">' + priceHtml + '</div>' +
       '<div class="fld-add">' +
-        '<button class="btn btn-sm" type="button" data-act="addVer">+ 加一版</button>' +
-        '<button class="btn btn-sm" type="button" data-act="delVer">− 去掉最后一版</button>' +
+        '<button class="btn btn-sm" type="button" data-act="addPrice">+ 加一档</button>' +
       '</div>' +
-      '<p class="pm-hint">行列名改完点「保存字段」一起生效；门店里已经填过的金额按行列位置对应，删版本会连同最后一行的金额一起清掉。</p>' +
+      '<p class="pm-hint">档位名和金额都能改，改完点上面「保存」。门店上只选档位，金额自动带出来 —— 所以调价只改这里一处，全部门店一起变。</p>' +
     '</div>';
   }
 
@@ -513,7 +511,11 @@ window.Pages.settings = (function () {
       var fldList = fldCard.querySelector('#fldList');
 
       function renumber() {
-        Array.prototype.forEach.call(fldList.querySelectorAll('.fld-row'), function (row, i) {
+        Array.prototype.forEach.call(fldCard.querySelectorAll('.fld-row'), function (row, i) {
+          var idx = row.querySelector('.fld-idx');
+          if (idx) idx.textContent = i + 1;
+        });
+        Array.prototype.forEach.call(fldCard.querySelectorAll('.price-row'), function (row, i) {
           var idx = row.querySelector('.fld-idx');
           if (idx) idx.textContent = i + 1;
         });
@@ -565,17 +567,20 @@ window.Pages.settings = (function () {
           });
         });
 
-        var tiers = [];
-        Array.prototype.forEach.call(fldCard.querySelectorAll('[data-cfg-tier]'), function (inp) {
-          var v = String(inp.value || '').trim();
-          if (v) tiers.push(v);
+        var prices = [];
+        Array.prototype.forEach.call(fldCard.querySelectorAll('.price-row'), function (row) {
+          var nameEl = row.querySelector('[data-pr="name"]');
+          var priceEl = row.querySelector('[data-pr="price"]');
+          var name = String((nameEl && nameEl.value) || '').trim();
+          var price = String((priceEl && priceEl.value) || '').replace(/[^\d.]/g, '');
+          if (!name && !price) return;      /* 整行空着，直接丢掉 */
+          prices.push({
+            id: row.getAttribute('data-pid') || '',
+            name: name,
+            price: price
+          });
         });
-        var versions = [];
-        Array.prototype.forEach.call(fldCard.querySelectorAll('[data-cfg-ver]'), function (inp) {
-          var v = String(inp.value || '').trim();
-          if (v) versions.push(v);
-        });
-        return { fields: list, cfg: { tiers: tiers, versions: versions } };
+        return { fields: list, prices: prices };
       }
 
       fldCard.addEventListener('click', function (e) {
@@ -595,23 +600,32 @@ window.Pages.settings = (function () {
           return;
         }
 
-        if (act === 'addVer') {
-          var box = fldCard.querySelector('#cfgVers');
-          var n = box.querySelectorAll('input').length;
-          if (n >= 12) { UI.toast('最多 12 个版本', 'info'); return; }
-          var inp = document.createElement('input');
-          inp.className = 'input';
-          inp.setAttribute('data-cfg-ver', String(n));
-          inp.value = 'V' + (n + 1);
-          box.appendChild(inp);
+        if (act === 'addPrice') {
+          var list2 = fldCard.querySelector('#priceList');
+          var row2 = document.createElement('div');
+          row2.className = 'price-row';
+          row2.setAttribute('data-pid', '');
+          row2.innerHTML =
+            '<span class="fld-idx"></span>' +
+            '<input class="input" data-pr="name" value="" placeholder="档位名，比如 四线" />' +
+            '<input class="input mono" data-pr="price" value="" inputmode="decimal" placeholder="金额" />' +
+            '<button class="fld-del" type="button" data-act="delPrice" title="删掉这一档">×</button>';
+          list2.appendChild(row2);
+          renumber();
+          var nm2 = row2.querySelector('[data-pr="name"]');
+          if (nm2) nm2.focus();
           return;
         }
 
-        if (act === 'delVer') {
-          var box2 = fldCard.querySelector('#cfgVers');
-          var all = box2.querySelectorAll('input');
-          if (all.length <= 1) { UI.toast('至少留一个版本', 'info'); return; }
-          all[all.length - 1].remove();
+        if (act === 'delPrice') {
+          var delRow = btn.closest('.price-row');
+          var box3 = fldCard.querySelector('#priceList');
+          if (box3.querySelectorAll('.price-row').length <= 1) {
+            UI.toast('至少留一档', 'info');
+            return;
+          }
+          if (delRow) delRow.remove();
+          renumber();
           return;
         }
 
@@ -619,8 +633,8 @@ window.Pages.settings = (function () {
           var got = collectFields();
           if (!got.fields.length) { UI.toast('至少留一个字段', 'info'); return; }
           S.saveStoreFields(got.fields);
-          S.savePriceCfg(got.cfg);
-          UI.toast('已保存 ' + got.fields.length + ' 个字段', 'success');
+          S.savePriceRows(got.prices);
+          UI.toast('已保存 ' + got.fields.length + ' 个字段、' + S.priceRows().length + ' 档价格', 'success');
           App.render();
         }
       });

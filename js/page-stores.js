@@ -767,6 +767,13 @@ window.Pages.stores = (function () {
     }
   }
 
+  /* 几线价格右边那块金额：没选档位 / 价目表里没填，分别提示 */
+  function amountHtml(sel) {
+    if (!sel || !sel.rowId) return '<span class="pp-none">未选择档位</span>';
+    if (!String(sel.price || '')) return '<span class="pp-none">这一档还没填金额</span>';
+    return '<span class="pp-cur">¥</span><b>' + fmtMoney(moneyOf(sel.price)) + '</b>';
+  }
+
   /* 一个字段的输入控件。全部带 data-fid，改完由 openMore 里的事件统一收口 */
   function fieldInput(f, v) {
     var id = U.esc(f.id);
@@ -803,7 +810,9 @@ window.Pages.stores = (function () {
     var owner = S.memberById(store.ownerId);
     var tasks = S.getState().tasks.filter(function (t) { return t.storeId === id; });
     var arrivals = S.getState().arrivals.filter(function (a) { return a.storeId === id; });
-    var matrix = S.storePriceMatrix(store);
+    /* 几线价格：门店只选档位，金额从设置里的价目表带出 */
+    var priceSel = S.storePrice(store);
+    var tierNames = S.priceTierNames();
     var fields = S.storeFields().filter(function (f) { return f.show !== false; });
     var vals = S.storeFieldVals(store);
 
@@ -821,39 +830,22 @@ window.Pages.stores = (function () {
     });
     var arrDone = arrivals.filter(function (a) { return S.arrNotified(a); }).length;
 
-    /* ---- 几线价格矩阵：行 = 版本，列 = 线级 ---- */
-    var pmHead = '<tr><th class="pm-corner">版本 \\ 线级</th>' +
-      matrix.tiers.map(function (t) {
-        return '<th>' + U.esc(t) + '</th>';
-      }).join('') + '<th class="pm-rowsum">行合计</th></tr>';
-
-    var pmBody = matrix.versions.map(function (ver, r) {
-      var cells = matrix.tiers.map(function (t, c) {
-        var v = matrix.rows[r] ? matrix.rows[r][c] : '';
-        return '<td><input class="pm-in mono" type="text" inputmode="decimal" ' +
-          'data-pr="' + r + '" data-pc="' + c + '" value="' + U.esc(v) + '" placeholder="—" ' +
-          'title="' + U.esc(ver + ' · ' + t) + '" /></td>';
-      }).join('');
-      return '<tr>' +
-        '<td class="pm-row"><i class="pm-bullet"></i><span contenteditable="false">' + U.esc(ver) + '</span></td>' +
-        cells +
-        '<td class="pm-rowsum" data-rowsum="' + r + '">—</td>' +
-      '</tr>';
+    /* ---- 几线价格：一个下拉选档位，右边只读显示这一档的金额 ---- */
+    var priceOpts = priceSel.rows.map(function (r) {
+      return '<option value="' + U.esc(r.id) + '"' +
+        (r.id === priceSel.rowId ? ' selected' : '') + '>' + U.esc(r.name) + '</option>';
     }).join('');
 
-    var pmFoot = '<tr class="pm-foot-row"><td class="pm-row">列合计</td>' +
-      matrix.tiers.map(function (t, c) {
-        return '<td class="pm-colsum" data-colsum="' + c + '">—</td>';
-      }).join('') +
-      '<td class="pm-total" data-grand="1">—</td></tr>';
-
     var priceBox =
-      '<div class="pm-wrap">' +
-        '<table class="pm-tbl"><thead>' + pmHead + '</thead><tbody>' + pmBody + '</tbody>' +
-          '<tfoot>' + pmFoot + '</tfoot>' +
-        '</table>' +
+      '<div class="price-pick">' +
+        '<label class="pp-label" for="ppSel">档位</label>' +
+        '<select class="input pp-sel" id="ppSel" data-act="pickPrice">' +
+          '<option value=""' + (priceSel.rowId ? '' : ' selected') + '>未选择</option>' +
+          priceOpts +
+        '</select>' +
+        '<div class="pp-amount" id="ppAmount">' + amountHtml(priceSel) + '</div>' +
       '</div>' +
-      '<p class="pm-hint">行列名（版本 / 一线二线三线）在「系统设置 → 门店档案字段」里改；这里只填金额。</p>';
+      '<p class="pm-hint">价格在「系统设置 → 门店档案字段 → 几线价格价目表」里维护，改一次全部门店共用；这里只选档位。</p>';
 
     /* ---- 自定义档案字段 ---- */
     var fieldHtml = fields.map(function (f) {
@@ -861,7 +853,7 @@ window.Pages.stores = (function () {
 
       if (f.type === 'tier3') {
         var obj = (cur && typeof cur === 'object' && !Array.isArray(cur)) ? cur : {};
-        var cells = matrix.tiers.map(function (t, i) {
+        var cells = tierNames.map(function (t) {
           return '<label class="mf-tier"><span>' + U.esc(t) + '</span>' +
             '<input class="input mono" type="text" inputmode="decimal" ' +
               'data-fid="' + U.esc(f.id) + '" data-ftype="tier3" data-tier="' + U.esc(t) + '" ' +
@@ -946,68 +938,15 @@ window.Pages.stores = (function () {
         '<button class="btn foot-left" data-act="back">返回详情</button>' +
         '<button class="btn btn-primary" data-act="edit">编辑门店</button>',
       onMount: function (rootEl, close) {
-        var saveTimer = null;
-        var pmInputs = rootEl.querySelectorAll('[data-pr]');
-
-        /* ---- 价格矩阵：边填边算行列合计，400ms 后落库 ---- */
-        function readCells() {
-          var rows = [];
-          for (var r = 0; r < matrix.versions.length; r++) rows.push([]);
-          Array.prototype.forEach.call(pmInputs, function (inp) {
-            var r = Number(inp.getAttribute('data-pr'));
-            var c = Number(inp.getAttribute('data-pc'));
-            if (!rows[r]) return;
-            rows[r][c] = String(inp.value || '').replace(/\s/g, '');
-          });
-          return rows;
-        }
-
-        function paintSums() {
-          var rows = readCells();
-          var colSum = matrix.tiers.map(function () { return 0; });
-          var grand = 0;
-
-          rows.forEach(function (row, r) {
-            var rowSum = 0;
-            row.forEach(function (v, c) {
-              var n = moneyOf(v);
-              rowSum += n;
-              colSum[c] += n;
-            });
-            var cell = rootEl.querySelector('[data-rowsum="' + r + '"]');
-            if (cell) cell.textContent = rowSum ? '¥' + fmtMoney(rowSum) : '—';
-          });
-
-          colSum.forEach(function (n, c) {
-            var cell = rootEl.querySelector('[data-colsum="' + c + '"]');
-            if (cell) cell.textContent = n ? '¥' + fmtMoney(n) : '—';
-            grand += n;
-          });
-
-          var g = rootEl.querySelector('[data-grand]');
-          if (g) g.textContent = grand ? '¥' + fmtMoney(grand) : '—';
-        }
-
-        function persistPrices() {
-          if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
-          var rows = readCells();
-          rows.forEach(function (row, r) {
-            row.forEach(function (v, c) {
-              S.setStorePriceCell(store.id, r, c, v);
-            });
+        /* ---- 几线价格：选中即存，右边金额立刻跟着换 ---- */
+        var pick = rootEl.querySelector('[data-act="pickPrice"]');
+        if (pick) {
+          pick.addEventListener('change', function () {
+            var got = S.setStorePrice(store.id, pick.value);
+            var amt = rootEl.querySelector('#ppAmount');
+            if (amt) amt.innerHTML = amountHtml(got);
           });
         }
-
-        paintSums();
-
-        Array.prototype.forEach.call(pmInputs, function (inp) {
-          inp.addEventListener('input', function () {
-            paintSums();
-            if (saveTimer) clearTimeout(saveTimer);
-            saveTimer = setTimeout(function () { saveTimer = null; persistPrices(); }, 500);
-          });
-          inp.addEventListener('blur', persistPrices);
-        });
 
         /* ---- 自定义字段：改完即存 ---- */
         rootEl.addEventListener('change', function (e) {
@@ -1036,11 +975,9 @@ window.Pages.stores = (function () {
         });
 
         rootEl.querySelector('[data-act="back"]').onclick = function () {
-          persistPrices();
           close();     /* 只关这一层，下面的详情还在 */
         };
         rootEl.querySelector('[data-act="edit"]').onclick = function () {
-          persistPrices();
           close();
           openForm(store);
         };

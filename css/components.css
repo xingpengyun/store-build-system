@@ -1325,42 +1325,28 @@
 /* ---------------- 门店「更多」：全档案 + 几线价格（z161） ---------------- */
 .desc-list.is-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
-/* 几线价格：版本 × 线级 矩阵 */
-.pm-wrap { border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: auto; background: #fff; }
-.pm-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-.pm-tbl th,
-.pm-tbl td { padding: 6px 8px; text-align: center; border-bottom: 1px solid var(--line-2); }
-.pm-tbl thead th {
-  font-size: 11.5px; font-weight: 600; color: var(--text-2);
-  background: var(--card-2); white-space: nowrap;
+/* 几线价格：一个下拉选档位，右边只读显示价目表里那一档的金额 */
+.price-pick {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--card-2); padding: 13px 15px;
 }
-.pm-tbl tbody tr:last-child td { border-bottom: 0; }
-.pm-tbl .pm-corner { text-align: left; color: var(--text-3); font-weight: 500; }
-.pm-row {
-  text-align: left; font-weight: 600; color: var(--text); white-space: nowrap;
-  background: var(--card-2);
+.pp-label { font-size: 12px; color: var(--text-2); flex: 0 0 auto; }
+.pp-sel { width: 180px; }
+.pp-amount {
+  margin-left: auto; display: flex; align-items: baseline; gap: 3px;
+  font-variant-numeric: tabular-nums; min-height: 26px;
 }
-.pm-bullet {
-  display: inline-block; width: 6px; height: 6px; margin-right: 6px;
-  border-radius: 50%; background: var(--primary-2); vertical-align: 1px;
+.pp-amount b { font-size: 20px; color: var(--text); letter-spacing: -.01em; }
+.pp-cur { font-size: 13px; color: var(--text-3); }
+.pp-none { font-size: 12.5px; color: var(--text-3); }
+
+/* 设置页 · 价目表一行：序号 / 档位名 / 金额 / 删除 */
+.price-row {
+  display: grid; grid-template-columns: 22px minmax(0, 1fr) 180px 30px;
+  gap: 8px; align-items: center;
 }
-.pm-in {
-  width: 100%; min-width: 84px; text-align: right;
-  border: 1px solid var(--line-2); border-radius: var(--radius-xs);
-  background: #fff; padding: 4px 6px;
-  font-size: 12.5px; color: var(--text); font-variant-numeric: tabular-nums;
-  transition: .14s;
-}
-.pm-in:hover { border-color: var(--line); }
-.pm-in:focus { outline: 0; border-color: var(--primary-2); background: #fff; box-shadow: 0 0 0 3px var(--primary-soft); }
-.pm-in::placeholder { color: var(--text-4); }
-.pm-rowsum { color: var(--text-2); font-variant-numeric: tabular-nums; background: #fcfdff; white-space: nowrap; }
-.pm-foot-row td {
-  background: var(--card-2); font-size: 11.5px; color: var(--text-2);
-  font-variant-numeric: tabular-nums; border-top: 1px solid var(--line);
-}
-.pm-foot-row .pm-row { font-weight: 600; color: var(--text-2); }
-.pm-total { font-weight: 700; color: var(--primary); }
+.price-row .input.mono { text-align: right; font-variant-numeric: tabular-nums; }
 .pm-hint { margin: 6px 0 0; font-size: 11px; color: var(--text-3); }
 
 /* 自定义档案字段 */
