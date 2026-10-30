@@ -904,7 +904,7 @@ window.Pages.stores = (function () {
       stack: true,
       body: body,
       footer:
-        '<button class="btn foot-left" data-act="back">返回详情</button>' +
+        '<button class="btn foot-left" data-act="back">返回简略</button>' +
         '<button class="btn btn-primary" data-act="edit">编辑门店</button>',
       onMount: function (rootEl, close) {
         /* ---- 几线价格：选中即存，右边金额立刻跟着换 ---- */
