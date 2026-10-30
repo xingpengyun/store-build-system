@@ -531,8 +531,8 @@ button:focus-visible,
   content: '';
   position: absolute;
   inset: -30% -10%;
-  background-image: radial-gradient(circle, rgba(255, 196, 128, .13) 1.1px, transparent 1.2px);
-  background-size: 20px 20px;
+  background-image: radial-gradient(circle, rgba(255, 196, 128, .07) 1px, transparent 1.1px);
+  background-size: 22px 22px;
   -webkit-mask-image: linear-gradient(100deg, transparent 8%, #000 42%, #000 78%, transparent 98%);
   mask-image: linear-gradient(100deg, transparent 8%, #000 42%, #000 78%, transparent 98%);
   animation: hfGrid 26s linear infinite;
@@ -608,114 +608,292 @@ button:focus-visible,
   100% { opacity: 0; transform: translateY(-52px) scale(1.15); }
 }
 
-/* ---------------- 万圣节装饰：蜘蛛网 / 蝙蝠 / 幽灵 / 南瓜灯（hero 内） ----------------
-   底色已经是深紫夜色，这几个装饰的取色跟着换：
-   网丝提亮（不然深底上看不见）、蝙蝠压成纯黑剪影 + 一层南瓜色轮廓光、
-   幽灵加暖白光晕。 */
-.hw-hero-web {
+/* ---------------- 万圣夜场景（z171）：横幅里的装饰层 ----------------
+   排版逻辑：远（月晕 → 月亮 → 雾 → 山影）→ 中（墓碑 / 蝙蝠 / 幽灵）→ 近（蜘蛛 / 南瓜灯）。
+   越靠前越暗，靠「层叠 + 雾」把 155px 高的细长条拉出纵深，而不是往上面堆形状。
+   参考的是 CodePen「CSS Fog Animation」「Haunted Loop」和 GitHub Halloween-page 那几套：
+   它们好看的核心都不是画得细，而是分了三层、都加了雾和月晕。 */
+
+/* 天空的纵向层次：天顶压暗、近地一丁点暖 —— 底色是平的就看不出"夜"，
+   这一层只压到 45% 高度，标题文字在它下面，对比度反而更好 */
+.hero-fx::after {
+  content: '';
   position: absolute;
-  top: -4px;
-  left: 6px;
-  width: 88px;
-  height: 88px;
-  opacity: .55;
-  stroke: #c3b0f5;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(10, 6, 20, .5) 0%, rgba(10, 6, 20, .16) 26%, transparent 52%),
+    radial-gradient(120% 70% at 50% 118%, rgba(255, 168, 80, .1), transparent 72%);
+  pointer-events: none;
 }
-.hw-hero-moon {
+
+/* 月晕：一大团椭圆暖光，月亮真正"发光"靠它，不靠 drop-shadow */
+.hw-glow {
+  position: absolute;
+  left: 47%;
+  bottom: -34px;
+  width: 520px;
+  height: 280px;
+  margin-left: -260px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 172, 82, .42), rgba(255, 140, 60, .16) 52%, transparent 76%);
+  filter: blur(6px);
+  animation: hwGlow 8s ease-in-out infinite;
+}
+@keyframes hwGlow {
+  0%, 100% { opacity: .82; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.06); }
+}
+
+.hw-moon {
   position: absolute;
   left: 45%;
-  bottom: 2px;
-  width: 190px;
-  height: 95px;           /* 半圆大半月：从横幅底边露出半个圆 */
-  opacity: 1;
-  filter: drop-shadow(0 0 38px rgba(255, 150, 52, .58));
-  animation: hwMoon 7s ease-in-out infinite;
+  bottom: 0;
+  width: 204px;
+  height: 102px;
+  filter: drop-shadow(0 -2px 18px rgba(255, 170, 80, .28));
+  animation: hwMoonRise 7s ease-in-out infinite;
 }
-/* z160：横幅夜空里原来飞两只纯黑蝙蝠 —— 深紫底 + 黑剪影 = 两个小黑点，
-   只有橙眼睛亮着（用户：「背景黑色不太明显」）。黑压黑没救，直接换元素：
-   白骷髅头（白在深紫上最跳）+ 南瓜橙蝙蝠（蝙蝠这个符号留着，颜色换成橙金，自带光晕）。 */
-.hw-skull {
-  position: absolute;
-  top: 4%;
-  left: 41%;
-  width: 38px;
-  height: 42px;
-  opacity: .96;
-  filter: drop-shadow(0 0 14px rgba(244, 239, 255, .45));
-  animation: hwFloat 5.4s ease-in-out infinite;
+@keyframes hwMoonRise {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
 }
-.hw-bat-light {
+
+/* 夜雾：两层模糊的径向渐变，一快一慢反向飘。这是"氛围"最主要的来源 */
+.hw-fog {
   position: absolute;
-  top: 5%;
-  left: 60%;
-  width: 48px;
-  height: 30px;
+  left: -12%;
+  width: 124%;
+  height: 58px;
+  bottom: 0;
+  pointer-events: none;
+  filter: blur(7px);
   opacity: .95;
-  transform-origin: center;
-  filter: drop-shadow(0 0 10px rgba(255, 150, 52, .7));
-  animation: hwFlap 1.9s ease-in-out infinite;
 }
+.hw-fog-a {
+  background:
+    radial-gradient(46% 100% at 18% 100%, rgba(198, 182, 235, .30), transparent 72%),
+    radial-gradient(38% 100% at 52% 100%, rgba(255, 196, 128, .25), transparent 72%),
+    radial-gradient(40% 100% at 84% 100%, rgba(198, 182, 235, .23), transparent 72%);
+  animation: hwFogL 38s linear infinite;
+}
+.hw-fog-b {
+  height: 44px;
+  opacity: .78;
+  background:
+    radial-gradient(52% 100% at 30% 100%, rgba(255, 210, 160, .22), transparent 70%),
+    radial-gradient(44% 100% at 70% 100%, rgba(188, 170, 230, .22), transparent 70%);
+  animation: hwFogR 52s linear infinite;
+}
+@keyframes hwFogL {
+  from { transform: translateX(-6%); }
+  to   { transform: translateX(6%); }
+}
+@keyframes hwFogR {
+  from { transform: translateX(5%); }
+  to   { transform: translateX(-5%); }
+}
+
+/* 小店要"站在"地平线上：横幅内容区是垂直居中的，小店底边比地平线高 30 多像素，
+   原来靠它自带的一块深色地面遮丑，看着像浮在半空。这里直接往下推到地面线。 */
+.hero-art { transform: translateY(36px); }
+
+/* 前景枯枝：从顶边横过来的一条剪影，只占顶部 20px，不碰文案 */
+.hw-branch {
+  position: absolute;
+  left: 0;
+  top: -1px;
+  width: auto;
+  height: 38px;          /* 固定高度：按宽度拉伸的话盒子会垂到标题上 */
+  opacity: .9;
+}
+
+/* 近景草丛：贴底边、拉伸铺满，把地平线打毛 */
+.hw-grass {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 13px;
+  opacity: .55;
+}
+
+/* 薄云：极淡的横向亮带，飘得比雾慢。没有它，上半截天空就是一块纯色 */
+.hw-cloud {
+  position: absolute;
+  height: 26px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(214, 198, 246, .12), transparent 72%);
+  filter: blur(9px);
+  pointer-events: none;
+}
+.hw-cloud-a {
+  left: 18%;
+  top: 14%;
+  width: 38%;
+  animation: hwCloudDrift 64s ease-in-out infinite;
+}
+.hw-cloud-b {
+  left: 52%;
+  top: 6%;
+  width: 30%;
+  opacity: .8;
+  animation: hwCloudDrift 86s ease-in-out infinite reverse;
+}
+@keyframes hwCloudDrift {
+  0%, 100% { transform: translateX(-3%); }
+  50%      { transform: translateX(4%); }
+}
+
+/* 山影：月亮从山脊后面升起，靠这条剪影把月亮的"底"压住 */
+.hw-hill {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 30px;
+  bottom: 0;
+  display: block;
+}
+
+/* 墓碑：一片小墓园，坐落在近脊的坡上（bottom 值对着山脊线，不能离地悬空）。
+   原来只有两块 17px 的小碑，1x 下就是两个小疙瘩，认不出是墓地。 */
+.hw-grave {
+  position: absolute;
+  display: block;
+  opacity: .95;
+}
+.hw-grave.g1 { left: 23.8%; width: 26px; height: 28px; bottom: 15.2px; }
+.hw-grave.g2 { left: 27.4%; width: 20px; height: 20px; bottom: 13.2px; opacity: .92; }
+.hw-grave.g4 { left: 30.6%; width: 24px; height: 16px; bottom: 11.6px; opacity: .86; }
+.hw-grave.g3 { left: 33.6%; width: 14px; height: 26px; bottom: 9.8px; opacity: .9; }
+
+/* 远空的小蝙蝠群：贴着顶边飞，很淡，只负责"天上不止三只" */
+
+/* 蝙蝠：三只不同大小 = 远近。剪影贴在月亮前面（深色压亮底），一眼就能认出是蝙蝠 */
+.hw-bat {
+  position: absolute;
+  height: auto;
+  filter: drop-shadow(0 2px 6px rgba(10, 6, 18, .55));
+}
+.hw-bat.b1 { left: 33.5%; top: 5%; }
+.hw-bat.b2 { left: 49%; top: 20%; opacity: .95; }   /* 压在月面上：轮廓最清楚 */
+.hw-bat.b3 { left: 66%; top: 4%; opacity: .78; }
+/* 翅膀绕身体中心上下摆：transform-box 用 view-box（SVG 默认），单位就是 viewBox 单位 */
+.hw-bat .hw-wl,
+.hw-bat .hw-wr { transform-origin: 32px 13px; }
+.hw-bat .hw-wl { animation: hwFlapL 1.5s ease-in-out infinite; }
+.hw-bat .hw-wr { animation: hwFlapR 1.5s ease-in-out infinite; }
+.hw-bat.b2 .hw-wl, .hw-bat.b2 .hw-wr { animation-duration: 1.9s; }
+.hw-bat.b3 .hw-wl, .hw-bat.b3 .hw-wr { animation-duration: 2.4s; }
+@keyframes hwFlapL {
+  0%, 100% { transform: rotate(0deg) scaleY(1); }
+  50%      { transform: rotate(-9deg) scaleY(.74); }
+}
+@keyframes hwFlapR {
+  0%, 100% { transform: rotate(0deg) scaleY(1); }
+  50%      { transform: rotate(9deg) scaleY(.74); }
+}
+
+/* 幽灵：柔光 + 半透明 + 慢慢上下飘（不画牙，不吓人） */
 .hw-ghost {
   position: absolute;
-  width: 30px;
-  height: 36px;
-  top: 16%;
-  right: 29%;
-  opacity: .96;
-  filter: drop-shadow(0 0 12px rgba(255, 238, 205, .55));
-  animation: hwFloat 4.2s ease-in-out infinite;
+  right: 24%;
+  top: 6%;
+  width: 34px;
+  height: 42px;
+  opacity: .9;
+  filter: drop-shadow(0 0 14px rgba(255, 240, 210, .5));
+  animation: hwFloat 6s ease-in-out infinite;
 }
-.hw-pumpkin {
+
+/* 蜘蛛：从横幅顶边垂丝下来，绕顶点慢慢摆 */
+.hw-spider {
   position: absolute;
-  width: 36px;
-  height: 36px;
-  bottom: 2%;
-  left: 3%;
+  left: 41%;
+  top: 0;
+  width: 26px;
+  height: 58px;
+  filter: drop-shadow(0 0 5px rgba(255, 190, 120, .35));
+  transform-origin: 50% 0;
+  animation: hwDangle 7s ease-in-out infinite;
+}
+.hw-silk {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 1px;
+  height: 32px;
+  background: linear-gradient(rgba(196, 180, 226, .85), rgba(185, 168, 224, .2));
+}
+.hw-spider svg {
+  position: absolute;
+  left: 0;
+  top: 30px;
+  width: 26px;
+  height: 22px;
+}
+@keyframes hwDangle {
+  0%, 100% { transform: rotate(-4deg); }
+  50%      { transform: rotate(4deg); }
+}
+
+/* 南瓜灯：左下角地面，底部对齐，暖光往外溢 */
+.hw-jack {
+  position: absolute;
+  left: 2.4%;
+  bottom: 0;
+  width: 32px;
+  height: 27px;
   transform-origin: 50% 100%;
-  animation: hwSway 3.4s ease-in-out infinite;
+  filter: drop-shadow(0 0 12px rgba(255, 150, 50, .55));
+  animation: hwJack 4.6s ease-in-out infinite;
 }
-@keyframes hwFlap {
-  0%, 100% { transform: translateY(0) scaleY(1); }
-  50%      { transform: translateY(-4px) scaleY(.55); }
-}
+
 @keyframes hwFloat {
   0%, 100% { transform: translateY(0) rotate(-2deg); }
-  50%      { transform: translateY(-10px) rotate(2deg); }
+  50%      { transform: translateY(-9px) rotate(2deg); }
 }
-@keyframes hwSway {
-  0%, 100% { transform: rotate(-3deg); }
-  50%      { transform: rotate(3deg); }
+@keyframes hwJack {
+  0%, 100% { transform: translateY(0) rotate(-2deg) scale(1); }
+  50%      { transform: translateY(-2px) rotate(2deg) scale(1.04); }
 }
 
 /* 横幅里的内容要压在装饰上面 */
 .hero > *:not(.hero-fx) { position: relative; z-index: 1; }
 
-/* 窄屏：内容区一窄，190px 的大月亮就跑到文字底下压住数字了（1280 下来回擦、
-   手机上「本周共 2 项」的 2 整个落在橙色月面上，对比度掉一半）。
+/* 窄屏：内容区一窄，230px 的大月亮就跑到文字底下压住数字了。
    分三段处理：
-   - 1400~1181：日期卡和房子都在，右边被占满，月亮没地方站 → 先收起来
-     （硬塞到日期卡后面的话，卡片比月亮矮，会从卡底下露出一条橙色，很脏）
-   - 1180~900：日期卡和房子都隐藏了，右端空出来 → 缩小放过去
-   - 900 往下再小一档；680 以下文字要换行，放哪都压字 → 不显示 */
+   - 1400~1181：日期卡和房子都在，右边被占满 → 月亮和山影先收起来（硬塞到日期卡后面，
+     卡片比月亮矮，会从卡底下露出一条橙色，很脏）
+   - 1180~901：日期卡和房子都隐藏了，右端空出来 → 月亮缩小靠右，只留雾和蝙蝠
+   - 900 往下再小一档；680 以下文字要换行，放哪都压字 → 全收，只留柔光 */
 @media (max-width: 1400px) and (min-width: 1181px) {
-  .hw-hero-moon { display: none; }
+  .hw-moon,
+  .hw-hill,
+  .hw-grave,
+  .hw-glow { display: none; }
+  /* 文字在窄屏会换行往上顶，中段这两只正好落在标题上 */
+  .hw-bat.b1,
+  .hw-spider { display: none; }
 }
 @media (max-width: 1180px) {
-  .hw-hero-moon { width: 150px; height: 75px; left: auto; right: 26px; opacity: .82; }
-  /* 这一档横幅只剩 104px 高，文字往上顶，41% 处的骷髅会啃到文案 —— 收起来（和幽灵同待遇） */
-  .hw-skull { display: none; }
+  .hw-moon { width: 160px; height: 80px; left: auto; right: 28px; opacity: .9; }
+  .hw-glow { left: auto; right: 28px; margin-left: 0; width: 300px; height: 200px; bottom: -70px; }
+  .hw-hill, .hw-grave { display: none; }
+  .hw-bat.b1,
+  .hw-bat.b3,
+  .hw-spider,
+  .hw-branch,
+  .hw-jack { display: none; }
 }
 @media (max-width: 900px) {
-  .hw-hero-moon { width: 116px; height: 58px; right: 16px; opacity: .68; }
-  .hw-hero-web { width: 62px; height: 62px; opacity: .34; }
+  .hw-moon { width: 120px; height: 60px; right: 18px; opacity: .8; }
   .hw-ghost { display: none; }
-  .hw-bat-light { display: none; }
+  .hw-bat.b2 { display: none; }
+  .hw-spider { display: none; }
+  .hw-fog-b { display: none; }
 }
 @media (max-width: 680px) {
-  .hw-hero-moon { display: none; }
-  .hw-skull { display: none; }
-  .hw-hero-web { display: none; }
-  .hw-pumpkin { width: 26px; height: 26px; left: 1%; bottom: 1%; }
+  .hw-moon, .hw-bat, .hw-fog, .hw-branch { display: none; }
 }
 
 /* 开了「减少动效」就把装饰停住（不闪、不动） */
@@ -723,11 +901,14 @@ button:focus-visible,
   .hero-fx::before,
   .hf-blob,
   .hf-spark,
-  .hw-hero-moon,
-  .hw-skull,
-  .hw-bat-light,
+  .hw-glow,
+  .hw-moon,
+  .hw-fog,
+  .hw-bat .hw-wl,
+  .hw-bat .hw-wr,
   .hw-ghost,
-  .hw-pumpkin { animation: none !important; }
+  .hw-spider,
+  .hw-jack { animation: none !important; }
 }
 
 /* ---------------- 全局背景万圣节装饰（fixed，不挡交互）：蜘蛛网 + 蝙蝠 ----------------

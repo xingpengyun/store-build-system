@@ -232,29 +232,213 @@ window.Pages.home = (function () {
     }).join('');
   }
 
-  function heroArt() {
-    /* 夜景版：深紫墙 + 南瓜橙屋顶 + 暖黄窗户。
-       原来是白墙蓝顶的白天房子，压在万圣夜色底上像贴上去的。 */
-    return '<div class="hero-art"><svg viewBox="0 0 148 78" fill="none">' +
-      '<ellipse cx="74" cy="71" rx="54" ry="5" fill="#1b1229" opacity=".85"/>' +
-      '<rect x="47" y="34" width="54" height="34" rx="3" fill="#3b2b53" stroke="#63497f"/>' +
-      '<path d="M41 36l33-21 33 21z" fill="#e8892a"/>' +
-      '<path d="M41 36h66l-4 6H45z" fill="#c46912"/>' +
-      '<rect x="56" y="48" width="14" height="20" rx="2" fill="#2a1e3d" stroke="#5b4278"/>' +
-      '<rect x="78" y="48" width="16" height="10" rx="2" fill="#ffce6b" stroke="#e8a33c"/>' +
-      '<circle cx="82" cy="53" r="1.2" fill="#ff8a5c" opacity=".9"/>' +
-      '<circle cx="90" cy="53" r="1.2" fill="#ff8a5c" opacity=".9"/>' +
-      '<rect x="66" y="26" width="16" height="6" rx="1.5" fill="#ffe0a8" opacity=".92"/>' +
-      '<circle cx="118" cy="46" r="11" fill="#4a3a63"/>' +
-      '<rect x="116.5" y="56" width="3" height="9" rx="1.5" fill="#3a2c50"/>' +
-      '<circle cx="28" cy="52" r="8" fill="#443456"/>' +
-      '<rect x="26.8" y="59" width="2.4" height="7" rx="1.2" fill="#37294c"/>' +
-      '<path d="M96 22h6l2 4h-10z" fill="#63497f"/>' +
-      '</svg></div>';
+  /* ================= 万圣夜场景（z171） =================
+     参考了 CodePen / GitHub 上几个评价不错的万圣节横幅（CSS Fog Animation、
+     Haunted Loop、Halloween-page 那几个），共同做法都是同一套：
+       · 分远 / 中 / 近三层，越靠前越暗越大，靠层叠和雾拉开空间，而不是堆形状
+       · 月亮给「晕」，不是给一个硬边圆
+       · 蝙蝠一律剪影（不是画圆脸），靠抖动 + 大小差表现远近
+       · 雾用几层模糊的径向渐变横着慢慢飘
+     这里照着这四条重排，替换掉原来那套平涂贴纸（骷髅 / 圆脸蝙蝠 / 棒棒糖小树）。
+     纯 SVG + CSS，无外部图片、无 JS 动画。 */
+  function hwScene() {
+    return '<div class="hero-fx" aria-hidden="true">' +
+      /* 底子：三团柔光 + 流动点阵 + 星光（沿用原来的，负责"空气感"） */
+      '<i class="hf-blob hf-b1"></i><i class="hf-blob hf-b2"></i><i class="hf-blob hf-b3"></i>' +
+      '<i class="hf-spark hf-s1"></i><i class="hf-spark hf-s2"></i><i class="hf-spark hf-s3"></i>' +
+      '<i class="hf-spark hf-s4"></i>' +
+
+      /* ---------- 前景框：从顶边垂下来的枯枝（摄影构图里的"压角"，一下就有纵深） ---------- */
+      '<svg class="hw-branch" viewBox="0 0 220 44" fill="none" stroke="#0e0918" stroke-linecap="round" aria-hidden="true">' +
+        '<path d="M0 9C34 4 66 12 100 6S160 9 218 3" stroke-width="4.4"/>' +
+        '<path d="M46 8c2.6 6 3.6 11 3 17" stroke-width="2.4"/>' +
+        '<path d="M100 6c-1 4.4-.6 7.4 1.6 10" stroke-width="1.3"/>' +
+        '<path d="M80 9c-2 5.4-2.6 9.6-1.4 14.4" stroke-width="1.6"/>' +
+        '<path d="M126 6c2.4 5 4.4 9 7.6 12.6" stroke-width="2"/>' +
+        '<path d="M170 6c-1.6 4.6-3.4 8-2.4 11.6" stroke-width="1.4"/>' +
+        '<path d="M49 24c3 2 5.2 4.4 6.4 7.4" stroke-width="1.1"/>' +
+        '<path d="M79 22c-2.2 3-4 5.2-7 6.6" stroke-width="1.1"/>' +
+        '<path d="M134 18c1.6 2.6 2.4 4.8 2.2 7.2" stroke-width="1"/>' +
+      '</svg>' +
+
+      /* ---------- 远景 1：月晕（大范围暖光，月亮才有"发光"的感觉） ---------- */
+      '<i class="hw-glow"></i>' +
+
+      /* ---------- 远景 2：月亮（渐变 + 柔坑 + 一圈月牙高光） ---------- */
+      '<svg class="hw-moon" viewBox="0 0 240 120" aria-hidden="true">' +
+        '<defs>' +
+          '<linearGradient id="hwMoonG" x1="0" y1="0" x2="0.2" y2="1">' +
+            '<stop offset="0" stop-color="#ffc978"/><stop offset=".34" stop-color="#ff9f36"/>' +
+            '<stop offset=".78" stop-color="#ea7f1e"/><stop offset="1" stop-color="#c25c0d"/>' +
+          '</linearGradient>' +
+          '<clipPath id="hwMoonClip"><path d="M0 120A120 120 0 0 1 240 120Z"/></clipPath>' +
+          '<radialGradient id="hwCrt">' +
+            '<stop offset="0" stop-color="#9c4d0c" stop-opacity=".5"/>' +
+            '<stop offset=".62" stop-color="#9c4d0c" stop-opacity=".26"/>' +
+            '<stop offset="1" stop-color="#a8560f" stop-opacity="0"/>' +
+          '</radialGradient>' +
+        '</defs>' +
+        '<path d="M0 120A120 120 0 0 1 240 120Z" fill="url(#hwMoonG)"/>' +
+        /* 坑：小、实、每档都不同大小，比一堆大渐变印子像月面 */
+        '<g fill="url(#hwCrt)">' +
+          '<ellipse cx="78" cy="92" rx="15" ry="10"/><ellipse cx="128" cy="66" rx="11" ry="7.5"/>' +
+          '<ellipse cx="176" cy="96" rx="12" ry="8"/><ellipse cx="212" cy="76" rx="7" ry="5"/>' +
+          '<ellipse cx="48" cy="114" rx="9" ry="6"/><ellipse cx="152" cy="86" rx="6" ry="4.5"/>' +
+          '<ellipse cx="104" cy="112" rx="5" ry="3.5"/><ellipse cx="196" cy="54" rx="4" ry="3"/>' +
+        '</g>' +
+        /* 底部压暗：月亮"落地"处不该和地面一样亮 */
+        '<g clip-path="url(#hwMoonClip)">' +
+          '<ellipse cx="120" cy="134" rx="120" ry="20" fill="#8a3f0c" opacity=".16"/>' +
+        '</g>' +
+        '<path d="M0 120A120 120 0 0 1 240 120" fill="none" stroke="#fff0d2" stroke-opacity=".3" stroke-width="1.4"/>' +
+      '</svg>' +
+
+      /* ---------- 远景 3：薄云（横向拉长的模糊亮带，只负责"天有层次"） ---------- */
+      '<i class="hw-cloud hw-cloud-a"></i><i class="hw-cloud hw-cloud-b"></i>' +
+
+      /* ---------- 远景 4：夜雾（两层模糊渐变，方向相反慢慢飘） ---------- */
+      '<i class="hw-fog hw-fog-a"></i><i class="hw-fog hw-fog-b"></i>' +
+
+      /* ---------- 中景：连绵山影（横贯整幅，月亮从山后面升起；
+           原来是中间一小坨，左边没地面，接缝看着像一条多余色块） ---------- */
+      '<svg class="hw-hill" viewBox="0 0 600 30" preserveAspectRatio="none" aria-hidden="true">' +
+        '<path d="M0.0 16.2C2.9 16.4 11.8 16.9 17.6 17.0C23.5 17.1 29.4 16.9 35.3 16.7C41.2 16.5 47.1 16.1 52.9 15.8C58.8 15.5 64.7 15.0 70.6 14.8C76.5 14.5 82.4 14.3 88.2 14.2C94.1 14.1 100.0 14.1 105.9 14.2C111.8 14.3 117.6 14.5 123.5 14.7C129.4 14.8 135.3 15.0 141.2 15.1C147.1 15.2 152.9 15.2 158.8 15.1C164.7 14.9 170.6 14.7 176.5 14.3C182.4 13.9 188.2 13.4 194.1 12.9C200.0 12.4 205.9 11.8 211.8 11.3C217.6 10.7 223.5 10.1 229.4 9.6C235.3 9.1 241.2 8.6 247.1 8.2C252.9 7.8 258.8 7.4 264.7 7.0C270.6 6.6 276.5 6.3 282.4 6.0C288.2 5.7 294.1 5.4 300.0 5.3C305.9 5.1 311.8 5.0 317.6 5.0C323.5 5.0 329.4 5.2 335.3 5.5C341.2 5.9 347.1 6.4 352.9 7.1C358.8 7.7 364.7 8.6 370.6 9.4C376.5 10.3 382.4 11.3 388.2 12.2C394.1 13.0 400.0 13.9 405.9 14.6C411.8 15.3 417.6 15.8 423.5 16.2C429.4 16.5 435.3 16.6 441.2 16.6C447.1 16.6 452.9 16.4 458.8 16.2C464.7 16.0 470.6 15.6 476.5 15.4C482.4 15.2 488.2 14.9 494.1 14.8C500.0 14.7 505.9 14.6 511.8 14.7C517.6 14.7 523.5 14.8 529.4 14.9C535.3 15.0 541.2 15.1 547.1 15.1C552.9 15.2 558.8 15.2 564.7 15.1C570.6 15.1 576.5 14.9 582.4 14.7C588.2 14.5 597.1 14.0 600.0 13.8L600 30H0Z" fill="#241640" opacity=".72"/>' +
+        '<path d="M0.0 22.0C2.9 21.9 11.8 21.6 17.6 21.3C23.5 20.9 29.4 20.4 35.3 19.9C41.2 19.4 47.1 18.9 52.9 18.3C58.8 17.7 64.7 17.1 70.6 16.4C76.5 15.7 82.4 14.9 88.2 14.2C94.1 13.5 100.0 12.7 105.9 12.1C111.8 11.6 117.6 11.1 123.5 11.0C129.4 10.9 135.3 11.1 141.2 11.6C147.1 12.0 152.9 12.9 158.8 13.7C164.7 14.5 170.6 15.6 176.5 16.3C182.4 17.1 188.2 17.8 194.1 18.2C200.0 18.6 205.9 18.7 211.8 18.8C217.6 18.8 223.5 18.6 229.4 18.5C235.3 18.5 241.2 18.4 247.1 18.5C252.9 18.6 258.8 18.9 264.7 19.2C270.6 19.5 276.5 20.1 282.4 20.4C288.2 20.8 294.1 21.2 300.0 21.5C305.9 21.7 311.8 21.8 317.6 21.9C323.5 21.9 329.4 21.8 335.3 21.7C341.2 21.6 347.1 21.4 352.9 21.2C358.8 20.9 364.7 20.6 370.6 20.2C376.5 19.7 382.4 19.1 388.2 18.3C394.1 17.6 400.0 16.6 405.9 15.7C411.8 14.8 417.6 13.6 423.5 12.9C429.4 12.1 435.3 11.4 441.2 11.1C447.1 10.9 452.9 11.0 458.8 11.3C464.7 11.6 470.6 12.4 476.5 13.1C482.4 13.7 488.2 14.7 494.1 15.3C500.0 16.0 505.9 16.5 511.8 16.9C517.6 17.2 523.5 17.3 529.4 17.4C535.3 17.5 541.2 17.4 547.1 17.5C552.9 17.6 558.8 17.7 564.7 17.9C570.6 18.1 576.5 18.5 582.4 18.8C588.2 19.1 597.1 19.7 600.0 19.9L600 30H0Z" fill="#0f0a1c" opacity=".95"/>' +
+      '</svg>' +
+
+      /* ---------- 中景：一小片墓园（三块碑 + 一个十字架，坐在近脊的坡上） ---------- */
+      '<svg class="hw-grave g1" viewBox="0 0 26 28" aria-hidden="true">' +
+        '<path d="M13 1.6c6.6 0 12 4.4 12 9.9V27H1V11.5C1 6 6.4 1.6 13 1.6z" fill="#0b0716"/>' +
+        '<path d="M13 8v9M8.4 12.4h9.2" stroke="#3a2b56" stroke-width="1.8" stroke-linecap="round"/>' +
+      '</svg>' +
+      '<svg class="hw-grave g2" viewBox="0 0 20 20" aria-hidden="true">' +
+        '<path d="M10 1.4c4.4 0 8 3.1 8 7V19H2V8.4c0-3.9 3.6-7 8-7z" fill="#0b0716"/>' +
+      '</svg>' +
+      '<svg class="hw-grave g3" viewBox="0 0 14 26" aria-hidden="true">' +
+        '<path d="M5.2 1h3.6v5.9h5.2v3.6H8.8V25H5.2V10.5H0V6.9h5.2z" fill="#0b0716"/>' +
+      '</svg>' +
+      '<svg class="hw-grave g4" viewBox="0 0 24 16" aria-hidden="true">' +
+        '<path d="M12 1.2c5.6 0 10.4 2.6 10.4 6.4V15H1.6V7.6C1.6 3.8 6.4 1.2 12 1.2z" fill="#0b0716" transform="rotate(-8 12 8)"/>' +
+      '</svg>' +
+
+      /* ---------- 中景：蝙蝠（三只，剪影 + 大小差 = 远近；翅膀分开抖） ---------- */
+      bat('b1', 54) + bat('b2', 40) + bat('b3', 26) +
+
+      /* ---------- 中景：幽灵（半透明、边缘柔、带光晕，不画牙不吓人） ---------- */
+      '<svg class="hw-ghost" viewBox="0 0 44 54" aria-hidden="true">' +
+        '<path d="M22 4c9.6 0 15.6 6.6 15.6 15.6V41c0 2.2-2.2 3.2-3.6 1.8l-3.6-3.4-3.8 3.6-4.6 3.8-4.6-3.8-3.8-3.6-3.6 3.4C8.6 44.2 6.4 43.2 6.4 41V19.6C6.4 10.6 12.4 4 22 4z" ' +
+          'fill="#f2ecff" opacity=".82"/>' +
+        '<g fill="#2b2040"><ellipse cx="16.4" cy="22" rx="2.6" ry="3.3"/><ellipse cx="27.6" cy="22" rx="2.6" ry="3.3"/></g>' +
+        '<g fill="#ffa89a" opacity=".45"><ellipse cx="12.4" cy="28" rx="2.8" ry="1.7"/><ellipse cx="31.6" cy="28" rx="2.8" ry="1.7"/></g>' +
+        '<path d="M18.6 30.4c1.8 1.7 5 1.7 6.8 0" stroke="#2b2040" stroke-width="1.5" fill="none" stroke-linecap="round"/>' +
+      '</svg>' +
+
+      /* ---------- 近景：蜘蛛（从顶边垂丝下来，慢慢晃） ---------- */
+      '<div class="hw-spider"><i class="hw-silk"></i>' +
+        '<svg viewBox="0 0 26 22" aria-hidden="true">' +
+          '<g stroke="#1a1128" stroke-width="1.3" fill="none" stroke-linecap="round">' +
+            '<path d="M10.6 10.4C7.6 8.6 5.4 9.4 3.6 11.6M10.6 12.4c-3.4.4-5.2 2-6 4.6M11.6 14.6c-2.6 1.8-3.4 3.6-3.4 5.8"/>' +
+            '<path d="M15.4 10.4c3-1.8 5.2-1 7 1.2M15.4 12.4c3.4.4 5.2 2 6 4.6M14.4 14.6c2.6 1.8 3.4 3.6 3.4 5.8"/>' +
+          '</g>' +
+          '<ellipse cx="13" cy="12.4" rx="3.2" ry="3.8" fill="#241a38"/>' +
+          '<circle cx="13" cy="8.6" r="2.4" fill="#2b2040"/>' +
+          '<circle cx="12.4" cy="8.2" r=".55" fill="#ffd9a0" opacity=".75"/>' +
+          '<circle cx="13.6" cy="8.2" r=".55" fill="#ffd9a0" opacity=".75"/>' +
+        '</svg>' +
+      '</div>' +
+
+      /* ---------- 近景：底边草丛（最前面一层，把地平线"打毛"，不再是一条直线） ---------- */
+      '<svg class="hw-grass" viewBox="0 0 600 26" preserveAspectRatio="none" aria-hidden="true">' +
+        '<path d="M0.0 26C-0.2 21.0 -0.7 18.2 -1.2 16.8M7.0 26C7.1 17.8 7.2 13.3 7.3 11.1M14.8 26C14.9 22.2 15.2 20.2 15.5 19.2M40.9 26C40.3 20.0 39.2 16.8 38.0 15.1M47.8 26C47.5 22.0 46.8 19.8 46.2 18.7M50.2 26C50.7 17.8 51.6 13.3 52.6 11.0M83.9 26C84.1 18.0 84.4 13.6 84.7 11.4M90.5 26C91.3 19.7 92.9 16.2 94.5 14.5M93.1 26C92.5 19.2 91.4 15.5 90.3 13.6M104.7 26C104.3 23.1 103.4 21.6 102.5 20.8M110.7 26C110.2 21.0 109.3 18.3 108.4 17.0M121.9 26C122.4 22.0 123.5 19.8 124.6 18.7M127.0 26C127.7 17.9 129.2 13.5 130.7 11.3M135.4 26C135.6 19.1 136.1 15.3 136.6 13.4M142.0 26C142.0 22.6 142.1 20.7 142.3 19.8M163.7 26C163.9 22.4 164.2 20.5 164.5 19.5M169.1 26C169.2 18.0 169.4 13.6 169.6 11.5M174.6 26C174.4 20.6 173.8 17.6 173.3 16.2M205.8 26C205.8 17.8 206.0 13.3 206.2 11.1M211.7 26C212.2 20.2 213.2 17.1 214.2 15.5M216.1 26C216.3 19.9 216.7 16.6 217.0 14.9M242.7 26C243.3 19.8 244.6 16.4 245.9 14.7M248.2 26C249.0 19.1 250.6 15.3 252.1 13.4M253.2 26C253.9 22.3 255.5 20.3 257.1 19.3M268.9 26C269.3 19.5 270.0 15.9 270.8 14.2M276.1 26C276.0 18.0 275.9 13.6 275.8 11.4M283.8 26C284.1 18.0 284.5 13.6 285.0 11.4M290.3 26C290.2 20.5 290.0 17.6 289.8 16.1M296.8 26C297.4 22.9 298.6 21.2 299.7 20.3M303.6 26C304.3 20.6 305.5 17.6 306.8 16.2M306.1 26C305.9 21.8 305.4 19.6 304.9 18.4M328.9 26C329.2 18.5 329.9 14.4 330.5 12.3M333.8 26C334.3 22.4 335.2 20.5 336.1 19.5M338.2 26C338.5 22.5 339.2 20.6 339.9 19.6M372.7 26C373.4 22.1 374.7 19.9 376.0 18.9M379.6 26C379.9 18.4 380.4 14.3 380.9 12.2M384.3 26C385.0 20.1 386.3 16.8 387.6 15.2M389.0 26C388.8 20.3 388.2 17.2 387.7 15.7M413.2 26C413.6 22.6 414.5 20.7 415.4 19.7M418.5 26C418.2 21.5 417.6 19.0 417.0 17.7M427.9 26C428.3 20.9 429.1 18.2 429.9 16.8M453.2 26C452.7 22.7 451.6 20.9 450.5 20.1M457.8 26C457.3 20.8 456.4 18.0 455.4 16.5M467.4 26C466.9 19.6 465.9 16.2 464.9 14.4M488.2 26C488.4 18.4 489.0 14.2 489.6 12.1M493.2 26C492.8 18.5 492.1 14.5 491.3 12.4M501.6 26C501.9 19.1 502.4 15.3 503.0 13.4M506.2 26C505.6 19.1 504.4 15.4 503.2 13.5M532.5 26C533.0 22.9 534.0 21.2 535.1 20.4M537.5 26C537.2 19.3 536.6 15.7 536.0 13.9M545.6 26C545.0 21.5 543.7 19.1 542.5 17.9M549.5 26C550.2 21.5 551.7 19.1 553.2 17.9M561.5 26C561.8 20.6 562.2 17.6 562.6 16.1M567.7 26C567.9 22.9 568.4 21.2 568.9 20.4M572.5 26C572.2 20.4 571.8 17.4 571.3 15.8M580.7 26C580.3 19.1 579.5 15.3 578.7 13.4M586.9 26C586.6 21.5 585.8 19.0 585.0 17.7M585.1 26C584.5 22.7 583.4 20.8 582.2 19.9M589.8 26C590.3 18.8 591.4 14.8 592.4 12.9M596.8 26C596.1 19.8 594.8 16.5 593.4 14.8M604.4 26C604.5 20.8 604.8 18.0 605.0 16.6M607.8 26C607.4 21.0 606.8 18.3 606.1 17.0" stroke="#0b0715" stroke-width="1.6" fill="none" stroke-linecap="round"/>' +
+      '</svg>' +
+
+      /* ---------- 近景：南瓜灯（底部地面，暖光往外溢） ---------- */
+      '<svg class="hw-jack" viewBox="0 0 40 34" aria-hidden="true">' +
+        '<path d="M20 1.4c1 0 1.7.9 1.7 2v1.4h-3.4V3.4c0-1.1.7-2 1.7-2z" fill="#5b3a12"/>' +
+        '<ellipse cx="20" cy="20" rx="15" ry="12.4" fill="#ef8c1c"/>' +
+        '<ellipse cx="20" cy="20" rx="8" ry="12" fill="#ffa63a" opacity=".5"/>' +
+        '<path d="M11.4 15.4l4.6 3.2-4.2 2.4zM28.6 15.4L24 18.6l4.2 2.4z" fill="#3a2410"/>' +
+        '<path d="M12.6 24.6q3.4-2.6 7.4 0 4-2.6 7.4 0v3.4H12.6z" fill="#3a2410"/>' +
+      '</svg>' +
+    '</div>';
   }
 
+  /* 蝙蝠剪影：半个翅膀画一次，右边用 scale(-1,1) 镜像 —— 保证左右完全对称。 */
+  function bat(cls, size) {
+    /* 半个翅膀：肩 (32,12.6) → 前缘甩到翼尖 (4.6,4.8) → 下缘折回来，中间两个深缺口。
+       缺口（Q 的控制点在两个"指头"上方）是蝙蝠和鳐鱼的分界：原来那段平滑弧线下缘，
+       在 1x 下就是一条肥边，看着像鳐鱼。 */
+    var half = 'M32 12.6C25.4 6 15 3 4.6 4.8L9.4 14.2Q12.4 8.6 15.4 12L19.2 16.4Q22.4 9.8 25.6 13.2' +
+      'L28.6 16.2Q30.6 11.6 32 12.6z';
+    return '<svg class="hw-bat ' + cls + '" viewBox="0 0 64 30" aria-hidden="true" style="width:' + size + 'px">' +
+      '<g fill="#1a1029">' +
+        /* 左右翅膀各自包一层，CSS 绕身体中心摆 —— 整只一起抖会像一片贴纸在晃 */
+        '<g class="hw-wl"><path d="' + half + '"/></g>' +
+        '<g class="hw-wr"><path d="' + half + '" transform="translate(64,0) scale(-1,1)"/></g>' +
+        '<ellipse cx="32" cy="16" rx="4.2" ry="5.6"/>' +
+        /* 头 + 两只尖耳朵（耳朵太小会看不出来，这里故意做长一点） */
+        '<circle cx="32" cy="9.4" r="4"/>' +
+        '<path d="M28.6 7.6 27 2.6l4.4 3zM35.4 7.6 37 2.6l-4.4 3z"/>' +
+      '</g></svg>';
+  }
 
-
+  function heroArt() {
+    return '<div class="hero-art"><svg viewBox="0 0 150 80" fill="none">' +
+      '<defs>' +
+        '<radialGradient id="hwWin" cx=".5" cy=".45" r=".65">' +
+          '<stop offset="0" stop-color="#ffe6a8"/><stop offset="1" stop-color="#ffb347"/>' +
+        '</radialGradient>' +
+        '<radialGradient id="hwWinHalo">' +
+          '<stop offset="0" stop-color="#ffbe63" stop-opacity=".55"/>' +
+          '<stop offset="1" stop-color="#ffbe63" stop-opacity="0"/>' +
+        '</radialGradient>' +
+      '</defs>' +
+      /* 不再画自家那块深色地面：整幅已经有地平线，两个地面会打架；
+         只留窗户洒下来的一点暖光 */
+      '<ellipse cx="86" cy="70" rx="30" ry="14" fill="url(#hwWinHalo)"/>' +
+      /* 枯树（左） */
+      '<g stroke="#0f0a1b" stroke-linecap="round" fill="none">' +
+        '<path d="M26 76V50" stroke-width="2.6"/>' +
+        '<path d="M26 58c-2.4-3.2-5-5.4-8.4-7" stroke-width="2"/>' +
+        '<path d="M26 54c2.8-3 5.6-4.8 9.4-6" stroke-width="2"/>' +
+        '<path d="M26 50c-1.4-2.8-3.2-4.8-5.8-6.6" stroke-width="1.8"/>' +
+        '<path d="M17.6 51c-1.2-1.6-2-3-2.4-4.8" stroke-width="1.2"/>' +
+        '<path d="M35.4 48c1.4-1.4 2.4-2.8 3-4.6" stroke-width="1.2"/>' +
+        '<path d="M26 50l-2.6-3" stroke-width="1.2"/>' +
+      '</g>' +
+      /* 房身（剪影） */
+      '<path d="M52 76V45h46v31z" fill="#2a1c3e"/>' +
+      /* 屋顶 */
+      '<path d="M45 46 75 25l30 21z" fill="#3a2752"/>' +
+      '<path d="M45 46h60l-3.5 5H48.5z" fill="#241736"/>' +
+      /* 烟囱 + 烟 */
+      '<rect x="88" y="27" width="8" height="13" rx="1.6" fill="#33234a"/>' +
+      '<circle cx="92" cy="21" r="3.2" fill="#c9b8e0" opacity=".16"/>' +
+      '<circle cx="96" cy="15" r="4" fill="#c9b8e0" opacity=".12"/>' +
+      /* 门 */
+      '<rect x="60" y="55" width="14" height="21" rx="2" fill="#1a1229"/>' +
+      '<circle cx="71" cy="66" r="1.1" fill="#ffc978" opacity=".9"/>' +
+      /* 窗（暖光 + 十字窗棂 + 光晕） */
+      '<rect x="80" y="53" width="15" height="12" rx="1.6" fill="url(#hwWin)"/>' +
+      '<path d="M87.5 53v12M80 59h15" stroke="#2a1c3e" stroke-width="1.5"/>' +
+      '<rect x="80" y="53" width="15" height="12" rx="1.6" stroke="#ffcd85" stroke-opacity=".8"/>' +
+      /* 阁楼小窗 */
+      '<circle cx="75" cy="37" r="3.4" fill="#ffd489" opacity=".92"/>' +
+      '<circle cx="75" cy="37" r="6" fill="url(#hwWinHalo)"/>' +
+      /* 门口平台 + 围栏 */
+      '<rect x="55" y="72" width="42" height="3" rx="1" fill="#1d1330"/>' +
+      '<g fill="#1d1330">' +
+        '<path d="M103 76V67l1.8-2.6L106.6 67v9z"/>' +
+        '<path d="M109 76V67l1.8-2.6L112.6 67v9z"/>' +
+        '<path d="M115 76V67l1.8-2.6L118.6 67v9z"/>' +
+        '<rect x="101.6" y="69.4" width="18.4" height="1.4" rx=".7"/>' +
+      '</g>' +
+      /* 两个南瓜 */
+      '<ellipse cx="57" cy="72" rx="4.6" ry="4" fill="#e8821c"/>' +
+      '<ellipse cx="100" cy="73" rx="3.4" ry="3" fill="#c96b14"/>' +
+      '<path d="M57 68v-2M100 70v-1.6" stroke="#5b3a12" stroke-width="1.2" stroke-linecap="round"/>' +
+      '</svg></div>';
+  }
 
   /* ================= 天气：真实数据 + 按天气动起来 =================
      数据源 Open-Meteo（不用 key，响应头带 access-control-allow-origin:*，
@@ -663,61 +847,9 @@ window.Pages.home = (function () {
     return '' +
     /* Hero */
     '<section class="hero fade-up">' +
-      /* 装饰层：横幅中间那块空白太空了，飘几团柔光、流动点阵、几点星光。
-         纯 CSS 动画，pointer-events:none，不挡任何内容。 */
-      '<div class="hero-fx" aria-hidden="true">' +
-        '<i class="hf-blob hf-b1"></i><i class="hf-blob hf-b2"></i><i class="hf-blob hf-b3"></i>' +
-        '<i class="hf-spark hf-s1"></i><i class="hf-spark hf-s2"></i><i class="hf-spark hf-s3"></i>' +
-        '<i class="hf-spark hf-s4"></i>' +
-        /* 万圣节大满月：深橙色半圆月，落在横幅中段空白处（纯 SVG + CSS 动画） */
-        '<svg class="hw-hero-moon" viewBox="0 0 190 95" aria-hidden="true">' +
-          '<path d="M5 95 A90 90 0 0 1 185 95 Z" fill="#e8892a"/>' +
-          '<circle cx="62" cy="66" r="11" fill="#c46912" opacity=".5"/>' +
-          '<circle cx="95" cy="46" r="8" fill="#c46912" opacity=".45"/>' +
-          '<circle cx="128" cy="70" r="10" fill="#c46912" opacity=".5"/>' +
-          '<circle cx="155" cy="52" r="6" fill="#c46912" opacity=".4"/>' +
-        '</svg>' +
-        /* 万圣节漂浮装饰：蜘蛛网 + 2 只蝙蝠 + 1 只幽灵 + 1 盏南瓜灯（纯 SVG + CSS 动画） */
-        '<svg class="hw-hero-web" viewBox="0 0 100 100" fill="none" stroke="#8a7bc0" stroke-width="1.3" aria-hidden="true">' +
-          '<path d="M0 0 L100 0"/><path d="M0 0 L85 45"/><path d="M0 0 L55 85"/><path d="M0 0 L0 100"/>' +
-          '<path d="M18 0 Q20 18 0 18"/><path d="M38 0 Q46 38 0 38"/><path d="M58 0 Q72 58 0 58"/><path d="M78 0 Q98 78 0 78"/>' +
-        '</svg>' +
-        /* z160：这两格原来飞的是纯黑蝙蝠 —— 深紫夜空上就剩两个小黑点，只有橙眼睛亮着
-           （用户原话「背景黑色不太明显」）。黑剪影压黑底天生没救，换成深色底上照样跳出来的：
-           一颗白骷髅头 + 一只南瓜橙的蝙蝠（蝙蝠还留着，只是不再是黑的）。 */
-        '<svg class="hw-skull" viewBox="0 0 40 44" aria-hidden="true">' +
-          '<ellipse cx="20" cy="17" rx="15.5" ry="15" fill="#f4efff"/>' +
-          '<path d="M11.5 25 L28.5 25 L28.5 33.6 Q28.5 37 25 37 L15 37 Q11.5 37 11.5 33.6 Z" fill="#f4efff"/>' +
-          '<ellipse cx="13.8" cy="17.4" rx="4.3" ry="4.9" fill="#2a1e42"/>' +
-          '<ellipse cx="26.2" cy="17.4" rx="4.3" ry="4.9" fill="#2a1e42"/>' +
-          '<circle cx="13.8" cy="18" r="1.7" fill="#f6a11c"/><circle cx="26.2" cy="18" r="1.7" fill="#f6a11c"/>' +
-          '<path d="M20 22.2 L21.9 26.4 L18.1 26.4 Z" fill="#2a1e42"/>' +
-          '<path d="M15.4 30 L15.4 36.4 M20 30 L20 36.4 M24.6 30 L24.6 36.4" stroke="#2a1e42" stroke-width="1.3" stroke-linecap="round"/>' +
-        '</svg>' +
-        '<svg class="hw-bat-light" viewBox="0 0 48 30" aria-hidden="true">' +
-          '<path d="M24 14 Q14.6 4.4 5.6 5.4 Q1.4 6.2 3.9 11 Q6.6 15.6 12.8 13.6 Q18.4 12 24 14 Z" fill="#ffb45c"/>' +
-          '<path d="M24 14 Q33.4 4.4 42.4 5.4 Q46.6 6.2 44.1 11 Q41.4 15.6 35.2 13.6 Q29.6 12 24 14 Z" fill="#ffb45c"/>' +
-          /* 耳朵：短而宽的三角，细尖的那种放大看像两根天线，不像蝙蝠 */
-          '<path d="M20.2 11.2 L18.6 5.6 L23 9.4 Z" fill="#ffb45c"/>' +
-          '<path d="M27.8 11.2 L29.4 5.6 L25 9.4 Z" fill="#ffb45c"/>' +
-          '<circle cx="24" cy="14.6" r="5.4" fill="#ffb45c"/>' +
-          '<circle class="hw-bat-eye" cx="22.2" cy="14.2" r="1.3" fill="#2a1e42"/><circle class="hw-bat-eye" cx="25.8" cy="14.2" r="1.3" fill="#2a1e42"/>' +
-        '</svg>' +
-        '<svg class="hw-ghost" viewBox="0 0 40 48" aria-hidden="true">' +
-          '<path d="M20 4 Q32 4 32 18 L32 38 Q28 34 24 38 Q20 42 16 38 Q12 34 8 38 L8 18 Q8 4 20 4 Z" fill="#f7f4ff" stroke="#c9bde8" stroke-width="1" opacity=".95"/>' +
-          '<circle cx="16" cy="18" r="2.6" fill="#3a2f4d"/><circle cx="24" cy="18" r="2.6" fill="#3a2f4d"/>' +
-          '<ellipse cx="20" cy="26" rx="3" ry="3.4" fill="#3a2f4d"/>' +
-        '</svg>' +
-        '<svg class="hw-pumpkin" viewBox="0 0 40 40" aria-hidden="true">' +
-          '<path d="M19 2 Q20 0 21 2 L21 5 L19 5 Z" fill="#7a4a12"/>' +
-          '<ellipse cx="20" cy="21" rx="16" ry="15" fill="#f6a11c"/>' +
-          '<ellipse cx="12" cy="21" rx="6" ry="14" fill="#e8892a"/>' +
-          '<ellipse cx="28" cy="21" rx="6" ry="14" fill="#e8892a"/>' +
-          '<path d="M12 15 L17 19 L13 22 Z" fill="#3a2f4d"/>' +
-          '<path d="M28 15 L23 19 L27 22 Z" fill="#3a2f4d"/>' +
-          '<path d="M12 27 Q16 24 20 27 Q24 24 28 27 L28 32 L12 32 Z" fill="#3a2f4d"/>' +
-        '</svg>' +
-      '</div>' +
+      /* 装饰层：一块「万圣夜室内窗景」——远（月 + 云/雾 + 山影）、中（枯枝 + 蝙蝠 + 幽灵）、
+         近（南瓜灯 + 蜘蛛）。纯 CSS 动画，pointer-events:none，不挡任何内容。 */
+      hwScene() +
       '<div class="hero-icon">🏪</div>' +
       '<div class="hero-main">' +
         '<h2>' + U.greeting() + '，' + U.esc(set.teamName || '阿蛮团队') + '！</h2>' +
