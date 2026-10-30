@@ -278,7 +278,7 @@ window.Pages.settings = (function () {
       for (var i = 0; i < list.length; i++) {
         if (String(list[i].name || '').trim() === nm) {
           var a = list[i].animal;
-          return (a && UI.ANIMALS[UI.normArt(a)]) ? UI.normArt(a) : '';
+          return (a && UI.artKey(a)) || '';
         }
       }
       return '';

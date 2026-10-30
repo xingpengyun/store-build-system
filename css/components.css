@@ -892,7 +892,6 @@
 
 /* 动物头像：整颗圆里塞一张内联 SVG，笑脸画得比圆略大一点，小尺寸下才看得清 */
 .avatar-art { overflow: hidden; padding: 0; }
-.avatar-art svg { width: 112%; height: 112%; display: block; }
 
 /* 3D 头像（z166）：图片铺满整颗圆，不留白边。
    SVG 那套是「画得比圆大 12%」防止小脸飘，图片不需要，铺满反而更干净。 */
@@ -4045,9 +4044,6 @@ body.sm-sorting * { cursor: grabbing !important; user-select: none !important; }
 .tcard-ava.is-art,
 .acc-chip-ava.is-art,
 .acc-ava.is-art { overflow: hidden; padding: 0; }
-.tcard-ava.is-art svg,
-.acc-chip-ava.is-art svg,
-.acc-ava.is-art svg { width: 112%; height: 112%; display: block; }
 .tcard-right { flex: 0 0 auto; }
 
 /* ---- 「+3天」延后药丸 ----

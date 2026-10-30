@@ -1893,8 +1893,8 @@ window.Store = (function () {
 
   function setMemberArt(id, key) {
     if (!id) return '';
-    /* 只收 UI 里真有的那 12 只：别的版本写进来的怪 key 一律当「不用动物」，
-       免得各页面各 fallback 一套，最后同一个人的头像在四处长得不一样 */
+    /* 只收 UI 里真有的头像（22 个 3D + 老 key 兼容项）：别的版本写进来的怪 key
+       一律当「不用头像」，免得各页面各 fallback 一套，最后同一个人的头像四处长得不一样 */
     if (key && !(window.UI && UI.ANIMALS && UI.ANIMALS[key])) key = '';
     var map = artMap();
     if (key) map[id] = key; else delete map[id];

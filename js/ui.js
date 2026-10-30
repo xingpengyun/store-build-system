@@ -109,40 +109,14 @@ window.UI = (function () {
     return '<span class="badge" style="color:' + s.color + ';background:' + s.soft + '">' + s.label + '</span>';
   }
 
-  /* ---------------- 头像 ---------------- */
-  /* ---------------- 可爱动物头像 ----------------
-     一套统一画法的圆脸小动物：同一个 viewBox（40×40）、同一种「圆头 + 点眼 + 腮红 +
-     小鼻子」的造型语言，只靠**耳朵形状 / 花色**区分——所以 12 只放在一起是同一个风格。
-     纯内联 SVG：不引外部图片、不走 CDN，file:// 双击也能显示。
-     配色走奶油马卡龙色系，跟系统里那套淡色卡片是一个调子。 */
-  var ART = {
-    cat:     { name: '小猫', bg: '#FFF3E4', fur: '#F8B26A', line: '#8A5A2B', blush: '#FFC7A6', ear: 'cat', whisker: 1 },
-    dog:     { name: '小狗', bg: '#FFF5EC', fur: '#DDA56E', line: '#7A4A22', blush: '#F7C6A0', ear: 'dog', tongue: 1 },
-    rabbit:  { name: '小兔', bg: '#FFF1F6', fur: '#FFD6E4', line: '#B0607E', blush: '#FFB3C9', ear: 'rabbit' },
-    bear:    { name: '小熊', bg: '#FFF6EA', fur: '#CD9F71', line: '#7A4A22', blush: '#F2BD95', ear: 'bear' },
-    panda:   { name: '熊猫', bg: '#F3F6FB', fur: '#FFFFFF', line: '#2B3246', blush: '#FFC4CE', ear: 'panda' },
-    fox:     { name: '狐狸', bg: '#FFF1E7', fur: '#FFA56E', line: '#8A4B2A', blush: '#FFC3A3', ear: 'fox', whisker: 1 },
-    pig:     { name: '小猪', bg: '#FFF0F5', fur: '#FFB7CC', line: '#A8546B', blush: '#FF9DBB', ear: 'pig', snout: 1 },
-    frog:    { name: '青蛙', bg: '#EFFAEF', fur: '#A9E3A3', line: '#3E7A46', blush: '#8FD98B', ear: 'frog' },
-    chick:   { name: '小鸡', bg: '#FFFAE3', fur: '#FFE07F', line: '#8A6A1F', blush: '#FFC8A6', ear: 'chick' },
-    koala:   { name: '考拉', bg: '#F2F5FA', fur: '#B9C4D4', line: '#4B5568', blush: '#F2B7C4', ear: 'koala' },
-    tiger:   { name: '小虎', bg: '#FFF4DE', fur: '#FFC46B', line: '#6B4423', blush: '#FFC7A0', ear: 'bear', stripe: 1 },
-    penguin: { name: '企鹅', bg: '#EEF4FF', fur: '#3E4A63', line: '#EAF0FA', blush: '#FFB3C9', ear: 'none', belly: 1 },
-
-    /* —— 万圣节限定：可选头像里加一组节日角色（南瓜灯/幽灵/蝙蝠/骷髅/黑猫/女巫）——
-       它们不是「动物戴帽子」，而是独立的新头像，造型走 halloweenSvg() 单独画。 */
-    pumpkin:  { name: '南瓜灯', bg: '#4A2810', fur: '#FF9D2E', line: '#3A1F04', hw: 'pumpkin' },
-    ghost:    { name: '幽灵',   bg: '#2B2440', fur: '#FFFFFF', line: '#2B2440', hw: 'ghost' },
-    bat:      { name: '蝙蝠',   bg: '#2B2440', fur: '#241D3A', line: '#3A2F4D', hw: 'bat' },
-    skull:    { name: '骷髅',   bg: '#232A38', fur: '#F2F4F8', line: '#1F2430', hw: 'skull' },
-    blackcat: { name: '黑猫',   bg: '#3A2A55', fur: '#2A2342', line: '#1F1B2E', hw: 'blackcat' },
-    witch:    { name: '女巫',   bg: '#1F3A24', fur: '#8FD98B', line: '#1F3A24', hw: 'witch' }
-  };
-  /* 3D 头像（2026-10-30 z166）：AI 渲染的软胶质感头像，图在 assets/avatars3d/，
-     256px webp，一张 5~11KB。key 带 d_ 前缀，和上面扁平 SVG 那套**并存**：
-     已经选过 cat / dog 的成员头像一点不受影响，想换成 3D 的在团队页重选即可。
-     之所以并进 ART 表而不是单开一张，是为了让所有老调用点
-     （UI.ANIMALS[key].bg、UI.animalSvg(key)、store 里的合法性校验）不用改。 */
+  /* ---------------- 头像 ----------------
+     全部头像都是 3D 图片（assets/avatars3d/*.webp，256px，单张 3~11KB），
+     靠 key 前缀分类：d_u_ 人物 / d_a_ 动物 / d_h_ 万圣节。
+     老 key（cat / dog / pumpkin …）只是历史数据的兼容层，由 ART_ALIAS 反向生成。 */
+  var ART = {};
+  /* 3D 头像（z166 起，z168 补齐到 22 张）：软胶质感的 AI 渲染图，key 带 d_ 前缀。
+     走 ART 总表而不是单开一张，是为了让所有老调用点（UI.ANIMALS[key].bg、
+     UI.animalSvg(key)、store 里的合法性校验）不用改。 */
   var ART_3D = {
     d_glasses:  { name: '眼镜男生', file: 'a3d_u_glasses.webp',  bg: '#EEF3FF' },
     d_longhair: { name: '长发女生', file: 'a3d_u_longhair.webp', bg: '#FFF0F6' },
@@ -182,7 +156,20 @@ window.UI = (function () {
     pumpkin: 'd_pumpkin', ghost: 'd_ghost', bat: 'd_bat', skull: 'd_skull',
     blackcat: 'd_blackcat', witch: 'd_witch'
   };
+  /* 老 key 也要留在表里：store.js 的 setMemberArt 会拿 UI.ANIMALS[key] 做合法性校验，
+     表里没有就会被当成「不用头像」，直接把成员头像清掉。名字 / 底色沿用对应的 3D 头像。 */
+  Object.keys(ART_ALIAS).forEach(function (k) {
+    var d = ART[ART_ALIAS[k]];
+    ART[k] = { name: d.name, bg: d.bg, legacy: 1 };
+  });
   function normArt(k) { return ART_ALIAS[k] || k || ''; }
+  /* 把「可能来自历史数据的头像值」整理成一个真能画出来的 key：
+     合法（有图）就返回它，老 key 顺手换成 3D 版，其余一律当没有头像。
+     各页面要读 UI.ANIMALS[key].bg 之前都过这一道，省得各自 if 一遍还容易漏。 */
+  function artKey(v) {
+    var k = normArt(v);
+    return (k && ART[k] && ART[k].img) ? k : '';
+  }
 
   /* 选择器的分组与顺序：全部是 3D 图，按人物 / 动物 / 万圣节排，
      组内顺序是手调的（先放最常用的），不跟 ART 的声明顺序走 */
@@ -198,208 +185,23 @@ window.UI = (function () {
   /* 换头像图片时改这个版本号，img 的 ?v= 跟着变，浏览器才会重新拉图 */
   var ART_VER = '20261030z168';
 
-  /* 耳朵：都在头圆之前画，等于压在后面。
-     每片耳朵都描一道极淡的边 —— 同色的耳朵压在圆脸上才看得出形状（尤其小狗垂耳）。 */
-  function artEars(kind, d) {
-    var fill = d.ear === 'panda' ? d.line : d.fur;
-    var O = ' stroke="rgba(20,28,48,.12)" stroke-width="1"';
-    switch (kind) {
-      case 'cat':
-        return '<path d="M8.4 13 L11.2 3.4 L18.6 9.4 Z" fill="' + fill + '"' + O + '/>' +
-               '<path d="M31.6 13 L28.8 3.4 L21.4 9.4 Z" fill="' + fill + '"' + O + '/>' +
-               '<path d="M11.6 10.4 L12.7 6.6 L15.9 9.4 Z" fill="' + d.blush + '" opacity=".85"/>' +
-               '<path d="M28.4 10.4 L27.3 6.6 L24.1 9.4 Z" fill="' + d.blush + '" opacity=".85"/>';
-      case 'fox':
-        return '<path d="M7.2 14.4 L9.4 2.8 L19.4 8.4 Z" fill="' + fill + '"' + O + '/>' +
-               '<path d="M32.8 14.4 L30.6 2.8 L20.6 8.4 Z" fill="' + fill + '"' + O + '/>' +
-               '<path d="M10.4 11.4 L11.6 5.8 L17.4 9.6 Z" fill="#FFFFFF" opacity=".55"/>' +
-               '<path d="M29.6 11.4 L28.4 5.8 L22.6 9.6 Z" fill="#FFFFFF" opacity=".55"/>';
-      case 'dog':
-        return '<ellipse cx="7.4" cy="18.4" rx="4.6" ry="7.8" fill="' + fill + '"' + O + ' transform="rotate(-16 7.4 18.4)"/>' +
-               '<ellipse cx="32.6" cy="18.4" rx="4.6" ry="7.8" fill="' + fill + '"' + O + ' transform="rotate(16 32.6 18.4)"/>';
-      case 'rabbit':
-        return '<ellipse cx="13.8" cy="7" rx="3.5" ry="8.2" fill="' + fill + '"' + O + ' transform="rotate(-9 13.8 7)"/>' +
-               '<ellipse cx="26.2" cy="7" rx="3.5" ry="8.2" fill="' + fill + '"' + O + ' transform="rotate(9 26.2 7)"/>' +
-               '<ellipse cx="13.8" cy="7" rx="1.5" ry="5.2" fill="' + d.blush + '" opacity=".9" transform="rotate(-9 13.8 7)"/>' +
-               '<ellipse cx="26.2" cy="7" rx="1.5" ry="5.2" fill="' + d.blush + '" opacity=".9" transform="rotate(9 26.2 7)"/>';
-      case 'bear':
-      case 'panda':
-        return '<circle cx="10.2" cy="11.8" r="5" fill="' + fill + '"' + O + '/>' +
-               '<circle cx="29.8" cy="11.8" r="5" fill="' + fill + '"' + O + '/>' +
-               (kind === 'panda' ? '' :
-                 '<circle cx="10.2" cy="11.8" r="2.2" fill="' + d.blush + '" opacity=".8"/>' +
-                 '<circle cx="29.8" cy="11.8" r="2.2" fill="' + d.blush + '" opacity=".8"/>');
-      case 'pig':
-        return '<path d="M9.4 12.6 L11.6 5 L17 9.8 Z" fill="' + fill + '"' + O + '/>' +
-               '<path d="M30.6 12.6 L28.4 5 L23 9.8 Z" fill="' + fill + '"' + O + '/>';
-      case 'koala':
-        return '<ellipse cx="9.4" cy="12.6" rx="5.8" ry="6.4" fill="' + fill + '"' + O + '/>' +
-               '<ellipse cx="30.6" cy="12.6" rx="5.8" ry="6.4" fill="' + fill + '"' + O + '/>' +
-               '<ellipse cx="9.4" cy="12.6" rx="3" ry="3.4" fill="' + d.blush + '" opacity=".75"/>' +
-               '<ellipse cx="30.6" cy="12.6" rx="3" ry="3.4" fill="' + d.blush + '" opacity=".75"/>';
-      case 'frog':
-        return '<circle cx="12.4" cy="10.4" r="4.8" fill="' + fill + '"' + O + '/>' +
-               '<circle cx="27.6" cy="10.4" r="4.8" fill="' + fill + '"' + O + '/>' +
-               '<circle cx="12.4" cy="10" r="1.8" fill="#2b3246"/>' +
-               '<circle cx="27.6" cy="10" r="1.8" fill="#2b3246"/>' +
-               '<circle cx="13" cy="9.3" r=".6" fill="#fff" opacity=".9"/>' +
-               '<circle cx="28.2" cy="9.3" r=".6" fill="#fff" opacity=".9"/>';
-      case 'chick':
-        return '<path d="M18.4 9 q.4 -3.6 3.6 -4.8" fill="none" stroke="' + d.line + '" stroke-width="1.6" stroke-linecap="round"/>' +
-               '<path d="M21.8 9 q1.6 -2.6 4.2 -2.6" fill="none" stroke="' + d.line + '" stroke-width="1.5" stroke-linecap="round" opacity=".7"/>';
-      default:
-        return '';
-    }
-  }
-
-  /* 万圣节头像：6 个节日角色单独画（40×40 viewBox，深色夜色底 + 黄月亮，主题更鲜明） */
-  function halloweenSvg(key) {
-    var s = '<svg viewBox="0 0 40 40" class="ava-art" aria-hidden="true">';
-    /* 右上角黄月亮：给暗色系角色统一挂一轮，一眼「万圣节夜晚」 */
-    var moon = '<circle cx="31" cy="8" r="5.5" fill="#ffd94a"/>' +
-               '<circle cx="29" cy="6.8" r="1.3" fill="#e3a400" opacity=".7"/>' +
-               '<circle cx="33" cy="10" r="1" fill="#e3a400" opacity=".7"/>';
-    switch (key) {
-      case 'pumpkin':
-        s += '<path d="M19 3 Q20 1 21 3 L21 6 L19 6 Z" fill="#9ccc3f"/>' +
-             '<ellipse cx="20" cy="23" rx="15" ry="13" fill="#ff9d2e"/>' +
-             '<ellipse cx="12" cy="23" rx="5.5" ry="12.5" fill="#f07b1a"/>' +
-             '<ellipse cx="28" cy="23" rx="5.5" ry="12.5" fill="#f07b1a"/>' +
-             '<ellipse cx="20" cy="23" rx="2.4" ry="12.5" fill="#f07b1a" opacity=".5"/>' +
-             '<path d="M13 15 L18 19 L13 22 Z" fill="#3a1f04"/>' +
-             '<path d="M27 15 L22 19 L27 22 Z" fill="#3a1f04"/>' +
-             '<path d="M13.5 16.5 L17.5 18.5 L13.5 20.5 Z" fill="#ffe27a"/>' +
-             '<path d="M26.5 16.5 L22.5 18.5 L26.5 20.5 Z" fill="#ffe27a"/>' +
-             '<path d="M12 27 Q16 23 20 27 Q24 23 28 27 L28 32 L12 32 Z" fill="#3a1f04"/>';
-        break;
-      case 'ghost':
-        s += moon +
-             '<path d="M20 4 Q31 4 31 17 L31 32 Q27.5 28.5 24 32 Q20 35.5 16 32 Q12.5 28.5 9 32 L9 17 Q9 4 20 4 Z" fill="#ffffff" stroke="#cfc4ec" stroke-width="1"/>' +
-             '<circle cx="16" cy="16" r="2.6" fill="#2b2440"/><circle cx="24" cy="16" r="2.6" fill="#2b2440"/>' +
-             '<ellipse cx="20" cy="23" rx="3" ry="3.4" fill="#2b2440"/>';
-        break;
-      case 'bat':
-        s += moon +
-             '<path d="M20 14 Q12 7 5 8 Q2 9 4 12 Q7 15 13 14 Q17 13 20 14 Z" fill="#241d3a"/>' +
-             '<path d="M20 14 Q28 7 35 8 Q38 9 36 12 Q33 15 27 14 Q23 13 20 14 Z" fill="#241d3a"/>' +
-             '<path d="M13.5 13 L12 4 L18.5 9.5 Z" fill="#241d3a"/>' +
-             '<path d="M26.5 13 L28 4 L21.5 9.5 Z" fill="#241d3a"/>' +
-             '<circle cx="20" cy="19" r="9.5" fill="#241d3a"/>' +
-             '<circle cx="17" cy="18" r="1.8" fill="#ffb82e"/><circle cx="23" cy="18" r="1.8" fill="#ffb82e"/>' +
-             '<path d="M16.5 24 L17.6 26.2 L18.7 24 Z" fill="#ffffff"/>' +
-             '<path d="M21.3 24 L22.4 26.2 L23.5 24 Z" fill="#ffffff"/>';
-        break;
-      case 'skull':
-        s += '<path d="M20 3 Q31 3 31 16 Q31 26 25 31 L15 31 Q9 26 9 16 Q9 3 20 3 Z" fill="#f2f4f8" stroke="#c9d2e0" stroke-width="1"/>' +
-             '<ellipse cx="15" cy="16" rx="3.6" ry="4.2" fill="#1f2430"/>' +
-             '<ellipse cx="25" cy="16" rx="3.6" ry="4.2" fill="#1f2430"/>' +
-             '<path d="M20 22 L18.5 25 L21.5 25 Z" fill="#1f2430"/>' +
-             '<path d="M13 28 H27" stroke="#1f2430" stroke-width="1.2"/>' +
-             '<path d="M15 28 V31 M18.5 28 V31 M20 28 V31 M21.5 28 V31 M25 28 V31" stroke="#1f2430" stroke-width="1" stroke-linecap="round"/>';
-        break;
-      case 'blackcat':
-        s += moon +
-             '<path d="M8.4 13 L11.2 3.4 L18.6 9.4 Z" fill="#2a2342"/>' +
-             '<path d="M31.6 13 L28.8 3.4 L21.4 9.4 Z" fill="#2a2342"/>' +
-             '<path d="M11.6 10.4 L12.7 6.6 L15.9 9.4 Z" fill="#7d6fb0" opacity=".7"/>' +
-             '<path d="M28.4 10.4 L27.3 6.6 L24.1 9.4 Z" fill="#7d6fb0" opacity=".7"/>' +
-             '<circle cx="20" cy="22.4" r="13.4" fill="#2a2342" stroke="rgba(0,0,0,.15)" stroke-width="1"/>' +
-             '<circle cx="15.4" cy="21.2" r="2.4" fill="#ffc93c"/><circle cx="24.6" cy="21.2" r="2.4" fill="#ffc93c"/>' +
-             '<circle cx="15.4" cy="21.2" r="1" fill="#1f1b2e"/><circle cx="24.6" cy="21.2" r="1" fill="#1f1b2e"/>' +
-             '<ellipse cx="20" cy="26" rx="1.7" ry="1.3" fill="#ff9db0"/>' +
-             '<path d="M17.4 28.6 q2.6 2 5.2 0" fill="none" stroke="#0f0c1c" stroke-width="1.1" stroke-linecap="round" opacity=".7"/>' +
-             '<path d="M4.8 23.4 H9 M4.8 26.2 H9 M35.2 23.4 H31 M35.2 26.2 H31" stroke="#7d6fb0" stroke-width="1" stroke-linecap="round" opacity=".6"/>';
-        break;
-      case 'witch':
-        s += moon +
-             '<path d="M12 13 Q13 5 23 1.5 Q25 5 28 13 Z" fill="#241d3a"/>' +
-             '<ellipse cx="20" cy="14" rx="15" ry="3.5" fill="#1b1530"/>' +
-             '<path d="M6 12 Q20 16.5 34 12" stroke="#ff9d2e" stroke-width="2.4" fill="none" stroke-linecap="round"/>' +
-             '<circle cx="20" cy="23" r="12.5" fill="#8fd98b" stroke="rgba(0,0,0,.15)" stroke-width="1"/>' +
-             '<circle cx="15.5" cy="21" r="1.9" fill="#1f3a24"/><circle cx="24.5" cy="21" r="1.9" fill="#1f3a24"/>' +
-             '<path d="M20 23 L20 28 L22 28.5" stroke="#1f3a24" stroke-width="2" fill="none" stroke-linecap="round"/>' +
-             '<circle cx="22.6" cy="28.6" r="1.3" fill="#5da14a"/>' +
-             '<path d="M16 30 Q20 33 24 30" fill="none" stroke="#1f3a24" stroke-width="1.3" stroke-linecap="round"/>';
-        break;
-    }
-    return s + '</svg>';
-  }
-
+  /* 头像内容：3D 图铺满整颗圆（圆是父级裁的，img 不用自己裁）。
+     __ASSET_BASE 只在本地预览页（.workbuddy/harness.html，位于子目录）里设成 '../'，
+     正式站没有这个变量，路径就是普通的 assets/…。
+     ?v= 是必须的：图片名不带 hash，浏览器会强缓存，换图后不加参数用户看到的还是旧图。 */
   function animalSvg(key) {
-    key = normArt(key);
-    var d = ART[key];
-    if (!d) return '';
-    /* 3D 头像走图片，不走手绘 SVG —— 圆是父级裁的，img 铺满即可。
-       __ASSET_BASE 只在本地预览页（.workbuddy/harness.html，位于子目录）里设成 '../'，
-       正式站没有这个变量，路径就是普通的 assets/…。
-       ?v= 是必须的：图片名不带 hash，浏览器会强缓存，换图后不加参数用户看到的还是旧图。 */
-    if (d.img) {
-      var base = (typeof window !== 'undefined' && window.__ASSET_BASE) || '';
-      return '<img class="art-img" src="' + base + 'assets/avatars3d/' + d.img + '?v=' + ART_VER + '" alt="' +
-        U.esc(d.name) + '" draggable="false" />';
-    }
-    if (d.hw) return halloweenSvg(key);
-    var dark = d.ear === 'penguin' ? '#2b3246' : '#2b3246';
-    var eyeFill = d.ear === 'penguin' ? '#FFFFFF' : dark;
-    var s = '<svg viewBox="0 0 40 40" class="ava-art" aria-hidden="true">';
-    s += artEars(d.ear, d);
-
-    /* 头：统一一个圆，白色 / 浅色脸描一道极淡的边，不然在浅底上看不出轮廓 */
-    s += '<circle cx="20" cy="22.4" r="13.4" fill="' + d.fur + '" stroke="rgba(20,28,48,.10)" stroke-width="1"/>';
-    if (d.belly) s += '<ellipse cx="20" cy="24.8" rx="8.4" ry="8.6" fill="#FFFFFF"/>';
-
-    /* 熊猫：先铺黑眼圈，再点白眼睛 */
-    if (d.ear === 'panda') {
-      s += '<ellipse cx="15.2" cy="21" rx="3.6" ry="4.2" fill="' + d.line + '"/>' +
-           '<ellipse cx="24.8" cy="21" rx="3.6" ry="4.2" fill="' + d.line + '"/>' +
-           '<circle cx="15.2" cy="21" r="1.5" fill="#FFFFFF"/>' +
-           '<circle cx="24.8" cy="21" r="1.5" fill="#FFFFFF"/>';
-    } else if (d.ear !== 'frog') {
-      s += '<circle cx="15.4" cy="21.2" r="1.95" fill="' + eyeFill + '"/>' +
-           '<circle cx="24.6" cy="21.2" r="1.95" fill="' + eyeFill + '"/>';
-    }
-
-    /* 腮红 */
-    s += '<ellipse cx="11.6" cy="25.8" rx="2.7" ry="1.7" fill="' + d.blush + '" opacity=".8"/>' +
-         '<ellipse cx="28.4" cy="25.8" rx="2.7" ry="1.7" fill="' + d.blush + '" opacity=".8"/>';
-
-    /* 鼻子 / 嘴 */
-    if (d.snout) {
-      s += '<ellipse cx="20" cy="25.6" rx="4.3" ry="3.2" fill="' + d.blush + '"/>' +
-           '<circle cx="18.5" cy="25.4" r=".7" fill="' + d.line + '"/>' +
-           '<circle cx="21.5" cy="25.4" r=".7" fill="' + d.line + '"/>';
-    } else if (!d.belly) {
-      s += '<ellipse cx="20" cy="25.8" rx="1.8" ry="1.4" fill="' + d.line + '" opacity=".9"/>';
-    }
-
-    if (d.belly) {
-      /* 企鹅：橙色小尖嘴（没有这个就是一团黑） */
-      s += '<path d="M20 24.6 L17.8 26.4 L20 28.2 L22.2 26.4 Z" fill="#F5A63C"/>';
-    } else if (d.ear === 'chick') {
-      s += '<path d="M20 27.6 L23.4 29.2 L20 30.6 Z" fill="#F2A03D"/>';
-    } else {
-      s += '<path d="M17.4 28.2 q2.6 2.2 5.2 0" fill="none" stroke="' + d.line +
-           '" stroke-width="1.15" stroke-linecap="round" opacity=".7"/>';
-    }
-    if (d.tongue) {
-      s += '<path d="M18.8 29.2 q1.2 2.4 2.4 0 z" fill="#F58AA2"/>';
-    }
-    if (d.whisker) {
-      s += '<path d="M4.8 23.4 H9 M4.8 26.2 H9 M35.2 23.4 H31 M35.2 26.2 H31" stroke="' +
-           d.line + '" stroke-width="1" stroke-linecap="round" opacity=".45"/>';
-    }
-    if (d.stripe) {
-      s += '<path d="M20 10.4 v3 M16.4 12 L18 14.6 M23.6 12 L22 14.6" stroke="' +
-           d.line + '" stroke-width="1.5" stroke-linecap="round" opacity=".65"/>';
-    }
-    return s + '</svg>';
+    var d = ART[normArt(key)];
+    if (!d || !d.img) return '';       /* 只有老 key 的兼容项没有图，那里显示「颜色 + 首字」 */
+    var base = (typeof window !== 'undefined' && window.__ASSET_BASE) || '';
+    return '<img class="art-img" src="' + base + 'assets/avatars3d/' + d.img + '?v=' + ART_VER + '" alt="' +
+      U.esc(d.name) + '" draggable="false" />';
   }
 
   /* 头像：传了动物 key 就画小动物，没传还是原来那颗「颜色 + 姓氏首字」 */
   function avatar(name, color, size, animal) {
     animal = normArt(animal);           /* 老 key（cat / dog …）自动换成 3D 版 */
     var d = animal && ART[animal];
-    if (d) {
+    if (d && d.img) {                   /* 有一点图才画圆头像，否则退回「颜色 + 姓氏首字」 */
       return '<span class="avatar avatar-' + (size || 'md') + ' avatar-art" style="background:' + d.bg +
         '" title="' + U.esc(d.name) + '">' + animalSvg(animal) + '</span>';
     }
@@ -567,6 +369,7 @@ window.UI = (function () {
 
     root.appendChild(mask);
     openModal = mask;
+    mask.__close = close;          /* 让 closeModal() 逐层走正规关闭，别直接删 DOM */
     modalStack.push(mask);
 
     function close() {
@@ -594,14 +397,15 @@ window.UI = (function () {
   }
 
   function closeModal() {
-    while (modalStack.length) {
-      var m = modalStack.pop();
-      if (m && m.parentNode) m.remove();
-    }
-    if (openModal) {
-      openModal.remove();
-      openModal = null;
-    }
+    /* 逐层调各自的 close()：它会解绑那一层的 Esc 监听。
+       以前是直接 remove DOM，Esc 的 keydown 监听会一直挂在 document 上，
+       弹窗开关几十次就积几十个回调（每次按 Esc 都白跑一遍）。 */
+    modalStack.slice().reverse().forEach(function (m) {
+      if (m && m.__close) m.__close();
+      else if (m && m.parentNode) m.remove();
+    });
+    modalStack = [];
+    openModal = null;
   }
 
   /* 二次确认 */
@@ -1166,6 +970,7 @@ window.UI = (function () {
     ANIMAL_KEYS: ART_KEYS,
     ART_GROUPS: ART_GROUPS, /* 选择器用：按组 + 手调顺序铺，全是 3D 图 */
     normArt: normArt,       /* 老头像 key → 对应 3D key */
+    artKey: artKey,         /* 历史值 → 真能画出来的 key（不合法就返回 ''） */
     progress: progress,
     empty: empty,
     toast: toast,

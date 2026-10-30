@@ -474,7 +474,7 @@ window.Pages.stores = (function () {
       var due = S.suggestDateOf(t);
       var ini = (m && m.name) ? m.name.charAt(0) : '?';
       /* 负责人头像：成员配了小动物就画小动物（和首页 / 任务页一致），否则还是姓氏首字 */
-      var art = (m && m.animal && UI.ANIMALS[UI.normArt(m.animal)]) ? UI.normArt(m.animal) : '';
+      var art = (m && UI.artKey(m.animal)) || '';
       var whoAva = art
         ? '<i class="tcard-ava is-art" style="background:' + UI.ANIMALS[art].bg + '">' + UI.animalSvg(art) + '</i>'
         : '<i class="tcard-ava">' + U.esc(ini) + '</i>';
