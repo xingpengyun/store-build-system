@@ -186,7 +186,7 @@ window.Pages.settings = (function () {
 
       '<p class="muted" style="margin:-2px 0 12px;font-size:12px;color:var(--text-3);line-height:1.8">' +
         '门店详情点「详细信息」，会按下面这份清单铺出输入框；填的值存在云端，按门店分开。' +
-        '「三档金额」= 一线 / 二线 / 三线 各填一个数（列名跟着下面价目表前 3 行），适合加盟费、管理费。' +
+        '「下拉选择」= 单选，选项自己填、用、分隔，适合城市等级、加盟费、管理费这种只需选一个的。' +
       '</p>' +
 
       '<div class="fld-list" id="fldList">' +

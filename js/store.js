@@ -2865,8 +2865,8 @@ window.Store = (function () {
     { id: 'f_phone',  name: '电话',       type: 'text' },
     { id: 'f_rm',     name: '区域经理',   type: 'text' },
     { id: 'f_style',  name: '设计风格',   type: 'select', options: ['现代简约', '新中式', '工业风', '北欧', '侘寂'] },
-    { id: 'f_join',   name: '加盟费',     type: 'tier3' },
-    { id: 'f_mgmt',   name: '管理费',     type: 'tier3' }
+    { id: 'f_join',   name: '加盟费',     type: 'select', options: ['一线', '二线', '三线'] },
+    { id: 'f_mgmt',   name: '管理费',     type: 'select', options: ['一线', '二线', '三线'] }
   ];
 
   function fieldTypeOk(t) {
