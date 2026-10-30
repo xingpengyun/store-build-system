@@ -10,19 +10,101 @@ window.Pages.stores = (function () {
   var S = window.Store;
   var C = window.CONST;
 
-  var state = { q: '', province: '', stage: '', risk: '', owner: '', page: 1, per: 10 };
+  /* facets = 第二排「属性筛选」当前选中值，key 见 facetDefs()：
+       'price'   → 价格档位（存 priceRows 的 rowId）
+       'f:xxx'   → 门店自定义下拉字段（如 f_city 城市等级、f_style 设计风格、f_wh 发货仓）
+     NONE 表示「未填写」—— 用来把没填这个字段的门店单独捞出来，不是筛「空字符串」。 */
+  var NONE = '__none';
+  var state = { q: '', province: '', stage: '', risk: '', owner: '', facets: {}, page: 1, per: 10 };
+
+  /* ---------------- 属性筛选的维度 ----------------
+     不写死清单：跟着「设置 → 门店字段」里那几个**下拉**字段走，
+     那里加一个「仓库」「经营模式」，这里就自动多一个筛选，不用改代码。
+     价格档位来自设置里的价目表（一线 / 二线 / N×一线 …），单独算一档。
+  ------------------------------------------------------------------ */
+  function facetDefs() {
+    var out = [];
+    S.storeFields().forEach(function (f) {
+      if (f.show === false) return;
+      if (f.type !== 'select') return;
+      if (!f.options || !f.options.length) return;
+      out.push({
+        key: 'f:' + f.id,
+        name: f.name,
+        all: '全部' + f.name,
+        none: '未填' + f.name,
+        options: f.options.map(function (o) { return { v: o, t: o }; })
+      });
+    });
+
+    var rows = S.priceRows();
+    var used = rows.filter(function (r) { return r.name || r.price; });
+    if (used.length) {
+      out.push({
+        key: 'price',
+        name: '价格档位',
+        all: '全部价格',
+        none: '未定价',
+        options: used.map(function (r) {
+          return { v: r.id, t: r.name + (r.price ? ' · ' + r.price : '') };
+        })
+      });
+    }
+    return out;
+  }
+
+  /* 某家店在某个维度上的当前值（'' = 没填） */
+  function facetVal(store, key) {
+    if (key === 'price') return S.storePrice(store).rowId;
+    var v = S.storeFieldVals(store)[key.slice(2)];
+    return v == null ? '' : String(v);
+  }
+
+  function activeFacets() {
+    return Object.keys(state.facets).filter(function (k) { return !!state.facets[k]; });
+  }
+
+  function activeCount() {
+    var n = activeFacets().length;
+    if (state.province) n++;
+    if (state.stage) n++;
+    if (state.risk) n++;
+    if (state.owner) n++;
+    if (state.q) n++;
+    return n;
+  }
+
+  function clearAll() {
+    state.q = ''; state.province = ''; state.stage = ''; state.risk = ''; state.owner = '';
+    state.facets = {}; state.page = 1;
+    /* 整页重绘最省事：省份是 combo（输入框 + 隐藏值两处都要清），重绘一次全对齐 */
+    App.refresh({ keep: true });
+  }
 
   /* ---------------- 数据筛选 ---------------- */
   function filtered() {
     var q = state.q.toLowerCase();
+    var fkeys = activeFacets();
+
     return S.getState().stores.filter(function (s) {
       if (state.province && s.province !== state.province) return false;
       if (state.stage && s.stage !== state.stage) return false;
       if (state.risk && s.risk !== state.risk) return false;
       if (state.owner && s.ownerId !== state.owner) return false;
+
+      for (var i = 0; i < fkeys.length; i++) {
+        var want = state.facets[fkeys[i]];
+        var got = facetVal(s, fkeys[i]);
+        if (want === NONE) { if (got !== '') return false; }
+        else if (got !== want) return false;
+      }
+
       if (q) {
         var owner = S.memberById(s.ownerId);
-        var hay = (s.name + ' ' + s.province + ' ' + s.stage + ' ' + (owner ? owner.name : '')).toLowerCase();
+        var vals = S.storeFieldVals(s);
+        var extra = Object.keys(vals).map(function (k) { return vals[k]; }).join(' ');
+        var hay = (s.name + ' ' + s.province + ' ' + s.stage + ' ' +
+          (owner ? owner.name : '') + ' ' + extra).toLowerCase();
         if (hay.indexOf(q) < 0) return false;
       }
       return true;
@@ -38,7 +120,9 @@ window.Pages.stores = (function () {
     var rows = all.slice(start, start + state.per);
 
     if (!rows.length) {
-      return UI.empty('没有符合条件的门店', '试试调整筛选条件，或新增一家门店');
+      return UI.empty('没有符合条件的门店',
+        activeCount() ? '条件叠得有点多，点右侧「清空筛选」再试。若只筛了城市等级 / 设计风格 / 仓库，' +
+          '也可能是这些门店还没填这个字段 —— 选「未填」就能看到是谁。' : '试试调整筛选条件，或新增一家门店');
     }
 
     var body = rows.map(function (store) {
@@ -988,8 +1072,39 @@ window.Pages.stores = (function () {
         '<span class="spacer"></span>' +
         '<span class="dim" style="font-size:11.5px" id="stCount"></span>' +
       '</div>' +
+      facetBarHtml() +
       '<div id="storeListWrap">' + listHtml() + '</div>' +
     '</div>';
+  }
+
+  /* 第二排：属性筛选（城市等级 / 设计风格 / 发货仓 / 价格档位…）。
+     选中的下拉会变蓝底，一眼看出哪几个条件在生效。 */
+  function facetBarHtml() {
+    var defs = facetDefs();
+    if (!defs.length) return '';
+
+    var html = '<div class="filter-more">' +
+      '<span class="fm-label">' + UI.icon('filter') + '属性筛选</span>';
+
+    defs.forEach(function (d) {
+      var cur = state.facets[d.key] || '';
+      html += '<select class="select fm-select' + (cur ? ' is-on' : '') + '"' +
+        ' data-facet="' + U.esc(d.key) + '" title="' + U.esc(d.name) + '">' +
+        '<option value="">' + U.esc(d.all) + '</option>' +
+        d.options.map(function (o) {
+          return '<option value="' + U.esc(o.v) + '"' + (cur === o.v ? ' selected' : '') + '>' +
+            U.esc(o.t) + '</option>';
+        }).join('') +
+        '<option value="' + NONE + '"' + (cur === NONE ? ' selected' : '') + '>' + U.esc(d.none) + '</option>' +
+      '</select>';
+    });
+
+    var n = activeCount();
+    html += '<button type="button" class="fm-clear" data-act="clearFilters"' +
+      (n ? '' : ' disabled') + '>' +
+      (n ? '清空筛选（' + n + '）' : '清空筛选') + '</button>';
+    html += '</div>';
+    return html;
   }
 
   function updateList(root) {
@@ -1026,6 +1141,7 @@ window.Pages.stores = (function () {
       if (act === 'add') openForm(null);
       else if (act === 'edit') openForm(S.storeById(id));
       else if (act === 'view') openDetail(id);
+      else if (act === 'clearFilters') clearAll();
       else if (act === 'refresh') {
         state.page = 1;
         updateList(root);
@@ -1065,6 +1181,25 @@ window.Pages.stores = (function () {
         state.page = 1;
         updateList(root);
       });
+    });
+
+    /* 第二排属性筛选：选中值进 state.facets，下拉自己变蓝底 + 刷新「清空筛选」的计数 */
+    root.addEventListener('change', function (e) {
+      var sel = e.target;
+      if (!sel || !sel.getAttribute || !sel.hasAttribute('data-facet')) return;
+      var key = sel.getAttribute('data-facet');
+      var v = String(sel.value || '');
+      if (v) state.facets[key] = v; else delete state.facets[key];
+      sel.className = 'select fm-select' + (v ? ' is-on' : '');
+      state.page = 1;
+
+      var btn = root.querySelector('[data-act="clearFilters"]');
+      if (btn) {
+        var n = activeCount();
+        btn.disabled = !n;
+        btn.textContent = n ? '清空筛选（' + n + '）' : '清空筛选';
+      }
+      updateList(root);
     });
   }
 

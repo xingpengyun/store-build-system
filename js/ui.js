@@ -40,7 +40,8 @@ window.UI = (function () {
     send: '<path d="M3.2 10L16.6 4.2l-4.3 11.8-3.3-4.6-5.8-1.4z"/><path d="M9 11.4l7.6-7.2"/>',
     gear: '<circle cx="10" cy="10" r="2.4"/><path d="M10 2.9v1.8M10 15.3v1.8M2.9 10h1.8M15.3 10h1.8M4.95 4.95l1.3 1.3M13.75 13.75l1.3 1.3M15.05 4.95l-1.3 1.3M6.25 13.75l-1.3 1.3"/>',
     exit: '<path d="M8.6 3.4H5a1.2 1.2 0 0 0-1.2 1.2v10.8A1.2 1.2 0 0 0 5 16.6h3.6"/><path d="M12.4 6.6L15.8 10l-3.4 3.4"/><path d="M8 10h7.6"/>',
-    board: '<rect x="3.4" y="3.6" width="13.2" height="9.6" rx="1.8"/><path d="M6.2 16.4l2.6-3.2"/><path d="M6.8 7h6.4M6.8 9.8h4"/>'
+    board: '<rect x="3.4" y="3.6" width="13.2" height="9.6" rx="1.8"/><path d="M6.2 16.4l2.6-3.2"/><path d="M6.8 7h6.4M6.8 9.8h4"/>',
+    filter: '<path d="M3.2 6.2h13.6M6.2 10h7.6M8.4 13.8h3.2"/>'
   };
 
   function icon(name, cls) {

@@ -2866,6 +2866,9 @@ window.Store = (function () {
     { id: 'f_phone',  name: '电话',       type: 'text' },
     { id: 'f_rm',     name: '区域经理',   type: 'text' },
     { id: 'f_style',  name: '设计风格',   type: 'select', options: ['1.0', '2.0'] },
+    /* 发货仓：哪家仓给这家店配货。门店列表的「属性筛选」会自动多一项「发货仓」，
+       因为筛选是按「下拉型字段」自动生成的，不是写死的清单。 */
+    { id: 'f_wh',     name: '发货仓',     type: 'select', options: ['华东仓', '华南仓', '华北仓', '西南仓'] },
     { id: 'f_join',   name: '加盟费',     type: 'money' },
     { id: 'f_mgmt',   name: '管理费',     type: 'money' }
   ];
