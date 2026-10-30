@@ -862,34 +862,42 @@ window.Pages.stores = (function () {
       fieldHtml = '<p class="mf-empty">还没有配置字段。去「系统设置 → 门店档案字段」加几个，比如加盟商姓名、电话、区域经理。</p>';
     }
 
+    /* ---- 门店档案：9 个固定项，标题和显隐由设置决定（值还是系统算的） ---- */
+    var baseVal = {
+      stage: function () { return UI.stageBadge(store.stage, S.storeSub(store)); },
+      risk: function () { return UI.riskBadge(store.risk); },
+      province: function () { return U.esc(store.province || '—'); },
+      owner: function () { return owner ? U.esc(owner.name) : '<span class="dim">未指派</span>'; },
+      openDate: function () {
+        return store.openDate
+          ? '<span class="mono">' + store.openDate + '</span> <span class="dim" style="font-weight:400">（' +
+            (days >= 0 ? '还剩 ' + days + ' 天' : '已过 ' + (-days) + ' 天') + '）</span>'
+          : '<span class="dim">未设置</span>';
+      },
+      buildDate: function () {
+        return store.buildDate
+          ? '<span class="mono">' + U.esc(store.buildDate) + '</span>'
+          : '<span class="dim">未记录</span>';
+      },
+      progress: function () {
+        return pr.taskTotal
+          ? '<b>' + pr.done + '</b> / ' + pr.taskTotal + ' 条（' + S.progressValue(store) + '%）'
+          : '<span class="dim">还没有任务</span>';
+      },
+      address: function () { return U.esc(store.address || '—'); },
+      remark: function () { return U.esc(store.remark || '—'); }
+    };
+
+    var baseHtml = S.storeBaseCfg().filter(function (it) {
+      return it.show !== false && baseVal[it.id];
+    }).map(function (it) {
+      return '<div class="d-item"><div class="d-label">' + U.esc(it.name) + '</div>' +
+        '<div class="d-val">' + baseVal[it.id]() + '</div></div>';
+    }).join('');
+
     var body =
       '<div class="section-title">门店档案</div>' +
-      '<div class="desc-list is-3">' +
-        '<div class="d-item"><div class="d-label">当前阶段</div><div class="d-val">' +
-          UI.stageBadge(store.stage, S.storeSub(store)) + '</div></div>' +
-        '<div class="d-item"><div class="d-label">风险等级</div><div class="d-val">' +
-          UI.riskBadge(store.risk) + '</div></div>' +
-        '<div class="d-item"><div class="d-label">省份</div><div class="d-val">' +
-          U.esc(store.province || '—') + '</div></div>' +
-        '<div class="d-item"><div class="d-label">负责人</div><div class="d-val">' +
-          (owner ? U.esc(owner.name) : '<span class="dim">未指派</span>') + '</div></div>' +
-        '<div class="d-item"><div class="d-label">计划开业</div><div class="d-val mono">' +
-          (store.openDate
-            ? store.openDate + ' <span class="dim" style="font-weight:400">（' +
-              (days >= 0 ? '还剩 ' + days + ' 天' : '已过 ' + (-days) + ' 天') + '）</span>'
-            : '<span class="dim">未设置</span>') + '</div></div>' +
-        '<div class="d-item"><div class="d-label">建档提交时间</div><div class="d-val mono">' +
-          (store.buildDate || '<span class="dim">未记录</span>') + '</div></div>' +
-        '<div class="d-item"><div class="d-label">任务进度</div><div class="d-val">' +
-          (pr.taskTotal
-            ? '<b>' + pr.done + '</b> / ' + pr.taskTotal + ' 条（' + S.progressValue(store) + '%）'
-            : '<span class="dim">还没有任务</span>') +
-          '</div></div>' +
-        '<div class="d-item"><div class="d-label">地址</div><div class="d-val">' +
-          U.esc(store.address || '—') + '</div></div>' +
-        '<div class="d-item"><div class="d-label">备注</div><div class="d-val">' +
-          U.esc(store.remark || '—') + '</div></div>' +
-      '</div>' +
+      '<div class="desc-list is-3">' + baseHtml + '</div>' +
 
       '<div class="section-title">几线价格</div>' +
       priceBox +

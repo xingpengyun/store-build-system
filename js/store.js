@@ -2908,6 +2908,64 @@ window.Store = (function () {
     return FIELD_TYPES.map(function (t) { return { key: t.key, label: t.label }; });
   }
 
+  /* ---------------- 「门店档案」那几个固定项的标题与显隐 ----------------
+     这 9 项的值来自 stores 表本身（阶段、风险、省份…），值是系统算的，
+     但**叫什么名字、显不显示**由用户定：settings.storeBaseCfg = [{ id, name, show }]
+     - 只存改过的；没配过就按出厂标题全显示
+     - 以后代码里加了新固定项，会按出厂名自动补进来
+     ------------------------------------------------------------------- */
+
+  var BASE_ITEMS = [
+    { id: 'stage',     name: '当前阶段' },
+    { id: 'risk',      name: '风险等级' },
+    { id: 'province',  name: '省份' },
+    { id: 'owner',     name: '负责人' },
+    { id: 'openDate',  name: '计划开业' },
+    { id: 'buildDate', name: '建档提交时间' },
+    { id: 'progress',  name: '任务进度' },
+    { id: 'address',   name: '地址' },
+    { id: 'remark',    name: '备注' }
+  ];
+
+  function storeBaseCfg() {
+    var list = state.settings && state.settings.storeBaseCfg;
+    var map = {};
+    if (Array.isArray(list)) {
+      list.forEach(function (x) { if (x && x.id) map[x.id] = x; });
+    }
+    return BASE_ITEMS.map(function (b) {
+      var c = map[b.id];
+      var nm = c && String(c.name == null ? '' : c.name).trim();
+      return {
+        id: b.id,
+        name: nm || b.name,
+        show: !(c && c.show === false)
+      };
+    });
+  }
+
+  function saveStoreBaseCfg(list) {
+    var map = {};
+    (Array.isArray(list) ? list : []).forEach(function (x) {
+      if (x && x.id) map[x.id] = x;
+    });
+    var out = BASE_ITEMS.map(function (b) {
+      var c = map[b.id];
+      var nm = c && String(c.name == null ? '' : c.name).trim();
+      return {
+        id: b.id,
+        name: nm || b.name,
+        show: !(c && c.show === false)
+      };
+    });
+
+    state.settings = state.settings || {};
+    state.settings.storeBaseCfg = out;
+    pushSettings();
+    cacheLocal();
+    return storeBaseCfg();
+  }
+
   function storeFieldVals(store) {
     var all = (state.settings && state.settings.storeFieldVals) || {};
     var rec = store ? all[store.id] : null;
@@ -3852,6 +3910,8 @@ window.Store = (function () {
     storeFields: storeFields,
     saveStoreFields: saveStoreFields,
     fieldTypes: fieldTypes,
+    storeBaseCfg: storeBaseCfg,
+    saveStoreBaseCfg: saveStoreBaseCfg,
     storeFieldVals: storeFieldVals,
     setStoreFieldVal: setStoreFieldVal,
     priceRows: priceRows,

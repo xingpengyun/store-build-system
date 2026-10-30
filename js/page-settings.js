@@ -129,8 +129,9 @@ window.Pages.settings = (function () {
       '<p class="item-hint">长按物料约 1 秒，会变成红色「删除？」，再点一下才真正删掉；点别处可取消。改动即时保存。</p>' +
     '</div>' +
 
-    fieldCard() +
+    baseCard() +
 
+    fieldCard() +
     '<div class="card fade-up" style="animation-delay:.1s">' +
       '<div class="card-head"><h3>云端说明</h3><span class="card-sub">改代码时的参考</span></div>' +
       '<div class="desc-list">' +
@@ -140,6 +141,44 @@ window.Pages.settings = (function () {
         '<div class="d-item"><div class="d-label">云端接入代码</div><div class="d-val">js/cloud.js</div></div>' +
         '<div class="d-item"><div class="d-label">登录逻辑</div><div class="d-val">js/login.js</div></div>' +
         '<div class="d-item"><div class="d-label">数据读写</div><div class="d-val">js/store.js</div></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /* ================= 门店档案 · 固定项（z163） =================
+     「详细信息」最上面那 9 项的值来自 stores 表，改不了；
+     但叫什么名字、显不显示，用户自己定。 */
+
+  function baseCard() {
+    var items = S.storeBaseCfg();
+    var shown = items.filter(function (x) { return x.show !== false; }).length;
+
+    var rows = items.map(function (it, i) {
+      return '<div class="base-row" data-bid="' + U.esc(it.id) + '">' +
+        '<span class="fld-idx">' + (i + 1) + '</span>' +
+        '<input class="input" data-base="name" value="' + U.esc(it.name) + '" placeholder="标题" />' +
+        '<label class="base-show">' +
+          '<input type="checkbox" data-base="show"' + (it.show !== false ? ' checked' : '') + ' />' +
+          '<span>显示</span>' +
+        '</label>' +
+      '</div>';
+    }).join('');
+
+    return '<div class="card fade-up" id="baseCard" style="animation-delay:.085s">' +
+      '<div class="card-head"><h3>门店档案 · 固定项</h3>' +
+        '<span class="card-sub">「详细信息」最上面那一排，现在显示 <b id="baseShown">' + shown + '</b> / ' +
+        items.length + ' 项</span></div>' +
+
+      '<p class="muted" style="margin:-2px 0 12px;font-size:12px;color:var(--text-3);line-height:1.8">' +
+        '这 9 项的值由系统自动算（阶段、风险、省份、开业倒计时…），这里只改「标题」和「显不显示」。' +
+        '想加自己的字段（加盟商姓名、电话之类）用下面那张卡片。' +
+      '</p>' +
+
+      '<div class="fld-list" id="baseList">' + rows + '</div>' +
+
+      '<div class="fld-add">' +
+        '<button class="btn btn-primary" type="button" data-act="saveBase">保存</button>' +
+        '<button class="btn" type="button" data-act="resetBase">恢复默认标题</button>' +
       '</div>' +
     '</div>';
   }
@@ -504,6 +543,57 @@ window.Pages.settings = (function () {
     var input = root.querySelector('#itemAddInput');
     var pressTimer = null;
     var askAt = 0;
+
+    /* ---------------- 门店档案固定项（z163）：改标题 / 显隐 ---------------- */
+    var baseCardEl = root.querySelector('#baseCard');
+    if (baseCardEl) {
+      function collectBase() {
+        var list = [];
+        Array.prototype.forEach.call(baseCardEl.querySelectorAll('.base-row'), function (row) {
+          var nameEl = row.querySelector('[data-base="name"]');
+          var showEl = row.querySelector('[data-base="show"]');
+          list.push({
+            id: row.getAttribute('data-bid'),
+            name: String((nameEl && nameEl.value) || '').trim(),
+            show: !!(showEl && showEl.checked)
+          });
+        });
+        return list;
+      }
+
+      function paintShown() {
+        var n = collectBase().filter(function (x) { return x.show; }).length;
+        var el = baseCardEl.querySelector('#baseShown');
+        if (el) el.textContent = n;
+      }
+
+      baseCardEl.addEventListener('change', function (e) {
+        if (e.target && e.target.getAttribute('data-base') === 'show') paintShown();
+      });
+
+      baseCardEl.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-act]');
+        if (!btn || !baseCardEl.contains(btn)) return;
+        var act = btn.getAttribute('data-act');
+
+        if (act === 'saveBase') {
+          var n = collectBase().filter(function (x) { return x.show; }).length;
+          if (!n) { UI.toast('至少留一项显示', 'info'); return; }
+          S.saveStoreBaseCfg(collectBase());
+          UI.toast('已保存，显示 ' + n + ' 项', 'success');
+          App.render();
+          return;
+        }
+
+        if (act === 'resetBase') {
+          S.saveStoreBaseCfg(S.storeBaseCfg().map(function (x) {
+            return { id: x.id, name: '', show: x.show };
+          }));
+          UI.toast('标题已恢复默认', 'success');
+          App.render();
+        }
+      });
+    }
 
     /* ---------------- 门店档案字段（z161）：加 / 删 / 保存 ---------------- */
     var fldCard = root.querySelector('#fldCard');
