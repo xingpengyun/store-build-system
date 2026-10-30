@@ -163,6 +163,9 @@ window.UI = (function () {
 
   var ART_KEYS = Object.keys(ART);
 
+  /* 换头像图片时改这个版本号，img 的 ?v= 跟着变，浏览器才会重新拉图 */
+  var ART_VER = '20261030z167';
+
   /* 耳朵：都在头圆之前画，等于压在后面。
      每片耳朵都描一道极淡的边 —— 同色的耳朵压在圆脸上才看得出形状（尤其小狗垂耳）。 */
   function artEars(kind, d) {
@@ -295,10 +298,11 @@ window.UI = (function () {
     if (!d) return '';
     /* 3D 头像走图片，不走手绘 SVG —— 圆是父级裁的，img 铺满即可。
        __ASSET_BASE 只在本地预览页（.workbuddy/harness.html，位于子目录）里设成 '../'，
-       正式站没有这个变量，路径就是普通的 assets/… */
+       正式站没有这个变量，路径就是普通的 assets/…。
+       ?v= 是必须的：图片名不带 hash，浏览器会强缓存，换图后不加参数用户看到的还是旧图。 */
     if (d.img) {
       var base = (typeof window !== 'undefined' && window.__ASSET_BASE) || '';
-      return '<img class="art-img" src="' + base + 'assets/avatars3d/' + d.img + '" alt="' +
+      return '<img class="art-img" src="' + base + 'assets/avatars3d/' + d.img + '?v=' + ART_VER + '" alt="' +
         U.esc(d.name) + '" draggable="false" />';
     }
     if (d.hw) return halloweenSvg(key);
