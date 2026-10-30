@@ -138,6 +138,29 @@ window.UI = (function () {
     blackcat: { name: '黑猫',   bg: '#3A2A55', fur: '#2A2342', line: '#1F1B2E', hw: 'blackcat' },
     witch:    { name: '女巫',   bg: '#1F3A24', fur: '#8FD98B', line: '#1F3A24', hw: 'witch' }
   };
+  /* 3D 头像（2026-10-30 z166）：AI 渲染的软胶质感头像，图在 assets/avatars3d/，
+     256px webp，一张 5~11KB。key 带 d_ 前缀，和上面扁平 SVG 那套**并存**：
+     已经选过 cat / dog 的成员头像一点不受影响，想换成 3D 的在团队页重选即可。
+     之所以并进 ART 表而不是单开一张，是为了让所有老调用点
+     （UI.ANIMALS[key].bg、UI.animalSvg(key)、store 里的合法性校验）不用改。 */
+  var ART_3D = {
+    d_glasses:  { name: '眼镜男生', file: 'a3d_u_glasses.webp',  bg: '#EEF3FF' },
+    d_longhair: { name: '长发女生', file: 'a3d_u_longhair.webp', bg: '#FFF0F6' },
+    d_ponytail: { name: '马尾女生', file: 'a3d_u_ponytail.webp', bg: '#EFFAF3' },
+    d_beard:    { name: '胡渣大叔', file: 'a3d_u_beard.webp',    bg: '#F1EFFF' },
+    d_cat:      { name: '3D 橘猫',  file: 'a3d_a_cat.webp',      bg: '#FFF3E4' },
+    d_panda:    { name: '3D 熊猫',  file: 'a3d_a_panda.webp',    bg: '#F3F6FB' },
+    d_shiba:    { name: '3D 柴犬',  file: 'a3d_a_shiba.webp',    bg: '#FFF5EC' },
+    d_fox:      { name: '3D 狐狸',  file: 'a3d_a_fox.webp',      bg: '#FFF1E7' },
+    d_pumpkin:  { name: '3D 南瓜灯', file: 'a3d_h_pumpkin.webp',  bg: '#3A2A55' },
+    d_ghost:    { name: '3D 幽灵',  file: 'a3d_h_ghost.webp',    bg: '#2B2440' },
+    d_witch:    { name: '3D 女巫',  file: 'a3d_h_witch.webp',    bg: '#1F3A24' },
+    d_blackcat: { name: '3D 黑猫',  file: 'a3d_h_blackcat.webp', bg: '#3A2A55' }
+  };
+  Object.keys(ART_3D).forEach(function (k) {
+    ART[k] = { name: ART_3D[k].name, bg: ART_3D[k].bg, img: ART_3D[k].file };
+  });
+
   var ART_KEYS = Object.keys(ART);
 
   /* 耳朵：都在头圆之前画，等于压在后面。
@@ -270,6 +293,14 @@ window.UI = (function () {
   function animalSvg(key) {
     var d = ART[key];
     if (!d) return '';
+    /* 3D 头像走图片，不走手绘 SVG —— 圆是父级裁的，img 铺满即可。
+       __ASSET_BASE 只在本地预览页（.workbuddy/harness.html，位于子目录）里设成 '../'，
+       正式站没有这个变量，路径就是普通的 assets/… */
+    if (d.img) {
+      var base = (typeof window !== 'undefined' && window.__ASSET_BASE) || '';
+      return '<img class="art-img" src="' + base + 'assets/avatars3d/' + d.img + '" alt="' +
+        U.esc(d.name) + '" draggable="false" />';
+    }
     if (d.hw) return halloweenSvg(key);
     var dark = d.ear === 'penguin' ? '#2b3246' : '#2b3246';
     var eyeFill = d.ear === 'penguin' ? '#FFFFFF' : dark;

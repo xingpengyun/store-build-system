@@ -93,13 +93,21 @@ window.Pages.team = (function () {
       '</label>';
     }).join('');
 
-    /* 动物头像：12 只统一画法的小动物 + 一颗「不用动物」（还是颜色 + 姓氏首字） */
-    var artDots = UI.ANIMAL_KEYS.map(function (k) {
+    /* 头像分三组：3D 头像（图片，新）→ 经典小动物（手绘 SVG）→ 万圣节角色。
+       三组都是 name="art" 的 radio，跨组互斥，选中的那颗描蓝边。 */
+    function artOpt(k) {
       return '<label class="art-opt" title="' + U.esc(UI.ANIMALS[k].name) + '">' +
         '<input type="radio" name="art" value="' + k + '"' + (k === pickedArt ? ' checked' : '') + ' />' +
         UI.avatar(m.name || '新', picked, 'md', k) +
       '</label>';
-    }).join('');
+    }
+    var g3d = [];
+    var gClassic = [];
+    var gHw = [];
+    UI.ANIMAL_KEYS.forEach(function (k) {
+      var d = UI.ANIMALS[k];
+      (d.img ? g3d : (d.hw ? gHw : gClassic)).push(k);
+    });
     var noneDot = '<label class="art-opt is-none" title="不用动物，只用颜色 + 姓氏首字">' +
       '<input type="radio" name="art" value=""' + (pickedArt ? '' : ' checked') + ' />' +
       UI.avatar(m.name || '新', picked, 'md') +
@@ -118,8 +126,18 @@ window.Pages.team = (function () {
               '<div class="field-hint">任务一律派给门店负责人，这里填什么都不改变谁拿到活。</div>' +
             '</div>' +
           '</div>' +
-          '<div class="field"><label>头像 <span class="field-sub">选一只小动物，或者用颜色 + 姓氏首字</span></label>' +
-            '<div id="artPicker" class="art-grid">' + noneDot + artDots + '</div>' +
+          '<div class="field"><label>头像 <span class="field-sub">3D 头像 / 经典小动物 / 万圣节，或者用颜色 + 姓氏首字</span></label>' +
+            '<div id="artPicker" class="art-scroll">' +
+              '<div class="art-group"><div class="art-group-head">3D 头像</div>' +
+                '<div class="art-grid is-3d">' + g3d.map(artOpt).join('') + '</div></div>' +
+              '<div class="art-group"><div class="art-group-head">经典小动物</div>' +
+                '<div class="art-grid">' + gClassic.map(artOpt).join('') + '</div></div>' +
+              '<div class="art-group"><div class="art-group-head">万圣节</div>' +
+                '<div class="art-grid">' + gHw.map(artOpt).join('') + '</div></div>' +
+              /* 「不用头像」单独一组：它跟 3D 头像排一起时，老被当成某个头像点 */
+              '<div class="art-group"><div class="art-group-head">不用头像（颜色 + 姓氏首字）</div>' +
+                '<div class="art-grid">' + noneDot + '</div></div>' +
+            '</div>' +
           '</div>' +
           '<div class="field"><label>头像颜色</label><div id="colorPicker">' + colorDots + '</div></div>' +
         '</form>',
@@ -128,6 +146,18 @@ window.Pages.team = (function () {
         '<button class="btn btn-primary" data-act="save">保存</button>',
       onMount: function (rootEl, close) {
         var noneAva = rootEl.querySelector('.art-opt.is-none .avatar');
+
+        /* 编辑已有成员时，把当前选中的那颗滚到视线中间（不然一打开看不到自己选的是啥）。
+           新增成员不滚：默认选的是「不用头像」，滚到底反而把新做的 3D 头像顶出去了。 */
+        var picker = rootEl.querySelector('#artPicker');
+        if (picker && !isNew) {
+          var onOpt = picker.querySelector('input[name="art"]:checked');
+          onOpt = onOpt && onOpt.closest ? onOpt.closest('.art-opt') : null;
+          if (onOpt) {
+            picker.scrollTop = Math.max(0,
+              onOpt.offsetTop - picker.clientHeight / 2 + onOpt.offsetHeight / 2);
+          }
+        }
 
         rootEl.querySelectorAll('.color-opt input').forEach(function (input) {
           input.addEventListener('change', function () {

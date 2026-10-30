@@ -894,8 +894,30 @@
 .avatar-art { overflow: hidden; padding: 0; }
 .avatar-art svg { width: 112%; height: 112%; display: block; }
 
+/* 3D 头像（z166）：图片铺满整颗圆，不留白边。
+   SVG 那套是「画得比圆大 12%」防止小脸飘，图片不需要，铺满反而更干净。 */
+.avatar-art .art-img,
+.tcard-ava .art-img,
+.acc-chip-ava .art-img,
+.acc-ava .art-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
 /* ---------------- 头像选择器（团队页弹窗） ---------------- */
 .art-grid { display: grid; grid-template-columns: repeat(7, 30px); gap: 10px 11px; }
+
+/* 头像分三组（3D / 经典 / 万圣节）后一次铺 30 颗，弹窗会被拉得很长 → 这里限制高度滚动。
+   分组标题右边拖一条细线，视觉上把组与组分开，但不用画一整条边框。 */
+.art-scroll { max-height: 352px; overflow-y: auto; padding-right: 6px; }
+.art-group + .art-group { margin-top: 13px; }
+.art-group-head {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11.5px; font-weight: 600; color: var(--text-3);
+  letter-spacing: .3px; margin-bottom: 9px;
+}
+.art-group-head::after { content: ''; flex: 1; height: 1px; background: var(--line-2); }
+
+/* 3D 头像那组单独放大到 38px：30px 下图片的质感全糊了，看着跟扁平 SVG 没差 */
+.art-grid.is-3d { grid-template-columns: repeat(6, 38px); gap: 11px 12px; }
+.art-grid.is-3d .art-opt .avatar { width: 38px; height: 38px; flex: 0 0 38px; }
 .art-opt { cursor: pointer; line-height: 0; }
 .art-opt input { display: none; }
 .art-opt .avatar {
