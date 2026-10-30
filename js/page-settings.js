@@ -189,36 +189,46 @@ window.Pages.settings = (function () {
        - 几线价格是一块固定矩阵，但行名（版本）和列名（线级）在这里改
      点「保存字段」写进 settings（跟着云端同步），所有人刷新后可见。 */
 
+  /* ---- 字段行 / 价目行的唯一模板 ----
+     整张卡片渲染和「点 + 添加」出来的是同一种行，所以只留这两个函数出 HTML。
+     之前是两处各写一份，结果新增行的「选项」框忘了带 is-off（看着跟已有行不一样）、
+     placeholder 也不一致，改一处忘一处。 */
+
+  function fldRowHtml(f, idx) {
+    f = f || {};
+    var type = f.type || 'text';
+    var typeOpts = S.fieldTypes().map(function (t) {
+      return '<option value="' + t.key + '"' + (t.key === type ? ' selected' : '') + '>' +
+        U.esc(t.label) + '</option>';
+    }).join('');
+    return '<div class="fld-row" data-fid="' + U.esc(f.id || '') + '">' +
+      '<span class="fld-idx">' + (idx || '') + '</span>' +
+      '<input class="input" data-fld="name" value="' + U.esc(f.name || '') + '" placeholder="字段名，比如 加盟商姓名" />' +
+      '<select class="input" data-fld="type">' + typeOpts + '</select>' +
+      '<input class="input' + (type === 'select' ? '' : ' is-off') + '" data-fld="options" value="' +
+        U.esc((f.options || []).join('、')) + '" ' +
+        'placeholder="仅下拉选择要填，用、分隔，如 一线、二线" />' +
+      '<button class="fld-del" type="button" data-act="delField" title="删掉这个字段">×</button>' +
+    '</div>';
+  }
+
+  function priceRowHtml(r, idx) {
+    r = r || {};
+    return '<div class="price-row" data-pid="' + U.esc(r.id || '') + '">' +
+      '<span class="fld-idx">' + (idx || '') + '</span>' +
+      '<input class="input" data-pr="name" value="' + U.esc(r.name || '') + '" placeholder="档位名，比如 一线" />' +
+      '<input class="input mono" data-pr="price" value="' + U.esc(r.price || '') + '" ' +
+        'inputmode="decimal" placeholder="金额，比如 128000" />' +
+      '<button class="fld-del" type="button" data-act="delPrice" title="删掉这一档">×</button>' +
+    '</div>';
+  }
+
   function fieldCard() {
     var fields = S.storeFields();
     var priceRows = S.priceRows();
-    var types = S.fieldTypes();
 
-    var rows = fields.map(function (f, i) {
-      var typeOpts = types.map(function (t) {
-        return '<option value="' + t.key + '"' + (t.key === f.type ? ' selected' : '') + '>' +
-          U.esc(t.label) + '</option>';
-      }).join('');
-      return '<div class="fld-row" data-fid="' + U.esc(f.id) + '">' +
-        '<span class="fld-idx">' + (i + 1) + '</span>' +
-        '<input class="input" data-fld="name" value="' + U.esc(f.name) + '" placeholder="字段名，比如 加盟商姓名" />' +
-        '<select class="input" data-fld="type">' + typeOpts + '</select>' +
-        '<input class="input' + (f.type === 'select' ? '' : ' is-off') + '" data-fld="options" value="' +
-          U.esc((f.options || []).join('、')) + '" ' +
-          'placeholder="仅下拉选择要填，用、分隔，如 一线、二线" />' +
-        '<button class="fld-del" type="button" data-act="delField" title="删掉这个字段">×</button>' +
-      '</div>';
-    }).join('');
-
-    var priceHtml = priceRows.map(function (r, i) {
-      return '<div class="price-row" data-pid="' + U.esc(r.id) + '">' +
-        '<span class="fld-idx">' + (i + 1) + '</span>' +
-        '<input class="input" data-pr="name" value="' + U.esc(r.name) + '" placeholder="档位名，比如 一线" />' +
-        '<input class="input mono" data-pr="price" value="' + U.esc(r.price) + '" ' +
-          'inputmode="decimal" placeholder="金额，比如 128000" />' +
-        '<button class="fld-del" type="button" data-act="delPrice" title="删掉这一档">×</button>' +
-      '</div>';
-    }).join('');
+    var rows = fields.map(function (f, i) { return fldRowHtml(f, i + 1); }).join('');
+    var priceHtml = priceRows.map(function (r, i) { return priceRowHtml(r, i + 1); }).join('');
 
     return '<div class="card fade-up" id="fldCard" style="animation-delay:.09s">' +
       '<div class="card-head"><h3>门店档案字段</h3>' +
@@ -542,6 +552,22 @@ window.Pages.settings = (function () {
   }
 
   function mount(root) {
+    /* 「转圈 → 跑异步 → 关转圈 → 提示 → 刷新」这套流程清空门店和导入备份各写了一份，
+       出错分支容易漏 hideLoading（转圈会一直挡着），统一走这里。 */
+    function runHeavy(msg, task, okText, errPrefix) {
+      UI.loading(msg);
+      task()
+        .then(function () {
+          UI.hideLoading();
+          UI.toast(okText, 'success');
+          setTimeout(function () { location.reload(); }, 700);
+        })
+        .catch(function (err) {
+          UI.hideLoading();
+          UI.toast(errPrefix + '：' + (err.message || err), 'error');
+        });
+    }
+
     var box = root.querySelector('#arrItemsBox');
     var input = root.querySelector('#itemAddInput');
     var pressTimer = null;
@@ -614,25 +640,18 @@ window.Pages.settings = (function () {
         });
       }
 
+      /* 新增行直接复用卡片渲染那份模板：外头套个临时 div 只为把 HTML 变成元素 */
+      function addRowHtml(html) {
+        var tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        return tmp.firstElementChild;
+      }
+
       function addRow(name, type) {
         var empty = fldList.querySelector('.mf-empty');
         if (empty) empty.remove();
 
-        var typeOpts = S.fieldTypes().map(function (t) {
-          return '<option value="' + t.key + '"' +
-            (t.key === (type || 'text') ? ' selected' : '') + '>' + U.esc(t.label) + '</option>';
-        }).join('');
-
-        var row = document.createElement('div');
-        row.className = 'fld-row';
-        row.setAttribute('data-fid', '');
-        row.innerHTML =
-          '<span class="fld-idx"></span>' +
-          '<input class="input" data-fld="name" value="' + U.esc(name || '') +
-            '" placeholder="字段名，比如 加盟商姓名" />' +
-          '<select class="input" data-fld="type">' + typeOpts + '</select>' +
-          '<input class="input" data-fld="options" value="" placeholder="仅下拉选择要填，用、分隔，如 一线、二线" />' +
-          '<button class="fld-del" type="button" data-act="delField" title="删掉这个字段">×</button>';
+        var row = addRowHtml(fldRowHtml({ name: name, type: type || 'text' }));
         fldList.appendChild(row);
         renumber();
         var nm = row.querySelector('[data-fld="name"]');
@@ -713,14 +732,7 @@ window.Pages.settings = (function () {
 
         if (act === 'addPrice') {
           var list2 = fldCard.querySelector('#priceList');
-          var row2 = document.createElement('div');
-          row2.className = 'price-row';
-          row2.setAttribute('data-pid', '');
-          row2.innerHTML =
-            '<span class="fld-idx"></span>' +
-            '<input class="input" data-pr="name" value="" placeholder="档位名，比如 四线" />' +
-            '<input class="input mono" data-pr="price" value="" inputmode="decimal" placeholder="金额" />' +
-            '<button class="fld-del" type="button" data-act="delPrice" title="删掉这一档">×</button>';
+          var row2 = addRowHtml(priceRowHtml({}));
           list2.appendChild(row2);
           renumber();
           var nm2 = row2.querySelector('[data-pr="name"]');
@@ -1019,17 +1031,9 @@ window.Pages.settings = (function () {
           danger: true,
           okText: '确认清空门店',
           onOk: function () {
-            UI.loading('正在清空门店…');
-            S.clearBusiness()
-              .then(function () {
-                UI.hideLoading();
-                UI.toast('门店和任务已清空，配置都还在', 'success');
-                setTimeout(function () { location.reload(); }, 700);
-              })
-              .catch(function (err) {
-                UI.hideLoading();
-                UI.toast('清空失败：' + (err.message || err), 'error');
-              });
+            runHeavy('正在清空门店…', function () {
+              return S.clearBusiness();
+            }, '门店和任务已清空，配置都还在', '清空失败');
           }
         });
       }
@@ -1138,42 +1142,29 @@ window.Pages.settings = (function () {
       return true;
     }
 
-    function renameStageDlg(from) {
-      var use = S.stageUsage(from);
-
+    /* 改名弹窗：阶段 / 二级共用一套外壳（输入框 + 取消/保存 + 回车即存）。
+       两边原来各写一份 40 行，除了标题、提示文案和落库动作以外完全一样。 */
+    function renameDlg(cfg) {
       UI.modal({
-        title: '给阶段改名',
-        sub: from,
+        title: cfg.title,
+        sub: cfg.sub,
         body:
           '<div class="form-row">' +
             '<label class="form-label">新名称</label>' +
-            '<input class="input" id="smStageNew" maxlength="20" autocomplete="off" value="' + U.esc(from) + '" />' +
+            '<input class="input" id="smRenameInp" maxlength="20" autocomplete="off" value="' + U.esc(cfg.value) + '" />' +
           '</div>' +
-          '<p class="item-hint">' +
-            (use.stores || use.tasks || use.templates
-              ? '会同时改掉 <b>' + use.stores + '</b> 家门店、<b>' + use.tasks + '</b> 条任务、' +
-                '<b>' + use.templates + '</b> 条筹建清单里的这个阶段。'
-              : '目前还没有门店 / 任务用这个阶段。') +
-            '阶段下的二级保持不变。</p>',
+          '<p class="item-hint">' + cfg.hint + '</p>',
         footer:
           '<button class="btn" type="button" data-x="cancel">取消</button>' +
           '<button class="btn btn-primary" type="button" data-x="ok">保存</button>',
         onMount: function (m, close) {
-          var inp = m.querySelector('#smStageNew');
+          var inp = m.querySelector('#smRenameInp');
           if (inp) { inp.focus(); inp.select(); }
 
           function doSave() {
             var v = String(inp.value || '').trim().replace(/\s+/g, ' ');
-            if (!v) { inp.focus(); return; }
-
-            var r = S.renameStage(from, v);
-            if (!r.ok) { UI.toast(r.error, 'error'); inp.focus(); return; }
-
-            close();
-            if (smState.addSub === from) smState.addSub = v;
-            paintSm();
-            UI.toast('「' + from + '」已改名为「' + v + '」' +
-              (r.hit ? '，同步了 ' + r.hit + ' 条数据' : ''), 'success', 2600);
+            if (!v) { inp.focus(); return; }     /* 空名字 = 什么都不做，弹窗留着让用户补 */
+            cfg.save(v, close, inp);
           }
 
           m.addEventListener('click', function (e) {
@@ -1185,6 +1176,31 @@ window.Pages.settings = (function () {
               if (e.key === 'Enter') { e.preventDefault(); doSave(); }
             });
           }
+        }
+      });
+    }
+
+    function renameStageDlg(from) {
+      var use = S.stageUsage(from);
+      renameDlg({
+        title: '给阶段改名',
+        sub: from,
+        value: from,
+        hint:
+          (use.stores || use.tasks || use.templates
+            ? '会同时改掉 <b>' + use.stores + '</b> 家门店、<b>' + use.tasks + '</b> 条任务、' +
+              '<b>' + use.templates + '</b> 条筹建清单里的这个阶段。'
+            : '目前还没有门店 / 任务用这个阶段。') +
+          '阶段下的二级保持不变。',
+        save: function (v, close, inp) {
+          var r = S.renameStage(from, v);
+          if (!r.ok) { UI.toast(r.error, 'error'); inp.focus(); return; }
+
+          close();
+          if (smState.addSub === from) smState.addSub = v;
+          paintSm();
+          UI.toast('「' + from + '」已改名为「' + v + '」' +
+            (r.hit ? '，同步了 ' + r.hit + ' 条数据' : ''), 'success', 2600);
         }
       });
     }
@@ -1236,45 +1252,21 @@ window.Pages.settings = (function () {
     }
 
     function renameSubDlg(base, name) {
-      UI.modal({
+      renameDlg({
         title: '给二级改名',
         sub: base + ' · ' + name,
-        body:
-          '<div class="form-row">' +
-            '<label class="form-label">新名称</label>' +
-            '<input class="input" id="smSubNew" maxlength="20" autocomplete="off" value="' + U.esc(name) + '" />' +
-          '</div>' +
-          '<p class="item-hint">改名会同时改掉<b>筹建任务清单</b>和<b>已派到门店的任务</b>里的这个二级，' +
-            '阶段时间线立刻同步，不会新旧两个名字并存。</p>',
-        footer:
-          '<button class="btn" type="button" data-x="cancel">取消</button>' +
-          '<button class="btn btn-primary" type="button" data-x="ok">保存</button>',
-        onMount: function (m, close) {
-          var inp = m.querySelector('#smSubNew');
-          if (inp) { inp.focus(); inp.select(); }
+        value: name,
+        hint: '改名会同时改掉<b>筹建任务清单</b>和<b>已派到门店的任务</b>里的这个二级，' +
+          '阶段时间线立刻同步，不会新旧两个名字并存。',
+        save: function (v, close) {
+          if (v === name) { close(); return; }        /* 名字没改，直接关掉 */
+          if (v.indexOf('/') >= 0) { UI.toast('二级名称里不要带斜杠', 'error'); return; }
 
-          function doSave() {
-            var v = String(inp.value || '').trim().replace(/\s+/g, ' ');
-            if (!v) { inp.focus(); return; }
-            if (v === name) { close(); return; }
-            if (v.indexOf('/') >= 0) { UI.toast('二级名称里不要带斜杠', 'error'); return; }
-
-            var hit = S.renameStageSub(base, name, v);
-            close();
-            if (smState.addSub === name) smState.addSub = v;
-            paintSm();
-            UI.toast('「' + name + '」已改名为「' + v + '」' + (hit ? '，同步了 ' + hit + ' 条任务' : ''), 'success', 2600);
-          }
-
-          m.addEventListener('click', function (e) {
-            if (e.target.closest('[data-x="ok"]')) doSave();
-            if (e.target.closest('[data-x="cancel"]')) close();
-          });
-          if (inp) {
-            inp.addEventListener('keydown', function (e) {
-              if (e.key === 'Enter') { e.preventDefault(); doSave(); }
-            });
-          }
+          var hit = S.renameStageSub(base, name, v);
+          close();
+          if (smState.addSub === name) smState.addSub = v;
+          paintSm();
+          UI.toast('「' + name + '」已改名为「' + v + '」' + (hit ? '，同步了 ' + hit + ' 条任务' : ''), 'success', 2600);
         }
       });
     }
@@ -1479,18 +1471,9 @@ window.Pages.settings = (function () {
             warn: '导入会先清空云端现有数据，再用这个文件替换。所有同事看到的内容都会变。',
             okText: '确认导入',
             onOk: function () {
-              UI.loading('正在导入到云端…');
-              window.Cloud.wipeAll()
-                .then(function () { return S.importJSON(text); })
-                .then(function () {
-                  UI.hideLoading();
-                  UI.toast('导入成功，云端已更新', 'success');
-                  setTimeout(function () { location.reload(); }, 700);
-                })
-                .catch(function (err) {
-                  UI.hideLoading();
-                  UI.toast('导入失败：' + (err.message || err), 'error');
-                });
+              runHeavy('正在导入到云端…', function () {
+                return window.Cloud.wipeAll().then(function () { return S.importJSON(text); });
+              }, '导入成功，云端已更新', '导入失败');
             }
           });
         };
