@@ -378,7 +378,14 @@ window.Cloud = (function () {
   /* 分页把整张表读干净。order('id') 保证翻页稳定（不排序的话，
      第二页可能又从第一行开始，永远读不完）。 */
   function selectAll(table, cols, onPage) {
-    var db = api().database;
+    var db;
+    try {
+      db = api().database;
+    } catch (e) {
+      /* SDK 没加载时 api() 同步 throw，这里转成 rejected promise，
+         让调用方的 .catch 能兜住，而不是从登录/加载路径同步冒出去白屏（z203） */
+      return Promise.reject(e);
+    }
     var page = PAGE;
     var out = [];
     var seen = {};
@@ -557,7 +564,9 @@ window.Cloud = (function () {
      留言板发帖前用它拿云端最新的一份，合并后再整包写回，
      两个人同时留言就不会互相覆盖。 */
   function pullSettings() {
-    return api().database.from('app_settings').select('*').eq('key', 'main').then(function (r) {
+    var db;
+    try { db = api().database; } catch (e) { return Promise.reject(e); }
+    return db.from('app_settings').select('*').eq('key', 'main').then(function (r) {
       if (r.error) throw new Error(r.error.message || '读取配置失败');
       var row = (r.data || [])[0];
       if (!row || !row.value) return null;
@@ -613,7 +622,9 @@ window.Cloud = (function () {
 
   /* 读票据；读不到（还没有这一行 / 老数据 / 没网络）返回 null → 调用方按全量处理 */
   function pullRev() {
-    return api().database.from('app_settings').select('value').eq('key', REV_KEY)
+    var db;
+    try { db = api().database; } catch (e) { return Promise.reject(e); }
+    return db.from('app_settings').select('value').eq('key', REV_KEY)
       .then(function (r) {
         if (r.error) return null;
         var row = (r.data || [])[0];

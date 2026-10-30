@@ -636,10 +636,6 @@ window.Pages.tasks = (function () {
         if (left != null) sub += ' · 距开业 ' + left + ' 天';
       }
 
-      var dueCell = due
-        ? '<span class="mono ' + (late ? 'text-red' : 'muted') + '">' + U.monthDay(due) + '</span>'
-        : '<span class="dim">未设开业日</span>';
-
       /* 做完了、但门店阶段还没走到这一格 → 标一枚「待越过」，
          不然点完「完成」看阶段没动，容易以为没生效 */
       var gateTag = '';

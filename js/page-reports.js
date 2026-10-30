@@ -97,6 +97,7 @@ window.Pages.reports = (function () {
     var monthMap = {};
     s.stores.forEach(function (x) {
       if (x.stage === '已开业') return;
+      if (!x.openDate) return;   /* 没设开业日的店不归到空月份，否则会多出一栏「undefined年月」 */
       var ym2 = x.openDate.slice(0, 7);
       monthMap[ym2] = (monthMap[ym2] || 0) + 1;
     });

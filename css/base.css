@@ -97,14 +97,9 @@ svg { display: block; }
 .mono { font-variant-numeric: tabular-nums; }
 .muted { color: var(--text-2); }
 .dim { color: var(--text-3); }
-.strong { font-weight: 600; }
-.grow { flex: 1; }
 .clickable { cursor: pointer; }
 
-.text-green { color: var(--green); }
 .text-red { color: var(--red); }
-.text-orange { color: var(--orange); }
-.text-primary { color: var(--primary); }
 
 /* 淡入
    用 backwards 而不是 both：both 会把结束帧（即使写成 transform:none，浏览器也会留成

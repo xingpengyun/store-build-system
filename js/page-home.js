@@ -1009,10 +1009,10 @@ window.Pages.home = (function () {
 
     /* ---- 阶段图例 ---- */
     var legend = st.stageCounts.map(function (sc) {
-      return '<div class="sl-item' + (filterStage === sc.key ? ' on' : '') + '" data-stage="' + sc.key + '"' +
-        ' title="只看「' + sc.key + '」的门店">' +
+      return '<div class="sl-item' + (filterStage === sc.key ? ' on' : '') + '" data-stage="' + U.esc(sc.key) + '"' +
+        ' title="只看「' + U.esc(sc.key) + '」的门店">' +
         '<i class="sl-dot" style="background:' + sc.color + '"></i>' +
-        '<span class="sl-name">' + sc.key + '</span>' +
+        '<span class="sl-name">' + U.esc(sc.key) + '</span>' +
         '<span class="sl-num" style="color:' + sc.color + '">' + sc.count + '</span>' +
         '<span class="sl-unit">家</span>' +
       '</div>';

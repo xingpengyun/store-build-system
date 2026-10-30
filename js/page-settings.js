@@ -12,6 +12,10 @@ window.Pages.settings = (function () {
   function render() {
     var s = S.getState();
 
+    /* 折叠状态记在本机：渲染前先读回来，第一帧就是对的，
+       不会出现「先撑开一大片、再啪一下收起来」的跳（z203） */
+    smState.collapsed = isFolded(foldMap(), SM_KEY);
+
     /* 兜底：没权限的人不该渲染出这一页（正常路径在 app.js render 里就拦掉了） */
     if (!S.canSettings(meName())) {
       return '<div class="page-head fade-up"><div><h1>系统设置</h1>' +
@@ -535,6 +539,18 @@ window.Pages.settings = (function () {
     return willOpen;
   }
 
+  /* 展开 / 收起「阶段与子阶段」，并把结果记进本机（和别的卡共用同一份折叠记录）。
+     z203：以前只改内存里的 smState，切页面 / 重画就丢，「全部展开」对它也只是一次性的。 */
+  function toggleSmCardPersist(root, forceOpen) {
+    var head = root.querySelector('[data-sm-toggle]');
+    if (!head) return false;
+    var open = toggleSmCard(root, forceOpen);
+    var m = foldMap();
+    m[SM_KEY] = !!open;
+    saveFoldMap(m);
+    return open;
+  }
+
   /* 2026-10-24：原来的「逾期倒推口径」（按阶段配默认天数）整块删掉了。
      逾期天数只有一处来源 —— 筹建任务清单里每条任务的「开业前(天)」：
      建议完成日 = 门店计划开业日 − 这条任务的开业前天数。
@@ -865,7 +881,7 @@ window.Pages.settings = (function () {
       /* 「阶段与子阶段」卡标题：展开 / 收起（放在最前，别落到别的分支里） */
       var smToggle = e.target.closest('[data-sm-toggle]');
       if (smToggle && root.contains(smToggle)) {
-        toggleSmCard(root);
+        toggleSmCardPersist(root);
         return;
       }
 
@@ -876,8 +892,9 @@ window.Pages.settings = (function () {
         if (k === 'stages') {
           var smb = root.querySelector('#smList');
           if (smb) {
-            /* 卡是收起的就先展开（forceOpen，不切换） */
-            toggleSmCard(root, true);
+            /* 卡是收起的就先展开（forceOpen，不切换）；展开状态也记下来，
+               免得为了看阶段而滚下去、下一次重画又收回去 */
+            toggleSmCardPersist(root, true);
             if (smb.scrollIntoView) smb.scrollIntoView({ behavior: 'smooth', block: 'center' });
             var smCard = smb.closest('.card');
             if (smCard) {
@@ -1010,11 +1027,11 @@ window.Pages.settings = (function () {
         var rn = el.getAttribute('data-name');
         UI.confirm({
           title: '收回权限',
-          text: '「' + rn + '」之后就看不到「系统设置」了，其他页面照常能用。',
+          text: '「' + U.esc(rn) + '」之后就看不到「系统设置」了，其他页面照常能用。',
           okText: '收回',
           onOk: function () {
             if (S.revokeSettings(rn)) {
-              UI.toast('已收回「' + rn + '」的权限', 'success');
+              UI.toast('已收回「' + U.esc(rn) + '」的权限', 'success');
               App.refresh({ keep: true });
             }
           }
@@ -1288,7 +1305,7 @@ window.Pages.settings = (function () {
           title: '删除二级「' + name + '」',
           text: (use.templates ? '筹建任务清单里有 <b>' + use.templates + '</b> 条、' : '') +
             (use.tasks ? '门店任务里有 <b>' + use.tasks + '</b> 条' : '') +
-            '挂在「' + base + ' · ' + name + '」上。',
+            '挂在「' + U.esc(base) + ' · ' + U.esc(name) + '」上。',
           warn: '它们的阶段会退回一级「' + base + '」，任务本身不删。改动立刻同步到阶段时间线。',
           danger: true,
           okText: '确认删除',
@@ -1300,13 +1317,38 @@ window.Pages.settings = (function () {
       doRemove();
     }
 
-    /* 按住行首手柄上下拖 → 调一级阶段顺序（逻辑照搬任务页原来那套） */
+    /* 按住行首手柄上下拖 → 调一级阶段顺序（逻辑照搬任务页原来那套）。
+       z203 修泄漏：pointermove 挂在 smBox 上（随页面销毁一起 GC），
+       只有 pointerup/pointercancel 挂 document（命名函数 + capture，拖完即摘）。
+       以前 document 上挂的是匿名 pointermove/pointerup 且从不移除，
+       每进一次设置页就多两个永远不死的回调，几十次后鼠标一动就白跑一堆。 */
     (function bindSmDrag() {
       var drag = null;
 
       function pairOf(node) {
         var sib = node.nextElementSibling;
         return (sib && sib.classList && sib.classList.contains('sm-subs')) ? sib : null;
+      }
+
+      function onDocUp() {
+        if (!drag) return;
+        var d = drag;
+        drag = null;
+        document.removeEventListener('pointerup', onDocUp, true);
+        document.removeEventListener('pointercancel', onDocUp, true);
+
+        d.node.classList.remove('sm-dragging');
+        document.body.classList.remove('sm-sorting');
+
+        if (!d.moved) return;
+
+        var keys = [].slice.call(smBox.querySelectorAll('.sm-row')).map(function (n) {
+          return n.getAttribute('data-sm-stage');
+        });
+
+        S.saveStageOrder(keys);
+        paintSm();
+        UI.toast('阶段顺序已保存', 'success', 1600);
       }
 
       smBox.addEventListener('pointerdown', function (e) {
@@ -1322,9 +1364,12 @@ window.Pages.settings = (function () {
           startY: e.clientY,
           moved: false
         };
+        /* 松手可能发生在列表外，所以挂 document（capture 保证收到），拖完即摘 */
+        document.addEventListener('pointerup', onDocUp, true);
+        document.addEventListener('pointercancel', onDocUp, true);
       });
 
-      document.addEventListener('pointermove', function (e) {
+      smBox.addEventListener('pointermove', function (e) {
         if (!drag) return;
 
         if (!drag.moved) {
@@ -1359,25 +1404,6 @@ window.Pages.settings = (function () {
         if (last === drag.node) return;
         smBox.appendChild(drag.node);
         if (pair) smBox.appendChild(pair);
-      });
-
-      document.addEventListener('pointerup', function () {
-        if (!drag) return;
-        var d = drag;
-        drag = null;
-
-        d.node.classList.remove('sm-dragging');
-        document.body.classList.remove('sm-sorting');
-
-        if (!d.moved) return;
-
-        var keys = [].slice.call(smBox.querySelectorAll('.sm-row')).map(function (n) {
-          return n.getAttribute('data-sm-stage');
-        });
-
-        S.saveStageOrder(keys);
-        paintSm();
-        UI.toast('阶段顺序已保存', 'success', 1600);
       });
     })();
 
@@ -1485,14 +1511,17 @@ window.Pages.settings = (function () {
     applyCardFold(root);
   }
 
-  /* ================= 所有设置卡都能折叠（z163） =================
+  /* ================= 所有设置卡都能折叠（z163，z203 统一口径） =================
      9 张卡平铺下来太长，改成每张卡的头都能点：收起只留标题，状态记在本机。
-     - 已经自带折叠的卡（阶段与子阶段）跳过，免得两个把手打架
+     - 默认全部收起（本机记过「展开」的除外）——以前只有「阶段与子阶段」默认收起、
+       其余 8 张默认展开，一页里两种规矩，看着就像 bug（z203 统一）
+     - 已经自带折叠的卡（阶段与子阶段）也登记进来，不重包 DOM，只借它的开关
      - 只重新包一层 DOM，原内容和绑在卡上的事件都不动
-     - 头里的按钮（保存之类）不触发折叠
+     - 头里的按钮 / 输入框不触发折叠：点它们就是在操作它们
      ============================================================ */
 
   var FOLD_KEY = 'sbs.settings.fold.v1';
+  var SM_KEY = '阶段与子阶段';        /* 自带折叠那张卡的键，跟它的标题走 */
 
   function foldMap() {
     try {
@@ -1506,6 +1535,9 @@ window.Pages.settings = (function () {
     try { localStorage.setItem(FOLD_KEY, JSON.stringify(m)); } catch (e) {}
   }
 
+  /* 存的是「是否展开」：没记过 = 默认收起 */
+  function isFolded(map, key) { return map[key] !== true; }
+
   function applyCardFold(root) {
     var map = foldMap();
     var heads = [];
@@ -1513,12 +1545,15 @@ window.Pages.settings = (function () {
     Array.prototype.forEach.call(root.querySelectorAll('.card'), function (card) {
       var head = card.querySelector('.card-head');
       if (!head) return;
-      if (head.hasAttribute('data-sm-toggle')) return;      /* 自带折叠 */
+      if (head.hasAttribute('data-sm-toggle')) return;      /* 自带折叠，循环外单独登记 */
       if (card.getAttribute('data-fold-ready')) return;
 
       var h3 = head.querySelector('h3');
       var key = (h3 ? h3.textContent : '').trim();
       if (!key) return;
+      /* 标题重名时别让两张卡共用一个键（否则点一张、另一张跟着动） */
+      var base = key, n2 = 2;
+      while (heads.some(function (x) { return x.key === key; })) { key = base + ' #' + (n2++); }
 
       /* 把标题之后的所有节点收进面板 */
       var panel = document.createElement('div');
@@ -1540,10 +1575,20 @@ window.Pages.settings = (function () {
 
       card.setAttribute('data-fold-ready', '1');
       card.setAttribute('data-fold-key', key);
-      heads.push({ card: card, head: head, panel: panel, caret: caret, key: key });
+      heads.push({ card: card, head: head, panel: panel, caret: caret, key: key, sm: false });
 
-      setFold(card, head, panel, caret, map[key] === false);
+      setFold(card, head, panel, caret, isFolded(map, key));
     });
+
+    /* 「阶段与子阶段」自带折叠：不重包 DOM，只登记，好让「全部展开 / 收起」名副其实 */
+    var smHead = root.querySelector('[data-sm-toggle]');
+    if (smHead) {
+      toggleSmCard(root, !isFolded(map, SM_KEY));
+      heads.push({
+        card: smHead.closest('.card'), head: smHead, panel: null,
+        caret: smHead.querySelector('.sm-caret'), key: SM_KEY, sm: true
+      });
+    }
 
     function setFold(card, head, panel, caret, collapsed) {
       card.classList.toggle('is-collapsed', !!collapsed);
@@ -1557,6 +1602,9 @@ window.Pages.settings = (function () {
       var hit = null;
       heads.forEach(function (x) { if (x.head === head) hit = x; });
       if (!hit) return;
+
+      if (hit.sm) { toggleSmCardPersist(root); return; }
+
       var willCollapse = !hit.panel.hidden;
       setFold(hit.card, hit.head, hit.panel, hit.caret, willCollapse);
 
@@ -1565,7 +1613,7 @@ window.Pages.settings = (function () {
       saveFoldMap(m);
     }
 
-    /* 头里的按钮 / 输入框不要触发折叠 */
+    /* 头里的按钮 / 输入框不要触发折叠（点、按 Enter/空格都算操作它们） */
     function fromControl(t) {
       return !!(t && t.closest && t.closest('button, a, input, select, textarea, label'));
     }
@@ -1581,6 +1629,9 @@ window.Pages.settings = (function () {
       if (e.key !== 'Enter' && e.key !== ' ') return;
       var head = e.target.closest && e.target.closest('.card-head.is-fold');
       if (!head || !root.contains(head)) return;
+      /* z203：以前这里没拦控件 —— 焦点在「保存」这类按钮上时，空格会被折叠吃掉
+         （preventDefault 之后按钮也点不动了），现在只在标题栏自己身上响应 */
+      if (fromControl(e.target)) return;
       e.preventDefault();
       toggle(head);
     });
@@ -1600,13 +1651,12 @@ window.Pages.settings = (function () {
         var b = e.target.closest('[data-fold]');
         if (!b) return;
         var collapse = b.getAttribute('data-fold') === 'collapse';
-        heads.forEach(function (x) {
-          setFold(x.card, x.head, x.panel, x.caret, collapse);
-        });
-        /* 「阶段与子阶段」自带折叠，也一起收 / 展，不然「全部」名不副实 */
-        toggleSmCard(root, !collapse);
         var m = foldMap();
-        heads.forEach(function (x) { m[x.key] = !collapse; });
+        heads.forEach(function (x) {
+          if (x.sm) { toggleSmCard(root, !collapse); }
+          else { setFold(x.card, x.head, x.panel, x.caret, collapse); }
+          m[x.key] = !collapse;
+        });
         saveFoldMap(m);
       });
     }

@@ -503,12 +503,8 @@ button:focus-visible,
 .card.accent-blue   { --accent: #0091ff; --accent-soft: #e1f0ff; }
 .card.accent-green  { --accent: #30a46c; --accent-soft: #ddf3e4; }
 .card.accent-teal   { --accent: #12a594; --accent-soft: #d9f3ee; }
-.card.accent-orange { --accent: #f76b15; --accent-soft: #fff1e8; }
-.card.accent-amber  { --accent: #d1960c; --accent-soft: #fff4c2; }
 .card.accent-red    { --accent: #e5484d; --accent-soft: #ffe5e5; }
-.card.accent-pink   { --accent: #e93d82; --accent-soft: #fce5f3; }
 .card.accent-violet { --accent: #8e4ec6; --accent-soft: #f3e7fc; }
-.card.accent-plum   { --accent: #ab4aba; --accent-soft: #f9e5f9; }
 
 .card[class*="accent-"] {
   border-top: 2px solid var(--accent);

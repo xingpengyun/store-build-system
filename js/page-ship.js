@@ -724,13 +724,13 @@ window.Pages.ship = (function () {
   }
 
   function mount(root) {
-    /* 搜索 */
+    /* 搜索（防抖：跟门店/任务页一致，输入时别每个字符都整表重算） */
     var q = root.querySelector('#shipQ');
     if (q) {
-      q.addEventListener('input', function () {
+      q.addEventListener('input', U.debounce(function () {
         state.q = q.value;
         updateList(root);   /* 只换表体，输入框不重建，焦点不丢 */
-      });
+      }, 240));
     }
 
     root.addEventListener('click', function (e) {

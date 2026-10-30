@@ -3,6 +3,12 @@
    ========================================================== */
 window.Charts = (function () {
   'use strict';
+  var U = window.Utils;
+
+  /* 颜色只接受 #RGB / #RRGGBB / #RRGGBBAA，防注入到 style 属性（z203） */
+  function safeColor(c) {
+    return /^#[0-9a-fA-F]{3,8}$/.test(String(c || '')) ? c : '#3f6bf5';
+  }
 
   /* ---------- 环形图 ---------- */
   function donut(items, opts) {
@@ -26,12 +32,12 @@ window.Charts = (function () {
       var len = it.value / total * circ;
       var draw = Math.max(len - gap, 1);
       segs += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r.toFixed(2) + '"' +
-        ' fill="none" stroke="' + it.color + '" stroke-width="' + sw.toFixed(2) + '"' +
+        ' fill="none" stroke="' + safeColor(it.color) + '" stroke-width="' + sw.toFixed(2) + '"' +
         ' stroke-dasharray="' + draw.toFixed(2) + ' ' + (circ - draw).toFixed(2) + '"' +
         ' stroke-dashoffset="' + (-offset).toFixed(2) + '"' +
         ' transform="rotate(-90 ' + cx + ' ' + cy + ')"' +
         ' style="transition:stroke-dasharray .5s">' +
-        (it.name ? '<title>' + it.name + '：' + it.value + '</title>' : '') +
+        (it.name ? '<title>' + U.esc(it.name) + '：' + it.value + '</title>' : '') +
         '</circle>';
       offset += len;
     });
@@ -70,7 +76,7 @@ window.Charts = (function () {
     }).join('');
 
     var ticks = trend.map(function (t) {
-      return '<span>' + t.label + '</span>';
+      return '<span>' + U.esc(t.label) + '</span>';
     }).join('');
 
     return '<div class="bars">' + cols + '</div><div class="bar-ticks">' + ticks + '</div>';
@@ -85,12 +91,13 @@ window.Charts = (function () {
     if (total <= 0) return '<div class="stage-bar"></div>';
 
     var segs = items.filter(function (i) { return i.count > 0; }).map(function (i) {
+      var key = U.esc(i.key);
       var attr = opts.clickable
-        ? ' class="seg' + (opts.active === i.key ? ' on' : '') + '" data-stage="' + i.key + '"'
+        ? ' class="seg' + (opts.active === i.key ? ' on' : '') + '" data-stage="' + key + '"'
         : '';
-      return '<i style="width:' + (i.count / total * 100).toFixed(2) + '%;background:' + i.color + '"' +
+      return '<i style="width:' + (i.count / total * 100).toFixed(2) + '%;background:' + safeColor(i.color) + '"' +
         attr +
-        ' title="' + i.key + ' ' + i.count + ' 家"></i>';
+        ' title="' + key + ' ' + i.count + ' 家"></i>';
     }).join('');
 
     return '<div class="stage-bar">' + segs + '</div>';
@@ -111,10 +118,10 @@ window.Charts = (function () {
 
     return items.map(function (i) {
       var zero = !i.value;
-      var color = i.color || '#3f6bf5';
+      var color = safeColor(i.color);
       return '<div class="stat-row' + (zero ? ' is-zero' : '') + '">' +
         '<span class="sr-dot" style="background:' + color + '"></span>' +
-        '<span class="sr-name">' + i.name + '</span>' +
+        '<span class="sr-name">' + U.esc(i.name) + '</span>' +
         '<span class="sr-track"><i style="width:' + (i.value / max * 100).toFixed(1) + '%;background:' + color + '"></i></span>' +
         '<span class="sr-val">' + i.value + '</span>' +
       '</div>';

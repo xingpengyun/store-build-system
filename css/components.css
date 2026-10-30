@@ -564,7 +564,6 @@
   border-radius: 50%;
   background: currentColor;
 }
-.badge-plain { background: transparent; padding: 0; }
 
 /* ---------------- 按钮 ---------------- */
 .btn {
@@ -1514,8 +1513,6 @@
 }
 .fld-del:hover { background: var(--red-soft); color: var(--red); }
 .fld-add { display: flex; gap: 8px; margin-top: 10px; }
-.cfg-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.cfg-row-6 { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
 .cfg-label { font-size: 11.5px; color: var(--text-3); margin: 12px 0 6px; }
 
 /* ---------------- Toast ---------------- */
@@ -3147,41 +3144,10 @@
 
 .sk-body { padding: 0 12px 10px; border-top: 1px dashed var(--line-2); }
 
-.sk-tbl { width: 100%; border-collapse: collapse; }
-.sk-tbl th {
-  text-align: left;
-  font-weight: 500;
-  font-size: 10.5px;
-  color: var(--text-3);
-  padding: 9px 8px 6px;
-  border-bottom: 1px solid var(--line-2);
-}
-.sk-tbl td {
-  padding: 8px;
-  border-bottom: 1px dashed var(--line-2);
-  font-size: 12px;
-  color: var(--text-2);
-  vertical-align: middle;
-}
-.sk-tbl tr:last-child td { border-bottom: 0; }
-
-/* 鼠标扫过任务行：整行提亮 + 左起一道主色竖条 + 任务名染色。
-   清单拉到十几行时，光靠"手型光标"看不出指着哪一行，
-   这里让被指的那行自己亮起来（竖条常占位、只是透明，悬停不跳版） */
-.sk-tbl tbody tr { transition: background-color .16s ease; }
-.sk-tbl tbody td:first-child {
-  border-left: 3px solid transparent;
-  transition: border-left-color .16s ease;
-}
-.sk-tbl tbody tr:hover { background: #f2f7ff; }
-.sk-tbl tbody tr:hover td:first-child { border-left-color: var(--primary); }
-.sk-tbl tbody tr:hover .sk-task-title { color: var(--primary); }
 .sk-task-title { font-size: 12.5px; color: var(--text); }
 
 /* 打完勾那一瞬：标题从左往右划一道线（线宽 0 → 100%） */
-.sk-tbl .sk-task-title,
 .sk-card .sk-task-title { position: relative; }
-.sk-tbl .sk-task-title::after,
 .sk-card .sk-task-title::after {
   content: '';
   position: absolute;
@@ -3196,15 +3162,12 @@
 }
 
 /* 正在完成的那一行：绿从左扫过去 + 整行淡下去（640ms 后会被重画替换） */
-.sk-tbl tbody tr.is-completing,
 .sk-card.is-completing {
   pointer-events: none;
   background: linear-gradient(90deg, rgba(220, 247, 234, .95) 0%, rgba(220, 247, 234, 0) 76%);
   animation: tkRowDone .64s ease-out forwards;
 }
-.sk-tbl tbody tr.is-completing .sk-task-title,
 .sk-card.is-completing .sk-task-title { color: var(--text-3); }
-.sk-tbl tbody tr.is-completing .sk-task-title::after,
 .sk-card.is-completing .sk-task-title::after { width: 100%; }
 @keyframes tkRowDone {
   0% { opacity: 1; }
@@ -3961,13 +3924,6 @@ body.sm-sorting * { cursor: grabbing !important; user-select: none !important; }
 /* 发出：胶囊 + 下一步
    2026-10-25：已发出下面那个「登记实发日期」的输入框撤了，只留状态和下一步 */
 .ship-sent { min-width: 124px; }
-.ship-next {
-  margin-top: 4px;
-  font-size: 10.5px;
-  line-height: 1.35;
-  color: var(--text-3);
-  white-space: normal;
-}
 
 /* 备注 */
 .ship-note {

@@ -865,7 +865,17 @@ window.Store = (function () {
     } catch (e) { revP = null; }
     if (!revP || !revP.then) revP = Promise.resolve(null);
 
-    return Promise.all([window.Cloud.pullAll(onProgress), revP.catch(function () { return null; })])
+    /* pullAll 内部第一行会同步调 Cloud 的 api()，SDK 没加载时是同步 throw，
+       会绕过下面这条 .catch 直接从 load() 冒出去、导致启动白屏。
+       这里先把它兜成 rejected promise（z203） */
+    var pullP;
+    try {
+      pullP = window.Cloud.pullAll(onProgress);
+    } catch (e) {
+      pullP = Promise.reject(e);
+    }
+
+    return Promise.all([pullP, revP.catch(function () { return null; })])
       .then(function (both) {
       var data = both[0];
       var revAtStart = both[1];
@@ -1054,7 +1064,8 @@ window.Store = (function () {
     /* 切回这个标签 / 重新获得焦点，立刻拉一次 —— 不用等下一个轮询周期 */
     if (!syncBound) {
       syncBound = true;
-      var onWake = function () { if (!document.hidden) syncOnce(); };
+      /* stopAutoSync 之后切回标签/聚焦不该再拉（z203） */
+      var onWake = function () { if (!document.hidden && syncOnChange) syncOnce(); };
       document.addEventListener('visibilitychange', onWake);
       window.addEventListener('focus', onWake);
     }
@@ -1371,8 +1382,16 @@ window.Store = (function () {
       return d >= 0 && d <= Number(C.ARR_WATCH_DAYS || 7);
     }).length;
 
+    /* 先按负责人把任务分好组，别在成员 map 里对每家店/每个人都 filter 全表（O(成员×任务) → O(任务)） */
+    var byAssignee = {};
+    st.tasks.forEach(function (t) {
+      var k = t.assigneeId || '';
+      if (!byAssignee[k]) byAssignee[k] = [];
+      byAssignee[k].push(t);
+    });
+
     var team = st.members.map(function (m) {
-      var mine = st.tasks.filter(function (t) { return t.assigneeId === m.id; });
+      var mine = byAssignee[m.id] || [];
       var done = 0, late = 0;
       mine.forEach(function (t) {
         var c = classify(t);
@@ -2265,9 +2284,17 @@ window.Store = (function () {
     var t0 = U.today();
     var watchDays = Number(C.ARR_WATCH_DAYS || 7);
 
+    /* 先按门店把到货记录分好组，别在 store.map 里对每家店都 filter 一遍全表（O(店×到货) → O(店+到货)） */
+    var arrivalsByStore = {};
+    state.arrivals.forEach(function (a) {
+      var k = a.storeId || '';
+      if (!arrivalsByStore[k]) arrivalsByStore[k] = [];
+      arrivalsByStore[k].push(a);
+    });
+
     var rows = state.stores.map(function (s) {
       var info = shipOf(s.id);
-      var list = state.arrivals.filter(function (a) { return a.storeId === s.id; });
+      var list = arrivalsByStore[s.id] || [];
       var pend = list.filter(function (a) { return !arrNotified(a); });
 
       /* 还没到的物料里最早的那个到货日 —— 门店给的时间，不改它、只用来提示 */
@@ -3344,9 +3371,10 @@ window.Store = (function () {
     var id = store && store.id;
     var total = 0, done = 0;
     if (id) {
-      for (var i = 0; i < state.tasks.length; i++) {
-        var t = state.tasks[i];
-        if (t.storeId !== id) continue;
+      /* 走 byStore 索引，别每次全表扫 state.tasks（首页对全部门店逐行调它，是 O(店×任务)） */
+      var list = tasksOf(id);
+      for (var i = 0; i < list.length; i++) {
+        var t = list[i];
         total++;
         if (t.status === 'done') done++;
       }
