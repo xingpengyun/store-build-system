@@ -476,14 +476,17 @@ window.UI = (function () {
 
   /* ---------------- 弹窗 ---------------- */
   var openModal = null;
+  /* 弹窗可以叠（opts.stack = true）：门店详情点「更多」会再叠一层大的上去，
+     下面那层不关。Esc / 关全部都只认栈。 */
+  var modalStack = [];
 
   function modal(opts) {
-    closeModal();
+    if (!opts.stack) closeModal();
     var root = document.getElementById('modalRoot');
     var mask = document.createElement('div');
     mask.className = 'modal-mask';
     mask.innerHTML =
-      '<div class="modal' + (opts.size === 'lg' ? ' modal-lg' : '') + '" role="dialog">' +
+      '<div class="modal' + (opts.size === 'lg' ? ' modal-lg' : opts.size === 'xl' ? ' modal-xl' : '') + '" role="dialog">' +
         '<div class="modal-head">' +
           '<h3>' + U.esc(opts.title || '') + '</h3>' +
           (opts.sub ? '<span class="modal-sub">' + U.esc(opts.sub) + '</span>' : '') +
@@ -495,13 +498,19 @@ window.UI = (function () {
 
     root.appendChild(mask);
     openModal = mask;
+    modalStack.push(mask);
 
     function close() {
       mask.remove();
-      if (openModal === mask) openModal = null;
+      modalStack = modalStack.filter(function (m) { return m !== mask; });
+      openModal = modalStack.length ? modalStack[modalStack.length - 1] : null;
       document.removeEventListener('keydown', onKey);
     }
-    function onKey(e) { if (e.key === 'Escape') close(); }
+    function onKey(e) {
+      if (e.key !== 'Escape') return;
+      /* 叠了多层时只有最上面那层吃 Esc，不然一次全关 */
+      if (modalStack[modalStack.length - 1] === mask) close();
+    }
 
     mask.querySelector('.modal-close').addEventListener('click', close);
     mask.addEventListener('mousedown', function (e) {
@@ -516,6 +525,10 @@ window.UI = (function () {
   }
 
   function closeModal() {
+    while (modalStack.length) {
+      var m = modalStack.pop();
+      if (m && m.parentNode) m.remove();
+    }
     if (openModal) {
       openModal.remove();
       openModal = null;

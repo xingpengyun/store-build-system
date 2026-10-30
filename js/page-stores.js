@@ -544,6 +544,7 @@ window.Pages.stores = (function () {
       size: 'lg',
       body: body,
       footer:
+        '<button class="btn foot-left" data-act="more">更多</button>' +
         '<button class="btn" data-act="close">关闭</button>' +
         (S.templates().length ? '<button class="btn" data-act="dispatch">按清单补派任务</button>' : '') +
         '<button class="btn btn-primary" data-act="edit">编辑门店</button>',
@@ -733,6 +734,315 @@ window.Pages.stores = (function () {
           } else {
             UI.toast('没有可补派的任务（清单为空，或清单里的任务都已存在）', 'info');
           }
+        };
+
+        /* 更多：再叠一层更大的弹窗，下面这层详情不关 */
+        rootEl.querySelector('[data-act="more"]').onclick = function () {
+          openMore(store.id);
+        };
+      }
+    });
+  }
+
+  /* ---------------- 更多：叠一层的「全档案」弹窗（z161） ----------------
+     详情弹窗底部左边的「更多」→ 再叠一层更大的弹窗（UI.modal 的 stack），
+     下面那层详情不关，关掉这层就回到详情。放详情里塞不下的东西：
+       1) 完整档案（阶段 / 风险 / 开业 / 建档时间 / 地址 / 备注）
+       2) 几线价格：版本 × 线级 的矩阵，行列名在设置里改
+       3) 门店档案字段：字段清单由「系统设置 → 门店档案字段」决定，这里按类型渲染
+       4) 任务 / 物料的汇总口径
+     所有值都落 settings，跟着云端同步，不改表结构。
+     ------------------------------------------------------------------ */
+  function moneyOf(v) {
+    var n = Number(String(v == null ? '' : v).replace(/[^\d.]/g, ''));
+    return isFinite(n) ? n : 0;
+  }
+
+  function fmtMoney(n) {
+    var fixed = Math.round(n * 100) / 100;
+    try {
+      return fixed.toLocaleString('zh-CN', { maximumFractionDigits: 2 });
+    } catch (e) {
+      return String(fixed);
+    }
+  }
+
+  /* 一个字段的输入控件。全部带 data-fid，改完由 openMore 里的事件统一收口 */
+  function fieldInput(f, v) {
+    var id = U.esc(f.id);
+    var val = (v == null) ? '' : String(v);
+
+    if (f.type === 'select') {
+      var opts = (f.options || []).map(function (o) {
+        return '<option value="' + U.esc(o) + '"' + (o === val ? ' selected' : '') + '>' +
+          U.esc(o) + '</option>';
+      }).join('');
+      return '<select class="input" data-fid="' + id + '" data-ftype="select">' +
+        '<option value=""' + (val ? '' : ' selected') + '>未选择</option>' + opts + '</select>';
+    }
+    if (f.type === 'date') {
+      return '<input class="input" type="date" data-fid="' + id + '" data-ftype="date" ' +
+        'value="' + U.esc(val) + '" />';
+    }
+    if (f.type === 'textarea') {
+      return '<textarea class="input" rows="2" data-fid="' + id + '" data-ftype="textarea" ' +
+        'placeholder="未填写">' + U.esc(val) + '</textarea>';
+    }
+    if (f.type === 'money') {
+      return '<input class="input mono" type="text" inputmode="decimal" data-fid="' + id + '" ' +
+        'data-ftype="money" value="' + U.esc(val) + '" placeholder="未填写" />';
+    }
+    return '<input class="input" type="text" data-fid="' + id + '" data-ftype="' + U.esc(f.type) + '" ' +
+      'value="' + U.esc(val) + '" placeholder="未填写" />';
+  }
+
+  function openMore(id) {
+    var store = S.storeById(id);
+    if (!store) return;
+
+    var owner = S.memberById(store.ownerId);
+    var tasks = S.getState().tasks.filter(function (t) { return t.storeId === id; });
+    var arrivals = S.getState().arrivals.filter(function (a) { return a.storeId === id; });
+    var matrix = S.storePriceMatrix(store);
+    var fields = S.storeFields().filter(function (f) { return f.show !== false; });
+    var vals = S.storeFieldVals(store);
+
+    var stageObj = null;
+    C.STAGES.forEach(function (x) { if (x.key === store.stage) stageObj = x; });
+
+    var days = U.diffDays(U.today(), store.openDate);
+    var pr = S.storeProgress(store);
+
+    var cnt = { done: 0, doing: 0, pending: 0, overdue: 0, risk: 0 };
+    tasks.forEach(function (t) {
+      var c = S.classify(t);
+      if (c === 'done' || c === 'doing' || c === 'overdue' || c === 'risk') cnt[c]++;
+      else cnt.pending++;
+    });
+    var arrDone = arrivals.filter(function (a) { return S.arrNotified(a); }).length;
+
+    /* ---- 几线价格矩阵：行 = 版本，列 = 线级 ---- */
+    var pmHead = '<tr><th class="pm-corner">版本 \\ 线级</th>' +
+      matrix.tiers.map(function (t) {
+        return '<th>' + U.esc(t) + '</th>';
+      }).join('') + '<th class="pm-rowsum">行合计</th></tr>';
+
+    var pmBody = matrix.versions.map(function (ver, r) {
+      var cells = matrix.tiers.map(function (t, c) {
+        var v = matrix.rows[r] ? matrix.rows[r][c] : '';
+        return '<td><input class="pm-in mono" type="text" inputmode="decimal" ' +
+          'data-pr="' + r + '" data-pc="' + c + '" value="' + U.esc(v) + '" placeholder="—" ' +
+          'title="' + U.esc(ver + ' · ' + t) + '" /></td>';
+      }).join('');
+      return '<tr>' +
+        '<td class="pm-row"><i class="pm-bullet"></i><span contenteditable="false">' + U.esc(ver) + '</span></td>' +
+        cells +
+        '<td class="pm-rowsum" data-rowsum="' + r + '">—</td>' +
+      '</tr>';
+    }).join('');
+
+    var pmFoot = '<tr class="pm-foot-row"><td class="pm-row">列合计</td>' +
+      matrix.tiers.map(function (t, c) {
+        return '<td class="pm-colsum" data-colsum="' + c + '">—</td>';
+      }).join('') +
+      '<td class="pm-total" data-grand="1">—</td></tr>';
+
+    var priceBox =
+      '<div class="pm-wrap">' +
+        '<table class="pm-tbl"><thead>' + pmHead + '</thead><tbody>' + pmBody + '</tbody>' +
+          '<tfoot>' + pmFoot + '</tfoot>' +
+        '</table>' +
+      '</div>' +
+      '<p class="pm-hint">行列名（版本 / 一线二线三线）在「系统设置 → 门店档案字段」里改；这里只填金额。</p>';
+
+    /* ---- 自定义档案字段 ---- */
+    var fieldHtml = fields.map(function (f) {
+      var cur = vals[f.id];
+
+      if (f.type === 'tier3') {
+        var obj = (cur && typeof cur === 'object' && !Array.isArray(cur)) ? cur : {};
+        var cells = matrix.tiers.map(function (t, i) {
+          return '<label class="mf-tier"><span>' + U.esc(t) + '</span>' +
+            '<input class="input mono" type="text" inputmode="decimal" ' +
+              'data-fid="' + U.esc(f.id) + '" data-ftype="tier3" data-tier="' + U.esc(t) + '" ' +
+              'value="' + U.esc(obj[t] == null ? '' : obj[t]) + '" placeholder="—" /></label>';
+        }).join('');
+        return '<div class="mf-item is-wide"><div class="mf-label">' + U.esc(f.name) + '</div>' +
+          '<div class="mf-tier-row">' + cells + '</div></div>';
+      }
+
+      var v = (cur == null || typeof cur === 'object') ? '' : String(cur);
+      return '<div class="mf-item"><div class="mf-label">' + U.esc(f.name) + '</div>' +
+        fieldInput(f, v) + '</div>';
+    }).join('');
+
+    if (!fields.length) {
+      fieldHtml = '<p class="mf-empty">还没有配置字段。去「系统设置 → 门店档案字段」加几个，比如加盟商姓名、电话、区域经理。</p>';
+    }
+
+    function chip(n, label) {
+      return '<span class="stat-chip"><b>' + n + '</b>' + label + '</span>';
+    }
+
+    var body =
+      '<div class="section-title">门店档案</div>' +
+      '<div class="desc-list is-3">' +
+        '<div class="d-item"><div class="d-label">当前阶段</div><div class="d-val">' +
+          UI.stageBadge(store.stage, S.storeSub(store)) + '</div></div>' +
+        '<div class="d-item"><div class="d-label">风险等级</div><div class="d-val">' +
+          UI.riskBadge(store.risk) + '</div></div>' +
+        '<div class="d-item"><div class="d-label">省份</div><div class="d-val">' +
+          U.esc(store.province || '—') + '</div></div>' +
+        '<div class="d-item"><div class="d-label">负责人</div><div class="d-val">' +
+          (owner ? U.esc(owner.name) : '<span class="dim">未指派</span>') + '</div></div>' +
+        '<div class="d-item"><div class="d-label">计划开业</div><div class="d-val mono">' +
+          (store.openDate
+            ? store.openDate + ' <span class="dim" style="font-weight:400">（' +
+              (days >= 0 ? '还剩 ' + days + ' 天' : '已过 ' + (-days) + ' 天') + '）</span>'
+            : '<span class="dim">未设置</span>') + '</div></div>' +
+        '<div class="d-item"><div class="d-label">建档提交时间</div><div class="d-val mono">' +
+          (store.buildDate || '<span class="dim">未记录</span>') + '</div></div>' +
+        '<div class="d-item"><div class="d-label">任务进度</div><div class="d-val">' +
+          (pr.taskTotal
+            ? '<b>' + pr.done + '</b> / ' + pr.taskTotal + ' 条（' + S.progressValue(store) + '%）'
+            : '<span class="dim">还没有任务</span>') +
+          '</div></div>' +
+        '<div class="d-item"><div class="d-label">地址</div><div class="d-val">' +
+          U.esc(store.address || '—') + '</div></div>' +
+        '<div class="d-item"><div class="d-label">备注</div><div class="d-val">' +
+          U.esc(store.remark || '—') + '</div></div>' +
+      '</div>' +
+
+      '<div class="section-title">几线价格</div>' +
+      priceBox +
+
+      '<div class="section-title">门店资料</div>' +
+      '<div class="mf-grid">' + fieldHtml + '</div>' +
+
+      '<div class="section-title">筹建任务</div>' +
+      '<div class="stat-row">' +
+        chip(tasks.length, '条总计') +
+        chip(cnt.done, '已完成') +
+        chip(cnt.doing, '进行中') +
+        chip(cnt.pending, '待开始') +
+        chip(cnt.overdue, '已逾期') +
+        chip(cnt.risk, '有风险') +
+      '</div>' +
+
+      '<div class="section-title">物料到货</div>' +
+      '<div class="stat-row">' +
+        chip(arrivals.length, '项总计') +
+        chip(arrDone, '已到 / 已通知') +
+        chip(arrivals.length - arrDone, '还没到') +
+      '</div>';
+
+    UI.modal({
+      title: store.name,
+      sub: (stageObj ? stageObj.key + ' · ' : '') + '全档案',
+      size: 'xl',
+      stack: true,
+      body: body,
+      footer:
+        '<button class="btn foot-left" data-act="back">返回详情</button>' +
+        '<button class="btn btn-primary" data-act="edit">编辑门店</button>',
+      onMount: function (rootEl, close) {
+        var saveTimer = null;
+        var pmInputs = rootEl.querySelectorAll('[data-pr]');
+
+        /* ---- 价格矩阵：边填边算行列合计，400ms 后落库 ---- */
+        function readCells() {
+          var rows = [];
+          for (var r = 0; r < matrix.versions.length; r++) rows.push([]);
+          Array.prototype.forEach.call(pmInputs, function (inp) {
+            var r = Number(inp.getAttribute('data-pr'));
+            var c = Number(inp.getAttribute('data-pc'));
+            if (!rows[r]) return;
+            rows[r][c] = String(inp.value || '').replace(/\s/g, '');
+          });
+          return rows;
+        }
+
+        function paintSums() {
+          var rows = readCells();
+          var colSum = matrix.tiers.map(function () { return 0; });
+          var grand = 0;
+
+          rows.forEach(function (row, r) {
+            var rowSum = 0;
+            row.forEach(function (v, c) {
+              var n = moneyOf(v);
+              rowSum += n;
+              colSum[c] += n;
+            });
+            var cell = rootEl.querySelector('[data-rowsum="' + r + '"]');
+            if (cell) cell.textContent = rowSum ? '¥' + fmtMoney(rowSum) : '—';
+          });
+
+          colSum.forEach(function (n, c) {
+            var cell = rootEl.querySelector('[data-colsum="' + c + '"]');
+            if (cell) cell.textContent = n ? '¥' + fmtMoney(n) : '—';
+            grand += n;
+          });
+
+          var g = rootEl.querySelector('[data-grand]');
+          if (g) g.textContent = grand ? '¥' + fmtMoney(grand) : '—';
+        }
+
+        function persistPrices() {
+          if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+          var rows = readCells();
+          rows.forEach(function (row, r) {
+            row.forEach(function (v, c) {
+              S.setStorePriceCell(store.id, r, c, v);
+            });
+          });
+        }
+
+        paintSums();
+
+        Array.prototype.forEach.call(pmInputs, function (inp) {
+          inp.addEventListener('input', function () {
+            paintSums();
+            if (saveTimer) clearTimeout(saveTimer);
+            saveTimer = setTimeout(function () { saveTimer = null; persistPrices(); }, 500);
+          });
+          inp.addEventListener('blur', persistPrices);
+        });
+
+        /* ---- 自定义字段：改完即存 ---- */
+        rootEl.addEventListener('change', function (e) {
+          var el = e.target;
+          var fid = el.getAttribute && el.getAttribute('data-fid');
+          if (!fid) return;
+
+          var ft = el.getAttribute('data-ftype');
+          if (ft === 'tier3') {
+            /* 三档金额：把同组三格收集成一个对象 */
+            var box = {};
+            Array.prototype.forEach.call(
+              rootEl.querySelectorAll('[data-fid="' + fid + '"][data-ftype="tier3"]'),
+              function (x) {
+                var t = x.getAttribute('data-tier');
+                var v = String(x.value || '').replace(/[^\d.]/g, '');
+                if (v) box[t] = v;
+              }
+            );
+            S.setStoreFieldVal(store.id, fid, box);
+            return;
+          }
+
+          var val = String(el.value == null ? '' : el.value).trim();
+          S.setStoreFieldVal(store.id, fid, val);
+        });
+
+        rootEl.querySelector('[data-act="back"]').onclick = function () {
+          persistPrices();
+          close();     /* 只关这一层，下面的详情还在 */
+        };
+        rootEl.querySelector('[data-act="edit"]').onclick = function () {
+          persistPrices();
+          close();
+          openForm(store);
         };
       }
     });

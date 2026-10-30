@@ -2840,6 +2840,188 @@ window.Store = (function () {
     return s;
   }
 
+  /* ---------------- 门店「更多」：自定义档案字段 + 几线价格（z161） ----------------
+     用户在「系统设置 → 门店档案字段」里自己维护，不用改代码：
+       settings.storeFields    = [{ id, name, type, options: [], show: true }]
+       settings.storeFieldVals = { storeId: { fieldId: value } }
+       settings.priceCfg       = { tiers: ['一线','二线','三线'], versions: ['V1'…'V6'] }
+       settings.storePrices    = { storeId: [ ['', '', ''], … ] }   // 行 = 版本，列 = 线级
+     - stores 表没有这些列，和 storeSubs 一个路子：全放 settings 里跟着云端同步，不用改表
+     - 金额按原样字符串存：门店报价常带小数、或者按「万」口头说，转 number 会把 0 和小数吃掉
+     ------------------------------------------------------------------------------- */
+
+  var FIELD_TYPES = [
+    { key: 'text',     label: '文本' },
+    { key: 'money',    label: '金额' },
+    { key: 'select',   label: '下拉选择' },
+    { key: 'date',     label: '日期' },
+    { key: 'tier3',    label: '三档金额' },
+    { key: 'textarea', label: '多行文本' }
+  ];
+
+  var DEFAULT_FIELDS = [
+    { id: 'f_city',   name: '城市等级',   type: 'select', options: ['一线', '二线', '三线'] },
+    { id: 'f_franch', name: '加盟商姓名', type: 'text' },
+    { id: 'f_phone',  name: '电话',       type: 'text' },
+    { id: 'f_rm',     name: '区域经理',   type: 'text' },
+    { id: 'f_style',  name: '设计风格',   type: 'select', options: ['现代简约', '新中式', '工业风', '北欧', '侘寂'] },
+    { id: 'f_join',   name: '加盟费',     type: 'tier3' },
+    { id: 'f_mgmt',   name: '管理费',     type: 'tier3' }
+  ];
+
+  var DEFAULT_PRICE_CFG = {
+    tiers: ['一线', '二线', '三线'],
+    versions: ['V1', 'V2', 'V3', 'V4', 'V5', 'V6']
+  };
+
+  function fieldTypeOk(t) {
+    return FIELD_TYPES.some(function (x) { return x.key === t; });
+  }
+
+  function normalizeField(f) {
+    return {
+      id: String((f && f.id) || U.uid('f')),
+      name: String((f && f.name) || '').trim() || '未命名字段',
+      type: fieldTypeOk(f && f.type) ? f.type : 'text',
+      options: (f && Array.isArray(f.options) ? f.options : []).map(function (o) {
+        return String(o == null ? '' : o).trim();
+      }).filter(Boolean),
+      show: !(f && f.show === false)
+    };
+  }
+
+  /* 没配过就返回出厂默认（不写回：等用户真改了才落库，免得平白多一次整包写） */
+  function storeFields() {
+    var list = state.settings && state.settings.storeFields;
+    if (!Array.isArray(list) || !list.length) {
+      return DEFAULT_FIELDS.map(function (f) {
+        return normalizeField({ id: f.id, name: f.name, type: f.type, options: f.options, show: true });
+      });
+    }
+    return list.filter(function (f) { return f && f.name; }).map(normalizeField);
+  }
+
+  function saveStoreFields(list) {
+    state.settings = state.settings || {};
+    state.settings.storeFields = (Array.isArray(list) ? list : []).map(normalizeField);
+    pushSettings();
+    cacheLocal();
+    return storeFields();
+  }
+
+  function fieldTypes() {
+    return FIELD_TYPES.map(function (t) { return { key: t.key, label: t.label }; });
+  }
+
+  function storeFieldVals(store) {
+    var all = (state.settings && state.settings.storeFieldVals) || {};
+    var rec = store ? all[store.id] : null;
+    var out = {};
+    if (!rec || typeof rec !== 'object') return out;
+    Object.keys(rec).forEach(function (k) {
+      var v = rec[k];
+      out[k] = (v == null ? '' : v);
+    });
+    return out;
+  }
+
+  function setStoreFieldVal(storeId, fieldId, value) {
+    if (!storeId || !fieldId) return;
+    var all = (state.settings && state.settings.storeFieldVals) || {};
+    var rec = (all[storeId] && typeof all[storeId] === 'object') ? all[storeId] : {};
+
+    var shuang = value;
+    var empty = shuang == null || shuang === '' ||
+      (typeof shuang === 'object' && !Array.isArray(shuang) && !Object.keys(shuang).length);
+    if (empty) delete rec[fieldId]; else rec[fieldId] = shuang;
+
+    if (!Object.keys(rec).length) delete all[storeId]; else all[storeId] = rec;
+
+    state.settings = state.settings || {};
+    state.settings.storeFieldVals = all;
+    pushSettings();
+    cacheLocal();
+  }
+
+  /* ---------------- 几线价格：版本 × 线级 的矩阵 ---------------- */
+
+  function priceCfg() {
+    var c = state.settings && state.settings.priceCfg;
+    var tiers = (c && Array.isArray(c.tiers) && c.tiers.length)
+      ? c.tiers.map(function (x) { return String(x == null ? '' : x).trim() || '未命名'; })
+      : DEFAULT_PRICE_CFG.tiers.slice();
+    var versions = (c && Array.isArray(c.versions) && c.versions.length)
+      ? c.versions.map(function (x) { return String(x == null ? '' : x).trim() || '未命名'; })
+      : DEFAULT_PRICE_CFG.versions.slice();
+    return { tiers: tiers, versions: versions };
+  }
+
+  function savePriceCfg(cfg) {
+    var next = {
+      tiers: ((cfg && cfg.tiers) || []).map(function (x) {
+        return String(x == null ? '' : x).trim();
+      }).filter(Boolean),
+      versions: ((cfg && cfg.versions) || []).map(function (x) {
+        return String(x == null ? '' : x).trim();
+      }).filter(Boolean)
+    };
+    if (!next.tiers.length) next.tiers = DEFAULT_PRICE_CFG.tiers.slice();
+    if (!next.versions.length) next.versions = DEFAULT_PRICE_CFG.versions.slice();
+
+    state.settings = state.settings || {};
+    state.settings.priceCfg = next;
+    pushSettings();
+    cacheLocal();
+    return priceCfg();
+  }
+
+  function storePriceMatrix(store) {
+    var cfg = priceCfg();
+    var all = (state.settings && state.settings.storePrices) || {};
+    var rec = store ? all[store.id] : null;
+
+    var rows = [];
+    for (var r = 0; r < cfg.versions.length; r++) {
+      var row = [];
+      for (var c = 0; c < cfg.tiers.length; c++) {
+        var v = (rec && Array.isArray(rec[r])) ? rec[r][c] : '';
+        row.push(v == null ? '' : String(v));
+      }
+      rows.push(row);
+    }
+    return { tiers: cfg.tiers, versions: cfg.versions, rows: rows };
+  }
+
+  function setStorePriceCell(storeId, r, c, value) {
+    if (!storeId) return null;
+    var cfg = priceCfg();
+    var all = (state.settings && state.settings.storePrices) || {};
+    var rec = (all[storeId] && Array.isArray(all[storeId])) ? all[storeId] : [];
+
+    /* 先按当前配置把矩阵拉齐，再改那一格 —— 增删版本/线级后不会错位 */
+    var rows = [];
+    for (var i = 0; i < cfg.versions.length; i++) {
+      var row = [];
+      for (var j = 0; j < cfg.tiers.length; j++) {
+        var v = (Array.isArray(rec[i]) && rec[i][j] != null) ? String(rec[i][j]) : '';
+        row.push(v);
+      }
+      rows.push(row);
+    }
+    if (rows[r]) rows[r][c] = (value == null ? '' : String(value));
+
+    var any = rows.some(function (row) {
+      return row.some(function (v) { return !!v; });
+    });
+    if (any) all[storeId] = rows; else delete all[storeId];
+
+    state.settings = state.settings || {};
+    state.settings.storePrices = all;
+    pushSettings();
+    cacheLocal();
+    return storePriceMatrix(storeById(storeId));
+  }
+
   /* ================= 完成任务只是「记账」，阶段照样按门店实际进度走 =================
 
      用户口径（2026-10-25 二次调整）：
@@ -3637,6 +3819,15 @@ window.Store = (function () {
     stageSubsWithUsed: stageSubsWithUsed,
     storeSubs: storeSubs,
     storeSub: storeSub,
+    storeFields: storeFields,
+    saveStoreFields: saveStoreFields,
+    fieldTypes: fieldTypes,
+    storeFieldVals: storeFieldVals,
+    setStoreFieldVal: setStoreFieldVal,
+    priceCfg: priceCfg,
+    savePriceCfg: savePriceCfg,
+    storePriceMatrix: storePriceMatrix,
+    setStorePriceCell: setStorePriceCell,
     setStoreStage: setStoreStage,
     stageOrder: stageOrder,
     gateSubOf: gateSubOf,

@@ -129,6 +129,8 @@ window.Pages.settings = (function () {
       '<p class="item-hint">长按物料约 1 秒，会变成红色「删除？」，再点一下才真正删掉；点别处可取消。改动即时保存。</p>' +
     '</div>' +
 
+    fieldCard() +
+
     '<div class="card fade-up" style="animation-delay:.1s">' +
       '<div class="card-head"><h3>云端说明</h3><span class="card-sub">改代码时的参考</span></div>' +
       '<div class="desc-list">' +
@@ -139,6 +141,71 @@ window.Pages.settings = (function () {
         '<div class="d-item"><div class="d-label">登录逻辑</div><div class="d-val">js/login.js</div></div>' +
         '<div class="d-item"><div class="d-label">数据读写</div><div class="d-val">js/store.js</div></div>' +
       '</div>' +
+    '</div>';
+  }
+
+  /* ================= 门店档案字段（z161） =================
+     门店详情「更多」里显示什么，这一页说了算：
+       - 字段名 / 类型 / 下拉选项都能改，能加能删
+       - 几线价格是一块固定矩阵，但行名（版本）和列名（线级）在这里改
+     点「保存字段」写进 settings（跟着云端同步），所有人刷新后可见。 */
+
+  function fieldCard() {
+    var fields = S.storeFields();
+    var cfg = S.priceCfg();
+    var types = S.fieldTypes();
+
+    var rows = fields.map(function (f, i) {
+      var typeOpts = types.map(function (t) {
+        return '<option value="' + t.key + '"' + (t.key === f.type ? ' selected' : '') + '>' +
+          U.esc(t.label) + '</option>';
+      }).join('');
+      return '<div class="fld-row" data-fid="' + U.esc(f.id) + '">' +
+        '<span class="fld-idx">' + (i + 1) + '</span>' +
+        '<input class="input" data-fld="name" value="' + U.esc(f.name) + '" placeholder="字段名，比如 加盟商姓名" />' +
+        '<select class="input" data-fld="type">' + typeOpts + '</select>' +
+        '<input class="input" data-fld="options" value="' + U.esc((f.options || []).join('、')) + '" ' +
+          'placeholder="下拉选项，用、分隔（其他类型留空）" />' +
+        '<button class="fld-del" type="button" data-act="delField" title="删掉这个字段">×</button>' +
+      '</div>';
+    }).join('');
+
+    var tierInputs = cfg.tiers.map(function (t, i) {
+      return '<input class="input" data-cfg-tier="' + i + '" value="' + U.esc(t) + '" />';
+    }).join('');
+
+    var verInputs = cfg.versions.map(function (v, i) {
+      return '<input class="input" data-cfg-ver="' + i + '" value="' + U.esc(v) + '" />';
+    }).join('');
+
+    return '<div class="card fade-up" id="fldCard" style="animation-delay:.09s">' +
+      '<div class="card-head"><h3>门店档案字段</h3>' +
+        '<span class="card-sub">门店详情 →「更多」里显示的内容，共 <b>' + fields.length + '</b> 个字段</span></div>' +
+
+      '<p class="muted" style="margin:-2px 0 12px;font-size:12px;color:var(--text-3);line-height:1.8">' +
+        '门店详情点「更多」，会按下面这份清单铺出输入框；填的值存在云端，按门店分开。' +
+        '「按线级三档金额」= 一线 / 二线 / 三线 各填一个数，适合加盟费、管理费。' +
+      '</p>' +
+
+      '<div class="fld-list" id="fldList">' +
+        (rows || '<p class="mf-empty">还没有字段，点下面的「+ 添加字段」</p>') +
+      '</div>' +
+
+      '<div class="fld-add">' +
+        '<button class="btn" type="button" data-act="addField">+ 添加字段</button>' +
+        '<button class="btn btn-primary" type="button" data-act="saveFields">保存字段</button>' +
+      '</div>' +
+
+      '<div class="cfg-label">几线价格 · 线级（列名）</div>' +
+      '<div class="cfg-row" id="cfgTiers">' + tierInputs + '</div>' +
+
+      '<div class="cfg-label">几线价格 · 版本（行名）</div>' +
+      '<div class="cfg-row-6" id="cfgVers">' + verInputs + '</div>' +
+      '<div class="fld-add">' +
+        '<button class="btn btn-sm" type="button" data-act="addVer">+ 加一版</button>' +
+        '<button class="btn btn-sm" type="button" data-act="delVer">− 去掉最后一版</button>' +
+      '</div>' +
+      '<p class="pm-hint">行列名改完点「保存字段」一起生效；门店里已经填过的金额按行列位置对应，删版本会连同最后一行的金额一起清掉。</p>' +
     '</div>';
   }
 
@@ -439,6 +506,125 @@ window.Pages.settings = (function () {
     var input = root.querySelector('#itemAddInput');
     var pressTimer = null;
     var askAt = 0;
+
+    /* ---------------- 门店档案字段（z161）：加 / 删 / 保存 ---------------- */
+    var fldCard = root.querySelector('#fldCard');
+    if (fldCard) {
+      var fldList = fldCard.querySelector('#fldList');
+
+      function renumber() {
+        Array.prototype.forEach.call(fldList.querySelectorAll('.fld-row'), function (row, i) {
+          var idx = row.querySelector('.fld-idx');
+          if (idx) idx.textContent = i + 1;
+        });
+      }
+
+      function addRow(name, type) {
+        var empty = fldList.querySelector('.mf-empty');
+        if (empty) empty.remove();
+
+        var typeOpts = S.fieldTypes().map(function (t) {
+          return '<option value="' + t.key + '"' +
+            (t.key === (type || 'text') ? ' selected' : '') + '>' + U.esc(t.label) + '</option>';
+        }).join('');
+
+        var row = document.createElement('div');
+        row.className = 'fld-row';
+        row.setAttribute('data-fid', '');
+        row.innerHTML =
+          '<span class="fld-idx"></span>' +
+          '<input class="input" data-fld="name" value="' + U.esc(name || '') +
+            '" placeholder="字段名，比如 加盟商姓名" />' +
+          '<select class="input" data-fld="type">' + typeOpts + '</select>' +
+          '<input class="input" data-fld="options" value="" placeholder="下拉选项，用、分隔（其他类型留空）" />' +
+          '<button class="fld-del" type="button" data-act="delField" title="删掉这个字段">×</button>';
+        fldList.appendChild(row);
+        renumber();
+        var nm = row.querySelector('[data-fld="name"]');
+        if (nm) nm.focus();
+      }
+
+      function collectFields() {
+        var list = [];
+        Array.prototype.forEach.call(fldList.querySelectorAll('.fld-row'), function (row) {
+          var nameEl = row.querySelector('[data-fld="name"]');
+          var name = String((nameEl && nameEl.value) || '').trim();
+          if (!name) return;
+          var typeEl = row.querySelector('[data-fld="type"]');
+          var optEl = row.querySelector('[data-fld="options"]');
+          var options = String((optEl && optEl.value) || '')
+            .split(/[、,，\s]+/)
+            .map(function (x) { return x.trim(); })
+            .filter(Boolean);
+          list.push({
+            id: row.getAttribute('data-fid') || '',
+            name: name,
+            type: (typeEl && typeEl.value) || 'text',
+            options: options,
+            show: true
+          });
+        });
+
+        var tiers = [];
+        Array.prototype.forEach.call(fldCard.querySelectorAll('[data-cfg-tier]'), function (inp) {
+          var v = String(inp.value || '').trim();
+          if (v) tiers.push(v);
+        });
+        var versions = [];
+        Array.prototype.forEach.call(fldCard.querySelectorAll('[data-cfg-ver]'), function (inp) {
+          var v = String(inp.value || '').trim();
+          if (v) versions.push(v);
+        });
+        return { fields: list, cfg: { tiers: tiers, versions: versions } };
+      }
+
+      fldCard.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-act]');
+        if (!btn || !fldCard.contains(btn)) return;
+        var act = btn.getAttribute('data-act');
+
+        if (act === 'addField') { addRow(''); return; }
+
+        if (act === 'delField') {
+          var row = btn.closest('.fld-row');
+          if (row) row.remove();
+          renumber();
+          if (!fldList.querySelector('.fld-row')) {
+            fldList.innerHTML = '<p class="mf-empty">还没有字段，点下面的「+ 添加字段」</p>';
+          }
+          return;
+        }
+
+        if (act === 'addVer') {
+          var box = fldCard.querySelector('#cfgVers');
+          var n = box.querySelectorAll('input').length;
+          if (n >= 12) { UI.toast('最多 12 个版本', 'info'); return; }
+          var inp = document.createElement('input');
+          inp.className = 'input';
+          inp.setAttribute('data-cfg-ver', String(n));
+          inp.value = 'V' + (n + 1);
+          box.appendChild(inp);
+          return;
+        }
+
+        if (act === 'delVer') {
+          var box2 = fldCard.querySelector('#cfgVers');
+          var all = box2.querySelectorAll('input');
+          if (all.length <= 1) { UI.toast('至少留一个版本', 'info'); return; }
+          all[all.length - 1].remove();
+          return;
+        }
+
+        if (act === 'saveFields') {
+          var got = collectFields();
+          if (!got.fields.length) { UI.toast('至少留一个字段', 'info'); return; }
+          S.saveStoreFields(got.fields);
+          S.savePriceCfg(got.cfg);
+          UI.toast('已保存 ' + got.fields.length + ' 个字段', 'success');
+          App.render();
+        }
+      });
+    }
 
     function paint() {
       box.innerHTML = itemChips(S.items());
