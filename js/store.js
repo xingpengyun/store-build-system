@@ -1380,7 +1380,9 @@ window.Store = (function () {
         else if (c === 'overdue') late += 1;
       });
       return {
-        id: m.id, name: m.name, role: m.role, color: m.color,
+        /* animal 必须带出来：首页「团队工作台」直接拿 st.team 画头像，
+           漏了它就会退化成「颜色 + 姓氏首字」，和团队页/成员卡上的小动物对不上（z201） */
+        id: m.id, name: m.name, role: m.role, color: m.color, animal: m.animal,
         total: mine.length, done: done, todo: mine.length - done, late: late,
         percent: mine.length ? Math.round(done / mine.length * 100) : 0
       };
