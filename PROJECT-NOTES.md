@@ -2648,3 +2648,66 @@ FAIL 768px：骷髅不压文字   → skull: 636
 
 骷髅「1180 压文字」不是我看截图看出来的，是新写的相交检测直接报的坐标。
 装饰类改动一定要让探针量矩形 —— 截图缩到 1080 宽根本看不出 680px² 的重叠。
+
+## 上线记录 · z203（2026-10-31 02:xx）
+
+### 上线前的状态
+
+本地 = 远端 = `718586f`（z203），工作区干净；**线上还停在 z160** —— 中间 29 个提交、43 个版本号从未发布过。
+（z161~z203 都是另一个 WorkBuddy 会话做的，两边共用同一份 git，所以本地是新的、线上是旧的。）
+
+### 上线前验证
+
+- `node --check` 全部 js 通过
+- `smoke-z203.js` 7 页面冒烟 **7/7**（0 报错）
+- `probe-xss-z203` 6/6、`probe-leak-z203` 2/2、`probe-store-filters` 24/24、`probe-fold-v2` 14/14、`probe-stage-esc` 通过
+
+### 上线后发现真问题：`assets/avatars3d/` 22 张头像图从来没上传过
+
+第一次部署（只传 `index.html + css + js`）后跑线上探针，**3 个 FAIL**：
+
+```
+FAIL z203 设置页 9 张卡默认全收起  → 收起 8/9
+FAIL z201 首页团队卡带头像          → 头像 0 个
+FAIL 全程 0 控制台报错              → 404: assets/avatars3d/a3d_h_pumpkin.webp …
+```
+
+第三个是**真 bug**：z166–z168 加的 22 张 3D 头像图全在 `assets/avatars3d/`，
+而历次部署命令（`DEPLOY.md` 第 184 行）只写了 `cp -r css js`，`assets` 从来没进过暂存目录。
+后果：线上所有成员头像一直是 `UI.avatar()` 的降级态（颜色 + 姓氏首字），
+首页团队卡、门店表格负责人列、顶栏头像全都没图 —— 但页面不报错、也不崩，
+所以肉眼在缩略图上根本看不出来（`<img>` 404 只是空白，旁边的首字把位置填住了）。
+
+前两个是**探针断言写得不准**，不是产品缺陷：
+
+1. **阶段卡走独立折叠机制**：`.sm-collapse[hidden]`，不加 `.is-collapsed` 类
+   （`applyCardFold()` 里 `data-sm-toggle` 那张是单独登记的）。我只数了 `.is-collapsed` 所以是 8/9，
+   截图确认它的阶段列表是收起的。断言改成「`.is-collapsed` 数 + 阶段卡 `hidden`」→ 9/9。
+2. **首页头像是 `<img class="art-img">` 不是内联 svg**（z166 起全改 3D 图）。断言改成数 `img.art-img`
+   且 `naturalWidth > 0`，顺便断言 `src` 以 `assets/avatars3d/` 开头。
+
+### 修法
+
+部署暂存目录加上 `assets`，重发一次（47 个文件），远端 22 张 webp 全部 √：
+
+```
+for u in a3d_h_pumpkin a3d_a_tiger a3d_a_cat a3d_u_beard a3d_h_skull; do curl -I …/assets/avatars3d/$u.webp; done
+→ 全 200 image/webp，6.5~11.6KB
+```
+
+### 线上最终验证（`probe-live-z203.js`，真站点真登录）**18/18**
+
+- 线上版本 = `20261030z203`
+- 8 个路由逐个走：首页 / 门店 / 发货 / 任务 / 团队 / 预警 / 报表 / 设置，**全部 0 报错**
+- 设置页 9 张卡默认全收起（`is-collapsed` 8 + 阶段卡 1）
+- 门店属性筛选 4 个维度（城市等级 / 设计风格 / 自定义 / 价格），10 行数据
+- 首页头像 **31/31 全部加载成功、0 坏图**，`src` 走 `assets/avatars3d/…`
+- 全程 **0 个资源 404**
+
+### 沉到 DEPLOY.md 的教训
+
+`DEPLOY.md` 第 3 步改成 `cp -r css js assets`，第 5 步验证改成「逐个 curl 关键资源，任何一条不是 200 就是漏传」，
+并把「漏传静态资源目录不会报错、头像会静默降级」写进「必须记住的坑」（两条变三条）。
+
+> 一句话：`tcb hosting deploy` 只传你给它的目录，**页面能打开 ≠ 资源都在**。
+> 每次上线都要按 `index.html` + js 里实际引用的资源反查一遍线上是否 200。

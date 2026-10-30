@@ -180,9 +180,13 @@ tcb login --cloudbase-api-key "<管理员 API Key>" -e efficient-tiglon-d0ejcn14
 3. 只把站点文件装进一个干净的暂存目录（**不要整目录上传**，否则 README / PROJECT-NOTES / .workbuddy 都会变成公开文件）：
 
 ```bash
-mkdir -p .workbuddy/_deploy
-cp index.html .workbuddy/_deploy/ && cp -r css js .workbuddy/_deploy/
+rm -rf .workbuddy/_deploy && mkdir -p .workbuddy/_deploy
+cp index.html .workbuddy/_deploy/ && cp -r css js assets .workbuddy/_deploy/
 ```
+
+> **`assets` 一定要带**（2026-10-31 补）。z166–z168 加的 22 张 3D 头像图（`assets/avatars3d/*.webp`）
+> 因为这一行当初只写了 `css js`，上线后一直 404 —— 线上所有成员头像其实都是「颜色 + 姓氏首字」的降级态，
+> 直到 z203 上线才被线上探针发现。新增任何静态资源目录时，这条命令和下面第 5 步的验证都要跟着改。
 
 4. 发布（`--safe` 会先备份、失败自动回滚；`--verify` 上传后逐项校验）：
 
@@ -193,17 +197,27 @@ tcb hosting deploy .workbuddy/_deploy -e efficient-tiglon-d0ejcn14037eba3 --safe
 5. 验证：
 
 ```bash
-curl -s -H "Cache-Control: no-cache" "https://store-build-efficient-tiglon-d0ejcn14037eba3.webapps.tcloudbase.com/index.html" | grep -oE "20261027z[0-9]+"
+BASE="https://store-build-efficient-tiglon-d0ejcn14037eba3.webapps.tcloudbase.com"
+# 版本号
+curl -s -H "Cache-Control: no-cache" "$BASE/index.html" | grep -oE "v=[0-9]{8}z[0-9]+" | sort -u
+# 少文件查一遍：静态资源全清单，任何一条不是 200 就是漏传了
+for u in /js/app.js /css/theme.css /js/vendor/cloudbase-sdk.js /assets/avatars3d/a3d_a_cat.webp; do
+  printf "%-42s " "$u"; curl -s -o /dev/null -w "%{http_code}\n" -H "Cache-Control: no-cache" "$BASE$u"
+done
 ```
 
-版本号对上了才算发成功（`index.html` 里的 `?v=` 会跟着换，浏览器不会吃旧缓存）。
+版本号对上了、上面每个资源都 200，才算发成功（`index.html` 里的 `?v=` 会跟着换，浏览器不会吃旧缓存）。
 
-### 两个必须记住的坑
+### 三个必须记住的坑
 
 - **不要加 `--prune`**：那个参数会删掉"不属于本次发布"的远端文件，`__auth/`（登录用）和别人的
   `cloud-admin/` 都会被一起清掉。
 - **不要整目录 `tcb hosting deploy .`**：项目根目录有 `PROJECT-NOTES.md`（内部笔记）、
-  `.workbuddy/`（探针脚本）、`.git/`，整传等于把内部笔记全公开了。上面的「只传 index.html + css + js」是正解。
+  `.workbuddy/`（探针脚本）、`.git/`，整传等于把内部笔记全公开了。上面的「只传 index.html + css + js + assets」是正解。
+- **漏传静态资源目录不会报错**：`tcb hosting deploy` 只负责传你给的目录，页面照样能打开，
+  只是图片 404 —— 肉眼在小图上很难发现（头像会静默降级成「颜色 + 首字」）。
+  发完必须跑一遍上面第 5 步的资源清单，或者直接跑线上探针 `.workbuddy/probe-live-z203.js`
+  （它会统计全程 404，`assets` 漏了立刻红）。
 
 ### API Key 怎么保管
 
