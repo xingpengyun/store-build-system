@@ -2864,7 +2864,7 @@ window.Store = (function () {
     { id: 'f_franch', name: '加盟商姓名', type: 'text' },
     { id: 'f_phone',  name: '电话',       type: 'text' },
     { id: 'f_rm',     name: '区域经理',   type: 'text' },
-    { id: 'f_style',  name: '设计风格',   type: 'select', options: ['现代简约', '新中式', '工业风', '北欧', '侘寂'] },
+    { id: 'f_style',  name: '设计风格',   type: 'select', options: ['1.0', '2.0'] },
     { id: 'f_join',   name: '加盟费',     type: 'money' },
     { id: 'f_mgmt',   name: '管理费',     type: 'money' }
   ];
