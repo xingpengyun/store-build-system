@@ -203,7 +203,8 @@ window.Pages.settings = (function () {
         '<span class="fld-idx">' + (i + 1) + '</span>' +
         '<input class="input" data-fld="name" value="' + U.esc(f.name) + '" placeholder="字段名，比如 加盟商姓名" />' +
         '<select class="input" data-fld="type">' + typeOpts + '</select>' +
-        '<input class="input" data-fld="options" value="' + U.esc((f.options || []).join('、')) + '" ' +
+        '<input class="input' + (f.type === 'select' ? '' : ' is-off') + '" data-fld="options" value="' +
+          U.esc((f.options || []).join('、')) + '" ' +
           'placeholder="仅下拉选择要填，用、分隔，如 一线、二线" />' +
         '<button class="fld-del" type="button" data-act="delField" title="删掉这个字段">×</button>' +
       '</div>';
@@ -682,6 +683,7 @@ window.Pages.settings = (function () {
         var row = el.closest('.fld-row');
         var optInput = row && row.querySelector('[data-fld="options"]');
         if (!optInput) return;
+        optInput.classList.toggle('is-off', el.value !== 'select');
         if (el.value === 'select' && !String(optInput.value || '').trim()) {
           optInput.classList.add('is-warn');
           optInput.focus();

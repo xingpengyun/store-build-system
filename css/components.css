@@ -1385,6 +1385,10 @@
   box-shadow: 0 0 0 3px rgba(240, 161, 58, .16) !important;
 }
 .input.is-nonopt { color: var(--text-3); font-style: italic; }
+
+/* 类型不是下拉时，选项栏用不上：淡下去，别抢注意力 */
+.input.is-off { opacity: .38; }
+.input.is-off:focus { opacity: 1; }
 .fld-del {
   width: 26px; height: 26px; border: 0; border-radius: var(--radius-xs);
   background: transparent; color: var(--text-3); cursor: pointer; font-size: 15px; line-height: 1;
