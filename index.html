@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>门店筹建管理系统</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Crect width='20' height='20' rx='4' fill='%232f56f0'/%3E%3Cpath d='M4 8l1-3h10l1 3v6.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V8z' fill='%23fff'/%3E%3C/svg%3E" />
-<link rel="stylesheet" href="css/base.css?v=20261030z172" />
-<link rel="stylesheet" href="css/layout.css?v=20261030z172" />
-<link rel="stylesheet" href="css/components.css?v=20261030z172" />
-<link rel="stylesheet" href="css/login.css?v=20261030z172" />
-<link rel="stylesheet" href="css/theme.css?v=20261030z172" />
+<link rel="stylesheet" href="css/base.css?v=20261030z173" />
+<link rel="stylesheet" href="css/layout.css?v=20261030z173" />
+<link rel="stylesheet" href="css/components.css?v=20261030z173" />
+<link rel="stylesheet" href="css/login.css?v=20261030z173" />
+<link rel="stylesheet" href="css/theme.css?v=20261030z173" />
 </head>
 <body class="booting">
 
@@ -101,16 +101,38 @@
         </a>
       </nav>
 
-      <!-- z159：南瓜灯从「屏幕左下角 fixed 浮层」挪进侧边栏内部——
-           原来 fixed 在 left:26/bottom:16，正好压在缓存卡的「数据在云端，本机只留缓存」那行字上，
-           挤在文字里反而看不清。现在放在导航和缓存卡之间的空白带，不遮任何文字。 -->
-      <svg class="hw-pumpkin-fly" viewBox="0 0 40 40" aria-hidden="true">
-        <path d="M19 2 Q20 0 21 2 L21 5 L19 5 Z" fill="#7a4a12"/>
-        <ellipse cx="20" cy="21" rx="16" ry="15" fill="#f6a11c"/>
-        <ellipse cx="12" cy="21" rx="6" ry="14" fill="#e8892a"/>
-        <ellipse cx="28" cy="21" rx="6" ry="14" fill="#e8892a"/>
-        <path d="M12 15 L17 19 L13 22 Z" fill="#3a2f4d"/><path d="M28 15 L23 19 L27 22 Z" fill="#3a2f4d"/>
-        <path d="M12 27 Q16 24 20 27 Q24 24 28 27 L28 32 L12 32 Z" fill="#3a2f4d"/>
+      <!-- 万圣节血迹（z173）：替换掉原来的南瓜灯。
+           形状不是画一个圆再糊点，而是「半径随角度做三频正弦扰动」采样出来的——
+           真血迹的边界是这种不规则的凸凹，手画很容易画成云朵或土豆。
+           三部分：主体血斑 + 两颗溅出来的小血斑 + 一圈卫星血点（圆点 + 三颗带尖尾的飞溅），
+           再加两道从血斑边缘流下来的血痕（上宽下窄、末端一颗坠着的血珠）。
+           静态不动：血迹会动就假了。 -->
+      <svg class="hw-blood" viewBox="0 0 52 52" aria-hidden="true">
+        <defs>
+          <radialGradient id="hwBldG" cx=".36" cy=".3" r=".86">
+            <stop offset="0" stop-color="#b01623"/><stop offset=".46" stop-color="#820f1a"/>
+            <stop offset="1" stop-color="#36050b"/>
+          </radialGradient>
+          <!-- 飞溅的泪滴：尖端在 (0,-9)，头部 r=3，靠 <use> 旋转缩放复用 -->
+          <path id="hwBldDrop" d="M0 -9C2.1 -5 3 -2.8 3 0A3 3 0 0 1 -3 0C-3 -2.8 -2.1 -5 0 -9Z"/>
+        </defs>
+        <g fill="url(#hwBldG)">
+          <path d="M26.0 9.7C28.1 10.1 30.1 7.7 31.7 8.2C33.3 8.6 33.9 11.3 35.5 12.5C37.2 13.7 40.1 13.9 41.7 15.5C43.3 17.1 45.1 19.9 45.0 22.0C44.9 24.1 43.2 27.1 41.2 28.3C39.2 29.5 34.6 27.8 33.0 29.0C31.5 30.3 33.0 34.3 31.8 36.0C30.6 37.7 28.1 38.9 26.0 39.2C23.9 39.6 21.2 39.2 19.3 38.2C17.4 37.2 15.9 35.0 14.7 33.3C13.4 31.6 11.5 29.8 11.7 27.9C11.8 26.0 15.6 24.0 15.5 22.0C15.5 20.0 11.7 18.2 11.2 15.9C10.6 13.6 10.8 9.8 12.2 8.2C13.6 6.6 17.1 5.8 19.4 6.0C21.7 6.3 23.9 9.4 26.0 9.7Z"/>
+          <path d="M43.0 7.3C43.8 7.4 44.2 9.4 45.1 10.1C46.1 10.7 48.2 10.4 48.7 11.2C49.1 11.9 48.4 13.8 47.8 14.6C47.2 15.3 45.8 14.8 45.0 15.8C44.2 16.8 43.8 20.7 43.0 20.8C42.2 21.0 41.2 17.6 40.4 16.6C39.6 15.5 38.7 15.5 38.1 14.6C37.5 13.7 36.4 11.8 36.8 11.0C37.2 10.1 39.5 10.1 40.5 9.5C41.5 8.9 42.2 7.2 43.0 7.3Z"/>
+          <path d="M11.0 35.8C11.8 35.7 13.0 35.0 13.7 35.3C14.4 35.6 15.0 36.9 15.1 37.7C15.2 38.5 14.5 39.2 14.2 40.1C14.0 40.9 14.1 42.0 13.6 42.5C13.0 43.1 11.7 43.5 11.0 43.3C10.3 43.2 9.8 42.1 9.1 41.6C8.5 41.1 7.7 40.9 7.2 40.2C6.7 39.5 5.9 38.1 6.2 37.4C6.5 36.7 8.1 36.4 8.9 36.1C9.7 35.8 10.2 35.9 11.0 35.8Z"/>
+          <path d="M18.78 36.00C19.18 43.50 19.40 47.46 19.25 48.92A2.08 2.08 0 0 0 21.95 48.92C21.80 47.46 22.02 43.50 22.42 36.00Z"/>
+          <path d="M29.15 35.00C29.42 40.00 29.57 42.57 29.47 43.57A1.43 1.43 0 0 0 31.33 43.57C31.23 42.57 31.38 40.00 31.65 35.00Z"/>
+        </g>
+        <g fill="url(#hwBldG)">
+          <circle cx="47.6" cy="24.8" r="1.5"/><circle cx="49.4" cy="29.6" r="1"/>
+          <circle cx="44.4" cy="31.2" r="1.7"/><circle cx="6.6" cy="26.4" r="1.3"/>
+          <circle cx="4.6" cy="20.8" r=".9"/><circle cx="9.8" cy="12.0" r="1.1"/>
+          <circle cx="34.8" cy="45.6" r="1.2"/><circle cx="36.8" cy="41.6" r=".85"/>
+          <circle cx="14.2" cy="45.6" r=".8"/><circle cx="47.2" cy="9.6" r=".75"/><circle cx="48.6" cy="43.2" r=".6"/>
+          <use href="#hwBldDrop" transform="translate(45.4 35.2) rotate(196) scale(.62)"/>
+          <use href="#hwBldDrop" transform="translate(8.4 17.4) rotate(212) scale(.5)"/>
+          <use href="#hwBldDrop" transform="translate(38.4 44.6) rotate(158) scale(.44)"/>
+        </g>
       </svg>
 
       <div class="sidebar-foot">
@@ -142,23 +164,23 @@
   </svg>
 </div>
 
-<script src="js/vendor/cloudbase-sdk.js?v=20261030z172"></script>
-<script src="js/utils.js?v=20261030z172"></script>
-<script src="js/constants.js?v=20261030z172"></script>
-<script src="js/cloud.js?v=20261030z172"></script>
-<script src="js/seed.js?v=20261030z172"></script>
-<script src="js/store.js?v=20261030z172"></script>
-<script src="js/charts.js?v=20261030z172"></script>
-<script src="js/ui.js?v=20261030z172"></script>
-<script src="js/login.js?v=20261030z172"></script>
-<script src="js/page-home.js?v=20261030z172"></script>
-<script src="js/page-stores.js?v=20261030z172"></script>
-<script src="js/page-ship.js?v=20261030z172"></script>
-<script src="js/page-tasks.js?v=20261030z172"></script>
-<script src="js/page-team.js?v=20261030z172"></script>
-<script src="js/page-alerts.js?v=20261030z172"></script>
-<script src="js/page-reports.js?v=20261030z172"></script>
-<script src="js/page-settings.js?v=20261030z172"></script>
-<script src="js/app.js?v=20261030z172"></script>
+<script src="js/vendor/cloudbase-sdk.js?v=20261030z173"></script>
+<script src="js/utils.js?v=20261030z173"></script>
+<script src="js/constants.js?v=20261030z173"></script>
+<script src="js/cloud.js?v=20261030z173"></script>
+<script src="js/seed.js?v=20261030z173"></script>
+<script src="js/store.js?v=20261030z173"></script>
+<script src="js/charts.js?v=20261030z173"></script>
+<script src="js/ui.js?v=20261030z173"></script>
+<script src="js/login.js?v=20261030z173"></script>
+<script src="js/page-home.js?v=20261030z173"></script>
+<script src="js/page-stores.js?v=20261030z173"></script>
+<script src="js/page-ship.js?v=20261030z173"></script>
+<script src="js/page-tasks.js?v=20261030z173"></script>
+<script src="js/page-team.js?v=20261030z173"></script>
+<script src="js/page-alerts.js?v=20261030z173"></script>
+<script src="js/page-reports.js?v=20261030z173"></script>
+<script src="js/page-settings.js?v=20261030z173"></script>
+<script src="js/app.js?v=20261030z173"></script>
 </body>
 </html>
