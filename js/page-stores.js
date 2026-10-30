@@ -808,8 +808,6 @@ window.Pages.stores = (function () {
     if (!store) return;
 
     var owner = S.memberById(store.ownerId);
-    var tasks = S.getState().tasks.filter(function (t) { return t.storeId === id; });
-    var arrivals = S.getState().arrivals.filter(function (a) { return a.storeId === id; });
     /* 几线价格：门店只选档位，金额从设置里的价目表带出 */
     var priceSel = S.storePrice(store);
     var tierNames = S.priceTierNames();
@@ -821,14 +819,6 @@ window.Pages.stores = (function () {
 
     var days = U.diffDays(U.today(), store.openDate);
     var pr = S.storeProgress(store);
-
-    var cnt = { done: 0, doing: 0, pending: 0, overdue: 0, risk: 0 };
-    tasks.forEach(function (t) {
-      var c = S.classify(t);
-      if (c === 'done' || c === 'doing' || c === 'overdue' || c === 'risk') cnt[c]++;
-      else cnt.pending++;
-    });
-    var arrDone = arrivals.filter(function (a) { return S.arrNotified(a); }).length;
 
     /* ---- 几线价格：一个下拉选档位，右边只读显示这一档的金额 ---- */
     var priceOpts = priceSel.rows.map(function (r) {
@@ -872,10 +862,6 @@ window.Pages.stores = (function () {
       fieldHtml = '<p class="mf-empty">还没有配置字段。去「系统设置 → 门店档案字段」加几个，比如加盟商姓名、电话、区域经理。</p>';
     }
 
-    function chip(n, label) {
-      return '<span class="stat-chip"><b>' + n + '</b>' + label + '</span>';
-    }
-
     var body =
       '<div class="section-title">门店档案</div>' +
       '<div class="desc-list is-3">' +
@@ -909,24 +895,7 @@ window.Pages.stores = (function () {
       priceBox +
 
       '<div class="section-title">门店资料</div>' +
-      '<div class="mf-grid">' + fieldHtml + '</div>' +
-
-      '<div class="section-title">筹建任务</div>' +
-      '<div class="stat-row">' +
-        chip(tasks.length, '条总计') +
-        chip(cnt.done, '已完成') +
-        chip(cnt.doing, '进行中') +
-        chip(cnt.pending, '待开始') +
-        chip(cnt.overdue, '已逾期') +
-        chip(cnt.risk, '有风险') +
-      '</div>' +
-
-      '<div class="section-title">物料到货</div>' +
-      '<div class="stat-row">' +
-        chip(arrivals.length, '项总计') +
-        chip(arrDone, '已到 / 已通知') +
-        chip(arrivals.length - arrDone, '还没到') +
-      '</div>';
+      '<div class="mf-grid">' + fieldHtml + '</div>';
 
     UI.modal({
       title: store.name,
