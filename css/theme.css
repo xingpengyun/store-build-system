@@ -206,10 +206,9 @@ html { scroll-behavior: smooth; }
   box-shadow: inset 0 1px 0 rgba(255, 222, 176, .09), 0 10px 26px -18px rgba(28, 18, 46, .8);
 }
 
-/* 横幅左侧的小图标：城市 CBD 夜景（z195 起换掉原来的便利店 emoji）。
-   60px 的方格子里塞一张 52px 的 SVG，夜景底色在 SVG 里，方块只负责"窗口"：
-   底色压成深夜紫、裁掉 SVG 的直角（overflow:hidden），再补一圈很淡的暖光晕，
-   让它在深色横幅上稍微"亮"一点，不至于沉进背景。 */
+/* 横幅左侧的小图标：像素风街边小饭馆（z200 起换掉 z195 的 CBD 夜景）。
+   60px 的方格子里塞一张 52px 的 26×26 像素图（1 格 = 2px，整数放大才不糊）：
+   方块只负责"窗口"——深夜紫底、裁掉直角、补一圈很淡的暖光晕。 */
 .hero-icon {
   background: #160f2b;
   border-color: rgba(255, 186, 106, .42);
@@ -219,29 +218,29 @@ html { scroll-behavior: smooth; }
     0 0 16px rgba(255, 170, 82, .18),
     inset 0 1px 0 rgba(255, 255, 255, .07);
 }
-.hero-icon .cbd-svg { display: block; width: 52px; height: 52px; }
-/* 窄屏方块缩到 46，SVG 不跟着缩就会被裁掉两只楼 */
+.hero-icon .px-svg { display: block; width: 52px; height: 52px; }
+/* 窄屏方块缩到 46，图跟着缩到 39（26×1.5），仍是整数倍附近的等比 */
 @media (max-width: 860px) {
-  .hero-icon .cbd-svg { width: 40px; height: 40px; }
+  .hero-icon .px-svg { width: 39px; height: 39px; }
 }
 
-/* 航空障碍灯呼吸 + 两三扇窗慢慢亮灭：CBD 夜景里"还有人加班"的那点活气。
-   只动 opacity，元素个位数，开销可以忽略。 */
-.cbd-bcn { animation: cbdBcn 3.8s ease-in-out infinite; }
-.cbd-bcn.b2 { animation-delay: -1.4s; }
-@keyframes cbdBcn {
-  0%, 100% { opacity: .32; }
-  46%      { opacity: 1; }
-  62%      { opacity: .55; }
+/* 窗里那碗热汤在冒气：三缕错峰上下、明暗；门内暖光慢慢呼吸。
+   只动 opacity / translateY，元素 12 个，开销可以忽略。 */
+.px-steam { animation: pxSteam 4.2s ease-in-out infinite; }
+.px-steam.s2 { animation-delay: -1.4s; }
+.px-steam.s3 { animation-delay: -2.8s; }
+@keyframes pxSteam {
+  0%, 100% { opacity: .24; transform: translateY(1px); }
+  45%      { opacity: .95; transform: translateY(-1px); }
+  72%      { opacity: .5;  transform: translateY(0); }
 }
-.cbd-tw { animation: cbdTw 7.5s ease-in-out infinite; }
-@keyframes cbdTw {
-  0%, 100% { opacity: 1; }
-  48%      { opacity: .3; }
-  56%      { opacity: 1; }
+.px-door { animation: pxDoor 6.4s ease-in-out infinite; }
+@keyframes pxDoor {
+  0%, 100% { opacity: .78; }
+  50%      { opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cbd-bcn, .cbd-tw { animation: none !important; }
+  .px-steam, .px-door { animation: none !important; }
 }
 
 /* ---------------- 5. KPI：图标带同色光晕 ---------------- */
