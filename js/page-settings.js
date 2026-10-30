@@ -515,7 +515,8 @@ window.Pages.settings = (function () {
     var body = head.parentNode.querySelector('.sm-collapse');
     if (!body) return false;
 
-    var willOpen = forceOpen === true ? true : body.hidden;   /* forceOpen 只展开；不传就切换 */
+    /* forceOpen 传 true/false 就是强制展开/收起；不传就按当前状态切换 */
+    var willOpen = (typeof forceOpen === 'boolean') ? forceOpen : body.hidden;
     body.hidden = !willOpen;
     head.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
     head.title = willOpen ? '收起' : '展开';
@@ -1494,6 +1495,136 @@ window.Pages.settings = (function () {
           });
         };
         reader.readAsText(f, 'utf-8');
+      });
+    }
+
+    /* 最后一步：让每张卡都能收起（放在这里，保证上面绑在卡上的事件都已经挂好） */
+    applyCardFold(root);
+  }
+
+  /* ================= 所有设置卡都能折叠（z163） =================
+     9 张卡平铺下来太长，改成每张卡的头都能点：收起只留标题，状态记在本机。
+     - 已经自带折叠的卡（阶段与子阶段）跳过，免得两个把手打架
+     - 只重新包一层 DOM，原内容和绑在卡上的事件都不动
+     - 头里的按钮（保存之类）不触发折叠
+     ============================================================ */
+
+  var FOLD_KEY = 'sbs.settings.fold.v1';
+
+  function foldMap() {
+    try {
+      var s = localStorage.getItem(FOLD_KEY);
+      var o = s ? JSON.parse(s) : null;
+      return (o && typeof o === 'object') ? o : {};
+    } catch (e) { return {}; }
+  }
+
+  function saveFoldMap(m) {
+    try { localStorage.setItem(FOLD_KEY, JSON.stringify(m)); } catch (e) {}
+  }
+
+  function applyCardFold(root) {
+    var map = foldMap();
+    var heads = [];
+
+    Array.prototype.forEach.call(root.querySelectorAll('.card'), function (card) {
+      var head = card.querySelector('.card-head');
+      if (!head) return;
+      if (head.hasAttribute('data-sm-toggle')) return;      /* 自带折叠 */
+      if (card.getAttribute('data-fold-ready')) return;
+
+      var h3 = head.querySelector('h3');
+      var key = (h3 ? h3.textContent : '').trim();
+      if (!key) return;
+
+      /* 把标题之后的所有节点收进面板 */
+      var panel = document.createElement('div');
+      panel.className = 'card-panel';
+      var n = head.nextSibling;
+      while (n) {
+        var nx = n.nextSibling;
+        panel.appendChild(n);
+        n = nx;
+      }
+      card.appendChild(panel);
+
+      head.classList.add('is-fold');
+      head.setAttribute('role', 'button');
+      head.setAttribute('tabindex', '0');
+      var caret = document.createElement('span');
+      caret.className = 'card-fold-caret';
+      head.appendChild(caret);
+
+      card.setAttribute('data-fold-ready', '1');
+      card.setAttribute('data-fold-key', key);
+      heads.push({ card: card, head: head, panel: panel, caret: caret, key: key });
+
+      setFold(card, head, panel, caret, map[key] === false);
+    });
+
+    function setFold(card, head, panel, caret, collapsed) {
+      card.classList.toggle('is-collapsed', !!collapsed);
+      panel.hidden = !!collapsed;
+      caret.classList.toggle('open', !collapsed);
+      head.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      head.title = collapsed ? '展开' : '收起';
+    }
+
+    function toggle(head) {
+      var hit = null;
+      heads.forEach(function (x) { if (x.head === head) hit = x; });
+      if (!hit) return;
+      var willCollapse = !hit.panel.hidden;
+      setFold(hit.card, hit.head, hit.panel, hit.caret, willCollapse);
+
+      var m = foldMap();
+      m[hit.key] = !willCollapse;     /* 存的是「是否展开」 */
+      saveFoldMap(m);
+    }
+
+    /* 头里的按钮 / 输入框不要触发折叠 */
+    function fromControl(t) {
+      return !!(t && t.closest && t.closest('button, a, input, select, textarea, label'));
+    }
+
+    root.addEventListener('click', function (e) {
+      var head = e.target.closest && e.target.closest('.card-head.is-fold');
+      if (!head || !root.contains(head)) return;
+      if (fromControl(e.target)) return;
+      toggle(head);
+    });
+
+    root.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      var head = e.target.closest && e.target.closest('.card-head.is-fold');
+      if (!head || !root.contains(head)) return;
+      e.preventDefault();
+      toggle(head);
+    });
+
+    /* 全部展开 / 全部收起 */
+    var pageHead = root.querySelector('.page-head');
+    if (pageHead && !root.querySelector('.fold-all')) {
+      var bar = document.createElement('div');
+      bar.className = 'fold-all';
+      bar.innerHTML =
+        '<button class="btn btn-sm" type="button" data-fold="expand">全部展开</button>' +
+        '<button class="btn btn-sm" type="button" data-fold="collapse">全部收起</button>' +
+        '<span class="fold-all-tip">点任意卡片的标题，也能收起 / 展开</span>';
+      pageHead.parentNode.insertBefore(bar, pageHead.nextSibling);
+
+      bar.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-fold]');
+        if (!b) return;
+        var collapse = b.getAttribute('data-fold') === 'collapse';
+        heads.forEach(function (x) {
+          setFold(x.card, x.head, x.panel, x.caret, collapse);
+        });
+        /* 「阶段与子阶段」自带折叠，也一起收 / 展，不然「全部」名不副实 */
+        toggleSmCard(root, !collapse);
+        var m = foldMap();
+        heads.forEach(function (x) { m[x.key] = !collapse; });
+        saveFoldMap(m);
       });
     }
   }

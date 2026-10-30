@@ -1389,6 +1389,40 @@
 /* 类型不是下拉时，选项栏用不上：淡下去，别抢注意力 */
 .input.is-off { opacity: .38; }
 .input.is-off:focus { opacity: 1; }
+
+/* ---------------- 设置页：卡片折叠（z163） ---------------- */
+.card-head.is-fold { cursor: pointer; user-select: none; -webkit-user-select: none; }
+.card-head.is-fold h3 { transition: color .14s; }
+.card-head.is-fold:hover h3 { color: var(--primary); }
+.card-head.is-fold:focus-visible {
+  outline: 2px solid var(--primary-2);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.card-fold-caret {
+  flex: 0 0 auto;
+  width: 18px; height: 18px;
+  margin-left: auto;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-3);
+  transition: color .14s;
+}
+.card-fold-caret::before {
+  content: '';
+  width: 7px; height: 7px;
+  border-right: 1.7px solid currentColor;
+  border-bottom: 1.7px solid currentColor;
+  transform: rotate(-45deg);            /* 收起：箭头朝右 */
+  transition: transform .2s ease;
+}
+.card-fold-caret.open::before { transform: rotate(45deg); }   /* 展开：箭头朝下 */
+.card-head.is-fold:hover .card-fold-caret { color: var(--text); }
+.card-panel[hidden] { display: none; }
+.card.is-collapsed .card-head { margin-bottom: 0; }
+
+.fold-all { display: flex; align-items: center; gap: 8px; margin: -4px 0 14px; flex-wrap: wrap; }
+.fold-all .btn { font-size: 12px; padding: 5px 12px; }
+.fold-all-tip { font-size: 11.5px; color: var(--text-3); }
 .fld-del {
   width: 26px; height: 26px; border: 0; border-radius: var(--radius-xs);
   background: transparent; color: var(--text-3); cursor: pointer; font-size: 15px; line-height: 1;
