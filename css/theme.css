@@ -697,14 +697,18 @@ button:focus-visible,
    原来靠它自带的一块深色地面遮丑，看着像浮在半空。这里直接往下推到地面线。 */
 .hero-art { transform: translateY(36px); }
 
-/* 前景枯枝：从顶边横过来的一条剪影，只占顶部 20px，不碰文案 */
+/* 前景枯枝：从顶边横过来的一条剪影。
+   z183：原来贴在 top:-1px，被横幅的圆角切掉大半，加上纯黑枝压在同样压暗的
+   天空上几乎看不见，整体像"顶部一块脏"。往下挪 6px、加高到 40px，让枝真正垂下来；
+   再补一圈极淡的冷色轮廓光（drop-shadow）—— 深色剪影在暗天空里必须靠边光才读得出。 */
 .hw-branch {
   position: absolute;
   left: 0;
-  top: -1px;
+  top: 6px;
   width: auto;
-  height: 38px;          /* 固定高度：按宽度拉伸的话盒子会垂到标题上 */
-  opacity: .9;
+  height: 40px;          /* 固定高度：按宽度拉伸的话盒子会垂到标题上 */
+  opacity: .95;
+  filter: drop-shadow(0 0 2px rgba(198, 208, 255, .28));
 }
 
 /* 近景草丛：贴底边、拉伸铺满，把地平线打毛 */
@@ -912,7 +916,7 @@ button:focus-visible,
 }
 
 /* ---------------- 全局背景万圣节装饰（fixed，不挡交互）：蜘蛛网 + 蝙蝠 ----------------
-   注：南瓜灯 z159 起不在这一层里，z173 已经整个换成侧边栏内的血迹（见 .hw-blood） */
+   注：南瓜灯 z159 起不在这一层里，z173 换成血迹、z174 换成枯树（见 .hw-tree） */
 .hw-scene {
   position: fixed;
   inset: 0;
@@ -946,27 +950,29 @@ button:focus-visible,
   opacity: .8;
   animation: hwBatFly 5s ease-in-out infinite;
 }
-/* 万圣节血迹（z173）：顶替原来的南瓜灯位置 —— 导航和「本机缓存卡」之间的空白带。
-   仍然不进 fixed 层，走侧边栏里的普通流元素：上下 auto 留白自动落在空白带中间，
-   align-self 锁水平居中，align-items:stretch 也拉不宽它，谁都遮不到。
-   静态、不摇摆：血迹会动就假了，也不该在工作台里晃眼睛。 */
-.hw-blood {
+/* 万圣节枯枝（z186 定稿）：顶替血迹的位置 —— 导航和「本机缓存卡」之间的空白带。
+   z174~z185 试过用分形递归"长出"一棵树（竖着、斜着、横着共十几版），
+   缩小到这个尺寸都像"蛇骨"或"插在土里的树棍"。最后改成直接沿用横幅顶部
+   那根手绘枯枝的路径 —— 横枝 + 几根长短不一的下垂细枝，两处同一个形体，
+   也算成套。横着放正好铺满这条空白带，不占高度。
+   仍然不进 fixed 层，走侧边栏里的普通流元素，align-self 锁水平居中。
+   宽高按 viewBox 比例（220 × 62）—— 只给宽度会让 SVG 按 1:1 拉变形。 */
+.hw-tree {
   display: block;
   align-self: center;
   flex: 0 0 auto;
-  width: 56px;
-  height: 56px;
-  margin: auto 0 18px;
-  opacity: .92;
-  pointer-events: none;   /* 纯装饰，别在侧边栏空白处挡出点击热区 */
-  /* 歪一点：正着摆像贴上去的贴纸，斜 9° 才有"溅上去"的感觉 */
-  transform: rotate(-9deg);
-  filter: drop-shadow(0 3px 7px rgba(96, 6, 14, .45));
+  width: 170px;
+  height: 47.9px;        /* = 170 × 62 / 220，和 viewBox 同比例 */
+  margin: auto 0 16px;
+  pointer-events: none;  /* 纯装饰，别在侧边栏空白处挡出点击热区 */
+  /* 沿枝的暖色轮廓光：纯黑剪影压在深蓝侧边栏上几乎读不出来，得有一圈淡月光勾边。
+     用 drop-shadow 而不是 background 的径向渐变 —— 渐变画在元素盒上，盒子四角
+     必然还留一点不透明度，屏幕上就是一个硬边矩形。drop-shadow 贴着枝的形状走，
+     没有盒子边界。 */
+  filter: drop-shadow(0 0 3.5px rgba(255, 194, 130, .30));
 }
-/* 1180 以下侧边栏收成 62px 图标条，血迹收到 36 才不会顶到两边 */
-@media (max-width: 1180px) { .hw-blood { width: 36px; height: 36px; margin-bottom: 12px; } }
-/* 860 以下侧边栏变成横向导航条，血迹会横插在图标之间 —— 直接不显示 */
-@media (max-width: 860px)  { .hw-blood { display: none; } }
+/* 1180 以下侧边栏收成 62px 图标条，横枝会顶到两边 —— 直接不显示 */
+@media (max-width: 1180px) { .hw-tree { display: none; } }
 @keyframes hwMoon {
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(-5px); }
