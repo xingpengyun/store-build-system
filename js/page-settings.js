@@ -204,7 +204,7 @@ window.Pages.settings = (function () {
         '<input class="input" data-fld="name" value="' + U.esc(f.name) + '" placeholder="字段名，比如 加盟商姓名" />' +
         '<select class="input" data-fld="type">' + typeOpts + '</select>' +
         '<input class="input" data-fld="options" value="' + U.esc((f.options || []).join('、')) + '" ' +
-          'placeholder="下拉选项，用、分隔（其他类型留空）" />' +
+          'placeholder="仅下拉选择要填，用、分隔，如 一线、二线" />' +
         '<button class="fld-del" type="button" data-act="delField" title="删掉这个字段">×</button>' +
       '</div>';
     }).join('');
@@ -225,7 +225,8 @@ window.Pages.settings = (function () {
 
       '<p class="muted" style="margin:-2px 0 12px;font-size:12px;color:var(--text-3);line-height:1.8">' +
         '门店详情点「详细信息」，会按下面这份清单铺出输入框；填的值存在云端，按门店分开。' +
-        '「金额」= 手动输入一个数，适合加盟费、管理费；「下拉选择」= 单选，选项用、分隔。' +
+        '「金额」= 手动输入一个数，适合加盟费、管理费；' +
+        '「下拉选择」= 单选，<b style="color:var(--text-2)">必须把选项填在右边那一栏</b>（用、分隔），不填就只剩一个空下拉。' +
       '</p>' +
 
       '<div class="fld-list" id="fldList">' +
@@ -628,7 +629,7 @@ window.Pages.settings = (function () {
           '<input class="input" data-fld="name" value="' + U.esc(name || '') +
             '" placeholder="字段名，比如 加盟商姓名" />' +
           '<select class="input" data-fld="type">' + typeOpts + '</select>' +
-          '<input class="input" data-fld="options" value="" placeholder="下拉选项，用、分隔（其他类型留空）" />' +
+          '<input class="input" data-fld="options" value="" placeholder="仅下拉选择要填，用、分隔，如 一线、二线" />' +
           '<button class="fld-del" type="button" data-act="delField" title="删掉这个字段">×</button>';
         fldList.appendChild(row);
         renumber();
@@ -672,6 +673,23 @@ window.Pages.settings = (function () {
         });
         return { fields: list, prices: prices };
       }
+
+      /* 把类型切成「下拉选择」时，顺手把光标送到选项栏 —— 不然很容易只改了类型、忘了填选项，
+         存下去就是个空下拉，看着像没生效 */
+      fldCard.addEventListener('change', function (e) {
+        var el = e.target;
+        if (!el || el.getAttribute('data-fld') !== 'type') return;
+        var row = el.closest('.fld-row');
+        var optInput = row && row.querySelector('[data-fld="options"]');
+        if (!optInput) return;
+        if (el.value === 'select' && !String(optInput.value || '').trim()) {
+          optInput.classList.add('is-warn');
+          optInput.focus();
+          UI.toast('记得在右边填选项，用、分隔，比如 一线、二线、三线', 'info');
+        } else {
+          optInput.classList.remove('is-warn');
+        }
+      });
 
       fldCard.addEventListener('click', function (e) {
         var btn = e.target.closest('[data-act]');
@@ -722,6 +740,30 @@ window.Pages.settings = (function () {
         if (act === 'saveFields') {
           var got = collectFields();
           if (!got.fields.length) { UI.toast('至少留一个字段', 'info'); return; }
+
+          /* 选了下拉却没填选项：存下去只会得到一个空下拉，等于没生效，这里直接拦住 */
+          var noOpt = null;
+          got.fields.forEach(function (f) {
+            if (!noOpt && f.type === 'select' && !(f.options || []).length) noOpt = f;
+          });
+          if (noOpt) {
+            UI.toast('「' + noOpt.name + '」选了下拉选择，但右边选项还是空的', 'info');
+            var rowEl = fldList.querySelector('[data-fid="' + noOpt.id + '"]') ||
+              Array.prototype.slice.call(fldList.querySelectorAll('.fld-row')).filter(function (r) {
+                return r.querySelector('[data-fld="name"]').value === noOpt.name;
+              })[0];
+            var optInput = rowEl && rowEl.querySelector('[data-fld="options"]');
+            if (optInput) {
+              optInput.classList.add('is-warn');
+              optInput.focus();
+              optInput.addEventListener('input', function once() {
+                optInput.classList.remove('is-warn');
+                optInput.removeEventListener('input', once);
+              });
+            }
+            return;
+          }
+
           S.saveStoreFields(got.fields);
           S.savePriceRows(got.prices);
           UI.toast('已保存 ' + got.fields.length + ' 个字段、' + S.priceRows().length + ' 档价格', 'success');

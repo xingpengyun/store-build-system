@@ -1382,6 +1382,14 @@
 }
 .fld-idx { font-size: 11px; color: var(--text-4); text-align: center; }
 .fld-row .input { min-width: 0; }
+
+/* 选了下拉但选项没填：标出来，别让人以为设置不生效 */
+.input.is-warn {
+  border-color: #f0a13a !important;
+  background: #fffaf0 !important;
+  box-shadow: 0 0 0 3px rgba(240, 161, 58, .16) !important;
+}
+.input.is-nonopt { color: var(--text-3); font-style: italic; }
 .fld-del {
   width: 26px; height: 26px; border: 0; border-radius: var(--radius-xs);
   background: transparent; color: var(--text-3); cursor: pointer; font-size: 15px; line-height: 1;

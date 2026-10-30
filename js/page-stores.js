@@ -780,7 +780,13 @@ window.Pages.stores = (function () {
     var val = (v == null) ? '' : String(v);
 
     if (f.type === 'select') {
-      var opts = (f.options || []).map(function (o) {
+      var list = f.options || [];
+      /* 设成下拉但一个选项都没填：给个明确的空态，不要只显示「未选择」让人以为坏了 */
+      if (!list.length) {
+        return '<select class="input is-nonopt" data-fid="' + id + '" data-ftype="select" ' +
+          'title="这个字段在设置里没填选项"><option value="">未配置选项 · 去设置里补</option></select>';
+      }
+      var opts = list.map(function (o) {
         return '<option value="' + U.esc(o) + '"' + (o === val ? ' selected' : '') + '>' +
           U.esc(o) + '</option>';
       }).join('');
