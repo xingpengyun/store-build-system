@@ -183,19 +183,42 @@ window.UI = (function () {
 
   var ART_KEYS = Object.keys(ART);
 
-  /* 换头像图片时改这个版本号，img 的 ?v= 跟着变，浏览器才会重新拉图 */
-  var ART_VER = '20261030z168';
+  /* 换头像图片时改这个版本号，img 的 ?v= 跟着变，浏览器才会重新拉图。
+     ⚠ 2026-11-04 z204 —— 这个值从 z168 起一直没动过，而 10-31 之前线上
+     assets/avatars3d/ 一直没上传（全 404）。访问过旧站的浏览器 / CDN 会把
+     「xxx.webp?v=20261030z168 → 404」记进缓存，后端补了图以后照样命中那条缓存的 404，
+     表现就是「换台电脑登录，所有头像都没了」。
+     换新版本号 = 所有图片 URL 一起换，旧缓存自然绕开。
+     以后**补图、换图都必须改这里**，否则只有清缓存的人能看到新图。 */
+  var ART_VER = '20261104z204';
+
+  /* 图片加载失败时的兜底：把圆换成「品牌色 + 姓氏首字」。
+     没有兜底的话，图挂了圆里就是空的（背景色是浅色底），用户看到的就是「头像消失」。
+     data-ch 在生成 img 时写进去（成员名的首字）。 */
+  function artFail(img) {
+    img.onerror = null;
+    var p = img.parentNode;
+    if (!p) return;
+    var ch = img.getAttribute('data-ch') || '';
+    p.classList.remove('avatar-art');
+    p.classList.add('is-art-fail');
+    p.removeAttribute('style');
+    p.textContent = ch;
+  }
 
   /* 头像内容：3D 图铺满整颗圆（圆是父级裁的，img 不用自己裁）。
      __ASSET_BASE 只在本地预览页（.workbuddy/harness.html，位于子目录）里设成 '../'，
      正式站没有这个变量，路径就是普通的 assets/…。
-     ?v= 是必须的：图片名不带 hash，浏览器会强缓存，换图后不加参数用户看到的还是旧图。 */
-  function animalSvg(key) {
+     ?v= 是必须的：图片名不带 hash，浏览器会强缓存，换图后不加参数用户看到的还是旧图。
+     name 用来在图片加载失败时兜底显示首字。 */
+  function animalSvg(key, name) {
     var d = ART[normArt(key)];
     if (!d || !d.img) return '';       /* 只有老 key 的兼容项没有图，那里显示「颜色 + 首字」 */
     var base = (typeof window !== 'undefined' && window.__ASSET_BASE) || '';
     return '<img class="art-img" src="' + base + 'assets/avatars3d/' + d.img + '?v=' + ART_VER + '" alt="' +
-      U.esc(d.name) + '" draggable="false" />';
+      U.esc(d.name) + '" draggable="false" decoding="async"' +
+      ' data-ch="' + U.esc((name || '?').slice(0, 1)) + '"' +
+      ' onerror="UI.artFail(this)" />';
   }
 
   /* 头像：传了动物 key 就画小动物，没传还是原来那颗「颜色 + 姓氏首字」 */
@@ -204,7 +227,7 @@ window.UI = (function () {
     var d = animal && ART[animal];
     if (d && d.img) {                   /* 有一点图才画圆头像，否则退回「颜色 + 姓氏首字」 */
       return '<span class="avatar avatar-' + (size || 'md') + ' avatar-art" style="background:' + d.bg +
-        '" title="' + U.esc(d.name) + '">' + animalSvg(animal) + '</span>';
+        '" title="' + U.esc(d.name) + '">' + animalSvg(animal, name) + '</span>';
     }
     var ch = (name || '?').slice(0, 1);
     return '<span class="avatar avatar-' + (size || 'md') + '" style="background:' + (color || '#3f6bf5') + '">' +
@@ -967,6 +990,7 @@ window.UI = (function () {
     statusBadge: statusBadge,
     avatar: avatar,
     animalSvg: animalSvg,
+    artFail: artFail,      /* img onerror 兜底：图挂了退回「品牌色 + 首字」，别让头像变空白 */
     ANIMALS: ART,          /* { key: { name, bg, file … } }，所有头像的总表 */
     ANIMAL_KEYS: ART_KEYS,
     ART_GROUPS: ART_GROUPS, /* 选择器用：按组 + 手调顺序铺，全是 3D 图 */

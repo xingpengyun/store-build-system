@@ -58,6 +58,14 @@
 
 html, body { height: 100%; }
 
+/* 2026-11-04 z204：滚动条永远预留位置，不管当前页面内容有多高。
+   不写这一行的后果：有的页面内容超过一屏（出现纵向滚动条，视口窄 15~17px），
+   有的页面不到一屏（滚动条消失，视口变宽）。而蜘蛛网 / 飞行蝙蝠是
+   position:fixed 相对视口贴边的 —— 于是每切一次页面，它们就跟着视口宽度
+   横跳 17px，看起来像「抖了一下」，还会误以为「网变大变小了」。
+   加了之后视口宽度恒定，切页面不再位移。（Chrome/Edge 94+、Firefox 97+ 支持） */
+html { scrollbar-gutter: stable; }
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",

@@ -304,7 +304,7 @@ window.Pages.settings = (function () {
           return '<span class="acc-chip">' +
             '<i class="acc-chip-ava' + (a ? ' is-art' : '') + '"' +
               (a ? ' style="background:' + UI.ANIMALS[a].bg + '"' : '') + '>' +
-              (a ? UI.animalSvg(a) : U.esc(ini(n))) + '</i>' + U.esc(n) +
+              (a ? UI.animalSvg(a, n) : U.esc(ini(n))) + '</i>' + U.esc(n) +
             (iAmOwner
               ? '<i class="acc-x" data-act="revokeAccess" data-name="' + U.esc(n) + '" title="收回「' + U.esc(n) + '」的权限">×</i>'
               : '') +
@@ -329,7 +329,7 @@ window.Pages.settings = (function () {
       '<div class="acc-owner">' +
         '<span class="acc-ava' + (ownerArt ? ' is-art' : '') + '"' +
           (ownerArt ? ' style="background:' + UI.ANIMALS[ownerArt].bg + '"' : '') + '>' +
-          (ownerArt ? UI.animalSvg(ownerArt) : U.esc(ini(a.owner))) + '</span>' +
+          (ownerArt ? UI.animalSvg(ownerArt, a.owner) : U.esc(ini(a.owner))) + '</span>' +
         '<span class="acc-who">' +
           '<span class="acc-line1"><b class="acc-name">' + U.esc(a.owner) + '</b>' +
           '<i class="acc-role">管理员</i>' +

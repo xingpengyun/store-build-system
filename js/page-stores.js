@@ -560,7 +560,7 @@ window.Pages.stores = (function () {
       /* 负责人头像：成员配了小动物就画小动物（和首页 / 任务页一致），否则还是姓氏首字 */
       var art = (m && UI.artKey(m.animal)) || '';
       var whoAva = art
-        ? '<i class="tcard-ava is-art" style="background:' + UI.ANIMALS[art].bg + '">' + UI.animalSvg(art) + '</i>'
+        ? '<i class="tcard-ava is-art" style="background:' + UI.ANIMALS[art].bg + '">' + UI.animalSvg(art, m && m.name) + '</i>'
         : '<i class="tcard-ava">' + U.esc(ini) + '</i>';
       return '<div class="tcard" style="animation-delay:' + (i * 55) + 'ms">' +
         '<i class="tcard-rail" style="background:' + stageColorOf(t.stage) + '"></i>' +
