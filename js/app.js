@@ -154,7 +154,7 @@ window.App = (function () {
       el.setAttribute('data-sig', sig);
       el.className = 'avatar avatar-md' + (art ? ' avatar-art' : '');
       el.style.background = art ? (UI.ANIMALS[art].bg || color) : color;
-      el.innerHTML = art ? UI.animalSvg(art) : U.esc(String(uname).slice(-2));
+      el.innerHTML = art ? UI.animalSvg(art, uname) : U.esc(String(uname).slice(-2));
     }
     el.title = uname + ' · 点开有账号菜单';
   }
@@ -664,7 +664,7 @@ window.App = (function () {
     var bg = art ? (UI.ANIMALS[art].bg || color) : color;
     return '<span class="avatar ' + (size || 'avatar-md') + (art ? ' avatar-art' : '') +
       '" style="background:' + U.esc(bg) + '">' +
-      (art ? UI.animalSvg(art) : U.esc(String(uname || '我').slice(-2))) + '</span>';
+      (art ? UI.animalSvg(art, uname) : U.esc(String(uname || '我').slice(-2))) + '</span>';
   }
 
   function toggleUserMenu() {

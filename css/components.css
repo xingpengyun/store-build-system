@@ -961,6 +961,21 @@
 .acc-chip-ava .art-img,
 .acc-ava .art-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
+/* 3D 图加载失败时的兜底（2026-11-04 z204）：
+   UI.artFail() 会把 img 拿掉、给容器挂上 is-art-fail 并写入姓氏首字。
+   没有这条兜底的话，图一挂圆里就是空的（底色还是原来的浅色 bg），
+   用户看到的就是「头像消失了」。这里统一换成品牌色圆 + 白字首字，
+   和「成员没设头像」的样子一致 —— 至少能看出是降级，不是坏了。 */
+.avatar.is-art-fail,
+.tcard-ava.is-art-fail,
+.acc-ava.is-art-fail,
+.acc-chip-ava.is-art-fail {
+  background: var(--primary, #3f6bf5) !important;
+  color: #fff;
+  font-weight: 600;
+  line-height: 1;
+}
+
 /* ---------------- 头像选择器（团队页弹窗） ---------------- */
 .art-grid { display: grid; grid-template-columns: repeat(7, 30px); gap: 10px 11px; }
 
