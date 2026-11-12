@@ -232,164 +232,405 @@ window.Pages.home = (function () {
     }).join('');
   }
 
-  /* ================= 万圣夜场景（z171） =================
-     参考了 CodePen / GitHub 上几个评价不错的万圣节横幅（CSS Fog Animation、
-     Haunted Loop、Halloween-page 那几个），共同做法都是同一套：
-       · 分远 / 中 / 近三层，越靠前越暗越大，靠层叠和雾拉开空间，而不是堆形状
-       · 月亮给「晕」，不是给一个硬边圆
-       · 蝙蝠一律剪影（不是画圆脸），靠抖动 + 大小差表现远近
-       · 雾用几层模糊的径向渐变横着慢慢飘
-     这里照着这四条重排，替换掉原来那套平涂贴纸（骷髅 / 圆脸蝙蝠 / 棒棒糖小树）。
-     纯 SVG + CSS，无外部图片、无 JS 动画。 */
-  function hwScene() {
+  /* ================= 圣诞冬夜场景（z205） =================
+     z171 那套是万圣夜：橙月 + 墓碑 + 蝙蝠 + 幽灵 + 蜘蛛 + 南瓜灯。
+     z205/z206 是月夜圣诞（冷月 + 冷蓝雪夜），用户觉得圣诞味不够。
+     z207 改成经典红绿圣诞：远（金色星光 / 薄云 / 暖雪雾）→ 中（居中圣诞花环 /
+     放大版圣诞树 / 雪丘 / 松树 / 雪人 / 礼物 / 坐着圣诞老人的驯鹿雪橇）→
+     近（雪堆边沿 + 落雪 + 顶边灯串 / 冬青 / 金铃铛 / 红蝴蝶结）。
+     依旧是三层叠 + 光晕拉纵深，纯 SVG + CSS，无外部图片、无 JS 动画。 */
+  function xmScene() {
+    /* 落雪：12 片，位置 / 速度 / 相位全在 CSS 里（.xm-snow.f1~f12） */
+    var snow = '';
+    for (var i = 1; i <= 12; i++) snow += '<i class="xm-snow f' + i + '"></i>';
+
+    /* 顶边灯串：十颗彩灯泡，交替闪烁由 .xm-bulb 的 xmTwinkle 负责 */
+    /* z206：红灯从 2 颗加到 4 颗并提亮，红成为灯串的主节奏 */
+    var bulbs = [
+      [30, 8, '#ff4f45', '-.2s'], [95, 13, '#ffd46a', '-1.1s'],
+      [160, 14, '#ff4f45', '-2.0s'], [225, 11, '#6fd6a2', '-.7s'],
+      [272, 7, '#ff4f45', '-1.7s'], [355, 6, '#ffd46a', '-2.5s'],
+      [420, 10, '#ff4f45', '-.4s'], [485, 15, '#8fd0ff', '-1.9s'],
+      [545, 9, '#ffd46a', '-3.1s'], [580, 12, '#ff4f45', '-2.3s']
+    ];
+    var lights = '<svg class="xm-lights" viewBox="0 0 600 26" preserveAspectRatio="none" aria-hidden="true">' +
+      '<path class="xm-wire" d="M0 3C90 19 150 19 240 11S390 3 480 13 560 20 600 12" fill="none" stroke-width="1.2"/>' +
+      bulbs.map(function (b) {
+        return '<circle class="xm-bulb" cx="' + b[0] + '" cy="' + b[1] + '" r="6.6" fill="' + b[2] +
+          '" opacity=".40" style="animation-delay:' + b[3] + '"/>' +
+          '<circle class="xm-bulb" cx="' + b[0] + '" cy="' + b[1] + '" r="3.1" fill="' + b[2] +
+          '" style="animation-delay:' + b[3] + '"/>';
+      }).join('') +
+      '</svg>';
+
+    /* z206：顶边冬青红果枝（4 组）+ 中央红丝带蝴蝶结。
+       红色沿整条横幅铺开，而不是只在底部礼物上点两下。 */
+    var hollySvg = '<svg viewBox="0 0 36 28" fill="none" aria-hidden="true">' +
+      '<path d="M1 4q12 10 34 6" stroke="#1b6a4b" stroke-width="1.7" stroke-linecap="round"/>' +
+      '<path d="M8 8q-7-7-1-8 7 2 5 9z" fill="#2d8a5e"/>' +
+      '<path d="M16 11q-7-8 0-9 7 3 4 10z" fill="#247a53"/>' +
+      '<path d="M25 12q-6-8 1-9 7 3 3 10z" fill="#2d8a5e"/>' +
+      '<circle cx="12" cy="15" r="3.4" fill="#e5393e"/>' +
+      '<circle cx="19" cy="16" r="3" fill="#b52f36"/>' +
+      '<circle cx="25" cy="15" r="2.8" fill="#f2604f"/>' +
+      '<circle cx="11" cy="14" r=".9" fill="#ffb8a8" opacity=".85"/>' +
+      '</svg>';
+    var holly = '';
+    for (var h = 1; h <= 4; h++) holly += '<i class="xm-holly h' + h + '">' + hollySvg + '</i>';
+    var bow = '<i class="xm-bow"><svg viewBox="0 0 40 26" fill="none" aria-hidden="true">' +
+      '<path d="M20 12C10 2 2 4 2 11c0 6 8 8 18 2z" fill="#c92f38"/>' +
+      '<path d="M20 12C30 2 38 4 38 11c0 6-8 8-18 2z" fill="#e44943"/>' +
+      '<path d="M17 13l-4 11 6-3 5 3-3-11z" fill="#a92b33"/>' +
+      '<circle cx="20" cy="12" r="3.4" fill="#ffd46a"/>' +
+      '</svg></i>';
+
+    /* 红白糖果拐杖：白色棒身 + 红色斜向节奏，插在礼物堆右侧的雪里 */
+    var cane = '<svg class="xm-cane" viewBox="0 0 20 40" fill="none" aria-hidden="true">' +
+      '<path d="M6 38V16a8 8 0 0 1 12-6" stroke="#fff6ee" stroke-width="5.2" stroke-linecap="round"/>' +
+      '<path d="M6 38V16a8 8 0 0 1 12-6" stroke="#e23b3f" stroke-width="5.2" stroke-linecap="round" stroke-dasharray="4.5 5"/>' +
+      '<path d="M6 38V16a8 8 0 0 1 12-6" stroke="#ffffff" stroke-opacity=".5" stroke-width="1" stroke-linecap="round"/>' +
+      '</svg>';
+
+    /* z207：天空里的金色五角星（顶掉原来那颗大冷月的视觉重心） */
+    var starSvg = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+      '<path d="M12 1.5l3 7.2 7.8.6-5.9 5.1 1.8 7.6L12 18l-6.7 4 1.8-7.6-5.9-5.1 7.8-.6z" fill="#ffd76a"/>' +
+      '</svg>';
+    var stars = '';
+    for (var s = 1; s <= 4; s++) stars += '<i class="xm-sky-star s' + s + '">' + starSvg + '</i>';
+
+    /* z207：顶边三枚金铃铛，和冬青红果、红蝴蝶结一起把顶边铺满 */
+    var bellSvg = '<svg viewBox="0 0 20 24" fill="none" aria-hidden="true">' +
+      '<path d="M10 1v3" stroke="#ffd46a" stroke-width="1.3" stroke-linecap="round"/>' +
+      '<path d="M3.5 17c0-6 1.4-11 6.5-11s6.5 5 6.5 11z" fill="#e0a637"/>' +
+      '<path d="M6 9q4-2 8 0" stroke="#fff0c0" stroke-opacity=".55" stroke-width="1.2" stroke-linecap="round"/>' +
+      '<rect x="2.5" y="16.5" width="15" height="2.8" rx="1.4" fill="#ffd46a"/>' +
+      '<circle cx="10" cy="21" r="1.8" fill="#c98b2a"/>' +
+      '</svg>';
+    var bells = '';
+    for (var k = 1; k <= 3; k++) bells += '<i class="xm-bell b' + k + '">' + bellSvg + '</i>';
+
+    /* z207：居中大圣诞花环 —— 松枝环 / 冬青叶 / 九颗红果 / 两枚金铃铛 /
+       中心金星 / 底部红蝴蝶结。它占据了原来冷月的位置，但一眼就是圣诞。 */
+    var berries = [[60,18],[86,28],[101,50],[100,78],[82,98],
+                   [40,98],[20,78],[19,50],[34,28]];
+    var berryDots = berries.map(function (b) {
+      return '<circle cx="' + b[0] + '" cy="' + b[1] + '" r="3.4" fill="#e23b3f"/>';
+    }).join('');
+    var wreath = '<svg class="xm-wreath" viewBox="0 0 120 120" fill="none" aria-hidden="true">' +
+      '<defs><radialGradient id="xwHalo">' +
+        '<stop offset="0" stop-color="#ffd98a" stop-opacity=".34"/>' +
+        '<stop offset="1" stop-color="#ffd98a" stop-opacity="0"/>' +
+      '</radialGradient></defs>' +
+      '<circle cx="60" cy="60" r="58" fill="url(#xwHalo)"/>' +
+      /* 三层虚线圆环 = 蓬松的松针 */
+      '<circle cx="60" cy="60" r="42" stroke="#0b3f30" stroke-width="20"/>' +
+      '<circle cx="60" cy="60" r="42" stroke="#186b49" stroke-width="15" stroke-dasharray="8 5"/>' +
+      '<circle cx="60" cy="60" r="42" stroke="#2f9463" stroke-width="8" stroke-dasharray="3 6" stroke-dashoffset="3"/>' +
+      /* 四片冬青叶 */
+      '<g fill="#2b8a58">' +
+        '<path d="M22 34q-10-6-3-12 9 1 8 12zM98 34q10-6 3-12-9 1-8 12z"/>' +
+        '<path d="M18 80q-11 3-8 11 10 2 13-8zM102 80q11 3 8 11-10 2-13-8z"/>' +
+      '</g>' +
+      '<g>' + berryDots + '</g>' +
+      '<g fill="#ff9d86" opacity=".75">' +
+        '<circle cx="59" cy="16.5" r="1"/><circle cx="84.5" cy="27" r="1"/><circle cx="19" cy="48.5" r="1"/>' +
+      '</g>' +
+      /* 左右金铃铛 */
+      '<g>' +
+        '<path d="M20 62c0-5 1-8 4-8s4 3 4 8z" fill="#e8ad3c"/>' +
+        '<rect x="19" y="62" width="9" height="2.4" rx="1" fill="#ffd46a"/>' +
+        '<circle cx="24" cy="66" r="1.6" fill="#c98b2a"/>' +
+        '<path d="M92 62c0-5 1-8 4-8s4 3 4 8z" fill="#e8ad3c"/>' +
+        '<rect x="91" y="62" width="9" height="2.4" rx="1" fill="#ffd46a"/>' +
+        '<circle cx="96" cy="66" r="1.6" fill="#c98b2a"/>' +
+      '</g>' +
+      /* 环心金色大星 */
+      '<path class="xm-wreath-star" d="M60 34l5.4 12.6 13.7 1.1-10.4 9 3.1 13.4L60 63.2l-11.8 6.9 3.1-13.4-10.4-9 13.7-1.1z" fill="#ffd76a"/>' +
+      /* 底部红丝带蝴蝶结 */
+      '<path d="M60 96C45 84 32 87 32 97c0 9 12 12 28 3z" fill="#c92f38"/>' +
+      '<path d="M60 96c15-12 28-9 28 1 0 9-12 12-28 3z" fill="#e44943"/>' +
+      '<path d="M55 97l-6 18 9-4 8 4-3-18z" fill="#a92b33"/>' +
+      '<circle cx="60" cy="97" r="5" fill="#ffd46a"/>' +
+      '</svg>';
+
+    /* z208：不再堆小插画 —— 一枚动态倒数金章 + 大色块纸艺树 + 斜切色纸。
+       天数是按真实日期算到 12/25 的，过了圣诞自动翻到明年，不是写死的数字。 */
+    var nowD = new Date(), yr = nowD.getFullYear();
+    var todayD = new Date(yr, nowD.getMonth(), nowD.getDate());
+    var xmasD = new Date(yr, 11, 25);
+    if (todayD > xmasD) xmasD = new Date(yr + 1, 11, 25);
+    var daysLeft = Math.round((xmasD - todayD) / 86400000);
+    var paper = '<i class="xm-paper-band"></i>' +
+      '<i class="xm-paper-tree"></i>' +
+      '<i class="xm-paper-star"></i>' +
+      '<i class="xm-countdown"><b>' + daysLeft + '</b><small>天后圣诞</small></i>';
+
     return '<div class="hero-fx" aria-hidden="true">' +
-      /* 底子：三团柔光 + 流动点阵 + 星光（沿用原来的，负责"空气感"） */
+      /* 底子：三团柔光 + 流动点阵 + 星光（负责"空气感"） */
       '<i class="hf-blob hf-b1"></i><i class="hf-blob hf-b2"></i><i class="hf-blob hf-b3"></i>' +
+      '<i class="hf-blob hf-b4"></i>' +
       '<i class="hf-spark hf-s1"></i><i class="hf-spark hf-s2"></i><i class="hf-spark hf-s3"></i>' +
       '<i class="hf-spark hf-s4"></i>' +
+      snow +
+      lights + holly + bow + bells + paper +
 
-      /* ---------- 前景框：从顶边垂下来的枯枝（摄影构图里的"压角"，一下就有纵深） ---------- */
-      '<svg class="hw-branch" viewBox="0 0 220 44" fill="none" stroke="#0e0918" stroke-linecap="round" aria-hidden="true">' +
-        '<path d="M0 9C34 4 66 12 100 6S160 9 218 3" stroke-width="4.4"/>' +
-        '<path d="M46 8c2.6 6 3.6 11 3 17" stroke-width="2.4"/>' +
-        '<path d="M100 6c-1 4.4-.6 7.4 1.6 10" stroke-width="1.3"/>' +
-        '<path d="M80 9c-2 5.4-2.6 9.6-1.4 14.4" stroke-width="1.6"/>' +
-        '<path d="M126 6c2.4 5 4.4 9 7.6 12.6" stroke-width="2"/>' +
-        '<path d="M170 6c-1.6 4.6-3.4 8-2.4 11.6" stroke-width="1.4"/>' +
-        '<path d="M49 24c3 2 5.2 4.4 6.4 7.4" stroke-width="1.1"/>' +
-        '<path d="M79 22c-2.2 3-4 5.2-7 6.6" stroke-width="1.1"/>' +
-        '<path d="M134 18c1.6 2.6 2.4 4.8 2.2 7.2" stroke-width="1"/>' +
-      '</svg>' +
+      /* ---------- 远景 1：花环背后的暖金光晕 ---------- */
+      '<i class="xm-glow"></i>' +
 
-      /* ---------- 远景 1：月晕（大范围暖光，月亮才有"发光"的感觉） ---------- */
-      '<i class="hw-glow"></i>' +
+      /* ---------- 远景 2：金色天空星 ---------- */
+      stars +
 
-      /* ---------- 远景 2：月亮（渐变 + 柔坑 + 一圈月牙高光） ---------- */
-      '<svg class="hw-moon" viewBox="0 0 240 120" aria-hidden="true">' +
-        '<defs>' +
-          '<linearGradient id="hwMoonG" x1="0" y1="0" x2="0.2" y2="1">' +
-            '<stop offset="0" stop-color="#ffc978"/><stop offset=".34" stop-color="#ff9f36"/>' +
-            '<stop offset=".78" stop-color="#ea7f1e"/><stop offset="1" stop-color="#c25c0d"/>' +
-          '</linearGradient>' +
-          '<clipPath id="hwMoonClip"><path d="M0 120A120 120 0 0 1 240 120Z"/></clipPath>' +
-          '<radialGradient id="hwCrt">' +
-            '<stop offset="0" stop-color="#9c4d0c" stop-opacity=".5"/>' +
-            '<stop offset=".62" stop-color="#9c4d0c" stop-opacity=".26"/>' +
-            '<stop offset="1" stop-color="#a8560f" stop-opacity="0"/>' +
-          '</radialGradient>' +
-        '</defs>' +
-        '<path d="M0 120A120 120 0 0 1 240 120Z" fill="url(#hwMoonG)"/>' +
-        /* 坑：小、实、每档都不同大小，比一堆大渐变印子像月面 */
-        '<g fill="url(#hwCrt)">' +
-          '<ellipse cx="78" cy="92" rx="15" ry="10"/><ellipse cx="128" cy="66" rx="11" ry="7.5"/>' +
-          '<ellipse cx="176" cy="96" rx="12" ry="8"/><ellipse cx="212" cy="76" rx="7" ry="5"/>' +
-          '<ellipse cx="48" cy="114" rx="9" ry="6"/><ellipse cx="152" cy="86" rx="6" ry="4.5"/>' +
-          '<ellipse cx="104" cy="112" rx="5" ry="3.5"/><ellipse cx="196" cy="54" rx="4" ry="3"/>' +
+      /* ---------- 远景 3：居中圣诞花环（z207 顶掉冷月） ---------- */
+      wreath +
+
+      /* ---------- 远景 3：薄云 + 两层雪雾 ---------- */
+      '<i class="xm-cloud a"></i><i class="xm-cloud b"></i>' +
+      '<i class="xm-mist a"></i><i class="xm-mist b"></i>' +
+
+      /* ---------- 远景 4：驯鹿雪橇，缓缓飞过夜空（红鼻子是鲁道夫） ---------- */
+      '<svg class="xm-sleigh" viewBox="0 0 96 44" fill="none" aria-hidden="true">' +
+        '<g fill="#f6dfb8" opacity=".9">' +
+          /* 鹿身 + 头 + 四条腿 */
+          '<ellipse cx="34" cy="24" rx="16" ry="6.4"/>' +
+          '<path d="M47 20c3-4 5-7 7-10l5 2-3 7 3 3-6 3z"/>' +
+          '<path d="M22 28l-3 11h3l4-9M31 29l-1 10h3l2-9M40 29l2 9h3l-1-10M46 27l4 10h3l-3-11" stroke="#f6dfb8" stroke-width="2.2" stroke-linecap="round"/>' +
+          /* 鹿角 */
+          '<path d="M56 10l-1-7m1 4 4-5m-4 2-4-4" stroke="#f6dfb8" stroke-width="1.6" stroke-linecap="round"/>' +
         '</g>' +
-        /* 底部压暗：月亮"落地"处不该和地面一样亮 */
-        '<g clip-path="url(#hwMoonClip)">' +
-          '<ellipse cx="120" cy="134" rx="120" ry="20" fill="#8a3f0c" opacity=".16"/>' +
+        /* z206：雪橇换成经典红金款，礼物也一红一金 */
+        '<g>' +
+          '<path d="M62 30h24l-3 7H66c-4 0-6-2-6-4 0-2 1-3 2-3z" fill="#c62f37"/>' +
+          '<path d="M62 30h24l-1.2 2.4H62z" fill="#ef4a44"/>' +
+          '<path d="M64 37c3 4 20 4 24 0" stroke="#ffd46a" stroke-width="2" stroke-linecap="round"/>' +
+          '<rect x="70" y="24" width="7" height="6" rx="1" fill="#e54a45"/>' +
+          '<rect x="78" y="22" width="6" height="8" rx="1" fill="#ffd46a"/>' +
         '</g>' +
-        '<path d="M0 120A120 120 0 0 1 240 120" fill="none" stroke="#fff0d2" stroke-opacity=".3" stroke-width="1.4"/>' +
+        /* z207：雪橇上坐一位红帽白胡子的圣诞老人，一眼就是圣诞 */
+        '<g>' +
+          '<path d="M76 31V23c0-5 3.2-8 7-8s7 3 7 8v8z" fill="#cf3038"/>' +
+          '<circle cx="83" cy="14" r="5.6" fill="#f7ddc2"/>' +
+          '<path d="M77 12c0-8 3-11 7-9 2.5 1.2 4.5 4 5.5 7z" fill="#cf3038"/>' +
+          '<path d="M76.5 11h13v2.8h-13z" fill="#fff8ee"/>' +
+          '<circle cx="89" cy="3.5" r="2.6" fill="#fff8ee"/>' +
+          '<path d="M78.4 16.5q4.6 6 9.2 0-1 5.5-4.6 5.5t-4.6-5.5z" fill="#fff8ee"/>' +
+          '<circle cx="81" cy="13.4" r=".8" fill="#2b3a44"/>' +
+          '<circle cx="85" cy="13.4" r=".8" fill="#2b3a44"/>' +
+          '<circle cx="83" cy="16" r="1" fill="#e8847a"/>' +
+        '</g>' +
+        /* 鲁道夫的红鼻子：加一圈光晕，夜里才看得见 */
+        '<circle cx="60" cy="13" r="6" fill="#ff4f45" opacity=".30"/>' +
+        '<circle cx="60" cy="13" r="2.8" fill="#ff4f45"/>' +
+        '<path d="M86 30l4-7" stroke="#f6dfb8" stroke-width="1.2" stroke-linecap="round"/>' +
       '</svg>' +
 
-      /* ---------- 远景 3：薄云（横向拉长的模糊亮带，只负责"天有层次"） ---------- */
-      '<i class="hw-cloud hw-cloud-a"></i><i class="hw-cloud hw-cloud-b"></i>' +
-
-      /* ---------- 远景 4：夜雾（两层模糊渐变，方向相反慢慢飘） ---------- */
-      '<i class="hw-fog hw-fog-a"></i><i class="hw-fog hw-fog-b"></i>' +
-
-      /* ---------- 中景：连绵山影（横贯整幅，月亮从山后面升起；
-           原来是中间一小坨，左边没地面，接缝看着像一条多余色块） ---------- */
-      '<svg class="hw-hill" viewBox="0 0 600 30" preserveAspectRatio="none" aria-hidden="true">' +
-        '<path d="M0.0 16.2C2.9 16.4 11.8 16.9 17.6 17.0C23.5 17.1 29.4 16.9 35.3 16.7C41.2 16.5 47.1 16.1 52.9 15.8C58.8 15.5 64.7 15.0 70.6 14.8C76.5 14.5 82.4 14.3 88.2 14.2C94.1 14.1 100.0 14.1 105.9 14.2C111.8 14.3 117.6 14.5 123.5 14.7C129.4 14.8 135.3 15.0 141.2 15.1C147.1 15.2 152.9 15.2 158.8 15.1C164.7 14.9 170.6 14.7 176.5 14.3C182.4 13.9 188.2 13.4 194.1 12.9C200.0 12.4 205.9 11.8 211.8 11.3C217.6 10.7 223.5 10.1 229.4 9.6C235.3 9.1 241.2 8.6 247.1 8.2C252.9 7.8 258.8 7.4 264.7 7.0C270.6 6.6 276.5 6.3 282.4 6.0C288.2 5.7 294.1 5.4 300.0 5.3C305.9 5.1 311.8 5.0 317.6 5.0C323.5 5.0 329.4 5.2 335.3 5.5C341.2 5.9 347.1 6.4 352.9 7.1C358.8 7.7 364.7 8.6 370.6 9.4C376.5 10.3 382.4 11.3 388.2 12.2C394.1 13.0 400.0 13.9 405.9 14.6C411.8 15.3 417.6 15.8 423.5 16.2C429.4 16.5 435.3 16.6 441.2 16.6C447.1 16.6 452.9 16.4 458.8 16.2C464.7 16.0 470.6 15.6 476.5 15.4C482.4 15.2 488.2 14.9 494.1 14.8C500.0 14.7 505.9 14.6 511.8 14.7C517.6 14.7 523.5 14.8 529.4 14.9C535.3 15.0 541.2 15.1 547.1 15.1C552.9 15.2 558.8 15.2 564.7 15.1C570.6 15.1 576.5 14.9 582.4 14.7C588.2 14.5 597.1 14.0 600.0 13.8L600 30H0Z" fill="#241640" opacity=".72"/>' +
-        '<path d="M0.0 22.0C2.9 21.9 11.8 21.6 17.6 21.3C23.5 20.9 29.4 20.4 35.3 19.9C41.2 19.4 47.1 18.9 52.9 18.3C58.8 17.7 64.7 17.1 70.6 16.4C76.5 15.7 82.4 14.9 88.2 14.2C94.1 13.5 100.0 12.7 105.9 12.1C111.8 11.6 117.6 11.1 123.5 11.0C129.4 10.9 135.3 11.1 141.2 11.6C147.1 12.0 152.9 12.9 158.8 13.7C164.7 14.5 170.6 15.6 176.5 16.3C182.4 17.1 188.2 17.8 194.1 18.2C200.0 18.6 205.9 18.7 211.8 18.8C217.6 18.8 223.5 18.6 229.4 18.5C235.3 18.5 241.2 18.4 247.1 18.5C252.9 18.6 258.8 18.9 264.7 19.2C270.6 19.5 276.5 20.1 282.4 20.4C288.2 20.8 294.1 21.2 300.0 21.5C305.9 21.7 311.8 21.8 317.6 21.9C323.5 21.9 329.4 21.8 335.3 21.7C341.2 21.6 347.1 21.4 352.9 21.2C358.8 20.9 364.7 20.6 370.6 20.2C376.5 19.7 382.4 19.1 388.2 18.3C394.1 17.6 400.0 16.6 405.9 15.7C411.8 14.8 417.6 13.6 423.5 12.9C429.4 12.1 435.3 11.4 441.2 11.1C447.1 10.9 452.9 11.0 458.8 11.3C464.7 11.6 470.6 12.4 476.5 13.1C482.4 13.7 488.2 14.7 494.1 15.3C500.0 16.0 505.9 16.5 511.8 16.9C517.6 17.2 523.5 17.3 529.4 17.4C535.3 17.5 541.2 17.4 547.1 17.5C552.9 17.6 558.8 17.7 564.7 17.9C570.6 18.1 576.5 18.5 582.4 18.8C588.2 19.1 597.1 19.7 600.0 19.9L600 30H0Z" fill="#0f0a1c" opacity=".95"/>' +
+      /* ---------- 中景：连绵雪丘（月亮从雪脊后面升起） ---------- */
+      '<svg class="xm-hill" viewBox="0 0 600 34" preserveAspectRatio="none" aria-hidden="true">' +
+        '<path d="M0 20Q60 8 120 18T240 14T360 20T480 12T600 18L600 34H0Z" fill="#f0d9cf" opacity=".55"/>' +
+        '<path d="M0 26Q70 18 140 26T280 22T420 27T600 23L600 34H0Z" fill="#fff6ec" opacity=".92"/>' +
       '</svg>' +
 
-      /* ---------- 中景：一小片墓园（三块碑 + 一个十字架，坐在近脊的坡上） ---------- */
-      '<svg class="hw-grave g1" viewBox="0 0 26 28" aria-hidden="true">' +
-        '<path d="M13 1.6c6.6 0 12 4.4 12 9.9V27H1V11.5C1 6 6.4 1.6 13 1.6z" fill="#0b0716"/>' +
-        '<path d="M13 8v9M8.4 12.4h9.2" stroke="#3a2b56" stroke-width="1.8" stroke-linecap="round"/>' +
-      '</svg>' +
-      '<svg class="hw-grave g2" viewBox="0 0 20 20" aria-hidden="true">' +
-        '<path d="M10 1.4c4.4 0 8 3.1 8 7V19H2V8.4c0-3.9 3.6-7 8-7z" fill="#0b0716"/>' +
-      '</svg>' +
-      '<svg class="hw-grave g3" viewBox="0 0 14 26" aria-hidden="true">' +
-        '<path d="M5.2 1h3.6v5.9h5.2v3.6H8.8V25H5.2V10.5H0V6.9h5.2z" fill="#0b0716"/>' +
-      '</svg>' +
-      '<svg class="hw-grave g4" viewBox="0 0 24 16" aria-hidden="true">' +
-        '<path d="M12 1.2c5.6 0 10.4 2.6 10.4 6.4V15H1.6V7.6C1.6 3.8 6.4 1.2 12 1.2z" fill="#0b0716" transform="rotate(-8 12 8)"/>' +
+      /* ---------- 中景：三棵雪顶松树（大小差 = 远近） ---------- */
+      pine('p1') + pine('p2') + pine('p3') +
+
+      /* ---------- 中景：挂彩灯、顶着星星的圣诞树 ---------- */
+      '<svg class="xm-tree" viewBox="0 0 80 100" aria-hidden="true">' +
+        '<defs><radialGradient id="xmTreeGlow">' +
+          '<stop offset="0" stop-color="#ffcf78" stop-opacity=".42"/>' +
+          '<stop offset="1" stop-color="#ffcf78" stop-opacity="0"/>' +
+        '</radialGradient></defs>' +
+        '<ellipse cx="40" cy="62" rx="40" ry="36" fill="url(#xmTreeGlow)"/>' +
+        '<rect x="35" y="84" width="10" height="10" rx="2" fill="#6b412a"/>' +
+        '<path d="M40 14 20 44h9L14 70h11L9 86h62l-16-16h11L50 44h9z" fill="#0f5a45"/>' +
+        '<path d="M40 14 31 38h18z" fill="#18805c" opacity=".7"/>' +
+        '<path d="M40 14 20 44h9L14 70h11L9 86h62l-16-16h11L50 44h9z" fill="none" stroke="#e9f7ff" stroke-opacity=".28" stroke-width="1.2"/>' +
+        '<path class="xm-star" d="M40 3l2.4 5.8 6.3.5-4.8 4.1 1.5 6.2L40 16.4l-5.4 3.2 1.5-6.2-4.8-4.1 6.3-.5z" fill="#ffd76a"/>' +
+        '<path d="M17 50q14 9 24 3t23-1" stroke="#e23b3f" stroke-width="2.3" fill="none" opacity=".92"/>' +
+        '<path d="M13 72q14 9 27 3t27-2" stroke="#c62f37" stroke-width="2.3" fill="none" opacity=".88"/>' +
+        '<g>' +
+          '<circle class="xm-bauble" cx="30" cy="45" r="3.3" fill="#ff4f45" style="animation-delay:-.4s"/>' +
+          '<circle class="xm-bauble" cx="52" cy="50" r="3" fill="#ffd46a" style="animation-delay:-1.2s"/>' +
+          '<circle class="xm-bauble" cx="24" cy="68" r="3.3" fill="#ff4f45" style="animation-delay:-2.1s"/>' +
+          '<circle class="xm-bauble" cx="56" cy="72" r="3.3" fill="#ff4f45" style="animation-delay:-1.7s"/>' +
+          '<circle class="xm-bauble" cx="40" cy="60" r="3" fill="#e23b3f" style="animation-delay:-.9s"/>' +
+          '<circle class="xm-bauble" cx="36" cy="79" r="2.8" fill="#ffd46a" style="animation-delay:-2.5s"/>' +
+          '<circle class="xm-bauble" cx="62" cy="61" r="2.6" fill="#ff4f45" style="animation-delay:-3.0s"/>' +
+        '</g>' +
+        '<path d="M14 68q26 8 52 0" stroke="#ffe6a8" stroke-opacity=".45" stroke-width="1.2" fill="none"/>' +
+        '<rect x="8" y="86" width="13" height="10" rx="1.6" fill="#cf3038"/>' +
+        '<path d="M14.5 86v10M8 90h13" stroke="#ffd46a" stroke-width="1.8"/>' +
+        '<rect x="59" y="87" width="11" height="9" rx="1.6" fill="#e23b3f"/>' +
+        '<path d="M64.5 87v9" stroke="#fff0c9" stroke-width="1.6"/>' +
       '</svg>' +
 
-      /* ---------- 中景：蝙蝠（三只，剪影 + 大小差 = 远近；翅膀分开抖） ---------- */
-      bat('b1', 54) + bat('b2', 40) + bat('b3', 26) +
-
-      /* ---------- 中景：幽灵（半透明、边缘柔、带光晕，不画牙不吓人） ---------- */
-      '<svg class="hw-ghost" viewBox="0 0 44 54" aria-hidden="true">' +
-        '<path d="M22 4c9.6 0 15.6 6.6 15.6 15.6V41c0 2.2-2.2 3.2-3.6 1.8l-3.6-3.4-3.8 3.6-4.6 3.8-4.6-3.8-3.8-3.6-3.6 3.4C8.6 44.2 6.4 43.2 6.4 41V19.6C6.4 10.6 12.4 4 22 4z" ' +
-          'fill="#f2ecff" opacity=".82"/>' +
-        '<g fill="#2b2040"><ellipse cx="16.4" cy="22" rx="2.6" ry="3.3"/><ellipse cx="27.6" cy="22" rx="2.6" ry="3.3"/></g>' +
-        '<g fill="#ffa89a" opacity=".45"><ellipse cx="12.4" cy="28" rx="2.8" ry="1.7"/><ellipse cx="31.6" cy="28" rx="2.8" ry="1.7"/></g>' +
-        '<path d="M18.6 30.4c1.8 1.7 5 1.7 6.8 0" stroke="#2b2040" stroke-width="1.5" fill="none" stroke-linecap="round"/>' +
+      /* ---------- 中景：雪人（红围巾 + 胡萝卜鼻，慢慢晃） ---------- */
+      '<svg class="xm-snowman" viewBox="0 0 40 48" aria-hidden="true">' +
+        '<ellipse cx="20" cy="45" rx="15" ry="2.6" fill="#dceeff" opacity=".5"/>' +
+        '<circle cx="20" cy="33" r="12" fill="#f5fbff"/>' +
+        '<circle cx="20" cy="17" r="9" fill="#ffffff"/>' +
+        '<rect x="10" y="8" width="20" height="3.4" rx="1.2" fill="#cf3038"/>' +
+        '<path d="M13 8V2.5c0-1.2 1-2 2.2-2h9.6c1.2 0 2.2.8 2.2 2V8z" fill="#cf3038"/>' +
+        '<path d="M12 24q8 5 16 0l-1 4q-7 3-14 0z" fill="#ef4a44"/>' +
+        '<path d="M27 26l6 1.5-4.5 4.5z" fill="#cf3038"/>' +
+        '<circle cx="16.4" cy="15" r="1.4" fill="#2b3a44"/>' +
+        '<circle cx="23.6" cy="15" r="1.4" fill="#2b3a44"/>' +
+        '<path d="M20 18l6 2.2-6 1.6z" fill="#f59a3c"/>' +
+        '<circle cx="20" cy="31" r="1.5" fill="#2b3a44"/>' +
+        '<circle cx="20" cy="37" r="1.5" fill="#2b3a44"/>' +
       '</svg>' +
 
-      /* ---------- 近景：蜘蛛（从顶边垂丝下来，慢慢晃） ---------- */
-      '<div class="hw-spider"><i class="hw-silk"></i>' +
-        '<svg viewBox="0 0 26 22" aria-hidden="true">' +
-          '<g stroke="#1a1128" stroke-width="1.3" fill="none" stroke-linecap="round">' +
-            '<path d="M10.6 10.4C7.6 8.6 5.4 9.4 3.6 11.6M10.6 12.4c-3.4.4-5.2 2-6 4.6M11.6 14.6c-2.6 1.8-3.4 3.6-3.4 5.8"/>' +
-            '<path d="M15.4 10.4c3-1.8 5.2-1 7 1.2M15.4 12.4c3.4.4 5.2 2 6 4.6M14.4 14.6c2.6 1.8 3.4 3.6 3.4 5.8"/>' +
-          '</g>' +
-          '<ellipse cx="13" cy="12.4" rx="3.2" ry="3.8" fill="#241a38"/>' +
-          '<circle cx="13" cy="8.6" r="2.4" fill="#2b2040"/>' +
-          '<circle cx="12.4" cy="8.2" r=".55" fill="#ffd9a0" opacity=".75"/>' +
-          '<circle cx="13.6" cy="8.2" r=".55" fill="#ffd9a0" opacity=".75"/>' +
-        '</svg>' +
-      '</div>' +
+      /* ---------- 近景：两只礼物盒 ---------- */
+      '<svg class="xm-gift" viewBox="0 0 60 30" aria-hidden="true">' +
+        '<rect x="2" y="12" width="20" height="16" rx="2" fill="#cf3038"/>' +
+        '<rect x="2" y="9" width="20" height="5" rx="1.6" fill="#d6403f"/>' +
+        '<path d="M11 9v19M2 17h20" stroke="#ffd46a" stroke-width="3"/>' +
+        '<path d="M12 9c-5-6-9-1-4 0 3 .6 4-1 4-0zM12 9c5-6 9-1 4 0-3 .6-4-1-4-0z" fill="#ffd46a"/>' +
+        '<rect x="24" y="15" width="17" height="13" rx="2" fill="#176b52"/>' +
+        '<rect x="24" y="12" width="17" height="5" rx="1.6" fill="#1d8a68"/>' +
+        '<path d="M32 12v16M24 20h17" stroke="#fff0c9" stroke-width="2.6"/>' +
+        '<rect x="43" y="10" width="15" height="18" rx="2" fill="#e23b3f"/>' +
+        '<rect x="43" y="7" width="15" height="5" rx="1.6" fill="#f2604f"/>' +
+        '<path d="M50.5 7v21" stroke="#ffd46a" stroke-width="2.2"/>' +
+        '<path d="M50.5 7c-5-6-9-1-4 0 3 .6 4-1 4 0zM50.5 7c5-6 9-1 4 0-3 .6-4-1-4 0z" fill="#ffd46a"/>' +
+      '</svg>' + cane +
 
-      /* ---------- 近景：底边草丛（最前面一层，把地平线"打毛"，不再是一条直线） ---------- */
-      '<svg class="hw-grass" viewBox="0 0 600 26" preserveAspectRatio="none" aria-hidden="true">' +
-        '<path d="M0.0 26C-0.2 21.0 -0.7 18.2 -1.2 16.8M7.0 26C7.1 17.8 7.2 13.3 7.3 11.1M14.8 26C14.9 22.2 15.2 20.2 15.5 19.2M40.9 26C40.3 20.0 39.2 16.8 38.0 15.1M47.8 26C47.5 22.0 46.8 19.8 46.2 18.7M50.2 26C50.7 17.8 51.6 13.3 52.6 11.0M83.9 26C84.1 18.0 84.4 13.6 84.7 11.4M90.5 26C91.3 19.7 92.9 16.2 94.5 14.5M93.1 26C92.5 19.2 91.4 15.5 90.3 13.6M104.7 26C104.3 23.1 103.4 21.6 102.5 20.8M110.7 26C110.2 21.0 109.3 18.3 108.4 17.0M121.9 26C122.4 22.0 123.5 19.8 124.6 18.7M127.0 26C127.7 17.9 129.2 13.5 130.7 11.3M135.4 26C135.6 19.1 136.1 15.3 136.6 13.4M142.0 26C142.0 22.6 142.1 20.7 142.3 19.8M163.7 26C163.9 22.4 164.2 20.5 164.5 19.5M169.1 26C169.2 18.0 169.4 13.6 169.6 11.5M174.6 26C174.4 20.6 173.8 17.6 173.3 16.2M205.8 26C205.8 17.8 206.0 13.3 206.2 11.1M211.7 26C212.2 20.2 213.2 17.1 214.2 15.5M216.1 26C216.3 19.9 216.7 16.6 217.0 14.9M242.7 26C243.3 19.8 244.6 16.4 245.9 14.7M248.2 26C249.0 19.1 250.6 15.3 252.1 13.4M253.2 26C253.9 22.3 255.5 20.3 257.1 19.3M268.9 26C269.3 19.5 270.0 15.9 270.8 14.2M276.1 26C276.0 18.0 275.9 13.6 275.8 11.4M283.8 26C284.1 18.0 284.5 13.6 285.0 11.4M290.3 26C290.2 20.5 290.0 17.6 289.8 16.1M296.8 26C297.4 22.9 298.6 21.2 299.7 20.3M303.6 26C304.3 20.6 305.5 17.6 306.8 16.2M306.1 26C305.9 21.8 305.4 19.6 304.9 18.4M328.9 26C329.2 18.5 329.9 14.4 330.5 12.3M333.8 26C334.3 22.4 335.2 20.5 336.1 19.5M338.2 26C338.5 22.5 339.2 20.6 339.9 19.6M372.7 26C373.4 22.1 374.7 19.9 376.0 18.9M379.6 26C379.9 18.4 380.4 14.3 380.9 12.2M384.3 26C385.0 20.1 386.3 16.8 387.6 15.2M389.0 26C388.8 20.3 388.2 17.2 387.7 15.7M413.2 26C413.6 22.6 414.5 20.7 415.4 19.7M418.5 26C418.2 21.5 417.6 19.0 417.0 17.7M427.9 26C428.3 20.9 429.1 18.2 429.9 16.8M453.2 26C452.7 22.7 451.6 20.9 450.5 20.1M457.8 26C457.3 20.8 456.4 18.0 455.4 16.5M467.4 26C466.9 19.6 465.9 16.2 464.9 14.4M488.2 26C488.4 18.4 489.0 14.2 489.6 12.1M493.2 26C492.8 18.5 492.1 14.5 491.3 12.4M501.6 26C501.9 19.1 502.4 15.3 503.0 13.4M506.2 26C505.6 19.1 504.4 15.4 503.2 13.5M532.5 26C533.0 22.9 534.0 21.2 535.1 20.4M537.5 26C537.2 19.3 536.6 15.7 536.0 13.9M545.6 26C545.0 21.5 543.7 19.1 542.5 17.9M549.5 26C550.2 21.5 551.7 19.1 553.2 17.9M561.5 26C561.8 20.6 562.2 17.6 562.6 16.1M567.7 26C567.9 22.9 568.4 21.2 568.9 20.4M572.5 26C572.2 20.4 571.8 17.4 571.3 15.8M580.7 26C580.3 19.1 579.5 15.3 578.7 13.4M586.9 26C586.6 21.5 585.8 19.0 585.0 17.7M585.1 26C584.5 22.7 583.4 20.8 582.2 19.9M589.8 26C590.3 18.8 591.4 14.8 592.4 12.9M596.8 26C596.1 19.8 594.8 16.5 593.4 14.8M604.4 26C604.5 20.8 604.8 18.0 605.0 16.6M607.8 26C607.4 21.0 606.8 18.3 606.1 17.0" stroke="#0b0715" stroke-width="1.6" fill="none" stroke-linecap="round"/>' +
-      '</svg>' +
-
-      /* ---------- 近景：南瓜灯（底部地面，暖光往外溢） ---------- */
-      '<svg class="hw-jack" viewBox="0 0 40 34" aria-hidden="true">' +
-        '<path d="M20 1.4c1 0 1.7.9 1.7 2v1.4h-3.4V3.4c0-1.1.7-2 1.7-2z" fill="#5b3a12"/>' +
-        '<ellipse cx="20" cy="20" rx="15" ry="12.4" fill="#ef8c1c"/>' +
-        '<ellipse cx="20" cy="20" rx="8" ry="12" fill="#ffa63a" opacity=".5"/>' +
-        '<path d="M11.4 15.4l4.6 3.2-4.2 2.4zM28.6 15.4L24 18.6l4.2 2.4z" fill="#3a2410"/>' +
-        '<path d="M12.6 24.6q3.4-2.6 7.4 0 4-2.6 7.4 0v3.4H12.6z" fill="#3a2410"/>' +
+      /* ---------- 近景：雪堆边沿（把地平线打毛，不再是一条直线） ---------- */
+      '<svg class="xm-snowbank" viewBox="0 0 600 12" preserveAspectRatio="none" aria-hidden="true">' +
+        '<path d="M0 8Q30 3 60 7T120 6T180 9T240 5T300 8T360 5T420 9T480 6T540 8T600 5L600 12H0Z" fill="#f2f9ff"/>' +
       '</svg>' +
     '</div>';
   }
 
-  /* 蝙蝠剪影：半个翅膀画一次，右边用 scale(-1,1) 镜像 —— 保证左右完全对称。 */
-  function bat(cls, size) {
-    /* 半个翅膀：肩 (32,12.6) → 前缘甩到翼尖 (4.6,4.8) → 下缘折回来，中间两个深缺口。
-       缺口（Q 的控制点在两个"指头"上方）是蝙蝠和鳐鱼的分界：原来那段平滑弧线下缘，
-       在 1x 下就是一条肥边，看着像鳐鱼。 */
-    var half = 'M32 12.6C25.4 6 15 3 4.6 4.8L9.4 14.2Q12.4 8.6 15.4 12L19.2 16.4Q22.4 9.8 25.6 13.2' +
-      'L28.6 16.2Q30.6 11.6 32 12.6z';
-    return '<svg class="hw-bat ' + cls + '" viewBox="0 0 64 30" aria-hidden="true" style="width:' + size + 'px">' +
-      '<g fill="#1a1029">' +
-        /* 左右翅膀各自包一层，CSS 绕身体中心摆 —— 整只一起抖会像一片贴纸在晃 */
-        '<g class="hw-wl"><path d="' + half + '"/></g>' +
-        '<g class="hw-wr"><path d="' + half + '" transform="translate(64,0) scale(-1,1)"/></g>' +
-        '<ellipse cx="32" cy="16" rx="4.2" ry="5.6"/>' +
-        /* 头 + 两只尖耳朵（耳朵太小会看不出来，这里故意做长一点） */
-        '<circle cx="32" cy="9.4" r="4"/>' +
-        '<path d="M28.6 7.6 27 2.6l4.4 3zM35.4 7.6 37 2.6l-4.4 3z"/>' +
-      '</g></svg>';
+  /* ==================================================================
+     z209 参考图版横幅场景：深蓝雪夜 + 暖月 + 雪松暖光小屋 + 一对大主角。
+     旧 xmScene()（花环 / 纸艺树 / 倒数金章）保留但不再调用，方便回滚。
+     ================================================================== */
+  function xmRefScene() {
+    var flakes = '';
+    for (var i = 1; i <= 10; i++) flakes += '<i class="xr-flake f' + i + '"></i>';
+
+    /* 右侧雪夜小屋：雪松林 + 积雪木屋 + 暖窗 + 屋前挂彩灯的圣诞树 */
+    var village = '<svg class="xr-village" viewBox="0 0 260 140" preserveAspectRatio="xMaxYMax meet" fill="none" aria-hidden="true">' +
+      '<defs>' +
+        '<radialGradient id="xrWin"><stop offset="0" stop-color="#ffe9ae" stop-opacity=".95"/><stop offset="1" stop-color="#ffb85c" stop-opacity="0"/></radialGradient>' +
+        '<linearGradient id="xrWall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8c5a3c"/><stop offset="1" stop-color="#5b3a28"/></linearGradient>' +
+      '</defs>' +
+      /* 远处雪松 */
+      '<g opacity=".92">' +
+        '<path d="M14 96 2 120h6l-6 10h24l-6-10h6z" fill="#12473f"/>' +
+        '<path d="M14 96 9 106h10z" fill="#eaf6ff"/>' +
+        '<path d="M42 88 30 114h6l-6 10h26l-7-10h6z" fill="#17564a"/>' +
+        '<path d="M42 88 36 100h12z" fill="#eaf6ff"/>' +
+        '<path d="M236 90 224 116h6l-6 10h26l-7-10h6z" fill="#17564a"/>' +
+        '<path d="M236 90 230 102h12z" fill="#eaf6ff"/>' +
+      '</g>' +
+      /* 木屋主体 */
+      '<ellipse cx="146" cy="112" rx="72" ry="34" fill="url(#xrWin)" opacity=".45"/>' +
+      '<path d="M100 74h92v56h-92z" fill="url(#xrWall)"/>' +
+      '<path d="M100 74h92v4h-92z" fill="#a97148" opacity=".7"/>' +
+      /* 积雪屋顶（两片斜坡 + 厚雪檐） */
+      '<path d="M88 76 146 34l58 42-8 6-50-36-50 36z" fill="#f2f9ff"/>' +
+      '<path d="M92 74 146 32l54 42q-12-2-22 4-16-10-32 0-18-8-32 0-10-6-22-4z" fill="#ffffff"/>' +
+      '<path d="M146 32 204 74q-10-1-16 3l-42-32-42 32q-7-4-16-3z" fill="#dcecff" opacity=".8"/>' +
+      /* 烟囱 + 一缕暖烟 */
+      '<rect x="176" y="40" width="13" height="20" rx="2" fill="#7a4a34"/>' +
+      '<path d="M176 40h13v4h-13z" fill="#f2f9ff"/>' +
+      '<path d="M183 36q-5-6 1-10t-1-8" stroke="#dbe9ff" stroke-opacity=".45" stroke-width="3" stroke-linecap="round"/>' +
+      /* 暖窗（带光晕）+ 红门 */
+      '<g fill="#ffd887">' +
+        '<rect x="112" y="88" width="20" height="18" rx="2"/>' +
+        '<rect x="160" y="88" width="20" height="18" rx="2"/>' +
+        '<rect x="140" y="112" width="14" height="18" rx="1.5"/>' +
+      '</g>' +
+      '<g stroke="#8a5a38" stroke-width="1.6">' +
+        '<path d="M122 88v18M112 97h20M170 88v18M160 97h20"/>' +
+      '</g>' +
+      '<path d="M138 112h18v18h-18z" fill="#c8323c"/>' +
+      '<circle cx="152" cy="121" r="1.4" fill="#ffd76a"/>' +
+      '<path d="M138 112h18v3h-18z" fill="#e44a48"/>' +
+      /* 屋前挂彩灯的小圣诞树 */
+      '<path d="M56 128 44 128l-8-12h5l-7-11h5l-7-11h28l-7 11h5l-7 11h5z" fill="#0f5a45"/>' +
+      '<path d="M38 84q14 5 28 0l-4-4q-10 4-20 0z" fill="#eaf6ff" opacity=".9"/>' +
+      '<path d="M34 106q14 5 36 0l-5-4q-13 4-26 0z" fill="#eaf6ff" opacity=".8"/>' +
+      '<path d="M30 124q16 5 44 0l-5-4q-17 4-34 0z" fill="#eaf6ff" opacity=".75"/>' +
+      '<g><circle cx="40" cy="100" r="2.2" fill="#ff4f45"/><circle cx="56" cy="98" r="2" fill="#ffd46a"/>' +
+      '<circle cx="48" cy="112" r="2.2" fill="#8fd0ff"/><circle cx="62" cy="116" r="2" fill="#ff4f45"/>' +
+      '<circle cx="36" cy="118" r="2" fill="#ffd46a"/></g>' +
+      '<path d="M52 128v6h8v-6" fill="#6b412a"/>' +
+      /* 门前雪地 */
+      '<path d="M0 128Q50 120 100 128T200 126T260 130V140H0Z" fill="#f4fbff"/>' +
+    '</svg>';
+
+    /* 主角左边的一堆礼物：红 / 松绿 / 金，尺寸错开 */
+    var gifts = '<svg class="xr-gifts" viewBox="0 0 110 60" fill="none" aria-hidden="true">' +
+      '<rect x="2" y="28" width="30" height="30" rx="3" fill="#c9303a"/>' +
+      '<rect x="2" y="24" width="30" height="7" rx="2" fill="#e04a48"/>' +
+      '<path d="M17 24v34M2 40h30" stroke="#ffd46a" stroke-width="4"/>' +
+      '<path d="M17 24c-8-10-14-2-6 0 4 1 6-2 6 0zM17 24c8-10 14-2 6 0-4 1-6-2-6 0z" fill="#ffd46a"/>' +
+      '<rect x="36" y="34" width="26" height="24" rx="3" fill="#1c7a58"/>' +
+      '<rect x="36" y="30" width="26" height="6" rx="2" fill="#2a9469"/>' +
+      '<path d="M49 30v28M36 44h26" stroke="#fff0c9" stroke-width="3.4"/>' +
+      '<path d="M49 30c-7-9-12-2-5 0 3 1 5-2 5 0zM49 30c7-9 12-2 5 0-3 1-5-2-5 0z" fill="#fff0c9"/>' +
+      '<rect x="68" y="22" width="34" height="36" rx="3" fill="#e8b74e"/>' +
+      '<rect x="68" y="18" width="34" height="7" rx="2" fill="#ffd674"/>' +
+      '<path d="M85 18v40M68 38h34" stroke="#c9303a" stroke-width="4"/>' +
+      '<path d="M85 18c-9-11-15-2-6 0 4 1 6-2 6 0zM85 18c9-11 15-2 6 0-4 1-6-2-6 0z" fill="#c9303a"/>' +
+    '</svg>';
+
+    /* 两朵软云 + 六角雪花（CSS 定位） */
+    var clouds = '<svg class="xr-cloud c1" viewBox="0 0 80 34" aria-hidden="true"><path d="M12 26q-10 0-10-8 0-7 9-8 2-9 13-9 9 0 12 7 4-4 10-2 8 2 8 10 0 10-12 10z" fill="#dceaff" opacity=".72"/></svg>' +
+      '<svg class="xr-cloud c2" viewBox="0 0 80 34" aria-hidden="true"><path d="M12 26q-10 0-10-8 0-7 9-8 2-9 13-9 9 0 12 7 4-4 10-2 8 2 8 10 0 10-12 10z" fill="#dceaff" opacity=".55"/></svg>';
+
+    /* 底部雪丘：压在两个主角脚上，做出「从雪里探出来」的效果 */
+    var snowbank = '<svg class="xr-snowbank" viewBox="0 0 600 30" preserveAspectRatio="none" aria-hidden="true">' +
+      '<path d="M0 16Q50 6 100 15T200 12T300 18T400 10T500 17T600 12V30H0Z" fill="#e8f4ff" opacity=".85"/>' +
+      '<path d="M0 22Q60 14 120 22T240 19T360 24T480 18T600 23V30H0Z" fill="#ffffff"/>' +
+    '</svg>';
+
+    return '<div class="hero-fx" aria-hidden="true">' +
+      '<i class="xr-moon"></i>' +
+      clouds + flakes +
+      village + gifts +
+      '<img class="xr-baby" src="assets/xmas/xmas-baby.png?v=20261112z209" alt="" />' +
+      '<img class="xr-deer" src="assets/xmas/xmas-deer.png?v=20261112z209" alt="" />' +
+      snowbank +
+    '</div>';
+  }
+
+  /* 问候左侧的礼物盒图标，替掉原来的像素小店招牌 */
+  function heroGift() {
+    return '<div class="hero-icon" aria-hidden="true">' +
+      '<svg viewBox="0 0 48 48" fill="none">' +
+        '<rect x="7" y="19" width="34" height="23" rx="3" fill="#d8313c"/>' +
+        '<rect x="7" y="19" width="34" height="23" rx="3" stroke="#ff8a7a" stroke-opacity=".55" stroke-width="1.2"/>' +
+        '<rect x="5" y="15" width="38" height="7" rx="2.5" fill="#ee4b46"/>' +
+        '<path d="M24 15v27M7 27h34" stroke="#ffd46a" stroke-width="4.2"/>' +
+        '<path d="M24 15C15 4 8 12 17 15c3 .8 7-1 7 0z" fill="#ffd46a"/>' +
+        '<path d="M24 15c9-11 16-3 7 0-3 .8-7-1-7 0z" fill="#ffdc84"/>' +
+        '<circle cx="24" cy="15" r="3.2" fill="#ffe9a8"/>' +
+      '</svg>' +
+    '</div>';
+  }
+
+  /* 雪顶松树：一叠三角 + 枝头积雪，重复三次摆出远近。 */
+  function pine(cls) {
+    return '<svg class="xm-pine ' + cls + '" viewBox="0 0 40 56" aria-hidden="true">' +
+      '<rect x="18" y="48" width="4" height="7" fill="#5b3a2a"/>' +
+      '<path d="M20 2 7 23h6L4 41h8L6 50h28l-6-9h8L27 23h6z" fill="#0d3a34"/>' +
+      '<path d="M20 2 13 14h14z" fill="#eaf6ff" opacity=".92"/>' +
+      '<path d="M13 23q7 4 14 0l-3-3H16z" fill="#eaf6ff" opacity=".72"/>' +
+      '<path d="M12 41q8 4 16 0l-3-3H15z" fill="#eaf6ff" opacity=".62"/>' +
+      '</svg>';
   }
 
   /* 横幅左侧的图标：像素风街边小饭馆（z200 起替换掉 z195 的 CBD 夜景）。
      26×26 网格，1 格 = 2px 放大到 52px，shape-rendering:crispEdges 保证方块边不糊：
-     条纹遮阳棚 + 暖光橱窗（窗里一碗热汤坐着、上面一缕热气）+ 透出暖光的门。
+     红白条纹遮阳棚 + 暖光橱窗（窗里一碗热汤坐着、上面一缕热气）+ 透出暖光的门。
+     z205：顶行改成一层积雪，红白棚子顺势成了圣诞配色，冬夜小店照样讲得通。
      图形别手改 —— 生成脚本在 .workbuddy/gen-rest.py，改完参数跑它再跑 sync-rest.py。 */
   function heroGlyph() {
     return '<div class="hero-icon" aria-hidden="true">' +
       '<svg class="px-svg" viewBox="0 0 26 26" shape-rendering="crispEdges" fill="none">' +
-      '<rect x="1" y="0" width="24" height="1" fill="#170f28"/>' +
+      '<rect x="1" y="0" width="24" height="1" fill="#eaf6ff"/>' +
       '<rect x="1" y="1" width="2" height="1" fill="#e8503a"/>' +
       '<rect x="3" y="1" width="2" height="1" fill="#ffe6c2"/>' +
       '<rect x="5" y="1" width="2" height="1" fill="#e8503a"/>' +
@@ -644,61 +885,80 @@ window.Pages.home = (function () {
     '</div>';
   }
 
+  /* 横幅右侧的小屋：z205 从「万圣夜枯树 + 南瓜」改成「雪夜暖灯小屋」。
+     保留 150×80 的 viewBox 和窗户暖光的光晕（.hero-art 的 translateY 仍对齐雪地线），
+     换掉的是：枯树 → 雪顶松树、深色屋顶 → 积雪屋顶、南瓜 → 门上的冬青花环与礼物。 */
   function heroArt() {
     return '<div class="hero-art"><svg viewBox="0 0 150 80" fill="none">' +
       '<defs>' +
-        '<radialGradient id="hwWin" cx=".5" cy=".45" r=".65">' +
-          '<stop offset="0" stop-color="#ffe6a8"/><stop offset="1" stop-color="#ffb347"/>' +
+        '<radialGradient id="xmWin" cx=".5" cy=".45" r=".65">' +
+          '<stop offset="0" stop-color="#fff0c4"/><stop offset="1" stop-color="#ffbe5c"/>' +
         '</radialGradient>' +
-        '<radialGradient id="hwWinHalo">' +
-          '<stop offset="0" stop-color="#ffbe63" stop-opacity=".55"/>' +
-          '<stop offset="1" stop-color="#ffbe63" stop-opacity="0"/>' +
+        '<radialGradient id="xmWinHalo">' +
+          '<stop offset="0" stop-color="#ffd28a" stop-opacity=".55"/>' +
+          '<stop offset="1" stop-color="#ffd28a" stop-opacity="0"/>' +
         '</radialGradient>' +
       '</defs>' +
-      /* 不再画自家那块深色地面：整幅已经有地平线，两个地面会打架；
-         只留窗户洒下来的一点暖光 */
-      '<ellipse cx="86" cy="70" rx="30" ry="14" fill="url(#hwWinHalo)"/>' +
-      /* 枯树（左） */
-      '<g stroke="#0f0a1b" stroke-linecap="round" fill="none">' +
-        '<path d="M26 76V50" stroke-width="2.6"/>' +
-        '<path d="M26 58c-2.4-3.2-5-5.4-8.4-7" stroke-width="2"/>' +
-        '<path d="M26 54c2.8-3 5.6-4.8 9.4-6" stroke-width="2"/>' +
-        '<path d="M26 50c-1.4-2.8-3.2-4.8-5.8-6.6" stroke-width="1.8"/>' +
-        '<path d="M17.6 51c-1.2-1.6-2-3-2.4-4.8" stroke-width="1.2"/>' +
-        '<path d="M35.4 48c1.4-1.4 2.4-2.8 3-4.6" stroke-width="1.2"/>' +
-        '<path d="M26 50l-2.6-3" stroke-width="1.2"/>' +
+      /* 窗光洒在雪地上 */
+      '<ellipse cx="86" cy="70" rx="34" ry="14" fill="url(#xmWinHalo)"/>' +
+      /* 左侧雪顶松树（替掉原来的枯枝） */
+      '<g>' +
+        '<rect x="24" y="68" width="3" height="8" fill="#4a3526"/>' +
+        '<path d="M25.5 42 14 60h5l-7 10h27l-7-10h5z" fill="#124a3d"/>' +
+        '<path d="M25.5 42 20 51h11z" fill="#fff6ec" opacity=".92"/>' +
+        '<path d="M19 60q7 3 13 0l-2-2H21z" fill="#eaf6ff" opacity=".7"/>' +
       '</g>' +
-      /* 房身（剪影） */
-      '<path d="M52 76V45h46v31z" fill="#2a1c3e"/>' +
-      /* 屋顶 */
-      '<path d="M45 46 75 25l30 21z" fill="#3a2752"/>' +
-      '<path d="M45 46h60l-3.5 5H48.5z" fill="#241736"/>' +
-      /* 烟囱 + 烟 */
-      '<rect x="88" y="27" width="8" height="13" rx="1.6" fill="#33234a"/>' +
-      '<circle cx="92" cy="21" r="3.2" fill="#c9b8e0" opacity=".16"/>' +
-      '<circle cx="96" cy="15" r="4" fill="#c9b8e0" opacity=".12"/>' +
-      /* 门 */
-      '<rect x="60" y="55" width="14" height="21" rx="2" fill="#1a1229"/>' +
-      '<circle cx="71" cy="66" r="1.1" fill="#ffc978" opacity=".9"/>' +
+      /* 右侧一棵小一点的 */
+      '<g>' +
+        '<rect x="127" y="70" width="2.6" height="6" fill="#4a3526"/>' +
+        '<path d="M128.3 50 119 63h4l-5 9h21l-5-9h4z" fill="#0f4238"/>' +
+        '<path d="M128.3 50 124 57h9z" fill="#eaf6ff" opacity=".85"/>' +
+      '</g>' +
+      /* 房身（深松绿剪影） */
+      '<path d="M52 76V45h46v31z" fill="#123c39"/>' +
+      /* 屋顶 + 一层厚雪 */
+      '<path d="M45 46 75 25l30 21z" fill="#2b5b4c"/>' +
+      '<path d="M45 46 75 25l30 21-3 2-27-19-27 19z" fill="#f2f9ff"/>' +
+      '<path d="M45 46h60l-3.5 5H48.5z" fill="#1c4a41"/>' +
+      /* 屋檐灯串：六颗，红占三颗 */
+      '<g>' +
+        '<circle cx="54" cy="48" r="2.1" fill="#ff4f45"/>' +
+        '<circle cx="64" cy="48" r="2.1" fill="#ffd46a"/>' +
+        '<circle cx="74" cy="48" r="2.1" fill="#ff4f45"/>' +
+        '<circle cx="84" cy="48" r="2.1" fill="#6fd6a2"/>' +
+        '<circle cx="94" cy="48" r="2.1" fill="#ff4f45"/>' +
+        '<circle cx="102" cy="48" r="2.1" fill="#ffd46a"/>' +
+      '</g>' +
+      /* 烟囱 + 一撮雪 + 炊烟 */
+      '<rect x="88" y="27" width="8" height="13" rx="1.6" fill="#1d4a41"/>' +
+      '<rect x="87" y="26" width="10" height="2.6" rx="1.2" fill="#f2f9ff"/>' +
+      '<circle cx="92" cy="21" r="3.2" fill="#dcecff" opacity=".18"/>' +
+      '<circle cx="96" cy="15" r="4" fill="#dcecff" opacity=".12"/>' +
+      /* 门 + 冬青花环：z206 门改经典圣诞红，红果加大 */
+      '<rect x="60" y="55" width="14" height="21" rx="2" fill="#a52f38"/>' +
+      '<path d="M60 55h14M60 55v21M74 55v21" stroke="#e26455" stroke-opacity=".55" stroke-width="1"/>' +
+      '<circle cx="67" cy="61" r="4.6" fill="none" stroke="#1c6b4b" stroke-width="2.4"/>' +
+      '<circle cx="65.4" cy="59.4" r="1.6" fill="#ef4a44"/>' +
+      '<circle cx="69" cy="59.2" r="1.6" fill="#cf3038"/>' +
+      '<circle cx="68.4" cy="63.2" r="1.3" fill="#f2604f"/>' +
+      '<circle cx="67" cy="69" r="1.1" fill="#ffd46a"/>' +
       /* 窗（暖光 + 十字窗棂 + 光晕） */
-      '<rect x="80" y="53" width="15" height="12" rx="1.6" fill="url(#hwWin)"/>' +
-      '<path d="M87.5 53v12M80 59h15" stroke="#2a1c3e" stroke-width="1.5"/>' +
-      '<rect x="80" y="53" width="15" height="12" rx="1.6" stroke="#ffcd85" stroke-opacity=".8"/>' +
+      '<rect x="80" y="53" width="15" height="12" rx="1.6" fill="url(#xmWin)"/>' +
+      '<path d="M87.5 53v12M80 59h15" stroke="#123c39" stroke-width="1.5"/>' +
+      '<rect x="80" y="53" width="15" height="12" rx="1.6" stroke="#ffe0a4" stroke-opacity=".85"/>' +
       /* 阁楼小窗 */
       '<circle cx="75" cy="37" r="3.4" fill="#ffd489" opacity=".92"/>' +
-      '<circle cx="75" cy="37" r="6" fill="url(#hwWinHalo)"/>' +
-      /* 门口平台 + 围栏 */
-      '<rect x="55" y="72" width="42" height="3" rx="1" fill="#1d1330"/>' +
-      '<g fill="#1d1330">' +
-        '<path d="M103 76V67l1.8-2.6L106.6 67v9z"/>' +
-        '<path d="M109 76V67l1.8-2.6L112.6 67v9z"/>' +
-        '<path d="M115 76V67l1.8-2.6L118.6 67v9z"/>' +
-        '<rect x="101.6" y="69.4" width="18.4" height="1.4" rx=".7"/>' +
-      '</g>' +
-      /* 两个南瓜 */
-      '<ellipse cx="57" cy="72" rx="4.6" ry="4" fill="#e8821c"/>' +
-      '<ellipse cx="100" cy="73" rx="3.4" ry="3" fill="#c96b14"/>' +
-      '<path d="M57 68v-2M100 70v-1.6" stroke="#5b3a12" stroke-width="1.2" stroke-linecap="round"/>' +
+      '<circle cx="75" cy="37" r="6" fill="url(#xmWinHalo)"/>' +
+      /* 门口平台 + 围栏积雪 */
+      '<rect x="55" y="72" width="42" height="3" rx="1" fill="#1d4a41"/>' +
+      '<rect x="55" y="71" width="42" height="1.6" rx=".8" fill="#fff6ec" opacity=".92"/>' +
+      /* 门前礼物盒（替掉两颗南瓜） */
+      '<rect x="98" y="68" width="9" height="8" rx="1" fill="#cf3038"/>' +
+      '<path d="M102.5 68v8M98 71.5h9" stroke="#ffd46a" stroke-width="1.6"/>' +
+      '<rect x="108" y="71" width="6" height="5" rx="1" fill="#e23b3f"/>' +
+      '<path d="M111 71v5" stroke="#fff0c9" stroke-width="1.1"/>' +
+      '<rect x="52" y="71" width="6" height="5" rx="1" fill="#176b52"/>' +
+      '<path d="M55 71v5" stroke="#fff0c9" stroke-width="1.3"/>' +
       '</svg></div>';
   }
 
@@ -1109,10 +1369,11 @@ window.Pages.home = (function () {
     return '' +
     /* Hero */
     '<section class="hero fade-up">' +
-      /* 装饰层：一块「万圣夜室内窗景」——远（月 + 云/雾 + 山影）、中（枯枝 + 蝙蝠 + 幽灵）、
-         近（南瓜灯 + 蜘蛛）。纯 CSS 动画，pointer-events:none，不挡任何内容。 */
-      hwScene() +
-      heroGlyph() +
+      /* 装饰层：一块「经典红绿圣诞窗景」——远（金色星光 + 暖雪雾 + 载着圣诞老人的
+         驯鹿雪橇）、中（居中圣诞花环 + 雪丘 + 松树 + 圣诞树 + 雪人 + 礼物）、
+         近（落雪 + 雪堆 + 灯串 + 冬青 + 金铃铛）。纯 CSS 动画，不挡任何内容。 */
+      xmRefScene() +
+      heroGift() +
       '<div class="hero-main">' +
         '<h2>' + U.greeting() + '，' + U.esc(set.teamName || '阿蛮团队') + '！</h2>' +
         '<p>今天有 <b>' + st.todayTasks + '</b> 项任务需要处理，' +

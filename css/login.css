@@ -15,12 +15,12 @@
   justify-content: center;
   gap: 6px;
   padding: 24px;
-  /* 清新的多色渐变：薄荷绿 → 天蓝 → 淡紫 → 淡粉，再叠三团柔光色块 */
+  /* z207：圣诞暖色渐变 —— 松绿 → 奶油金 → 暖红粉，再叠三团柔光色块 */
   background:
-    radial-gradient(circle at 10% 14%, rgba(52, 199, 141, .34), transparent 52%),
-    radial-gradient(circle at 90% 12%, rgba(63, 140, 245, .34), transparent 52%),
-    radial-gradient(circle at 50% 104%, rgba(146, 111, 255, .30), transparent 56%),
-    linear-gradient(165deg, #d8f3e6 0%, #cde2ff 42%, #e6daff 76%, #ffe2ee 100%);
+    radial-gradient(circle at 10% 14%, rgba(46, 158, 110, .30), transparent 52%),
+    radial-gradient(circle at 90% 12%, rgba(214, 68, 68, .28), transparent 52%),
+    radial-gradient(circle at 50% 104%, rgba(214, 160, 74, .26), transparent 56%),
+    linear-gradient(165deg, #e4f3e4 0%, #f6ead6 42%, #f7dcd8 76%, #f3c9c9 100%);
   overflow: auto;
 }
 
@@ -428,37 +428,27 @@
 .sync-tip.offline i { background: #fff; }
 
 /* ==========================================================
-   z198：登录页空场里飞的蝙蝠
-   —— 和横幅 / 全局层是同一只剪影（半翼镜像 + 三个翼缘缺口），
-      只把颜色换成和吉祥物同族的板岩紫 #6a5acd 并压到 .14~.20：
-      这个页面是薄荷→天蓝→淡紫的浅渐变，纯黑会像污点，纯白像云絮，
-      淡紫才像"从雾里透出来的一只"。
+   z205：登录页空场里飘的雪花（顶替 z198 的三只蝙蝠）。
+   z207：背景改成圣诞暖色渐变，第三片换成冬青红果 + 金铃铛枝，
+      前两片保留淡蓝六角雪花，压到 .28~.34 像"从雾里透出来的一片"。
       只放四角空场，卡片和吉祥物由 DOM 顺序压在它们上面。
    ========================================================== */
-.lg-bats { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
-.lg-bat {
+.lg-flakes { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.lg-flake {
   position: absolute;
-  height: auto;                 /* 只给宽度：写死高度会把翼展纵向拉长 */
-  animation: lgBatFly 6.8s ease-in-out infinite;
+  height: auto;
+  animation: lgFlakeDrift 9.4s ease-in-out infinite;
 }
-.lg-bat .hw-wl,
-.lg-bat .hw-wr { transform-origin: 32px 13px; }
-.lg-bat .hw-wl { animation: hwFlapL 2.1s ease-in-out infinite; }
-.lg-bat .hw-wr { animation: hwFlapR 2.1s ease-in-out infinite; }
-.lg-bat.lb1 { left: 8%;  top: 13%;    width: 52px; opacity: .34; }
-.lg-bat.lb2 { right: 9%; top: 21%;    width: 36px; opacity: .28;
-  animation-delay: -2.4s; }
-.lg-bat.lb2 .hw-wl, .lg-bat.lb2 .hw-wr { animation-duration: 2.6s; }
-.lg-bat.lb3 { left: 15%; bottom: 16%; width: 28px; opacity: .22;
-  animation-delay: -4.1s; }
-.lg-bat.lb3 .hw-wl, .lg-bat.lb3 .hw-wr { animation-duration: 2.35s; }
-@keyframes lgBatFly {
+.lg-flake.lf1 { left: 8%;  top: 13%;    width: 42px; opacity: .34; }
+.lg-flake.lf2 { right: 9%; top: 21%;    width: 30px; opacity: .28; animation-delay: -3.1s; animation-duration: 11.6s; }
+.lg-flake.lf3 { left: 15%; bottom: 16%; width: 42px; opacity: .62; animation-delay: -5.4s; animation-duration: 12.8s; }
+@keyframes lgFlakeDrift {
   0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  50%      { transform: translate(-10px, -12px) rotate(-6deg); }
+  50%      { transform: translate(-12px, 14px) rotate(38deg); }
 }
 @media (max-width: 900px) {
-  .lg-bat.lb3 { display: none; }
+  .lg-flake.lf3 { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .lg-bat, .lg-bat .hw-wl, .lg-bat .hw-wr { animation: none !important; }
+  .lg-flake { animation: none !important; }
 }

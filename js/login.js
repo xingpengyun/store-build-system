@@ -48,24 +48,35 @@ window.Login = (function () {
     return '<div class="login-mascot">' + (window.UI.mascot('login-mascot-svg')) + '</div>';
   }
 
-  /* 登录页空场里飞的蝙蝠（z198）：跟横幅、全局层同一只剪影 —— 半翼镜像 + 三个翼缘缺口。
-     登录页是薄荷→天蓝→淡紫的浅渐变，纯黑会脏、纯白会像云絮，
-     所以用和吉祥物同族的板岩紫 #6a5acd 压在 .2 上，远看是"雾里透出来的一只"。
-     只放在四角空场，不压卡片和吉祥物。 */
-  var LG_HALF = 'M32 12.6C25.4 6 15 3 4.6 4.8L9.4 14.2Q12.4 8.6 15.4 12L19.2 16.4' +
-    'Q22.4 9.8 25.6 13.2L28.6 16.2Q30.6 11.6 32 12.6z';
-  function lgBat(cls) {
-    return '<svg class="lg-bat ' + cls + '" viewBox="0 0 64 30" aria-hidden="true">' +
-      '<g fill="#6a5acd">' +
-        '<g class="hw-wl"><path d="' + LG_HALF + '"/></g>' +
-        '<g class="hw-wr"><path d="' + LG_HALF + '" transform="translate(64,0) scale(-1,1)"/></g>' +
-        '<ellipse cx="32" cy="16" rx="4.2" ry="5.6"/>' +
-        '<circle cx="32" cy="9.4" r="4"/>' +
-        '<path d="M28.6 7.6 27 2.6l4.4 3zM35.4 7.6 37 2.6l-4.4 3z"/>' +
-      '</g></svg>';
+  /* 登录页空场里飘的雪花（z205 顶替 z198 的蝙蝠）：和横幅、全局层同一套
+     六角雪花。登录页是薄荷→天蓝→淡紫的浅渐变，纯白会像云絮、纯黑会脏，
+     所以用淡蓝 #7ba9cf 压到 .22~.34，像"雾里透出来的一片"。
+     z207：第三片换成冬青红果 + 金铃铛枝，登录页也带一点圣诞红绿。
+     只放在四角空场，卡片和吉祥物由 DOM 顺序压在它们上面。 */
+  function lgFlake(cls) {
+    return '<svg class="lg-flake ' + cls + '" viewBox="0 0 24 24" aria-hidden="true">' +
+      '<g stroke="#7ba9cf" stroke-width="1.6" stroke-linecap="round" fill="none">' +
+        '<path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7"/>' +
+        '<path d="M12 2 9.5 4.6M12 2l2.5 2.6M12 22l-2.5-2.6M12 22l2.5-2.6"/>' +
+        '<path d="M3.3 7l3.2.2M3.3 7l1-3M20.7 17l-3.2-.2M20.7 17l-1 3"/>' +
+        '<path d="M3.3 17l1-3M3.3 17l3.2-.2M20.7 7l-1 3M20.7 7l-3.2.2"/>' +
+      '</g><circle cx="12" cy="12" r="1.7" fill="#eaf6ff"/></svg>';
   }
-  function bats() {
-    return '<div class="lg-bats" aria-hidden="true">' + lgBat('lb1') + lgBat('lb2') + lgBat('lb3') + '</div>';
+  /* z207：冬青叶 + 红果 + 一枚金铃铛，替掉第三片纯雪花 */
+  function lgHolly(cls) {
+    return '<svg class="lg-flake ' + cls + '" viewBox="0 0 32 30" aria-hidden="true">' +
+      '<path d="M2 8q12 10 28 6" stroke="#2f7a56" stroke-width="1.6" stroke-linecap="round" fill="none"/>' +
+      '<path d="M7 11q-7-7-1-9 7 3 5 10zM16 14q-7-8 0-9 7 3 4 10z" fill="#2d8a5e"/>' +
+      '<circle cx="12" cy="17" r="3.2" fill="#d6403f"/>' +
+      '<circle cx="20" cy="18" r="2.8" fill="#b52f36"/>' +
+      '<circle cx="26" cy="16" r="2.4" fill="#e2564c"/>' +
+      '<path d="M22 26c0-4 1-6 3-6s3 2 3 6z" fill="#e0a637"/>' +
+      '<rect x="21" y="26" width="8" height="2" rx="1" fill="#ffd46a"/>' +
+      '</svg>';
+  }
+  function flakes() {
+    return '<div class="lg-flakes" aria-hidden="true">' +
+      lgFlake('lf1') + lgFlake('lf2') + lgHolly('lf3') + '</div>';
   }
 
   /* 2026-10-25：卡片底部那行说明（「没在名单里的姓名登不进来…数据保存在云端…」）
@@ -124,7 +135,7 @@ window.Login = (function () {
 
     layer = document.createElement('div');
     layer.className = 'login-layer';
-    layer.innerHTML = mascot() + bats() + (isSimple() ? tplSimple() : tplPhone());
+    layer.innerHTML = mascot() + flakes() + (isSimple() ? tplSimple() : tplPhone());
     document.body.appendChild(layer);
 
     if (isSimple()) bindSimple();

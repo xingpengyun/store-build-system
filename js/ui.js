@@ -112,7 +112,7 @@ window.UI = (function () {
 
   /* ---------------- 头像 ----------------
      全部头像都是 3D 图片（assets/avatars3d/*.webp，256px，单张 3~11KB），
-     靠 key 前缀分类：d_u_ 人物 / d_a_ 动物 / d_h_ 万圣节。
+     靠 key 前缀分类：d_u_ 人物 / d_a_ 动物 / d_h_ 万圣节（历史）/ d_x_ 圣诞节。
      老 key（cat / dog / pumpkin …）只是历史数据的兼容层，由 ART_ALIAS 反向生成。 */
   var ART = {};
   /* 3D 头像（z166 起，z168 补齐到 22 张）：软胶质感的 AI 渲染图，key 带 d_ 前缀。
@@ -140,13 +140,22 @@ window.UI = (function () {
     d_witch:    { name: '3D 女巫',  file: 'a3d_h_witch.webp',    bg: '#1F3A24' },
     d_blackcat: { name: '3D 黑猫',  file: 'a3d_h_blackcat.webp', bg: '#3A2A55' },
     d_bat:      { name: '3D 蝙蝠',  file: 'a3d_h_bat.webp',      bg: '#F2EEFF' },
-    d_skull:    { name: '3D 骷髅',  file: 'a3d_h_skull.webp',    bg: '#F7F4EE' }
+    d_skull:    { name: '3D 骷髅',  file: 'a3d_h_skull.webp',    bg: '#F7F4EE' },
+    /* z205 圣诞组：6 枚手绘 SVG（软渐变 + 高光，风格跟 3D 头像一致，44px 圆里够看）。
+       老的 d_h_* 仍留在表里 —— 历史数据里已经选了南瓜/幽灵的成员不能因此掉图，
+       只是不再出现在选择器里。 */
+    d_x_tree:     { name: '3D 圣诞树',   file: 'a3d_x_tree.svg',     bg: '#E7F6EE' },
+    d_x_snowman:  { name: '3D 雪人',     file: 'a3d_x_snowman.svg',  bg: '#EAF4FF' },
+    d_x_santa:    { name: '3D 圣诞老人', file: 'a3d_x_santa.svg',    bg: '#FFF0EE' },
+    d_x_reindeer: { name: '3D 驯鹿',     file: 'a3d_x_reindeer.svg', bg: '#F6EFE4' },
+    d_x_gift:     { name: '3D 礼物盒',   file: 'a3d_x_gift.svg',     bg: '#FFF2E6' },
+    d_x_bell:     { name: '3D 圣诞铃铛', file: 'a3d_x_bell.svg',     bg: '#FFF6DC' }
   };
   Object.keys(ART_3D).forEach(function (k) {
     ART[k] = { name: ART_3D[k].name, bg: ART_3D[k].bg, img: ART_3D[k].file };
   });
 
-  /* 老头像升级（2026-10-30 z168）：原来那 12 只扁平 SVG 小动物 + 6 个 SVG 万圣节角色
+  /* 老头像升级（2026-10-30 z168）：原来那 12 只扁平 SVG 小动物 + 6 个 SVG 节日角色
      全部换成上面这套 3D。已经选过 cat / dog 这类老 key 的成员**不用重选**——
      显示时先过一道别名，自动换成对应的 3D 图；老 key 仍留在 ART 里做兜底，
      只是不再出现在选择器（选择器只铺 ART_GROUPS 里列的 key）。 */
@@ -172,13 +181,14 @@ window.UI = (function () {
     return (k && ART[k] && ART[k].img) ? k : '';
   }
 
-  /* 选择器的分组与顺序：全部是 3D 图，按人物 / 动物 / 万圣节排，
-     组内顺序是手调的（先放最常用的），不跟 ART 的声明顺序走 */
+  /* 选择器的分组与顺序：全部是 3D 图，按人物 / 动物 / 圣诞节排，
+     组内顺序是手调的（先放最常用的），不跟 ART 的声明顺序走。
+     z205：第三组从万圣节换成圣诞节，6 张新 SVG 顶掉南瓜 / 幽灵 / 女巫 / 黑猫 / 蝙蝠 / 骷髅。 */
   var ART_GROUPS = [
     { title: '人物', keys: ['d_glasses', 'd_longhair', 'd_ponytail', 'd_beard'] },
     { title: '动物', keys: ['d_cat', 'd_panda', 'd_shiba', 'd_fox', 'd_rabbit', 'd_bear',
                             'd_pig', 'd_frog', 'd_chick', 'd_koala', 'd_tiger', 'd_penguin'] },
-    { title: '万圣节', keys: ['d_pumpkin', 'd_ghost', 'd_witch', 'd_blackcat', 'd_bat', 'd_skull'] }
+    { title: '圣诞节', keys: ['d_x_tree', 'd_x_snowman', 'd_x_santa', 'd_x_reindeer', 'd_x_gift', 'd_x_bell'] }
   ];
 
   var ART_KEYS = Object.keys(ART);
@@ -190,7 +200,7 @@ window.UI = (function () {
      表现就是「换台电脑登录，所有头像都没了」。
      换新版本号 = 所有图片 URL 一起换，旧缓存自然绕开。
      以后**补图、换图都必须改这里**，否则只有清缓存的人能看到新图。 */
-  var ART_VER = '20261104z204';
+  var ART_VER = '20261112z209';
 
   /* 图片加载失败时的兜底：把圆换成「品牌色 + 姓氏首字」。
      没有兜底的话，图挂了圆里就是空的（背景色是浅色底），用户看到的就是「头像消失」。

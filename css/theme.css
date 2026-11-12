@@ -1,5 +1,5 @@
 /* ==========================================================
-   theme.css — 2026-10-24「活泼一档」主题层
+   theme.css — 2026-10-24「活泼一档」主题层 / 2026-11-12 叠加圣诞冬夜
    ----------------------------------------------------------
    为什么单独一层：base/layout/components 是结构与老配色，
    这里只在最后盖一层颜色 / 圆角 / 阴影 / 反馈动效，
@@ -62,13 +62,13 @@
   --accent-soft: var(--primary-soft);
 }
 
-/* ---------------- 2. 画布：万圣节夜色光晕（紫 + 南瓜橙） ---------------- */
+/* ---------------- 2. 画布：圣诞雪夜光晕（冷蓝 + 暖金 + 松绿） ---------------- */
 body {
   background:
-    radial-gradient(1000px 520px at 4% -10%, #e7dbf6 0%, rgba(231, 219, 246, 0) 62%),
-    radial-gradient(820px 460px at 99% -6%, #f6ddba 0%, rgba(246, 221, 186, 0) 60%),
-    radial-gradient(760px 460px at 96% 104%, #dcc8ee 0%, rgba(220, 200, 238, 0) 62%),
-    radial-gradient(680px 420px at 18% 108%, #f8e3b8 0%, rgba(248, 227, 184, 0) 62%),
+    radial-gradient(1000px 520px at 4% -10%, #e2eefb 0%, rgba(226, 238, 251, 0) 62%),
+    radial-gradient(820px 460px at 99% -6%, #eaf6ef 0%, rgba(234, 246, 239, 0) 60%),
+    radial-gradient(760px 460px at 96% 104%, #fde9d9 0%, rgba(253, 233, 217, 0) 62%),
+    radial-gradient(680px 420px at 18% 108%, #dff0ea 0%, rgba(223, 240, 234, 0) 62%),
     var(--bg);
   background-attachment: fixed;
 }
@@ -195,23 +195,23 @@ html { scroll-behavior: smooth; }
 }
 .page-head p { color: var(--text-2); }
 
-/* Hero 横幅：万圣夜配色（深紫夜空 → 暗酒红，配橙月与南瓜灯的暖光）
+/* Hero 横幅：圣诞冬夜配色（深松绿夜空 → 暖酒红，配金灯与雪光）
    注意：theme.css 是最后一层，这条会盖掉 components.css 里那份基础背景，改配色改这里。 */
 .hero {
   background:
-    radial-gradient(520px 260px at 88% 118%, rgba(255, 150, 54, .18), transparent 68%),
-    radial-gradient(460px 240px at 16% -30%, rgba(126, 78, 200, .34), transparent 70%),
-    linear-gradient(104deg, #221a36 0%, #2c1e44 34%, #38234a 64%, #452838 100%);
-  border-color: rgba(255, 172, 82, .20);
-  box-shadow: inset 0 1px 0 rgba(255, 222, 176, .09), 0 10px 26px -18px rgba(28, 18, 46, .8);
+    radial-gradient(440px 250px at 86% 116%, rgba(255, 202, 112, .30), transparent 70%),
+    radial-gradient(460px 240px at 12% -30%, rgba(18, 78, 56, .58), transparent 72%),
+    linear-gradient(104deg, #6d1a26 0%, #96232f 34%, #b42f39 68%, #8d202c 100%);
+  border-color: rgba(255, 214, 142, .42);
+  box-shadow: inset 0 1px 0 rgba(232, 248, 255, .12), 0 10px 26px -18px rgba(10, 32, 30, .8);
 }
 
 /* 横幅左侧的小图标：像素风街边小饭馆（z200 起换掉 z195 的 CBD 夜景）。
    60px 的方格子里塞一张 52px 的 26×26 像素图（1 格 = 2px，整数放大才不糊）：
    方块只负责"窗口"——深夜紫底、裁掉直角、补一圈很淡的暖光晕。 */
 .hero-icon {
-  background: #160f2b;
-  border-color: rgba(255, 186, 106, .42);
+  background: #0e2b2b;
+  border-color: rgba(255, 214, 142, .42);
   overflow: hidden;
   box-shadow:
     0 8px 20px rgba(12, 6, 24, .45),
@@ -544,11 +544,15 @@ button:focus-visible,
 .tabs .tab.active { background: var(--primary-grad); }
 
 /* ==========================================================
-   14. 首页横幅的空白：加一层会动的装饰
+   14. 首页横幅：经典红绿圣诞（z207）
    ------------------------------------------------------------
-   横幅中间那段（文字和日期卡之间）本来就没什么内容，
-   现在飘着三团柔光、底下一层缓慢流动的点阵、还有几点星光，
-   空白就有内容了。全是 CSS 动画，不吃 JS。
+   z158~z204 是「万圣夜」：深紫夜空 + 橙月 + 墓碑/蝙蝠/幽灵/南瓜灯。
+   z205/z206 是「月夜圣诞」：冷蓝夜色 + 大冷月 + 雪，红只做点缀，用户觉得圣诞味不够。
+   z207 起换成经典红绿圣诞：圣诞红打底，松绿 / 金 / 奶白点缀，
+   居中一枚圣诞花环顶掉冷月，天上有金星、金铃铛和坐着圣诞老人的驯鹿雪橇，
+   近景是雪丘、放大版圣诞树、雪人、礼物堆和糖果拐杖。
+   依然是「远 → 中 → 近」三层，纯 CSS + SVG，不吃 JS 动画。
+   全局层不再挂蜘蛛网和蝙蝠，改成右下角冬青雪花 + 屏幕边缘飘雪。
    ========================================================== */
 .hero-fx {
   position: absolute;
@@ -559,12 +563,12 @@ button:focus-visible,
   z-index: 0;
 }
 
-/* 点阵：整层缓慢横移，像有风在吹（万圣夜改成暖色微光点，别在深紫底上显冷） */
+/* 空气感：细点阵缓慢横移，暖金色（红底上冷白点阵会泛灰） */
 .hero-fx::before {
   content: '';
   position: absolute;
   inset: -30% -10%;
-  background-image: radial-gradient(circle, rgba(255, 196, 128, .07) 1px, transparent 1.1px);
+  background-image: radial-gradient(circle, rgba(255, 226, 170, .14) 1px, transparent 1.1px);
   background-size: 22px 22px;
   -webkit-mask-image: linear-gradient(100deg, transparent 8%, #000 42%, #000 78%, transparent 98%);
   mask-image: linear-gradient(100deg, transparent 8%, #000 42%, #000 78%, transparent 98%);
@@ -575,7 +579,7 @@ button:focus-visible,
   to   { background-position: 120px 60px; }
 }
 
-/* 柔光团：慢慢飘、慢慢呼吸 */
+/* 柔光团：暖金 / 深红 / 松绿 / 金红，慢慢飘、慢慢呼吸 */
 .hf-blob {
   position: absolute;
   border-radius: 50%;
@@ -583,27 +587,24 @@ button:focus-visible,
   opacity: .5;
 }
 .hf-b1 {
-  width: 240px;
-  height: 240px;
-  left: 26%;
-  top: -60%;
-  background: radial-gradient(circle, rgba(150, 100, 235, .40), transparent 68%);
+  width: 240px; height: 240px; left: 26%; top: -60%;
+  background: radial-gradient(circle, rgba(255, 202, 112, .36), transparent 68%);
   animation: hfDrift1 22s ease-in-out infinite alternate;
 }
 .hf-b2 {
-  width: 200px;
-  height: 200px;
-  left: 52%;
-  top: 40%;
-  background: radial-gradient(circle, rgba(255, 160, 60, .26), transparent 68%);
+  width: 200px; height: 200px; left: 52%; top: 40%;
+  background: radial-gradient(circle, rgba(126, 20, 32, .42), transparent 68%);
   animation: hfDrift2 27s ease-in-out infinite alternate;
 }
+/* z207：右侧一团金红柔光，呼应花环背后的暖光，让红底有深浅层次。 */
+.hf-b4 {
+  width: 260px; height: 220px; right: -2%; top: 6%;
+  background: radial-gradient(circle, rgba(255, 150, 84, .40), transparent 68%);
+  animation: hfDrift2 29s ease-in-out infinite alternate-reverse;
+}
 .hf-b3 {
-  width: 170px;
-  height: 170px;
-  left: 8%;
-  top: 30%;
-  background: radial-gradient(circle, rgba(126, 74, 190, .28), transparent 68%);
+  width: 170px; height: 170px; left: 8%; top: 30%;
+  background: radial-gradient(circle, rgba(74, 154, 128, .30), transparent 68%);
   animation: hfDrift3 31s ease-in-out infinite alternate;
 }
 @keyframes hfDrift1 {
@@ -619,14 +620,13 @@ button:focus-visible,
   to   { transform: translate(30px, -26px) scale(1.12); }
 }
 
-/* 星光：几点小光斑缓缓上浮（呼应「门店陆续开业」）—— 夜空里换成暖黄星点 */
+/* 星光：几点小光斑缓缓上浮 —— 红底上换成更亮的金色星点 */
 .hf-spark {
   position: absolute;
-  width: 6px;
-  height: 6px;
+  width: 6px; height: 6px;
   border-radius: 50%;
-  background: #ffe9b8;
-  box-shadow: 0 0 10px 2px rgba(255, 214, 150, .8);
+  background: #ffe6a8;
+  box-shadow: 0 0 12px 3px rgba(255, 206, 112, .9);
   opacity: 0;
   animation: hfRise 7s ease-in-out infinite;
 }
@@ -641,418 +641,626 @@ button:focus-visible,
   100% { opacity: 0; transform: translateY(-52px) scale(1.15); }
 }
 
-/* ---------------- 万圣夜场景（z171）：横幅里的装饰层 ----------------
-   排版逻辑：远（月晕 → 月亮 → 雾 → 山影）→ 中（墓碑 / 蝙蝠 / 幽灵）→ 近（蜘蛛 / 南瓜灯）。
-   越靠前越暗，靠「层叠 + 雾」把 155px 高的细长条拉出纵深，而不是往上面堆形状。
-   参考的是 CodePen「CSS Fog Animation」「Haunted Loop」和 GitHub Halloween-page 那几套：
-   它们好看的核心都不是画得细，而是分了三层、都加了雾和月晕。 */
-
-/* 天空的纵向层次：天顶压暗、近地一丁点暖 —— 底色是平的就看不出"夜"，
-   这一层只压到 45% 高度，标题文字在它下面，对比度反而更好 */
+/* ---------------- 经典圣诞：天空的纵向层次 ----------------
+   天顶压一点深红、近地留金光；标题文字在这一层下面，对比度反而更好。 */
 .hero-fx::after {
   content: '';
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(10, 6, 20, .5) 0%, rgba(10, 6, 20, .16) 26%, transparent 52%),
-    radial-gradient(120% 70% at 50% 118%, rgba(255, 168, 80, .1), transparent 72%);
+    linear-gradient(180deg, rgba(72, 12, 22, .34) 0%, rgba(72, 12, 22, .06) 30%, transparent 56%),
+    radial-gradient(120% 70% at 50% 118%, rgba(255, 202, 112, .22), transparent 72%);
   pointer-events: none;
 }
 
-/* 月晕：一大团椭圆暖光，月亮真正"发光"靠它，不靠 drop-shadow */
-.hw-glow {
+/* 飘雪：12 片，大小 / 落速 / 相位错开，落到横幅底边就淡出 */
+.xm-snow {
   position: absolute;
-  left: 47%;
-  bottom: -34px;
-  width: 520px;
-  height: 280px;
-  margin-left: -260px;
+  top: -10px;
+  width: 5px; height: 5px;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(255, 172, 82, .42), rgba(255, 140, 60, .16) 52%, transparent 76%);
-  filter: blur(6px);
-  animation: hwGlow 8s ease-in-out infinite;
+  background: #fff;
+  box-shadow: 0 0 6px 1px rgba(255, 238, 205, .75);
+  opacity: 0;
+  animation: xmFall 9s linear infinite;
 }
-@keyframes hwGlow {
+.xm-snow.f1  { left: 3%;  animation-delay: -.4s;  animation-duration: 8.2s; }
+.xm-snow.f2  { left: 11%; animation-delay: -3.1s; animation-duration: 10.4s; width: 3px; height: 3px; }
+.xm-snow.f3  { left: 19%; animation-delay: -6.2s; animation-duration: 7.6s; }
+.xm-snow.f4  { left: 27%; animation-delay: -1.8s; animation-duration: 11.2s; width: 4px; height: 4px; }
+.xm-snow.f5  { left: 35%; animation-delay: -4.7s; animation-duration: 9.1s; }
+.xm-snow.f6  { left: 43%; animation-delay: -7.5s; animation-duration: 8.8s; width: 3px; height: 3px; }
+.xm-snow.f7  { left: 51%; animation-delay: -2.3s; animation-duration: 10.8s; }
+.xm-snow.f8  { left: 59%; animation-delay: -5.6s; animation-duration: 7.9s; width: 4px; height: 4px; }
+.xm-snow.f9  { left: 67%; animation-delay: -8.4s; animation-duration: 9.6s; }
+.xm-snow.f10 { left: 75%; animation-delay: -3.9s; animation-duration: 11.6s; width: 3px; height: 3px; }
+.xm-snow.f11 { left: 84%; animation-delay: -6.8s; animation-duration: 8.4s; }
+.xm-snow.f12 { left: 93%; animation-delay: -1.2s; animation-duration: 10.1s; width: 4px; height: 4px; }
+@keyframes xmFall {
+  0%   { opacity: 0; transform: translate(0, -8px) scale(.7); }
+  14%  { opacity: .9; }
+  82%  { opacity: .55; }
+  100% { opacity: 0; transform: translate(24px, 150px) scale(1.12); }
+}
+
+/* 顶边灯串：一条弧线 + 十颗交替闪烁的彩灯（红占四颗，红是主节奏） */
+.xm-lights {
+  position: absolute;
+  left: 0; top: 0;
+  width: 100%; height: 26px;
+  opacity: .95;
+}
+
+/* z206：顶边冬青红果枝 + 中央红丝带蝴蝶结。
+   用百分比定位的独立小 SVG，不随横幅拉伸变形；全部收在顶边 28px 内，
+   不碰下方标题文字。窄屏只留蝴蝶结，仍能看见一点红。 */
+.xm-holly { position: absolute; top: -1px; width: 36px; height: 28px; opacity: .92; }
+.xm-holly svg { display: block; width: 100%; height: 100%; }
+.xm-holly.h1 { left: 5%;  }
+.xm-holly.h2 { left: 26%; }
+.xm-holly.h3 { left: 70%; }
+.xm-holly.h4 { left: 88%; }
+.xm-bow {
+  position: absolute; top: 0; left: 52%;
+  transform: translateX(-50%);
+  width: 44px; height: 30px; opacity: .96;
+  filter: drop-shadow(0 1px 4px rgba(120, 20, 26, .5));
+}
+.xm-bow svg { display: block; width: 100%; height: 100%; }
+.xm-wire { stroke: rgba(255, 226, 170, .46); }
+.xm-bulb { animation: xmTwinkle 2.8s ease-in-out infinite; }
+@keyframes xmTwinkle {
+  0%, 100% { opacity: .48; }
+  50%      { opacity: 1; }
+}
+
+/* 远景：花环背光 + 大圣诞花环（z207 顶掉 z206 那颗冷月） + 薄云 + 两层雪雾 */
+.xm-glow {
+  position: absolute;
+  left: 47%; bottom: -40px;
+  width: 340px; height: 230px; margin-left: -170px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 208, 120, .40), rgba(214, 84, 54, .16) 52%, transparent 76%);
+  filter: blur(8px);
+  animation: xmGlow 8s ease-in-out infinite;
+}
+@keyframes xmGlow {
   0%, 100% { opacity: .82; transform: scale(1); }
   50%      { opacity: 1;   transform: scale(1.06); }
 }
-
-.hw-moon {
+.xm-wreath {
   position: absolute;
-  left: 45%;
-  bottom: 0;
-  width: 204px;
-  height: 102px;
-  filter: drop-shadow(0 -2px 18px rgba(255, 170, 80, .28));
-  animation: hwMoonRise 7s ease-in-out infinite;
+  left: 43%; bottom: 0;
+  width: 104px; height: 104px;
+  filter: drop-shadow(0 0 16px rgba(255, 206, 112, .55));
+  animation: xmWreath 7s ease-in-out infinite;
 }
-@keyframes hwMoonRise {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-3px); }
+@keyframes xmWreath {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50%      { transform: translateY(-2px) rotate(1deg); }
 }
-
-/* 夜雾：两层模糊的径向渐变，一快一慢反向飘。这是"氛围"最主要的来源 */
-.hw-fog {
-  position: absolute;
-  left: -12%;
-  width: 124%;
-  height: 58px;
-  bottom: 0;
-  pointer-events: none;
-  filter: blur(7px);
-  opacity: .95;
-}
-.hw-fog-a {
-  background:
-    radial-gradient(46% 100% at 18% 100%, rgba(198, 182, 235, .30), transparent 72%),
-    radial-gradient(38% 100% at 52% 100%, rgba(255, 196, 128, .25), transparent 72%),
-    radial-gradient(40% 100% at 84% 100%, rgba(198, 182, 235, .23), transparent 72%);
-  animation: hwFogL 38s linear infinite;
-}
-.hw-fog-b {
-  height: 44px;
-  opacity: .78;
-  background:
-    radial-gradient(52% 100% at 30% 100%, rgba(255, 210, 160, .22), transparent 70%),
-    radial-gradient(44% 100% at 70% 100%, rgba(188, 170, 230, .22), transparent 70%);
-  animation: hwFogR 52s linear infinite;
-}
-@keyframes hwFogL {
-  from { transform: translateX(-6%); }
-  to   { transform: translateX(6%); }
-}
-@keyframes hwFogR {
-  from { transform: translateX(5%); }
-  to   { transform: translateX(-5%); }
+.xm-wreath .xm-wreath-star {
+  animation: xmStar 3.2s ease-in-out infinite;
+  transform-origin: 60px 50px;
 }
 
-/* 小店要"站在"地平线上：横幅内容区是垂直居中的，小店底边比地平线高 30 多像素，
-   原来靠它自带的一块深色地面遮丑，看着像浮在半空。这里直接往下推到地面线。 */
-.hero-art { transform: translateY(36px); }
+/* 天空金五角星：4 颗，错开大小 / 相位，缓缓呼吸 */
+.xm-sky-star { position: absolute; opacity: .9; filter: drop-shadow(0 0 6px rgba(255, 214, 110, .75)); }
+.xm-sky-star svg { display: block; width: 100%; height: 100%; }
+.xm-sky-star.s1 { left: 34%; top: 13%; width: 17px; height: 17px; animation: xmStar 3.8s ease-in-out infinite; }
+.xm-sky-star.s2 { left: 50%; top: 6%;  width: 11px; height: 11px; animation: xmStar 4.6s ease-in-out infinite -1.4s; }
+.xm-sky-star.s3 { left: 68%; top: 21%; width: 13px; height: 13px; animation: xmStar 4.2s ease-in-out infinite -2.6s; }
+.xm-sky-star.s4 { left: 79%; top: 8%;  width: 9px;  height: 9px;  animation: xmStar 5s   ease-in-out infinite -3.2s; }
 
-/* 前景枯枝：从顶边横过来的一条剪影。
-   z183：原来贴在 top:-1px，被横幅的圆角切掉大半，加上纯黑枝压在同样压暗的
-   天空上几乎看不见，整体像"顶部一块脏"。往下挪 6px、加高到 40px，让枝真正垂下来；
-   再补一圈极淡的冷色轮廓光（drop-shadow）—— 深色剪影在暗天空里必须靠边光才读得出。 */
-.hw-branch {
-  position: absolute;
-  left: 0;
-  top: 6px;
-  width: auto;
-  height: 40px;          /* 固定高度：按宽度拉伸的话盒子会垂到标题上 */
-  opacity: .95;
-  filter: drop-shadow(0 0 2px rgba(198, 208, 255, .28));
-}
-
-/* 近景草丛：贴底边、拉伸铺满，把地平线打毛 */
-.hw-grass {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 100%;
-  height: 13px;
-  opacity: .55;
-}
-
-/* 薄云：极淡的横向亮带，飘得比雾慢。没有它，上半截天空就是一块纯色 */
-.hw-cloud {
+/* 顶边金铃铛：3 枚，和冬青枝、红蝴蝶结一起把顶边铺满 */
+.xm-bell { position: absolute; top: 0; width: 15px; height: 19px; opacity: .94; }
+.xm-bell svg { display: block; width: 100%; height: 100%; }
+.xm-bell.b1 { left: 14%; }
+.xm-bell.b2 { left: 62%; }
+.xm-bell.b3 { left: 80%; }
+.xm-cloud {
   position: absolute;
   height: 26px;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(214, 198, 246, .12), transparent 72%);
+  background: radial-gradient(closest-side, rgba(255, 226, 176, .22), transparent 72%);
   filter: blur(9px);
   pointer-events: none;
 }
-.hw-cloud-a {
-  left: 18%;
-  top: 14%;
-  width: 38%;
-  animation: hwCloudDrift 64s ease-in-out infinite;
+.xm-cloud.a {
+  left: 18%; top: 14%; width: 38%;
+  animation: xmCloudDrift 64s ease-in-out infinite;
 }
-.hw-cloud-b {
-  left: 52%;
-  top: 6%;
-  width: 30%;
-  opacity: .8;
-  animation: hwCloudDrift 86s ease-in-out infinite reverse;
+.xm-cloud.b {
+  left: 52%; top: 6%; width: 30%; opacity: .8;
+  animation: xmCloudDrift 86s ease-in-out infinite reverse;
 }
-@keyframes hwCloudDrift {
+@keyframes xmCloudDrift {
   0%, 100% { transform: translateX(-3%); }
   50%      { transform: translateX(4%); }
 }
-
-/* 山影：月亮从山脊后面升起，靠这条剪影把月亮的"底"压住 */
-.hw-hill {
+.xm-mist {
   position: absolute;
-  left: 0;
-  width: 100%;
-  height: 30px;
-  bottom: 0;
-  display: block;
-}
-
-/* 墓碑：一片小墓园，坐落在近脊的坡上（bottom 值对着山脊线，不能离地悬空）。
-   原来只有两块 17px 的小碑，1x 下就是两个小疙瘩，认不出是墓地。 */
-.hw-grave {
-  position: absolute;
-  display: block;
-  opacity: .95;
-}
-.hw-grave.g1 { left: 23.8%; width: 26px; height: 28px; bottom: 15.2px; }
-.hw-grave.g2 { left: 27.4%; width: 20px; height: 20px; bottom: 13.2px; opacity: .92; }
-.hw-grave.g4 { left: 30.6%; width: 24px; height: 16px; bottom: 11.6px; opacity: .86; }
-.hw-grave.g3 { left: 33.6%; width: 14px; height: 26px; bottom: 9.8px; opacity: .9; }
-
-/* 远空的小蝙蝠群：贴着顶边飞，很淡，只负责"天上不止三只" */
-
-/* 蝙蝠：三只不同大小 = 远近。剪影贴在月亮前面（深色压亮底），一眼就能认出是蝙蝠 */
-.hw-bat {
-  position: absolute;
-  height: auto;
-  filter: drop-shadow(0 2px 6px rgba(10, 6, 18, .55));
-}
-.hw-bat.b1 { left: 33.5%; top: 5%; }
-.hw-bat.b2 { left: 49%; top: 20%; opacity: .95; }   /* 压在月面上：轮廓最清楚 */
-.hw-bat.b3 { left: 66%; top: 4%; opacity: .78; }
-/* 翅膀绕身体中心上下摆：transform-box 用 view-box（SVG 默认），单位就是 viewBox 单位 */
-.hw-bat .hw-wl,
-.hw-bat .hw-wr { transform-origin: 32px 13px; }
-.hw-bat .hw-wl { animation: hwFlapL 1.5s ease-in-out infinite; }
-.hw-bat .hw-wr { animation: hwFlapR 1.5s ease-in-out infinite; }
-.hw-bat.b2 .hw-wl, .hw-bat.b2 .hw-wr { animation-duration: 1.9s; }
-.hw-bat.b3 .hw-wl, .hw-bat.b3 .hw-wr { animation-duration: 2.4s; }
-@keyframes hwFlapL {
-  0%, 100% { transform: rotate(0deg) scaleY(1); }
-  50%      { transform: rotate(-9deg) scaleY(.74); }
-}
-@keyframes hwFlapR {
-  0%, 100% { transform: rotate(0deg) scaleY(1); }
-  50%      { transform: rotate(9deg) scaleY(.74); }
-}
-
-/* 幽灵：柔光 + 半透明 + 慢慢上下飘（不画牙，不吓人） */
-.hw-ghost {
-  position: absolute;
-  right: 24%;
-  top: 6%;
-  width: 34px;
-  height: 42px;
+  left: -12%; width: 124%; bottom: 0;
+  pointer-events: none;
+  filter: blur(7px);
   opacity: .9;
-  filter: drop-shadow(0 0 14px rgba(255, 240, 210, .5));
-  animation: hwFloat 6s ease-in-out infinite;
 }
-
-/* 蜘蛛：从横幅顶边垂丝下来，绕顶点慢慢摆 */
-.hw-spider {
-  position: absolute;
-  left: 41%;
-  top: 0;
-  width: 26px;
+.xm-mist.a {
   height: 58px;
-  filter: drop-shadow(0 0 5px rgba(255, 190, 120, .35));
-  transform-origin: 50% 0;
-  animation: hwDangle 7s ease-in-out infinite;
+  background:
+    radial-gradient(46% 100% at 18% 100%, rgba(255, 236, 205, .26), transparent 72%),
+    radial-gradient(38% 100% at 52% 100%, rgba(255, 214, 150, .28), transparent 72%),
+    radial-gradient(40% 100% at 84% 100%, rgba(255, 236, 205, .22), transparent 72%);
+  animation: xmMistL 38s linear infinite;
 }
-.hw-silk {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  width: 1px;
-  height: 32px;
-  background: linear-gradient(rgba(196, 180, 226, .85), rgba(185, 168, 224, .2));
+.xm-mist.b {
+  height: 44px; opacity: .72;
+  background:
+    radial-gradient(52% 100% at 30% 100%, rgba(255, 240, 214, .24), transparent 70%),
+    radial-gradient(44% 100% at 70% 100%, rgba(255, 214, 150, .24), transparent 70%);
+  animation: xmMistR 52s linear infinite;
 }
-.hw-spider svg {
-  position: absolute;
-  left: 0;
-  top: 30px;
-  width: 26px;
-  height: 22px;
-}
-@keyframes hwDangle {
-  0%, 100% { transform: rotate(-4deg); }
-  50%      { transform: rotate(4deg); }
-}
+@keyframes xmMistL { from { transform: translateX(-6%); } to { transform: translateX(6%); } }
+@keyframes xmMistR { from { transform: translateX(5%); }  to { transform: translateX(-5%); } }
 
-/* 南瓜灯：左下角地面，底部对齐，暖光往外溢 */
-.hw-jack {
-  position: absolute;
-  left: 2.4%;
-  bottom: 0;
-  width: 32px;
-  height: 27px;
-  transform-origin: 50% 100%;
-  filter: drop-shadow(0 0 12px rgba(255, 150, 50, .55));
-  animation: hwJack 4.6s ease-in-out infinite;
-}
+/* 小店要「站在」雪地上：横幅内容区垂直居中，房子底边比地平线高 30 多像素，
+   直接往下推到地面线，避免像浮在半空。 */
+.hero-art { transform: translateY(36px); }
 
-@keyframes hwFloat {
-  0%, 100% { transform: translateY(0) rotate(-2deg); }
-  50%      { transform: translateY(-9px) rotate(2deg); }
+/* 中景：雪丘 + 松树 + 圣诞树 + 雪人 + 礼物；近景：雪堆边沿 */
+.xm-hill {
+  position: absolute;
+  left: 0; width: 100%; height: 34px; bottom: 0;
+  display: block;
 }
-@keyframes hwJack {
-  0%, 100% { transform: translateY(0) rotate(-2deg) scale(1); }
-  50%      { transform: translateY(-2px) rotate(2deg) scale(1.04); }
+.xm-pine { position: absolute; bottom: 14px; }
+.xm-pine.p1 { left: 17%;  width: 30px; height: 42px; opacity: .9; }
+.xm-pine.p2 { left: 22%;  width: 22px; height: 31px; opacity: .78; }
+.xm-pine.p3 { right: 31%; width: 26px; height: 36px; opacity: .82; }
+.xm-tree {
+  position: absolute;
+  left: 57%; bottom: 2px;
+  width: 84px; height: 100px;
+  filter: drop-shadow(0 0 18px rgba(255, 206, 112, .50));
+}
+.xm-tree .xm-star { animation: xmStar 3.2s ease-in-out infinite; transform-origin: 40px 9px; }
+@keyframes xmStar {
+  0%, 100% { opacity: .82; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.12); }
+}
+.xm-tree .xm-bauble { animation: xmTwinkle 2.6s ease-in-out infinite; }
+.xm-snowman {
+  position: absolute;
+  left: 2.6%; bottom: 2px;
+  width: 30px; height: 40px;
+  filter: drop-shadow(0 0 8px rgba(214, 236, 255, .4));
+  animation: xmFloat 6s ease-in-out infinite;
+}
+@keyframes xmFloat {
+  0%, 100% { transform: translateY(0) rotate(-1.5deg); }
+  50%      { transform: translateY(-3px) rotate(1.5deg); }
+}
+.xm-gift {
+  position: absolute;
+  left: 9%; bottom: 0;
+  width: 44px; height: 22px;
+  filter: drop-shadow(0 0 8px rgba(255, 186, 96, .32));
+  animation: xmFloat 7.4s ease-in-out infinite -2s;
+}
+/* z206：雪地上的红白糖果拐杖，和礼物堆凑成一组近景红 */
+.xm-cane {
+  position: absolute;
+  left: 15.6%; bottom: 1px;
+  width: 16px; height: 38px;
+  filter: drop-shadow(0 0 6px rgba(255, 120, 100, .34));
+}
+.xm-sleigh {
+  position: absolute;
+  left: 12%; top: 8%;
+  width: 76px; height: auto;
+  opacity: .95;
+  animation: xmSleigh 26s linear infinite;
+}
+@keyframes xmSleigh {
+  0%   { transform: translate(-30px, 6px); opacity: 0; }
+  12%  { opacity: .95; }
+  82%  { opacity: .95; }
+  100% { transform: translate(320px, -16px); opacity: 0; }
+}
+.xm-snowbank {
+  position: absolute;
+  left: 0; bottom: 0;
+  width: 100%; height: 12px;
+  display: block;
+  opacity: .85;
 }
 
 /* 横幅里的内容要压在装饰上面 */
 .hero > *:not(.hero-fx) { position: relative; z-index: 1; }
 
-/* 窄屏：内容区一窄，230px 的大月亮就跑到文字底下压住数字了。
-   分三段处理：
-   - 1400~1181：日期卡和房子都在，右边被占满 → 月亮和山影先收起来（硬塞到日期卡后面，
-     卡片比月亮矮，会从卡底下露出一条橙色，很脏）
-   - 1180~901：日期卡和房子都隐藏了，右端空出来 → 月亮缩小靠右，只留雾和蝙蝠
-   - 900 往下再小一档；680 以下文字要换行，放哪都压字 → 全收，只留柔光 */
+/* 窄屏：内容区一窄，花环和大树会跑到文字底下压住数字。
+   1181~1400 日期卡和房子都在 → 先收起体积大的远景；
+   1180 以下日期卡和房子隐藏 → 花环缩小靠右，只留雪 / 蝴蝶结 / 飘雪；
+   1400 以下一并收掉雪雾和雪堆边沿：其它雪景都隐藏后，单独留这两层会在
+   红底上变成几块白色梯形 / 圆丘，看着像没加载完的占位块；
+   680 以下保留小花环和顶边蝴蝶结，窄屏也得有个明确的圣诞符号。 */
 @media (max-width: 1400px) and (min-width: 1181px) {
-  .hw-moon,
-  .hw-hill,
-  .hw-grave,
-  .hw-glow { display: none; }
-  /* 文字在窄屏会换行往上顶，中段这两只正好落在标题上 */
-  .hw-bat.b1,
-  .hw-spider { display: none; }
+  .xm-wreath, .xm-hill, .xm-pine, .xm-tree, .xm-glow, .xm-sleigh,
+  .xm-sky-star, .xm-bell, .xm-mist, .xm-snowbank { display: none; }
 }
 @media (max-width: 1180px) {
-  .hw-moon { width: 160px; height: 80px; left: auto; right: 28px; opacity: .9; }
-  .hw-glow { left: auto; right: 28px; margin-left: 0; width: 300px; height: 200px; bottom: -70px; }
-  .hw-hill, .hw-grave { display: none; }
-  .hw-bat.b1,
-  .hw-bat.b3,
-  .hw-spider,
-  .hw-branch,
-  .hw-jack { display: none; }
+  .xm-wreath { width: 84px; height: 84px; left: auto; right: 30%; bottom: 6px; opacity: .92; }
+  .xm-glow { left: auto; right: 26%; margin-left: 0; width: 220px; height: 160px; bottom: -40px; }
+  .xm-hill, .xm-pine, .xm-tree, .xm-sleigh, .xm-lights, .xm-snowman,
+  .xm-holly, .xm-cane, .xm-sky-star, .xm-bell,
+  .xm-mist, .xm-snowbank { display: none; }
 }
 @media (max-width: 900px) {
-  .hw-moon { width: 120px; height: 60px; right: 18px; opacity: .8; }
-  .hw-ghost { display: none; }
-  .hw-bat.b2 { display: none; }
-  .hw-spider { display: none; }
-  .hw-fog-b { display: none; }
+  .xm-wreath { width: 72px; height: 72px; right: 18%; bottom: 4px; }
+  .xm-gift, .xm-cloud { display: none; }
 }
 @media (max-width: 680px) {
-  .hw-moon, .hw-bat, .hw-fog, .hw-branch { display: none; }
+  .xm-sleigh, .xm-lights, .xm-gift, .xm-snowman, .xm-glow,
+  .xm-cane, .xm-holly, .xm-snowbank, .xm-sky-star, .xm-bell { display: none; }
+  /* 再往右收一点、缩小一圈，和副标题末尾拉开距离 */
+  .xm-wreath { right: 9%; width: 64px; height: 64px; bottom: 6px; }
 }
 
-/* 开了「减少动效」就把装饰停住（不闪、不动） */
+/* 开了「减少动效」就把装饰停住（不闪、不飘、不落雪） */
 @media (prefers-reduced-motion: reduce) {
-  .hero-fx::before,
-  .hf-blob,
-  .hf-spark,
-  .hw-glow,
-  .hw-moon,
-  .hw-fog,
-  .hw-bat .hw-wl,
-  .hw-bat .hw-wr,
-  .hw-ghost,
-  .hw-spider,
-  .hw-jack { animation: none !important; }
+  .hero-fx::before, .hf-blob, .hf-spark,
+  .xm-snow, .xm-bulb, .xm-glow, .xm-wreath, .xm-cloud, .xm-mist,
+  .xm-tree .xm-star, .xm-tree .xm-bauble,
+  .xm-snowman, .xm-gift, .xm-sleigh,
+  .xm-holly, .xm-bow, .xm-cane, .xm-sky-star,
+  .xm-wreath .xm-wreath-star { animation: none !important; }
 }
 
-/* ---------------- 全局背景万圣节装饰（fixed，不挡交互）：蜘蛛网 + 蝙蝠 ----------------
-   注：南瓜灯 z159 起不在这一层里（z173 血迹 → z174 枯树 → z199 城堡，见 .hw-castle） */
-.hw-scene {
+/* ==========================================================
+   15. 全局圣诞装饰（fixed，不挡交互）：右下角冬青雪花 + 边缘飘雪
+   ------------------------------------------------------------
+   原来是右下角一整张蜘蛛网 + 右边缘五只飞行蝙蝠。
+   沿用同一套定位思路：clamp 连续缩放（z204 修过切页面横跳），
+   pointer-events:none，层级浮在卡片边缘之上、低于顶栏 / 弹窗 / toast。
+   ========================================================== */
+.xm-scene {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 3;              /* 浮在卡片边缘之上，但低于顶栏(60)/弹窗/toast */
+  z-index: 3;
 }
-/* 蜘蛛网：一整张完整的圆网，贴在屏幕右下角。
-   关键在「附着点」——盒子 right/bottom 都是 0，SVG 里那几根锚丝的终点正好落在
-   viewBox 的 x=320 / y=320 上，也就是屏幕右边缘和底边缘，线头不会悬在半空。
-   2026-11-04 z204：尺寸改成 clamp 连续缩放。原来写的是三档断点（320 / ≤1280→250 /
-   ≤900→180），而断点按视口宽度判定 —— 有的页面出滚动条、有的不出，视口宽度差 17px，
-   切页面时就可能在 320 和 250 之间来回跳，看起来「网一会儿大一会儿小」。连续缩放之后
-   同样的 17px 波动只差三四个像素，肉眼看不出来。 */
-.hw-web {
+.xm-corner {
   position: absolute;
-  right: 0;
-  bottom: 0;
+  right: 0; bottom: 0;
   width: clamp(180px, 22vw, 320px);
   height: auto;
   aspect-ratio: 1;
-  opacity: .52;
+  opacity: .5;
 }
-/* 网丝很细，单独压一点亮度，别在深色/彩色卡片上显脏 */
-.hw-web-silk { stroke: #8a7bc0; }
-/* 窄屏别让网占掉半屏内容 */
-@media (max-width: 900px)  { .hw-web { opacity: .42; } }
-@media (max-width: 680px)  { .hw-web { display: none; } }
-/* 全局层的飞行蝙蝠（z198）：形体换成横幅那只带缺口翼缘的剪影。
-   旧版是两片椭圆翅膀 + 两颗橙点，40px 下像只蝴蝶结；
-   现在翅膀左右分组摆（复用 hwFlapL/R），整只的漂移加在 <svg> 上。
-   四只沿右边缘由高到低排开：越靠下越小、越淡，像一群散开的蝙蝠。
-   height 必须 auto —— 只给宽度时浏览器按 1:1 撑高，翼展会被纵向拉伸。 */
-.hw-bat-fly {
+@media (max-width: 900px) { .xm-corner { opacity: .38; } }
+@media (max-width: 680px) { .xm-corner { display: none; } }
+
+/* 屏幕右边缘的飘雪：五片大小 / 浓淡 / 速度错开，沿边缓缓下沉 */
+.xm-flake {
   position: absolute;
   right: 12px;
   height: auto;
   pointer-events: none;
-  animation: hwBatFly 5.6s ease-in-out infinite;
+  animation: xmDrift 11s ease-in-out infinite;
 }
-.hw-bat-fly .hw-wl,
-.hw-bat-fly .hw-wr { transform-origin: 32px 13px; }
-.hw-bat-fly .hw-wl { animation: hwFlapL 1.7s ease-in-out infinite; }
-.hw-bat-fly .hw-wr { animation: hwFlapR 1.7s ease-in-out infinite; }
-
-/* 五只的站位：四只贴右边缘外侧（卡片到屏幕边只剩 20px 缝，停在卡片中间会像污点），
-   一只单独放进左侧深色侧边栏的空白带 —— 那里底色深，用浅一号的紫。
-   速度/相位错开，否则五只会像同一个图章一起呼吸。 */
-.hw-bat-fly.fb1 { top: 27%; right: 5px;  width: 26px; opacity: .40; animation-duration: 6.4s; }
-.hw-bat-fly.fb1 .hw-wl, .hw-bat-fly.fb1 .hw-wr { animation-duration: 1.95s; }
-.hw-bat-fly.fb2 { top: 34%; right: 2px; width: 16px; opacity: .24;
-  animation-duration: 7.8s; animation-delay: -2.1s; }
-.hw-bat-fly.fb2 .hw-wl, .hw-bat-fly.fb2 .hw-wr { animation-duration: 2.3s; }
-.hw-bat-fly.fb3 { top: 45%; right: 3px;  width: 38px; opacity: .56;
-  animation-delay: -1.4s; }
-.hw-bat-fly.fb4 { top: 57%; right: 2px; width: 20px; opacity: .28;
-  animation-duration: 6.9s; animation-delay: -3.2s; }
-.hw-bat-fly.fb4 .hw-wl, .hw-bat-fly.fb4 .hw-wr { animation-duration: 2.15s; }
-.hw-bat-fly.fb5 { top: 58%; right: auto; left: 36px; width: 34px; opacity: .34;
-  animation-duration: 7.2s; animation-delay: -4.6s; }
-.hw-bat-fly.fb5 .hw-wl, .hw-bat-fly.fb5 .hw-wr { animation-duration: 2.6s; }
-
-/* 窄屏：侧边栏先收成 62px 图标条（fb5 会让位），再窄就整层让位给内容 */
+.xm-flake.gf1 { top: 24%; right: 5px;  width: 18px; opacity: .42; animation-duration: 12.4s; }
+.xm-flake.gf2 { top: 36%; right: 2px;  width: 11px; opacity: .30; animation-duration: 15.8s; animation-delay: -3.6s; }
+.xm-flake.gf3 { top: 47%; right: 3px;  width: 24px; opacity: .52; animation-duration: 10.6s; animation-delay: -1.9s; }
+.xm-flake.gf4 { top: 59%; right: 2px;  width: 14px; opacity: .28; animation-duration: 14.2s; animation-delay: -6.1s; }
+.xm-flake.gf5 { top: 61%; right: auto; left: 36px; width: 20px; opacity: .32; animation-duration: 13.2s; animation-delay: -8.4s; }
+@keyframes xmDrift {
+  0%, 100% { transform: translate(0, -8px) rotate(-8deg); }
+  50%      { transform: translate(-16px, 16px) rotate(12deg); }
+}
 @media (max-width: 1180px) {
-  .hw-bat-fly.fb2, .hw-bat-fly.fb4, .hw-bat-fly.fb5 { display: none; }
+  .xm-flake.gf2, .xm-flake.gf4, .xm-flake.gf5 { display: none; }
 }
-@media (max-width: 900px) {
-  .hw-bat-fly { display: none; }
-}
-/* 万圣节城堡剪影（z199）：顶替 z186 那棵枯枝，位置还是导航与「本机缓存卡」之间
-   那条空白带。走向变了 —— 现在是一座从左边界的框外延伸进来的城堡：
-   viewBox 里塔身从 x<0 起笔，右侧地面一路下沉，底部再用渐变化进侧边栏底色，
-   所以右边和底边都没有硬边（正是用户给的"过渡"参考）。
-   摆位：侧边栏 padding 是 14px 10px，靠左右各 -10px 的负 margin 把 196 铺满整条
-   面板，x<0 那截正好被面板左边缘切掉 —— 看着才像"从外面蔓延进来"的。
-   高度写死不跟随：viewBox 是 196×150，宽度已经是 196，1:1 不缩放。 */
-.hw-castle {
+@media (max-width: 900px) { .xm-flake { display: none; } }
+@media (prefers-reduced-motion: reduce) { .xm-flake { animation: none !important; } }
+
+/* 侧边栏：雪夜小村庄剪影（z205 顶替 z199 的万圣城堡）。
+   位置还是导航与「本机缓存卡」之间那条空白带；底部用渐变化进侧边栏底色，
+   所以右、下都没有硬边，看着像从面板外面蔓延进来的雪景。 */
+.xm-village {
   display: block;
   flex: 0 0 auto;
   align-self: stretch;
   height: 150px;
-  /* 只给上边 auto：和缓存卡的 margin-top:auto 平分空白，城堡大致落在这一带的中间偏下。
-     上下都写 auto 的话，缓存卡自己那个 auto 会再叠一层，城堡会被顶得太高。 */
   margin: auto -10px 6px;
-  pointer-events: none;  /* 纯装饰，别在侧边栏空白处挡出点击热区 */
-  /* 很淡的暖色边光：纯黑剪影压在深蓝面板上会糊成一块死斑，
-     但它是剪纸不是灯，光只给一点点，靠窗户去撑画面。 */
-  filter: drop-shadow(0 0 4px rgba(255, 190, 124, .16));
+  pointer-events: none;
+  filter: drop-shadow(0 0 5px rgba(190, 224, 255, .16));
+}
+@media (max-width: 1180px) { .xm-village { display: none; } }
+@media (max-height: 800px) { .xm-village { display: none; } }
+
+
+/* =====================================================================
+   z208 创新层：圣诞倒数礼盒
+   ---------------------------------------------------------------------
+   不再沿用「渐变夜空 + 远中近三层 + 撒小插画」的框架。
+   横幅 = 一张礼物包装纸：金色十字缎带四分画面、hover 反光扫过、
+   中央一枚动态倒数金章、大色块纸艺圣诞树与斜切色纸。
+   旧雪景插画整层隐藏，飘雪 / 灯串 / 冬青 / 蝴蝶结留作包装纸边缘装饰。
+   ===================================================================== */
+.hero {
+  background:
+    linear-gradient(90deg, transparent 49%, rgba(255,214,142,.16) 49%, rgba(255,222,160,.46) 50%, rgba(255,214,142,.16) 51%, transparent 51%),
+    linear-gradient(180deg, transparent 45%, rgba(255,214,142,.12) 45%, rgba(255,222,160,.32) 50%, rgba(255,214,142,.12) 55%, transparent 55%),
+    radial-gradient(440px 250px at 86% 116%, rgba(255, 202, 112, .30), transparent 70%),
+    radial-gradient(460px 240px at 12% -30%, rgba(18, 78, 56, .58), transparent 72%),
+    linear-gradient(104deg, #6d1a26 0%, #96232f 34%, #b42f39 68%, #8d202c 100%);
 }
 
-/* 1180 以下侧边栏收成 62px 图标条 —— 直接不显示。
-   高度不够时也让位：1366×768 这类屏幕侧边栏只有 676px，城堡塞进去会顶到缓存卡。 */
-@media (max-width: 1180px) { .hw-castle { display: none; } }
-@media (max-height: 800px) { .hw-castle { display: none; } }
-@keyframes hwMoon {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-5px); }
+/* 包装纸反光：静止时停在画面外，鼠标移入才扫过一次 */
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+  background: linear-gradient(105deg, transparent 36%, rgba(255,255,255,.05) 46%,
+              rgba(255,255,255,.17) 50%, rgba(255,255,255,.05) 54%, transparent 64%);
+  background-size: 240% 100%;
+  background-position: 130% 0;
+  transition: background-position .85s ease;
 }
-@keyframes hwBatFly {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  50%      { transform: translate(-14px, -16px) rotate(-7deg); }
+.hero:hover::before { background-position: -30% 0; }
+.xm-lights { transition: opacity .3s, filter .3s; }
+.hero:hover .xm-lights { opacity: 1; filter: brightness(1.32); }
+/* 顶边那圈灯串 / 冬青 / 铃铛被天空压暗层盖过，单独提亮一点 */
+.xm-lights, .xm-holly, .xm-bell { filter: brightness(1.24) saturate(1.12); }
+.hero:hover .xm-lights { filter: brightness(1.5) saturate(1.15); }
+.xm-bow { filter: drop-shadow(0 1px 4px rgba(120, 20, 26, .5)) brightness(1.16); }
+
+/* 旧雪景插画整层退场（!important 盖掉各断点里「保留花环」的规则） */
+.xm-wreath, .xm-glow, .xm-hill, .xm-pine, .xm-tree, .xm-snowman, .xm-gift,
+.xm-cane, .xm-sleigh, .xm-snowbank, .xm-mist, .xm-cloud, .xm-sky-star {
+  display: none !important;
+}
+
+/* 斜切色纸：左下松绿、右下深红，硬边不做羽化，纸艺感就来自这个边 */
+.xm-paper-band { position: absolute; inset: 0; pointer-events: none; }
+.xm-paper-band::before {
+  content: '';
+  position: absolute; left: 0; top: 0; width: 40%; height: 100%;
+  background: linear-gradient(160deg, rgba(11, 74, 55, .72), rgba(8, 48, 40, .10));
+  clip-path: polygon(0 0, 100% 0, 24% 100%, 0 100%);
+}
+.xm-paper-band::after {
+  content: '';
+  position: absolute; right: 0; bottom: 0; width: 36%; height: 100%;
+  background: linear-gradient(200deg, rgba(105, 16, 28, .62), rgba(105, 16, 28, 0) 78%);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%, 58% 0);
+}
+
+/* 大几何纸艺树：一个三角形 + 斜纹彩带 + 硬边投影，不再堆小球小灯 */
+.xm-paper-tree {
+  position: absolute; left: 57%; bottom: -1px;
+  width: 86px; height: 100px;
+  background:
+    radial-gradient(circle at 38% 62%, #ffd76a 0 3px, transparent 3.6px),
+    radial-gradient(circle at 63% 71%, #e23b3f 0 3.4px, transparent 4px),
+    radial-gradient(circle at 50% 84%, #ffd76a 0 3px, transparent 3.6px),
+    radial-gradient(circle at 44% 47%, #f2604f 0 2.6px, transparent 3.2px),
+    repeating-linear-gradient(118deg, transparent 0 15px, rgba(255,236,190,.26) 15px 18px, transparent 18px 28px),
+    linear-gradient(155deg, #1c8059 0%, #0d553f 52%, #07362c 100%);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  filter: drop-shadow(6px 4px 0 rgba(58, 10, 18, .40));
+}
+.xm-paper-star {
+  position: absolute; left: calc(57% + 31px); bottom: 90px;
+  width: 24px; height: 24px;
+  background: #ffd76a;
+  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  filter: drop-shadow(0 0 9px rgba(255, 206, 112, .85));
+  animation: xmStar 3.6s ease-in-out infinite;
+}
+
+/* 中央倒数金章：数字由 JS 按真实日期算，hover 会轻轻弹一下 */
+.xm-countdown {
+  position: absolute; left: 47%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: 66px; height: 66px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 26%, #ffeeb4 0%, #eab957 58%, #b9842c 100%);
+  border: 2px solid rgba(255, 242, 204, .8);
+  box-shadow: 0 8px 20px rgba(64, 12, 18, .48), inset 0 2px 5px rgba(255,255,255,.55);
+  display: grid; place-content: center; text-align: center;
+  color: #6b2a17; line-height: 1.05;
+  transition: transform .3s ease, box-shadow .3s ease;
+}
+.xm-countdown b { display: block; font-size: 23px; font-weight: 800; letter-spacing: -.5px; }
+.xm-countdown small { display: block; font-size: 9px; font-weight: 700; opacity: .82; margin-top: 2px; }
+.hero:hover .xm-countdown {
+  transform: translate(-50%, -50%) scale(1.07) rotate(-5deg);
+  box-shadow: 0 10px 26px rgba(64, 12, 18, .55), inset 0 2px 5px rgba(255,255,255,.6);
+}
+
+@media (max-width: 1180px) {
+  .xm-paper-tree { left: auto; right: 24%; width: 72px; height: 84px; }
+  .xm-paper-star { left: auto; right: calc(24% + 26px); bottom: 76px; width: 20px; height: 20px; }
+  .xm-countdown { left: auto; right: 38%; width: 56px; height: 56px; }
+  .xm-countdown b { font-size: 19px; }
+}
+@media (max-width: 900px) {
+  .xm-paper-tree { right: 16%; width: 64px; height: 76px; }
+  .xm-paper-star { right: calc(16% + 22px); bottom: 68px; }
+  .xm-countdown { right: 34%; width: 50px; height: 50px; }
+  .xm-countdown b { font-size: 17px; }
+  .xm-countdown small { font-size: 8px; }
+}
+@media (max-width: 680px) {
+  .xm-paper-tree, .xm-paper-star { display: none; }
+  .xm-countdown { right: 8%; width: 46px; height: 46px; }
+  .xm-countdown b { font-size: 16px; }
+  .xm-countdown small { font-size: 7px; margin-top: 1px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .hw-bat-fly { animation: none !important; }
-  .hw-bat-fly .hw-wl,
-  .hw-bat-fly .hw-wr { animation: none !important; }
+  .xm-paper-star { animation: none !important; }
+  .hero::before, .xm-countdown, .xm-lights { transition: none !important; }
+}
+
+
+/* =====================================================================
+   z209 · 参考图版圣诞主题
+   参考图的做法是「大角色 + 深蓝雪夜 + 装饰铺满整页」，而不是在渐变条上
+   撒小图标。这里把 z205~z208 的旧装饰层全部关掉，改挂 4 张透明 PNG 插画。
+   ===================================================================== */
+.hero {
+  min-height: 138px;
+  padding: 20px 22px;
+  background:
+    radial-gradient(360px 200px at 76% -34%, rgba(255, 226, 158, .30), transparent 72%),
+    linear-gradient(180deg, #123073 0%, #1a4292 38%, #2a61ab 70%, #84adda 100%);
+  border: 1px solid rgba(190, 220, 255, .48);
+  box-shadow: inset 0 1px 0 rgba(226, 240, 255, .18), 0 12px 28px -18px rgba(10, 30, 80, .85);
+}
+.hero::after { display: none; }
+.hero::before { display: none; }               /* 关掉 z208 的包装纸反光 */
+.hero-fx { z-index: 0; }
+.hero-fx::before, .hero-fx::after { display: none !important; }
+.hero-icon {
+  position: relative; z-index: 4;
+  background: linear-gradient(150deg, rgba(255,255,255,.20), rgba(255,255,255,.08));
+  border: 1px solid rgba(226, 240, 255, .55);
+  box-shadow: 0 8px 20px rgba(8, 30, 80, .32), inset 0 1px 0 rgba(255,255,255,.22);
+}
+.hero-icon svg { width: 34px; height: 34px; }
+.hero-main { z-index: 4; max-width: 280px; }
+.hero-main h2 { color: #fffaf0; text-shadow: 0 2px 12px rgba(8, 26, 70, .55); }
+.hero-main p { color: #dcecff; text-shadow: 0 1px 8px rgba(8, 26, 70, .5); }
+.hero-main p b { color: #ffdd86; }
+.hero-main p b.warn { color: #ffb1a0; }
+/* 参考图横幅里没有像素小店 / 日期卡，位置让给主角和小屋 */
+.hero-art, .hero-date { display: none !important; }
+/* z205~z208 留在 DOM 里的旧装饰一律退场 */
+.xm-wreath, .xm-glow, .xm-hill, .xm-pine, .xm-tree, .xm-snowman, .xm-gift,
+.xm-cane, .xm-sleigh, .xm-snowbank, .xm-mist, .xm-cloud, .xm-sky-star,
+.xm-lights, .xm-holly, .xm-bell, .xm-bow, .xm-snow, .xm-sleigh,
+.xm-paper-band, .xm-paper-tree, .xm-paper-star, .xm-countdown,
+.xm-corner, .xm-village { display: none !important; }
+
+/* ---- 天空：暖月 + 软云 + 六角雪花 ---- */
+.xr-moon {
+  position: absolute; right: 16%; top: 2%;
+  width: 92px; height: 92px; border-radius: 50%;
+  background: radial-gradient(circle at 36% 32%, #fff8dc 0%, #ffe3a4 58%, #f4c47c 100%);
+  box-shadow: 0 0 26px 8px rgba(255, 221, 150, .38), 0 0 70px 24px rgba(255, 214, 138, .20);
+  z-index: 1;
+}
+.xr-cloud { position: absolute; width: 76px; height: auto; z-index: 1; opacity: .8; }
+.xr-cloud.c1 { left: 27%; top: 12%; }
+.xr-cloud.c2 { left: 63%; top: 6%; width: 58px; opacity: .6; }
+.xr-flake {
+  position: absolute; width: 15px; height: 15px; z-index: 4;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg stroke='%23eaf6ff' stroke-width='1.5' stroke-linecap='round'%3E%3Cpath d='M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7' /%3E%3Cpath d='M12 2 9.5 4.6M12 2l2.5 2.6M12 22l-2.5-2.6M12 22l2.5-2.6' /%3E%3C/g%3E%3Ccircle cx='12' cy='12' r='1.7' fill='%23ffffff' /%3E%3C/svg%3E");
+  background-size: contain; background-repeat: no-repeat;
+  opacity: .8; animation: xrDrift 7s ease-in-out infinite;
+}
+.xr-flake.f1  { left: 8%;  top: 14%; width: 13px; animation-delay: -.4s; }
+.xr-flake.f2  { left: 20%; top: 58%; width: 11px; animation-delay: -2.1s; }
+.xr-flake.f3  { left: 34%; top: 8%;  width: 18px; animation-delay: -1.2s; }
+.xr-flake.f4  { left: 47%; top: 30%; width: 10px; animation-delay: -3.3s; }
+.xr-flake.f5  { left: 60%; top: 62%; width: 12px; animation-delay: -.9s; }
+.xr-flake.f6  { left: 72%; top: 16%; width: 14px; animation-delay: -4.2s; }
+.xr-flake.f7  { left: 86%; top: 34%; width: 11px; animation-delay: -2.8s; }
+.xr-flake.f8  { left: 94%; top: 10%; width: 15px; animation-delay: -1.7s; }
+.xr-flake.f9  { left: 14%; top: 78%; width: 10px; animation-delay: -5.1s; }
+.xr-flake.f10 { left: 53%; top: 80%; width: 9px;  animation-delay: -3.8s; }
+@keyframes xrDrift { 0%,100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(6px) rotate(28deg); } }
+
+/* ---- 中景：礼物堆 / 雪松暖光小屋 ---- */
+.xr-gifts { position: absolute; left: 32%; bottom: 2%; width: 88px; height: auto; z-index: 2; filter: drop-shadow(0 4px 6px rgba(10,30,80,.28)); }
+.xr-village { position: absolute; right: 0; bottom: 0; width: 27%; height: 100%; z-index: 1; }
+
+/* ---- 主角：两张透明 PNG 分开摆，底部压进雪丘 ---- */
+.xr-baby, .xr-deer { position: absolute; height: auto; z-index: 2; pointer-events: none; }
+.xr-baby { left: 34%; bottom: -13%; height: 105%; filter: drop-shadow(0 8px 14px rgba(6, 24, 70, .38)); }
+.xr-deer { left: 48%; bottom: -12%; height: 94%; filter: drop-shadow(0 8px 14px rgba(6, 24, 70, .38)); }
+.xr-snowbank { position: absolute; left: 0; bottom: -1px; width: 100%; height: 20px; z-index: 3; }
+
+/* ---- 指标卡：每张卡片上沿垂一小枝冬青红果 ---- */
+.kpi::after {
+  content: ''; position: absolute; top: -11px; right: 13px;
+  width: 34px; height: 24px; z-index: 3; pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2044%2030%22%3E%3Cpath%20d%3D%22M2%2026Q18%2013%2042%2017%22%20stroke%3D%22%232b704f%22%20stroke-width%3D%222%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M9%2022q-9-10%200-13%2010%203%207%2012z%22%20fill%3D%22%232d8a5e%22%2F%3E%3Cpath%20d%3D%22M23%2017q-7-12%202-14%2010%204%206%2014z%22%20fill%3D%22%233a9d6a%22%2F%3E%3Cpath%20d%3D%22M35%2018q-5-11%204-13%209%205%203%2013z%22%20fill%3D%22%232d8a5e%22%2F%3E%3Ccircle%20cx%3D%2219%22%20cy%3D%2223%22%20r%3D%224.3%22%20fill%3D%22%23e23b3f%22%2F%3E%3Ccircle%20cx%3D%2228%22%20cy%3D%2225%22%20r%3D%223.9%22%20fill%3D%22%23b52f36%22%2F%3E%3Ccircle%20cx%3D%2224%22%20cy%3D%2228%22%20r%3D%223.5%22%20fill%3D%22%23f2604f%22%2F%3E%3Ccircle%20cx%3D%2217%22%20cy%3D%2221.5%22%20r%3D%221.2%22%20fill%3D%22%23ffc0b0%22%2F%3E%3C%2Fsvg%3E") no-repeat center / contain;
+  filter: drop-shadow(0 2px 3px rgba(30, 60, 110, .18));
+}
+.kpi:nth-child(2)::after { right: auto; left: 16px; transform: rotate(-12deg); }
+.kpi:nth-child(3)::after { right: 26px; transform: rotate(9deg); }
+.kpi:nth-child(4)::after { right: 9px;  transform: rotate(-6deg) scale(.9); }
+.kpi:nth-child(5)::after { right: auto; left: 24px; transform: rotate(14deg) scale(.88); }
+.kpi:nth-child(6)::after { right: 18px; transform: rotate(-9deg); }
+
+/* ---- 侧栏：圣诞帽搭在右上角、大雪人坐在导航下方 ---- */
+.sidebar { position: sticky; }
+.xr-hat {
+  position: absolute; top: -10px; right: -12px;
+  width: 96px; height: auto; z-index: 6; pointer-events: none;
+  transform: rotate(11deg);
+  filter: drop-shadow(0 5px 10px rgba(6, 18, 60, .38));
+}
+.xr-side-snowman {
+  position: absolute; left: -8px; bottom: 74px;
+  width: 204px; height: auto; z-index: 1; pointer-events: none;
+  filter: drop-shadow(0 8px 18px rgba(8, 22, 66, .30));
+}
+.xr-side-flake { position: absolute; width: 18px; height: 18px; z-index: 2; opacity: .75; pointer-events: none; animation: xrDrift 8s ease-in-out infinite; }
+.xr-side-flake.s1 { left: 22px; top: 52%; }
+.xr-side-flake.s2 { right: 24px; top: 61%; width: 12px; animation-delay: -3s; }
+.sidebar-foot { position: relative; z-index: 3; }
+
+/* ---- 右下角：从屏幕边缘探进来的圣诞树 + 礼物 ---- */
+.xr-page-tree {
+  position: fixed; right: -12px; bottom: -10px;
+  width: 150px; height: auto; z-index: 4; pointer-events: none;
+  filter: drop-shadow(0 10px 20px rgba(18, 40, 90, .22));
+}
+
+/* ---- 顶栏小圣诞树 ---- */
+.xr-top-tree { width: 17px; height: 17px; margin-left: 7px; vertical-align: -3px; }
+
+/* ---- 断点：主角始终不压左侧问候文字 ---- */
+@media (max-width: 1400px) {
+  .xr-baby { left: 33%; height: 102%; }
+  .xr-deer { left: 47%; height: 90%; }
+  .xr-village { width: 25%; }
+}
+@media (max-width: 1180px) {
+  .xr-gifts { left: 29%; width: 76px; }
+  .xr-baby { left: 35%; height: 98%; }
+  .xr-deer { left: 50%; height: 88%; }
+  .xr-moon { right: 16%; width: 76px; height: 76px; }
+  .xr-village { width: 23%; opacity: .92; }
+  /* 侧栏在 <=1180 收成图标栏，大插画会溢出到内容区压住表格 */
+  .xr-side-snowman, .xr-hat { display: none; }
+}
+@media (max-width: 900px) {
+  .xr-village, .xr-gifts, .xr-cloud, .xr-moon { display: none; }
+  .xr-baby { left: auto; right: 23%; height: 92%; }
+  .xr-deer { left: auto; right: 7%; height: 82%; }
+}
+@media (max-width: 680px) {
+  .hero { min-height: 122px; padding: 16px 16px; }
+  .xr-deer, .xr-flake.f3, .xr-flake.f6, .xr-flake.f9, .xr-cloud { display: none; }
+  .xr-baby { right: 2%; height: 86%; opacity: .94; }
+  .xr-moon { display: none; }
+  .xr-snowbank { height: 20px; }
+  .xr-page-tree { width: 118px; right: -8px; }
+  .xr-side-snowman, .xr-hat { display: none; }
+  .kpi::after { width: 32px; height: 22px; top: -8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .xr-flake, .xr-side-flake { animation: none !important; }
+}
+
+/* 参考图是 6 张指标卡一行；项目原断点在 1500px 以下改成 3 列，这里拉回来 */
+@media (min-width: 1181px) {
+  .kpi-grid { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
 }

@@ -43,8 +43,9 @@
 .link-more:hover { color: var(--primary); }
 
 /* ---------------- Hero 横幅 ---------------- */
-/* 万圣夜配色：底色从深紫夜空过渡到暗酒红（远处南瓜灯的余光），
-   这样月亮 / 蝙蝠 / 南瓜灯这些暖色装饰才是"长在夜色里"，不是贴在浅蓝白板上。 */
+/* 圣诞冬夜配色：底色从深松绿夜空过渡到暖酒红（远处灯串与橱窗的暖光），
+   这样月亮 / 松树 / 彩灯 / 雪人这些冷白暖金装饰才是"长在夜色里"，
+   不是贴在浅蓝白板上。theme.css 是最后一层，会再盖一遍配色。 */
 .hero {
   position: relative;
   display: flex;
@@ -53,11 +54,11 @@
   padding: 18px 20px;
   border-radius: var(--radius);
   background:
-    radial-gradient(520px 260px at 88% 118%, rgba(255, 150, 54, .18), transparent 68%),
-    radial-gradient(460px 240px at 16% -30%, rgba(126, 78, 200, .34), transparent 70%),
-    linear-gradient(104deg, #221a36 0%, #2c1e44 34%, #38234a 64%, #452838 100%);
-  border: 1px solid rgba(255, 172, 82, .20);
-  box-shadow: inset 0 1px 0 rgba(255, 222, 176, .09), 0 10px 26px -18px rgba(28, 18, 46, .8);
+    radial-gradient(440px 250px at 86% 116%, rgba(255, 202, 112, .30), transparent 70%),
+    radial-gradient(460px 240px at 12% -30%, rgba(18, 78, 56, .58), transparent 72%),
+    linear-gradient(104deg, #6d1a26 0%, #96232f 34%, #b42f39 68%, #8d202c 100%);
+  border: 1px solid rgba(255, 214, 142, .42);
+  box-shadow: inset 0 1px 0 rgba(232, 248, 255, .12), 0 10px 26px -18px rgba(10, 32, 30, .8);
   overflow: hidden;
   min-height: 104px;
 }
@@ -69,7 +70,7 @@
   width: 220px;
   height: 220px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 170, 74, .17), transparent 70%);
+  background: radial-gradient(circle, rgba(255, 206, 122, .18), transparent 70%);
   pointer-events: none;
 }
 
@@ -78,9 +79,9 @@
   height: 60px;
   flex: 0 0 60px;
   border-radius: 18px;
-  background: linear-gradient(150deg, rgba(86, 58, 124, .95), rgba(48, 32, 72, .95));
-  border: 1px solid rgba(255, 184, 96, .34);
-  box-shadow: 0 8px 20px rgba(12, 6, 24, .45), inset 0 1px 0 rgba(255, 255, 255, .10);
+  background: linear-gradient(150deg, rgba(22, 74, 66, .95), rgba(12, 42, 45, .95));
+  border: 1px solid rgba(214, 240, 255, .36);
+  box-shadow: 0 8px 20px rgba(8, 30, 30, .45), inset 0 1px 0 rgba(255, 255, 255, .10);
   display: grid;
   place-items: center;
   font-size: 28px;
@@ -92,15 +93,15 @@
   font-weight: 700;
   letter-spacing: .2px;
   margin-bottom: 5px;
-  color: #fff4e3;
-  text-shadow: 0 1px 12px rgba(255, 168, 74, .18);
+  color: #fff8ea;
+  text-shadow: 0 1px 12px rgba(255, 206, 122, .22);
 }
 .hero-main p {
   font-size: 12.5px;
-  color: rgba(226, 214, 242, .80);
+  color: rgba(255, 240, 224, .90);
 }
-.hero-main p b { color: #ffb45c; font-weight: 700; }
-.hero-main p b.warn { color: #ff8a5c; }
+.hero-main p b { color: #ffd88a; font-weight: 700; }
+.hero-main p b.warn { color: #ff9a86; }
 
 .hero-art {
   margin-left: auto;
@@ -112,33 +113,33 @@
 
 .hero-date {
   flex: 0 0 176px;
-  /* 深色玻璃卡：衬在夜空底上，别用一块纯白把夜色劈开 */
-  background: rgba(26, 18, 42, .60);
+  /* 深红玻璃卡：衬在圣诞红底上，别用一块纯白把红色劈开 */
+  background: rgba(74, 16, 24, .60);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-radius: 12px;
-  border: 1px solid rgba(255, 178, 92, .22);
+  border: 1px solid rgba(255, 214, 142, .32);
   padding: 12px 14px;
   z-index: 1;
-  box-shadow: 0 8px 22px rgba(10, 5, 20, .38), inset 0 1px 0 rgba(255, 255, 255, .07);
+  box-shadow: 0 8px 22px rgba(52, 8, 16, .38), inset 0 1px 0 rgba(255, 255, 255, .10);
 }
 .hero-date .hd-day {
   font-size: 13px;
   font-weight: 650;
   letter-spacing: .1px;
-  color: #fff2e0;
+  color: #fff6e6;
 }
 .hero-date .hd-week {
   font-size: 11.5px;
-  color: rgba(219, 206, 242, .74);
+  color: rgba(255, 230, 210, .82);
   margin-top: 2px;
 }
 .hero-date .hd-weather {
   margin-top: 9px;
   padding-top: 9px;
-  border-top: 1px dashed rgba(255, 178, 92, .22);
+  border-top: 1px dashed rgba(255, 214, 142, .30);
   font-size: 12px;
-  color: rgba(226, 214, 242, .82);
+  color: rgba(226, 240, 244, .84);
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
   column-gap: 7px;
@@ -979,7 +980,7 @@
 /* ---------------- 头像选择器（团队页弹窗） ---------------- */
 .art-grid { display: grid; grid-template-columns: repeat(7, 30px); gap: 10px 11px; }
 
-/* 头像分三组（3D / 经典 / 万圣节）后一次铺 30 颗，弹窗会被拉得很长 → 这里限制高度滚动。
+/* 头像分三组（人物 / 动物 / 圣诞节）后一次铺 30 颗，弹窗会被拉得很长 → 这里限制高度滚动。
    分组标题右边拖一条细线，视觉上把组与组分开，但不用画一整条边框。 */
 .art-scroll { max-height: 400px; overflow-y: auto; padding-right: 6px; }
 .art-group + .art-group { margin-top: 13px; }
@@ -991,7 +992,7 @@
 .art-group-head::after { content: ''; flex: 1; height: 1px; background: var(--line-2); }
 
 /* 全 3D 之后统一放大到 44px：30px 下图片的质感全糊了，44px 才看得出软胶的立体感。
-   6 列刚好一排铺满：动物 12 个 = 2 行，万圣节 6 个 = 1 行，人物 4 个 = 1 行。 */
+   6 列刚好一排铺满：动物 12 个 = 2 行，圣诞节 6 个 = 1 行，人物 4 个 = 1 行。 */
 .art-grid.is-3d { grid-template-columns: repeat(6, 44px); gap: 13px 14px; }
 .art-grid.is-3d .art-opt .avatar { width: 44px; height: 44px; flex: 0 0 44px; }
 .art-opt { cursor: pointer; line-height: 0; }

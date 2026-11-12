@@ -93,7 +93,7 @@ window.Pages.team = (function () {
       '</label>';
     }).join('');
 
-    /* 头像全是 3D 图，按 UI.ART_GROUPS 分三组：人物 / 动物 / 万圣节。
+    /* 头像全是 3D 图，按 UI.ART_GROUPS 分三组：人物 / 动物 / 圣诞节。
        都是 name="art" 的 radio，跨组互斥，选中的那颗描蓝边。 */
     function artOpt(k) {
       return '<label class="art-opt" title="' + U.esc(UI.ANIMALS[k].name) + '">' +
@@ -123,7 +123,7 @@ window.Pages.team = (function () {
               '<div class="field-hint">任务一律派给门店负责人，这里填什么都不改变谁拿到活。</div>' +
             '</div>' +
           '</div>' +
-          '<div class="field"><label>头像 <span class="field-sub">人物 / 动物 / 万圣节，或者用颜色 + 姓氏首字</span></label>' +
+          '<div class="field"><label>头像 <span class="field-sub">人物 / 动物 / 圣诞节，或者用颜色 + 姓氏首字</span></label>' +
             '<div id="artPicker" class="art-scroll">' +
               groupsHtml +
               /* 「不用头像」单独一组：它跟 3D 头像排一起时，老被当成某个头像点 */
