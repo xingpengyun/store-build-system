@@ -183,12 +183,16 @@ tcb login --cloudbase-api-key "<管理员 API Key>" -e efficient-tiglon-d0ejcn14
 
 ```bash
 rm -rf .workbuddy/_deploy && mkdir -p .workbuddy/_deploy
-cp index.html .workbuddy/_deploy/ && cp -r css js assets .workbuddy/_deploy/
+cp index.html check.html .workbuddy/_deploy/ && cp -r css js assets .workbuddy/_deploy/
 ```
 
 > **`assets` 一定要带**（2026-10-31 补）。z166–z168 加的 22 张 3D 头像图（`assets/avatars3d/*.webp`）
 > 因为这一行当初只写了 `css js`，上线后一直 404 —— 线上所有成员头像其实都是「颜色 + 姓氏首字」的降级态，
 > 直到 z203 上线才被线上探针发现。新增任何静态资源目录时，这条命令和下面第 5 步的验证都要跟着改。
+>
+> **`check.html` 和 `js/check/` 也要带**（2026-11-12 z210 补）。「双表核对」是独立页面：
+> `check.html` + `css/check.css` + `js/check/*.js`（14 个）+ `js/vendor/xlsx.full.min.js`，
+> 不引用主站 `js/app.js`。少传任何一个都会白屏或功能残缺，而且页面照样能打开、不报错。
 
 4. 发布（`--safe` 会先备份、失败自动回滚；`--verify` 上传后逐项校验）：
 
@@ -204,7 +208,8 @@ BASE="https://store-build-efficient-tiglon-d0ejcn14037eba3.webapps.tcloudbase.co
 curl -s -H "Cache-Control: no-cache" "$BASE/index.html" | grep -oE "v=[0-9]{8}z[0-9]+" | sort -u
 # 少文件查一遍：静态资源全清单，任何一条不是 200 就是漏传了
 for u in /js/app.js /css/theme.css /js/vendor/cloudbase-sdk.js /assets/avatars3d/a3d_a_cat.webp \
-         /assets/avatars3d/a3d_x_tree.svg /assets/xmas/xmas-baby.png; do
+         /assets/avatars3d/a3d_x_tree.svg /assets/xmas/xmas-baby.png \
+         /check.html /css/check.css /js/check/app.js /js/vendor/xlsx.full.min.js; do
   printf "%-42s " "$u"; curl -s -o /dev/null -w "%{http_code}\n" -H "Cache-Control: no-cache" "$BASE$u"
 done
 ```
@@ -221,6 +226,19 @@ done
   只是图片 404 —— 肉眼在小图上很难发现（头像会静默降级成「颜色 + 首字」）。
   发完必须跑一遍上面第 5 步的资源清单，或者直接跑线上探针 `.workbuddy/probe-live-z203.js`
   （它会统计全程 404，`assets` 漏了立刻红）。
+
+### 测试域名的「风险提醒」中间页（2026-11-12 补）
+
+`webapps.tcloudbase.com` 是腾讯云提供的**测试域名**。全新浏览器（含无痕窗口、无头 Chrome）
+首次访问该域名下**任何页面**时，网关会先返回一页「风险提醒 / 页面访问提示」，
+需点「确定访问」才跳到目标页（`continueURL` 就是原路径，如 `/check.html`）；
+点过一次后同域名后续不再拦。这是域名级行为，**不是页面坏了**：
+
+- `curl` 直取 `index.html` / `check.html` 能拿到正确 HTML，无头浏览器却拿到
+  `<title>风险提醒</title>` → 就是它，别误判成发布失败。
+- 要验证线上资源在真实浏览器里的渲染，可用本地临时页 + `<base href="线上域名/">`
+  强制从线上加载 css/js/图片，绕开这次导航拦截。
+- 给同事发链接时提前说一句「第一次打开点一下确定访问」。
 
 ### 缓存配置（2026-11-04 补，**待办**）
 

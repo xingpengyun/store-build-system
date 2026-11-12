@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>包邮核对 · 内部表 × 外部表</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Crect width='20' height='20' rx='5' fill='%233e63dd'/%3E%3Cpath d='M6 6.4h8M6 10h8M6 13.6h5' stroke='%23fff' stroke-width='1.7' stroke-linecap='round'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="css/check.css?v=20261112z210" />
+</head>
+<body class="ck-body">
+
+<div class="ck-app">
+
+  <!-- ============ 左侧导航 ============ -->
+  <aside class="ck-side">
+    <div class="ck-brand">
+      <span class="ck-brand-mark">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3.4" y="3.4" width="13.2" height="13.2" rx="2.4"/>
+          <path d="M6.6 7.4h6.8M6.6 10h6.8M6.6 12.6h4.2"/>
+        </svg>
+      </span>
+      <span class="ck-brand-txt">
+        <span class="ck-brand-name">包邮核对</span>
+        <span class="ck-brand-sub">FREE SHIPPING CHECK</span>
+      </span>
+    </div>
+
+    <nav class="ck-nav" id="ckNav">
+      <a class="ck-nav-item" data-route="home">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4L10 3l7 5.4V16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8.4z"/><path d="M7.6 17v-4.6h4.8V17"/></svg>
+        <span>核对首页</span>
+      </a>
+      <a class="ck-nav-item" data-route="new">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4.5v11M4.5 10h11"/></svg>
+        <span>新建核对</span>
+      </a>
+      <a class="ck-nav-item" data-route="result">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="1.6"/><path d="M3 8.2h14M7.6 8.2V16"/></svg>
+        <span>核对结果</span>
+        <span class="ck-nav-badge is-soft" id="navDiffBadge" hidden>0</span>
+      </a>
+
+      <a class="ck-nav-item" data-route="alias">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8.2 11.8a3 3 0 0 1 0-4.2l2-2a3 3 0 0 1 4.2 4.2l-1 1"/><path d="M11.8 8.2a3 3 0 0 1 0 4.2l-2 2a3 3 0 0 1-4.2-4.2l1-1"/></svg>
+        <span>门店匹配库</span>
+        <span class="ck-nav-badge is-soft" id="navAliasBadge" hidden>0</span>
+      </a>
+      <a class="ck-nav-item" data-route="history">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5.5a4.5 4.5 0 1 1-4.2 6.1"/><path d="M3.2 8.2 5 5.9l2.3 1.7"/><path d="M10 8.1v2.5l1.9 1.1"/></svg>
+        <span>核对历史</span>
+      </a>
+      <a class="ck-nav-item" data-route="rules">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="2.4"/><path d="M10 3.2v1.6M10 15.2v1.6M16.8 10h-1.6M4.8 10H3.2M14.8 5.2l-1.1 1.1M6.3 13.7l-1.1 1.1M14.8 14.8l-1.1-1.1M6.3 6.3 5.2 5.2"/></svg>
+        <span>规则配置</span>
+      </a>
+    </nav>
+
+    <div class="ck-side-foot">
+      <div class="ck-side-note">
+        文件与核对结果只存在<b>这台电脑的浏览器</b>里，不会上传云端。
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ 主区 ============ -->
+  <main class="ck-main">
+    <header class="ck-top">
+      <div style="min-width:0">
+        <h1 id="ckTitle">核对首页</h1>
+        <div class="ck-top-sub" id="ckSubtitle">内部表 × 外部表 · 包邮核对</div>
+      </div>
+      <div class="ck-top-right">
+        <a class="ck-back" id="ckBack" href="index.html#/home">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 4.5 6 10l5.5 5.5"/></svg>
+          门店筹建系统
+        </a>
+        <div id="ckTopActions" style="display:flex;gap:8px;align-items:center"></div>
+        <!-- 当前登录人：与主站共用同一个 origin 的 sbs.user，没登录信息时整块不显示 -->
+        <div class="ck-top-user" id="ckTopUser" hidden>
+          <span class="ck-avatar" id="ckAvatar">我</span>
+          <span class="ck-user-name" id="ckUserName"></span>
+        </div>
+      </div>
+    </header>
+    <div class="ck-body-scroll">
+      <div class="ck-wrap" id="ckView"></div>
+    </div>
+  </main>
+
+</div>
+
+<!-- 抽屉 / 弹窗 / 提示的挂载点 -->
+<div class="ck-drawer-mask" id="ckDrawerMask"></div>
+<div class="ck-drawer" id="ckDrawer"></div>
+<div class="ck-toasts" id="ckToasts"></div>
+
+<!-- 页面模块注册表：必须在各 view-*.js 之前就存在 -->
+<script>window.CKPages = window.CKPages || {};</script>
+
+<script src="js/vendor/xlsx.full.min.js?v=20261112z210"></script>
+<script src="js/check/util.js?v=20261112z210"></script>
+<script src="js/check/db.js?v=20261112z210"></script>
+<script src="js/check/excel.js?v=20261112z210"></script>
+<script src="js/check/match.js?v=20261112z210"></script>
+<script src="js/check/recon.js?v=20261112z210"></script>
+<script src="js/check/export.js?v=20261112z210"></script>
+<script src="js/check/ui.js?v=20261112z210"></script>
+<!-- app.js 必须先于各 view-*.js：view 模块在加载时就会缓存 window.CKApp -->
+<script src="js/check/app.js?v=20261112z210"></script>
+<script src="js/check/view-home.js?v=20261112z210"></script>
+<script src="js/check/view-new.js?v=20261112z210"></script>
+<script src="js/check/view-result.js?v=20261112z210"></script>
+<script src="js/check/view-alias.js?v=20261112z210"></script>
+<script src="js/check/view-history.js?v=20261112z210"></script>
+<script src="js/check/view-rules.js?v=20261112z210"></script>
+</body>
+</html>

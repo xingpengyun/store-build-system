@@ -2988,3 +2988,31 @@ z206 只是把红补进「月夜圣诞」的骨架，用户仍觉得不够圣诞
   （约 5MB，含棋盘格/绿幕）已移到 `.workbuddy/raw-assets/`（在 `.gitignore` 内，
   不上传也不提交）；`gen-xmas-assets-z209.py` 的 `find()` 改为先查 RAW 再查 SRC，
   脚本仍能一键复现 4 张成品 PNG。
+
+## z210：合并「双表核对」模块并上线（2026-11-12 17:25）
+
+用户提供 `C:\Users\Hp\Desktop\project\project` —— 同一系统的**另一份开发副本**（主站
+`20261105z205`、git 走到 z241），带主线没有的「门店包邮门槛核验 / 双表核对」，
+以及 1568 行未提交的新改动。确认后按「**只合并核对模块并上线**」执行，
+**不覆盖 z209 圣诞主题**（副本整体覆盖会丢掉刚定稿的主题）。
+
+- 从副本磁盘直接复制（因此带上全部未提交改动）：`check.html`、`css/check.css`、
+  `js/check/` 14 个运行时 js、`js/vendor/xlsx.full.min.js`（952KB）。
+  副本的 `test-*.js`、`test-shipping.html`、`START-HERE.txt`、`.genie` 未复制、未上传。
+- `index.html` 侧栏在「数据报表」与「系统设置」之间加 `<a href="check.html">双表核对</a>`；
+  check 页用 `index.html#/home` 返回主站。该页不引用主站 js/css，也不含域名 / 端口 /
+  登录硬校验，数据存各自浏览器（IndexedDB + localStorage），放到线上可直接跑。
+- 版本号全站统一升到 **`20261112z210`**：`index.html` 25 处、`page-home.js` 2 处、
+  `ui.js` 的 `ART_VER`、`check.html` 16 处（从副本的 `20261105z340` 改过来）。
+- 验证：本地 1440 / 900 / 680 + check 页，控制台 0 报错、17 个新增资源全 200；
+  900 图标栏与 680 横向图标条都是 9 个图标整齐排列，没挤出或遮住「系统设置」。
+  线上 **74/74 资源 200**、`__auth/` 完好、三个页面版本号均为 z210；
+  用线上资源渲染 check 页，截图与本地版**像素级一致**。
+  截图 `.workbuddy/shots/z210-*.png`、`z210-live-*.png`。
+- 部署：`cp index.html check.html .workbuddy/_deploy/` + `cp -r css js assets`，
+  `tcb hosting deploy --safe --verify` 共 74 个文件（未加 `--prune`）。
+- **坑**：`webapps.tcloudbase.com` 是腾讯云**测试域名**，全新浏览器（含无头）首次访问
+  该域名下任何页面都会被网关拦到「风险提醒 / 页面访问提示」中间页，点「确定访问」
+  才放行（脚本里 `continueURL` 就是目标路径，如 `/check.html`），同域名后续不再拦。
+  `curl` 直取 HTML 正常、无头浏览器却拿到风险页，是域名行为，**不是发布失败**；
+  已写进 DEPLOY.md，给同事发链接时提前说明。

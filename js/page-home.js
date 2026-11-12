@@ -590,8 +590,8 @@ window.Pages.home = (function () {
       '<i class="xr-moon"></i>' +
       clouds + flakes +
       village + gifts +
-      '<img class="xr-baby" src="assets/xmas/xmas-baby.png?v=20261112z209" alt="" />' +
-      '<img class="xr-deer" src="assets/xmas/xmas-deer.png?v=20261112z209" alt="" />' +
+      '<img class="xr-baby" src="assets/xmas/xmas-baby.png?v=20261112z210" alt="" />' +
+      '<img class="xr-deer" src="assets/xmas/xmas-deer.png?v=20261112z210" alt="" />' +
       snowbank +
     '</div>';
   }
