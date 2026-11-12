@@ -61,6 +61,8 @@ https://github.com/你的用户名/shop-build-system.git
 | `failed to push some refs` | 建仓库时勾了 README | 在 GitHub 上删掉仓库重建（别勾任何初始化选项） |
 | 弹窗一闪而过没登录 | 凭据管理器异常 | 打开「凭据管理器 → Windows 凭据」，删掉 git:https://github.com，再跑一次 |
 | `Support for password authentication was removed` | 用了账号密码 | 改用弹窗授权，或生成 Personal Access Token 当密码 |
+| `schannel: failed to receive handshake, SSL/TLS connection failed` | Windows 的 schannel 后端连 GitHub 握手失败（2026-11-12 实测） | 单次改用 OpenSSL 后端：`git -c http.sslBackend=openssl push origin HEAD`；`curl https://github.com` 能通但 git 不通时基本都是这个 |
+| `! [rejected] ... (fetch first)` | 另一台电脑先推了提交 | 先 `git fetch origin` 看差异。若远程提交与本地某次「同步」提交内容相同（`git diff <本地> <远程>` 为空），用 `git merge -s ours origin/main` 保留本地树再推；**不要强推** |
 
 ---
 
@@ -201,7 +203,8 @@ BASE="https://store-build-efficient-tiglon-d0ejcn14037eba3.webapps.tcloudbase.co
 # 版本号
 curl -s -H "Cache-Control: no-cache" "$BASE/index.html" | grep -oE "v=[0-9]{8}z[0-9]+" | sort -u
 # 少文件查一遍：静态资源全清单，任何一条不是 200 就是漏传了
-for u in /js/app.js /css/theme.css /js/vendor/cloudbase-sdk.js /assets/avatars3d/a3d_a_cat.webp; do
+for u in /js/app.js /css/theme.css /js/vendor/cloudbase-sdk.js /assets/avatars3d/a3d_a_cat.webp \
+         /assets/avatars3d/a3d_x_tree.svg /assets/xmas/xmas-baby.png; do
   printf "%-42s " "$u"; curl -s -o /dev/null -w "%{http_code}\n" -H "Cache-Control: no-cache" "$BASE$u"
 done
 ```
