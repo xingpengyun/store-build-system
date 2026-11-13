@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>门店筹建管理系统</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Crect width='20' height='20' rx='4' fill='%232f56f0'/%3E%3Cpath d='M4 8l1-3h10l1 3v6.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V8z' fill='%23fff'/%3E%3C/svg%3E" />
-<link rel="stylesheet" href="css/base.css?v=20261112z214" />
-<link rel="stylesheet" href="css/layout.css?v=20261112z214" />
-<link rel="stylesheet" href="css/components.css?v=20261112z214" />
-<link rel="stylesheet" href="css/login.css?v=20261112z214" />
-<link rel="stylesheet" href="css/theme.css?v=20261112z214" />
-<link rel="stylesheet" href="css/check.css?v=20261112z214" />
+<link rel="stylesheet" href="css/base.css?v=20261112z215" />
+<link rel="stylesheet" href="css/layout.css?v=20261112z215" />
+<link rel="stylesheet" href="css/components.css?v=20261112z215" />
+<link rel="stylesheet" href="css/login.css?v=20261112z215" />
+<link rel="stylesheet" href="css/theme.css?v=20261112z215" />
+<link rel="stylesheet" href="css/check.css?v=20261112z215" />
 </head>
 <body class="booting">
 
@@ -116,7 +116,7 @@
         <circle cx="94" cy="18" r="14" fill="#fff8f0"/>
         <circle cx="90" cy="14" r="4" fill="#ffffff" opacity=".8"/>
       </svg>
-      <img class="xr-side-snowman" src="assets/xmas/xmas-snowman.png?v=20261112z214" alt="" />
+      <img class="xr-side-snowman" src="assets/xmas/xmas-snowman.png?v=20261112z215" alt="" />
       <svg class="xr-side-flake s1" viewBox="0 0 24 24" aria-hidden="true"><g stroke="#bcd8f5" stroke-width="1.4" stroke-linecap="round"><path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7"/><path d="M12 2 9.5 4.6M12 2l2.5 2.6M12 22l-2.5-2.6M12 22l2.5-2.6"/></g><circle cx="12" cy="12" r="1.5" fill="#eaf6ff"/></svg>
       <svg class="xr-side-flake s2" viewBox="0 0 24 24" aria-hidden="true"><g stroke="#bcd8f5" stroke-width="1.4" stroke-linecap="round"><path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7"/></g><circle cx="12" cy="12" r="1.5" fill="#eaf6ff"/></svg>
 
@@ -193,10 +193,13 @@
 
 <!-- 圣诞全局装饰（z205）：固定定位 + pointer-events:none，不挡任何交互。
      原来是右下角蜘蛛网 + 五只飞行蝙蝠，现在换成冬青 / 六角雪花 + 边缘飘雪。 -->
-<div class="xm-scene" aria-hidden="true">
-  <!-- z209：右下角圣诞树 + 礼物，替掉原来偏冷的六角雪花冬青 -->
-  <img class="xr-page-tree" src="assets/xmas/xmas-tree-gifts.png?v=20261112z214" alt="" />
+<!-- z215：右下角圣诞树独立挂在 body（不放在 .xm-scene 里）。
+     .xm-scene 是 z-index:3 的层叠上下文，树待在里面永远盖不过 z-index:5 的首页小卡，
+     会被卡片边缘切成半截。移出来单独给 z-index:6（高于卡片、低于顶栏/侧栏 60），
+     树就能完整地待在右下角；卡片右侧留白避让，不再压文字。 -->
+<img class="xr-page-tree" src="assets/xmas/xmas-tree-gifts.png?v=20261112z215" alt="" aria-hidden="true" />
 
+<div class="xm-scene" aria-hidden="true">
   <!-- 右下角：一片大六角雪花 + 冬青叶与红果，贴着屏幕右 / 下两条边（和旧蜘蛛网一个锚点逻辑） -->
   <svg class="xm-corner" viewBox="0 0 320 320" fill="none" aria-hidden="true">
     <g stroke="#b7d8ef" stroke-width="1.25" stroke-linecap="round" opacity=".85" transform="translate(236 236)">
@@ -232,40 +235,40 @@
   <svg class="xm-flake gf5" viewBox="0 0 24 24" aria-hidden="true"><g stroke="#a8cbe6" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7"/><path d="M12 2 9.5 4.6M12 2l2.5 2.6M12 22l-2.5-2.6M12 22l2.5-2.6"/></g><circle cx="12" cy="12" r="1.6" fill="#eaf6ff"/></svg>
 </div>
 
-<script src="js/vendor/cloudbase-sdk.js?v=20261112z214"></script>
-<script src="js/utils.js?v=20261112z214"></script>
-<script src="js/constants.js?v=20261112z214"></script>
-<script src="js/cloud.js?v=20261112z214"></script>
-<script src="js/seed.js?v=20261112z214"></script>
-<script src="js/store.js?v=20261112z214"></script>
-<script src="js/charts.js?v=20261112z214"></script>
-<script src="js/ui.js?v=20261112z214"></script>
-<script src="js/login.js?v=20261112z214"></script>
-<script src="js/page-home.js?v=20261112z214"></script>
-<script src="js/page-stores.js?v=20261112z214"></script>
-<script src="js/page-ship.js?v=20261112z214"></script>
-<script src="js/page-tasks.js?v=20261112z214"></script>
-<script src="js/page-team.js?v=20261112z214"></script>
-<script src="js/page-alerts.js?v=20261112z214"></script>
-<script src="js/page-reports.js?v=20261112z214"></script>
-<script src="js/page-settings.js?v=20261112z214"></script>
+<script src="js/vendor/cloudbase-sdk.js?v=20261112z215"></script>
+<script src="js/utils.js?v=20261112z215"></script>
+<script src="js/constants.js?v=20261112z215"></script>
+<script src="js/cloud.js?v=20261112z215"></script>
+<script src="js/seed.js?v=20261112z215"></script>
+<script src="js/store.js?v=20261112z215"></script>
+<script src="js/charts.js?v=20261112z215"></script>
+<script src="js/ui.js?v=20261112z215"></script>
+<script src="js/login.js?v=20261112z215"></script>
+<script src="js/page-home.js?v=20261112z215"></script>
+<script src="js/page-stores.js?v=20261112z215"></script>
+<script src="js/page-ship.js?v=20261112z215"></script>
+<script src="js/page-tasks.js?v=20261112z215"></script>
+<script src="js/page-team.js?v=20261112z215"></script>
+<script src="js/page-alerts.js?v=20261112z215"></script>
+<script src="js/page-reports.js?v=20261112z215"></script>
+<script src="js/page-settings.js?v=20261112z215"></script>
 <!-- 双表核对模块（内嵌，非独立 check.html）：xlsx 解析 + check 子应用 + 宿主页 -->
-<script src="js/vendor/xlsx.full.min.js?v=20261112z214"></script>
-<script src="js/check/util.js?v=20261112z214"></script>
-<script src="js/check/db.js?v=20261112z214"></script>
-<script src="js/check/excel.js?v=20261112z214"></script>
-<script src="js/check/match.js?v=20261112z214"></script>
-<script src="js/check/recon.js?v=20261112z214"></script>
-<script src="js/check/export.js?v=20261112z214"></script>
-<script src="js/check/ui.js?v=20261112z214"></script>
-<script src="js/check/app.js?v=20261112z214"></script>
-<script src="js/check/view-home.js?v=20261112z214"></script>
-<script src="js/check/view-new.js?v=20261112z214"></script>
-<script src="js/check/view-result.js?v=20261112z214"></script>
-<script src="js/check/view-alias.js?v=20261112z214"></script>
-<script src="js/check/view-history.js?v=20261112z214"></script>
-<script src="js/check/view-rules.js?v=20261112z214"></script>
-<script src="js/page-check.js?v=20261112z214"></script>
-<script src="js/app.js?v=20261112z214"></script>
+<script src="js/vendor/xlsx.full.min.js?v=20261112z215"></script>
+<script src="js/check/util.js?v=20261112z215"></script>
+<script src="js/check/db.js?v=20261112z215"></script>
+<script src="js/check/excel.js?v=20261112z215"></script>
+<script src="js/check/match.js?v=20261112z215"></script>
+<script src="js/check/recon.js?v=20261112z215"></script>
+<script src="js/check/export.js?v=20261112z215"></script>
+<script src="js/check/ui.js?v=20261112z215"></script>
+<script src="js/check/app.js?v=20261112z215"></script>
+<script src="js/check/view-home.js?v=20261112z215"></script>
+<script src="js/check/view-new.js?v=20261112z215"></script>
+<script src="js/check/view-result.js?v=20261112z215"></script>
+<script src="js/check/view-alias.js?v=20261112z215"></script>
+<script src="js/check/view-history.js?v=20261112z215"></script>
+<script src="js/check/view-rules.js?v=20261112z215"></script>
+<script src="js/page-check.js?v=20261112z215"></script>
+<script src="js/app.js?v=20261112z215"></script>
 </body>
 </html>

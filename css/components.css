@@ -1241,6 +1241,10 @@
   display: flex; flex-direction: column;
   position: relative; z-index: 5;
 }
+/* z215：右下角那棵小圣诞树（z-index:6）会盖过卡片右侧约 46px，
+   第 4 张卡的内容统一往左让出一条空白，标题「进入 →」和说明文字都不被压。 */
+.home-grid-3 .card.accent-indigo .card-head .card-tools { margin-right: 52px; }
+.home-grid-3 .card.accent-indigo .check-entry { padding-right: 52px; }
 
 /* 中间「任务状态分布」底部三格 */
 .donut-foot {

@@ -1208,9 +1208,10 @@ button:focus-visible,
   transform: rotate(11deg);
   filter: drop-shadow(0 5px 10px rgba(6, 18, 60, .38));
 }
+/* z215：再收一档（156 -> 120）并上移，别压住侧栏底部「本地缓存」那行状态文字 */
 .xr-side-snowman {
-  position: absolute; left: 0; bottom: 66px;
-  width: 156px; height: auto; z-index: 1; pointer-events: none;
+  position: absolute; left: 2px; bottom: 86px;
+  width: 120px; height: auto; z-index: 1; pointer-events: none;
   filter: drop-shadow(0 8px 18px rgba(8, 22, 66, .30));
 }
 .xr-side-flake { position: absolute; width: 18px; height: 18px; z-index: 2; opacity: .75; pointer-events: none; animation: xrDrift 8s ease-in-out infinite; }
@@ -1219,15 +1220,15 @@ button:focus-visible,
 .sidebar-foot { position: relative; z-index: 3; }
 
 /* ---- 右下角：从屏幕边缘探进来的圣诞树 + 礼物 ---- */
+/* z215：树不取消，只是缩小（150 -> 96）并往右下收一点。
+   它已移出 .xm-scene、单独挂在 body 上（见 index.html），z-index:6 高于首页小卡的 5，
+   所以是完整的一棵小树，不会再被卡片边缘切成半截；卡片右侧留白避让，不压文字。
+   bottom 再往下 12px，让树顶低于卡片标题行，避开「进入 →」。 */
 .xr-page-tree {
-  position: fixed; right: -12px; bottom: -10px;
-  width: 150px; height: auto; z-index: 4; pointer-events: none;
+  position: fixed; right: -22px; bottom: -26px;
+  width: 96px; height: auto; z-index: 6; pointer-events: none;
   filter: drop-shadow(0 10px 20px rgba(18, 40, 90, .22));
 }
-/* z214：这棵树 fixed 贴视口右下，首页底部四小卡（.home-grid-3）必然与它交叠，
-   卡片抬层后会把树切成几截，看起来像半棵树穿模压在卡片上。首页不挂这棵树，
-   其它页面照常保留；首页本身的 hero 雪夜场景 / 侧栏雪人 / 角落雪花已经够节日感。 */
-body:has(.home-grid-3) .xr-page-tree { display: none; }
 
 /* ---- 顶栏小圣诞树 ---- */
 .xr-top-tree { width: 17px; height: 17px; margin-left: 7px; vertical-align: -3px; }
@@ -1258,7 +1259,7 @@ body:has(.home-grid-3) .xr-page-tree { display: none; }
   .xr-baby { right: 2%; height: 86%; opacity: .94; }
   .xr-moon { display: none; }
   .xr-snowbank { height: 20px; }
-  .xr-page-tree { width: 118px; right: -8px; }
+  .xr-page-tree { width: 84px; right: -10px; bottom: -10px; }
   .xr-side-snowman, .xr-hat { display: none; }
   .kpi::after { width: 32px; height: 22px; top: -8px; }
 }
