@@ -1241,10 +1241,10 @@
   display: flex; flex-direction: column;
   position: relative; z-index: 5;
 }
-/* z215：右下角那棵小圣诞树（z-index:6）会盖过卡片右侧约 46px，
-   第 4 张卡的内容统一往左让出一条空白，标题「进入 →」和说明文字都不被压。 */
-.home-grid-3 .card.accent-indigo .card-head .card-tools { margin-right: 52px; }
-.home-grid-3 .card.accent-indigo .check-entry { padding-right: 52px; }
+/* z218：右下角圣诞树从「贴边露出上半身」改为整棵收进视口，左边界往左挪了约 8px，
+   第 4 张卡的内容相应多让 12px，标题「进入 →」和说明文字都不进入树的水平范围。 */
+.home-grid-3 .card.accent-indigo .card-head .card-tools { margin-right: 64px; }
+.home-grid-3 .card.accent-indigo .check-entry { padding-right: 64px; }
 
 /* 中间「任务状态分布」底部三格 */
 .donut-foot {

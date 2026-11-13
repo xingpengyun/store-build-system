@@ -1220,13 +1220,15 @@ button:focus-visible,
 .sidebar-foot { position: relative; z-index: 3; }
 
 /* ---- 右下角：从屏幕边缘探进来的圣诞树 + 礼物 ---- */
-/* z215：树不取消，只是缩小（150 -> 96）并往右下收一点。
-   它已移出 .xm-scene、单独挂在 body 上（见 index.html），z-index:6 高于首页小卡的 5，
-   所以是完整的一棵小树，不会再被卡片边缘切成半截；卡片右侧留白避让，不压文字。
-   bottom 再往下 12px，让树顶低于卡片标题行，避开「进入 →」。 */
+/* z218：用户要「完整的树，不能只是上半身」。
+   旧值 right:-22 / bottom:-26 让树贴着视口边缘探进来，96px 宽对应 110px 高，
+   底部 26px（雪堆 + 礼物盒 + 树干 + 树根）被视口整条裁掉，只露出 76.4% 的树冠；
+   z217 补的树干位于树内 y=85..99，可见区只到 84，等于完全看不见 —— 这才是「补了没反应」的根因。
+   现在把整棵树收进视口内（right/bottom 转正）、略缩到 90px 减少遮挡；
+   仍挂在 body 直属 z-index:6，卡片内容右侧留白避让（见 components.css）。 */
 .xr-page-tree {
-  position: fixed; right: -22px; bottom: -26px;
-  width: 96px; height: auto; z-index: 6; pointer-events: none;
+  position: fixed; right: 2px; bottom: 2px;
+  width: 90px; height: auto; z-index: 6; pointer-events: none;
   filter: drop-shadow(0 10px 20px rgba(18, 40, 90, .22));
 }
 
@@ -1259,7 +1261,7 @@ button:focus-visible,
   .xr-baby { right: 2%; height: 86%; opacity: .94; }
   .xr-moon { display: none; }
   .xr-snowbank { height: 20px; }
-  .xr-page-tree { width: 84px; right: -10px; bottom: -10px; }
+  .xr-page-tree { width: 76px; right: 2px; bottom: 2px; }
   .xr-side-snowman, .xr-hat { display: none; }
   .kpi::after { width: 32px; height: 22px; top: -8px; }
 }
