@@ -51,15 +51,20 @@ window.UI = (function () {
   }
 
   /* ---------------- 吉祥物（小蛮） ----------------
-     门店筹建的小角色：戴着黄色安全帽的蓝色团子，右臂挥手、会眨眼。
+     门店筹建的小角色：戴着红白圣诞帽的蓝色团子，右臂挥手、会眨眼。
      纯 SVG + CSS 动画，登录页和欢迎弹窗共用这一只。
      各部件动画类：.mascot-glow 背景柔光 / .mascot-shadow 影子 /
      .mascot-eye 眼睛（眨眼）/ .mascot-arm 右臂（挥手）/ .mascot-spark 星星。
+     z213 换上圣诞装：只替换帽子（原来是黄色安全帽），身体和动画类名一律不动。
      cls 打在 <svg> 上（login-mascot-svg 或 welcome-mascot），CSS 按它取尺寸。 */
   function mascot(cls) {
     return '<svg class="' + (cls || '') + '" viewBox="0 0 200 220" aria-hidden="true" focusable="false">' +
       '<defs><linearGradient id="mcBody" x1="0" y1="0" x2="0" y2="1">' +
         '<stop offset="0" stop-color="#8aa2ff"/><stop offset="1" stop-color="#5b7cff"/>' +
+      '</linearGradient>' +
+      '<linearGradient id="mcHat" x1="0" y1="0" x2="1" y2="1">' +
+        '<stop offset="0" stop-color="#f4554e"/><stop offset="48%" stop-color="#d92b34"/>' +
+        '<stop offset="100%" stop-color="#9c1b2b"/>' +
       '</linearGradient></defs>' +
       '<ellipse class="mascot-glow" cx="100" cy="120" rx="72" ry="64" fill="#cfe0ff" opacity=".45"/>' +
       '<ellipse class="mascot-shadow" cx="100" cy="206" rx="46" ry="9" fill="#1f3d5a" opacity=".10"/>' +
@@ -74,9 +79,20 @@ window.UI = (function () {
       '<ellipse cx="132" cy="144" rx="9" ry="5" fill="#ff9db0" opacity=".5"/>' +
       '<path d="M91 134 Q100 145 109 134" stroke="#2b2f4a" stroke-width="4" fill="none" stroke-linecap="round"/>' +
       '<g class="mascot-arm"><ellipse cx="158" cy="138" rx="12" ry="23" fill="#5b7cff" transform="rotate(30 158 138)"/></g>' +
-      '<path d="M60 92 a40 30 0 0 1 80 0 z" fill="#ffd23f"/>' +
-      '<ellipse cx="100" cy="95" rx="48" ry="9" fill="#f0b429"/>' +
-      '<path d="M72 80 a28 18 0 0 1 56 0" stroke="#ffffff" stroke-width="3" fill="none" opacity=".5" stroke-linecap="round"/>' +
+      /* 红白圣诞帽：软帽身（帽尖往右上甩）+ 白绒球 + 绒边 + 冬青叶红果 */
+      '<path d="M56 94 C52 62 73 40 100 41 C126 42 145 58 151 74 ' +
+        'C157 87 170 90 180 82 C185 78 187 72 187 66 ' +
+        'C194 80 188 98 173 101 C160 104 145 94 134 86 ' +
+        'C122 78 111 77 100 77 C82 77 65 82 56 94 Z" fill="url(#mcHat)"/>' +
+      '<circle cx="185" cy="64" r="11" fill="#f4f7ff"/>' +
+      '<circle cx="181" cy="60" r="4" fill="#ffffff" opacity=".9"/>' +
+      '<ellipse cx="100" cy="95" rx="48" ry="9.5" fill="#d3ddf2"/>' +
+      '<ellipse cx="100" cy="93.5" rx="48" ry="7.5" fill="#f7faff"/>' +
+      '<path d="M136 66 q8 -16 21 -17 q-3 15 -21 17 Z" fill="#146b4a"/>' +
+      '<path d="M136 66 q-3 -17 8 -24 q8 12 -8 24 Z" fill="#2a9a6a"/>' +
+      '<circle cx="141" cy="65" r="4" fill="#e23b3f"/>' +
+      '<circle cx="150" cy="62" r="3.7" fill="#c62828"/>' +
+      '<circle cx="145" cy="72" r="3.4" fill="#f0524f"/>' +
       '<g transform="translate(30,52)"><path class="mascot-spark s1" d="M0 -6.5 L1.7 -1.7 L6.5 0 L1.7 1.7 L0 6.5 L-1.7 1.7 L-6.5 0 L-1.7 -1.7 Z" fill="#ffd23f"/></g>' +
       '<g transform="translate(176,64)"><path class="mascot-spark s2" d="M0 -5 L1.3 -1.3 L5 0 L1.3 1.3 L0 5 L-1.3 1.3 L-5 0 L-1.3 -1.3 Z" fill="#7c9cff"/></g>' +
       '<g transform="translate(24,116)"><path class="mascot-spark s3" d="M0 -4 L1 -1 L4 0 L1 1 L0 4 L-1 1 L-4 0 L-1 -1 Z" fill="#34c78b"/></g>' +

@@ -53,8 +53,10 @@ window.CKUI = (function () {
       'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>';
   }
 
-  /* ---------------- 吉祥物「核核」（参考黄帽子挥手表团子重画 z217） ----------------
-     纯 SVG：蓝紫团子身体 + 黄色安全帽 + 举起挥手的短手臂 + 腮红 + 星星点缀。
+  /* ---------------- 吉祥物「核核」（圣诞版 z213） ----------------
+     纯 SVG：蓝紫团子身体 + 红白圣诞帽（软帽尖 + 白绒球 + 冬青叶红果）+
+     举起挥手的短手臂 + 腮红 + 金星/雪花点缀。
+     造型还是原来那只团子，只把节日装换上 —— 别页里认得出是同一个角色。
      mood: happy（默认，微笑）/ think（眼睛弯成线 + 平嘴）/ sad（嘴角向下） */
   var mascotSeq = 0;
   function mascot(opts) {
@@ -86,6 +88,15 @@ window.CKUI = (function () {
         'fill="' + color + '" opacity="' + (op || .9) + '"/>';
     }
 
+    /* 六角雪花：三条交叉线 + 中心一点，圣诞版用来替掉两颗星 */
+    function snow(x, y, s, op) {
+      return '<g transform="translate(' + x + ' ' + y + ') scale(' + s + ')" opacity="' + (op || .85) + '">' +
+        '<path d="M0 -7V7M-6 -3.5 6 3.5M-6 3.5 6 -3.5" stroke="#fff" stroke-width="1.7" ' +
+          'stroke-linecap="round" fill="none"/>' +
+        '<circle r="1.5" fill="#fff"/>' +
+      '</g>';
+    }
+
     return '' +
       '<svg class="ck-mascot" viewBox="0 0 160 160" width="' + size + '" height="' + size + '" aria-hidden="true">' +
         '<defs>' +
@@ -96,19 +107,20 @@ window.CKUI = (function () {
             '<stop offset="80%" stop-color="#6271ee"/>' +
             '<stop offset="100%" stop-color="#4d5ade"/>' +
           '</radialGradient>' +
-          /* 帽子：暖黄 */
-          '<linearGradient id="' + hatId + '" x1="0" y1="0" x2="0" y2="1">' +
-            '<stop offset="0" stop-color="#ffd257"/>' +
-            '<stop offset="100%" stop-color="#f7a928"/>' +
+          /* 圣诞帽：圣诞红（亮面 → 深红），和主站雪夜场景同一套红 */
+          '<linearGradient id="' + hatId + '" x1="0" y1="0" x2="1" y2="1">' +
+            '<stop offset="0" stop-color="#f4554e"/>' +
+            '<stop offset="48%" stop-color="#d92b34"/>' +
+            '<stop offset="100%" stop-color="#9c1b2b"/>' +
           '</linearGradient>' +
         '</defs>' +
         /* 地面阴影 */
         '<ellipse cx="80" cy="147" rx="37" ry="7" fill="#2b2f6e" opacity=".16"/>' +
-        /* 星星点缀 */
-        star(27, 38, 1.05, '#ffd76b') +
-        star(133, 30, 0.8, '#ffd76b', .8) +
-        star(143, 58, 0.6, '#ffffff', .7) +
-        star(18, 66, 0.55, '#ffffff', .6) +
+        /* 金星 + 雪花点缀（四角都留一点，圣诞版把右上/右下换成雪花） */
+        star(24, 36, 1.05, '#ffd76b') +
+        snow(135, 24, 0.9, .95) +
+        star(22, 100, 0.7, '#ffd76b', .75) +
+        snow(141, 100, 0.8, .9) +
         /* 右手臂（画面左）：举起来打招呼 */
         '<ellipse cx="25" cy="72" rx="10" ry="14.5" fill="#6f7ef2" transform="rotate(-32 25 72)"/>' +
         /* 左手臂（画面右）：自然下垂 */
@@ -118,13 +130,24 @@ window.CKUI = (function () {
         /* 身体高光 + 底部反光 */
         '<ellipse cx="60" cy="64" rx="17" ry="10" fill="#fff" opacity=".28" transform="rotate(-24 60 64)"/>' +
         '<path d="M44 118a46 40 0 0 0 72 0" stroke="#4653d8" stroke-width="3" fill="none" opacity=".3"/>' +
-        /* 黄色安全帽：帽壳 + 顶脊 + 帽檐 */
-        '<path d="M47 60a33 31 0 0 1 66 0Z" fill="url(#' + hatId + ')"/>' +
-        '<path d="M80 30v28" stroke="#e8991f" stroke-width="4.5" stroke-linecap="round" opacity=".55"/>' +
-        '<ellipse cx="80" cy="60.5" rx="41" ry="7.5" fill="#f2a328"/>' +
-        '<ellipse cx="80" cy="58.8" rx="41" ry="6" fill="#ffc14a"/>' +
+        /* 红白圣诞帽：软帽身（帽尖往右上甩）+ 白绒球 */
+        '<path d="M43 59 C40 33 58 17 82 19 C104 21 118 34 122 46 ' +
+          'C127 57 137 60 146 52 C150 49 152 44 152 39 ' +
+          'C157 52 152 67 140 70 C129 73 117 65 109 58 ' +
+          'C99 52 90 51 80 51 C64 51 51 55 43 59 Z" fill="url(#' + hatId + ')"/>' +
+        '<circle cx="150" cy="40" r="9" fill="#f4f7ff"/>' +
+        '<circle cx="147" cy="37" r="3.4" fill="#ffffff" opacity=".9"/>' +
+        /* 帽檐：下层阴影 + 上层柔白绒边（别用纯白，深底上会像白盘子） */
+        '<ellipse cx="80" cy="59.5" rx="39" ry="7.4" fill="#d3ddf2"/>' +
+        '<ellipse cx="80" cy="58.2" rx="39" ry="5.8" fill="#f7faff"/>' +
+        /* 冬青叶 + 三颗红果，别在帽子右侧 */
+        '<path d="M108 47 q6 -12 16 -13 q-2 11 -16 13 Z" fill="#146b4a"/>' +
+        '<path d="M108 47 q-2 -13 6 -18 q6 9 -6 18 Z" fill="#2a9a6a"/>' +
+        '<circle cx="112" cy="46" r="3.1" fill="#e23b3f"/>' +
+        '<circle cx="119" cy="44" r="2.9" fill="#c62828"/>' +
+        '<circle cx="115" cy="51" r="2.7" fill="#f0524f"/>' +
         /* 帽檐在脸上的投影 */
-        '<path d="M50 66a33 30 0 0 1 60 0" stroke="#4d5ade" stroke-width="3" fill="none" opacity=".18"/>' +
+        '<path d="M50 66a33 30 0 0 1 60 0" stroke="#4d5ade" stroke-width="3" fill="none" opacity=".16"/>' +
         /* 脸：眼睛 + 腮红 + 嘴 */
         eyes +
         '<ellipse cx="46" cy="99" rx="7" ry="4.6" fill="#ff9fb2" opacity=".6"/>' +
