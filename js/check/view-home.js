@@ -196,7 +196,7 @@
       '</div>' +
       '<div class="ck-card">' +
         '<div class="ck-card-head"><h2>最近核对</h2>' +
-          '<div class="ck-head-right"><a class="ck-small" href="#/history">全部</a></div></div>' +
+          '<div class="ck-head-right"><a class="ck-small" href="#/check/history">全部</a></div></div>' +
         '<div style="padding:0">' +
           (recents.length ? recents.map(function (r) {
             var st = r.stats || {};

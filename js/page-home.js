@@ -1469,6 +1469,20 @@ window.Pages.home = (function () {
           '<div class="tf-stat"><b>' + st.arrivals7 + '</b><span>待通知</span></div>' +
         '</div>' +
       '</div>' +
+
+      '<div class="card accent-indigo">' +
+        '<div class="card-head">' +
+          '<h3>双表核对</h3>' +
+          '<div class="card-tools"><span class="link-more" data-go="check">进入 →</span></div>' +
+        '</div>' +
+        '<div class="check-entry">' +
+          '<div class="check-entry-ico">' +
+            '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.4" y="3.2" width="8.6" height="10.6" rx="1.4"/><path d="M6.4 16.8h9.2a1.4 1.4 0 0 0 1.4-1.4V6.6"/><path d="M4.8 8.4l1.6 1.6 2.6-2.8"/></svg>' +
+          '</div>' +
+          '<p>内部表 × 外部表，核对包邮门店订货金额是否够门槛，把异常挑出来。</p>' +
+          '<button class="btn btn-primary btn-block" data-go="check">开始核对</button>' +
+        '</div>' +
+      '</div>' +
     '</section>';
   }
 

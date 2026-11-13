@@ -505,6 +505,7 @@ button:focus-visible,
 .card.accent-teal   { --accent: #12a594; --accent-soft: #d9f3ee; }
 .card.accent-red    { --accent: #e5484d; --accent-soft: #ffe5e5; }
 .card.accent-violet { --accent: #8e4ec6; --accent-soft: #f3e7fc; }
+.card.accent-indigo { --accent: #3e63dd; --accent-soft: #e6edfe; }
 
 .card[class*="accent-"] {
   border-top: 2px solid var(--accent);

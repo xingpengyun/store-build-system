@@ -59,14 +59,21 @@ window.CKApp = (function () {
     step: 1
   };
 
+  /* 作为主站内嵌模块后，子路由挂在主站 hash 的 /check/ 段下面：
+     #/check       → 核对首页
+     #/check/new   → 新建核对
+     主站 App 只看 hash 第一段（check）来决定显示哪个功能页，第二段交给这里。 */
   function currentRoute() {
     var h = (location.hash || '').replace(/^#\/?/, '').split('?')[0];
-    return ROUTES[h] ? h : 'home';
+    var parts = h.split('/');
+    var route = (parts[0] === 'check') ? (parts[1] || 'home') : 'home';
+    return ROUTES[route] ? route : 'home';
   }
 
   function go(route) {
-    if (location.hash === '#/' + route) render();
-    else location.hash = '#/' + route;
+    var target = '#/check/' + route;
+    if (location.hash === target) render();
+    else location.hash = target;
   }
 
   /* 上一次真正渲染的路由。用来区分「换页」和「原地重渲染」：
@@ -81,6 +88,19 @@ window.CKApp = (function () {
 
   function render(opt) {
     opt = opt || {};
+
+    /* 内嵌进主站后，切到别的页时主站会把 #view 整个换掉，
+       ckView / ckTitle 这些宿主节点随之消失；但 init() 里挂的全局
+       hashchange / fullscreenchange 仍会通知到这里。以前会直接往 null
+       写 textContent，反复切页时控制台一片红（z211 修复）。
+       先确认「自己还在场上」，不在就安静退出。
+       独立 check.html 里宿主节点始终存在，这条判断不影响它。 */
+    var view = document.getElementById('ckView');
+    var titleEl = document.getElementById('ckTitle');
+    var subEl = document.getElementById('ckSubtitle');
+    var actsEl = document.getElementById('ckTopActions');
+    if (!view || !titleEl || !subEl || !actsEl) return;
+
     var route = currentRoute();
     var page = window.CKPages && window.CKPages[route];
     if (!page) { go('home'); return; }
@@ -88,11 +108,6 @@ window.CKApp = (function () {
     var routeChanged = lastRoute !== null && lastRoute !== route;
     var keepTop = routeChanged ? 0 : scrollY();
     lastRoute = route;
-
-    var view = document.getElementById('ckView');
-    var titleEl = document.getElementById('ckTitle');
-    var subEl = document.getElementById('ckSubtitle');
-    var actsEl = document.getElementById('ckTopActions');
 
     var meta = ROUTES[route];
     titleEl.textContent = (page.title && page.title()) || meta.title;
@@ -236,7 +251,17 @@ window.CKApp = (function () {
     state.stepOverride = null;
   }
 
-  function boot() {
+  /* ---------------- 生命周期 ----------------
+     作为主站内嵌模块后，由 page-check.js 的 mount() 驱动，不再自己 DOMContentLoaded 启动：
+       init()   —— 一次性：加载本地库、读规则、记住方案、挂全局监听（幂等）
+       attach() —— 每次进入「双表核对」页时调用：绑定当前宿主里的子导航并渲染
+     主站每次切页都会 cloneNode 重建内容节点，所以子导航事件要跟着新的 #ckNav 重新绑。 */
+  var inited = false;
+
+  function init() {
+    if (inited) return;
+    inited = true;
+
     DB.load();
 
     /* 读一次规则默认值 */
@@ -256,50 +281,11 @@ window.CKApp = (function () {
       if (sc) { state.schemeId = sc.id; state.schemeName = sc.name; }
     }
 
-    /* 导航点击 */
-    var nav = document.getElementById('ckNav');
-    nav.addEventListener('click', function (e) {
-      var item = e.target.closest('.ck-nav-item');
-      if (!item) return;
-      var route = item.getAttribute('data-route');
-      if (route === 'new' && state.resultMeta && !state.aFile) {
-        /* 从结果页点「新建」保持上次配置，不重置 */
-      }
-      if (route === 'result' && state.historyView) state.historyView = null;
-      go(route);
-    });
-
-    /* 顶栏右上角显示当前登录人。
-       核对页和主站同 origin，主站登录后会把 {name, account, at} 写进 sbs.user，
-       这里只读不写 —— 没登录信息就整块不显示，不硬占位。 */
-    (function paintUser() {
-      var box = document.getElementById('ckTopUser');
-      if (!box) return;
-      var u = null;
-      try { u = JSON.parse(localStorage.getItem('sbs.user') || 'null'); } catch (e) { u = null; }
-      var name = u && u.name ? String(u.name).trim() : '';
-      if (!name) return;
-      var nm = document.getElementById('ckUserName');
-      if (nm) nm.textContent = name;
-      box.hidden = false;
-    })();
-
-    var backBtn = document.getElementById('ckBack');
-    if (backBtn) {
-      backBtn.addEventListener('click', function (e) {
-        e.preventDefault();
-        location.href = 'index.html#/home';
-      });
-    }
-
     window.addEventListener('hashchange', render);
 
     /* 全屏状态变化（进/出全屏）时重渲染顶栏按钮文案（全屏 ↔ 退出全屏） */
     document.addEventListener('fullscreenchange', function () { render(); });
     document.addEventListener('webkitfullscreenchange', function () { render(); });
-
-    if (!location.hash) location.hash = '#/home';
-    render();
 
     window.addEventListener('beforeunload', function (e) {
       if (state.result && state.result.stats && state.result.stats.total > 0 && !state.resultSaved) {
@@ -309,9 +295,31 @@ window.CKApp = (function () {
     });
   }
 
+  function attach(host) {
+    init();
+
+    /* 子导航点击：宿主里的 #ckNav 是新建节点，每次都要重新绑 */
+    var nav = host.querySelector('#ckNav');
+    if (nav) {
+      nav.addEventListener('click', function (e) {
+        var item = e.target.closest('.ck-nav-item');
+        if (!item) return;
+        var route = item.getAttribute('data-route');
+        if (route === 'new' && state.resultMeta && !state.aFile) {
+          /* 从结果页点「新建」保持上次配置，不重置 */
+        }
+        if (route === 'result' && state.historyView) state.historyView = null;
+        go(route);
+      });
+    }
+
+    render();
+  }
+
   return {
     state: state,
-    boot: boot,
+    init: init,
+    attach: attach,
     go: go,
     render: render,
     refreshBadges: refreshBadges,
@@ -326,6 +334,5 @@ window.CKApp = (function () {
 /* 页面注册表：各 view-*.js 往这里塞 */
 window.CKPages = window.CKPages || {};
 
-document.addEventListener('DOMContentLoaded', function () {
-  window.CKApp.boot();
-});
+/* 启动交给 page-check.js：主站路由到 check 时调 CKApp.attach(host)。
+   这里不再自己监听 DOMContentLoaded，避免和主站抢 hash。 */

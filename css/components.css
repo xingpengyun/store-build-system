@@ -1232,9 +1232,15 @@
 }
 .arrival-foot b { font-size: 15px; font-weight: 700; color: var(--text); }
 
-/* ---------------- 首页三小卡：填平底部留白 ---------------- */
-/* 三卡等高（grid stretch），用 flex 列让底部统计区自动撑满，图区固定在上方 */
-.home-grid-3 .card { display: flex; flex-direction: column; }
+/* ---------------- 首页小卡：填平底部留白 ---------------- */
+/* 卡片等高（grid stretch），用 flex 列让底部统计区自动撑满，图区固定在上方。
+   z211：右下角有全站固定装饰 .xr-page-tree（z-index:4），补上第 4 张「双表核对」
+   入口卡后正好压住它的说明文字。卡片整体抬到 5，内容主体优先；顶栏/侧栏是 60，
+   不会被卡片盖住。 */
+.home-grid-3 .card {
+  display: flex; flex-direction: column;
+  position: relative; z-index: 5;
+}
 
 /* 中间「任务状态分布」底部三格 */
 .donut-foot {
@@ -1266,6 +1272,29 @@
 
 /* 首页柱状图加高，配合底部统计区填满卡片（不影响报表页的 .bars） */
 .home-grid-3 .bars { height: 150px; }
+
+/* 双表核对入口卡（首页第四张卡）：图标 + 一句说明 + 主按钮 */
+.check-entry {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 18px 16px;
+  text-align: center;
+}
+.check-entry-ico {
+  width: 54px; height: 54px; border-radius: 15px;
+  display: grid; place-items: center;
+  background: var(--accent-soft); color: var(--accent);
+}
+.check-entry-ico svg { width: 26px; height: 26px; }
+.check-entry p {
+  font-size: 12.5px; line-height: 1.7; color: var(--text-2);
+  margin: 0; flex: 1 1 auto;
+}
+.check-entry .btn { width: 100%; }
 
 /* ---------------- 空状态 ---------------- */
 .empty {
@@ -1988,7 +2017,7 @@
 }
 .home-grid-3 {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 14px;
 }
 

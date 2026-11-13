@@ -7,7 +7,7 @@ window.App = (function () {
   var S = window.Store;
   var U = window.Utils;
 
-  var ROUTES = ['home', 'stores', 'tasks', 'ship', 'team', 'alerts', 'reports', 'settings'];
+  var ROUTES = ['home', 'stores', 'tasks', 'ship', 'team', 'alerts', 'reports', 'check', 'settings'];
   var params = {};
   var currentUser = null;
   var syncTip = null;

@@ -22,7 +22,7 @@
    阴影    与主站 --shadow-1 / --shadow-2 一致（灰调，不用蓝调）
    ========================================================== */
 
-.ck-body {
+.ck-body, .ck-host {
   /* 品牌 */
   --brand: #3e63dd;
   --brand-d: #3457cf;
@@ -898,4 +898,64 @@ a.ck-nav-item { color: #adb9d8; }
   .ck-body-scroll { padding: 16px 14px 32px; }
   .ck-top { padding: 0 14px; }
 }
+
+/* ==========================================================
+   内嵌宿主（page-check.js）—— 双表核对不再开独立 check.html，
+   直接装进主站的 .content。这里只补「壳」样式：
+   .ck-host 借 .ck-body 的 token，但背景交给主站；子导航改成水平 tab。 */
+.ck-host {
+  background: transparent;
+  margin: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ck-host *,
+.ck-host *::before,
+.ck-host *::after { box-sizing: border-box; }
+.ck-host h1, .ck-host h2, .ck-host h3, .ck-host h4, .ck-host p { margin: 0; }
+.ck-host button { font-family: inherit; font-size: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+.ck-host input, .ck-host select, .ck-host textarea { font-family: inherit; font-size: inherit; color: inherit; }
+.ck-host a { color: var(--brand); text-decoration: none; }
+
+/* 页头操作按钮：和主站 .page-head 右侧对齐 */
+.ck-host-acts { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* 子导航 tab：白卡片 + 圆角，激活项主色 pill，和主站浅色卡片风格一致 */
+.ck-subnav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 6px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.ck-subnav .ck-nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--t2);
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.ck-subnav .ck-nav-item svg { width: 15px; height: 15px; }
+.ck-subnav .ck-nav-item:hover { color: var(--t1); background: var(--sunk); }
+.ck-subnav .ck-nav-item.active {
+  background: linear-gradient(96deg, #3159f0 0%, #7b4df6 100%);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 6px 16px -10px rgba(76, 88, 240, .95);
+}
+.ck-subnav .ck-nav-badge { margin-left: 4px; }
+
+/* 内容区：和主站内容一致，左右不留白，靠主站 .content 控制外边距 */
+.ck-host-body { min-width: 0; }
 
