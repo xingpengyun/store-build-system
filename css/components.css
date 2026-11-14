@@ -1241,10 +1241,12 @@
   display: flex; flex-direction: column;
   position: relative; z-index: 5;
 }
-/* z218：右下角圣诞树从「贴边露出上半身」改为整棵收进视口，左边界往左挪了约 8px，
-   第 4 张卡的内容相应多让 12px，标题「进入 →」和说明文字都不进入树的水平范围。 */
-.home-grid-3 .card.accent-indigo .card-head .card-tools { margin-right: 64px; }
-.home-grid-3 .card.accent-indigo .check-entry { padding-right: 64px; }
+/* z222：用户要求首页不再显示「双表核对」入口卡，3 张小卡重新均分整行。
+   z223：z222 曾给整个 .home-grid-3 加 padding-right:92px 来避让右下角固定树，
+   结果整排卡片右边空出一条、右缘比上方两列区缩进，用户明确不要这个留白。
+   现在改成三卡严格等分铺满（卡片外框右缘与 .home-grid-2 对齐），
+   只让最后一列卡内部会被树覆盖的三块内容做局部避让（见下方 grid 定义），
+   既不空出整条右边，也不让树压住柱状图和底部统计。 */
 
 /* 中间「任务状态分布」底部三格 */
 .donut-foot {
@@ -2021,8 +2023,23 @@
 }
 .home-grid-3 {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  /* z223：用户要「底下三个平分一下对齐」，明确不要右边空一条。
+     显式 3 等分（minmax(0,1fr) 防止内容把某列撑宽），右缘与 .home-grid-2 对齐。 */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
+}
+/* 三卡铺满后，右下角固定圣诞树（z-index:6 / 90px / right:2px）会落在最后一列卡的
+   右上角。卡片外框保持等宽不动，只让真正会被树压住的三块内容右移 60px：
+   内容右缘 1579 -> 1519，树左缘 1522，留 3px 余量。
+   card-head（含「明细 →」）在树顶 y=885 之上，不需要避让。 */
+.home-grid-3 .card.accent-teal .bars,
+.home-grid-3 .card.accent-teal .arrival-foot,
+.home-grid-3 .card.accent-teal .arrival-stats { padding-right: 60px; }
+/* 单列布局时卡片变窄，避让量同步收小，别把柱状图和三格统计挤变形 */
+@media (max-width: 1100px) {
+  .home-grid-3 .card.accent-teal .bars,
+  .home-grid-3 .card.accent-teal .arrival-foot,
+  .home-grid-3 .card.accent-teal .arrival-stats { padding-right: 40px; }
 }
 
 @media (max-width: 1320px) {
