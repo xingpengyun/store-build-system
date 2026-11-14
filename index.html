@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>门店筹建管理系统</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Crect width='20' height='20' rx='4' fill='%232f56f0'/%3E%3Cpath d='M4 8l1-3h10l1 3v6.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V8z' fill='%23fff'/%3E%3C/svg%3E" />
-<link rel="stylesheet" href="css/base.css?v=20261112z220" />
-<link rel="stylesheet" href="css/layout.css?v=20261112z220" />
-<link rel="stylesheet" href="css/components.css?v=20261112z220" />
-<link rel="stylesheet" href="css/login.css?v=20261112z220" />
-<link rel="stylesheet" href="css/theme.css?v=20261112z220" />
-<link rel="stylesheet" href="css/check.css?v=20261112z220" />
+<link rel="stylesheet" href="css/base.css?v=20261112z221" />
+<link rel="stylesheet" href="css/layout.css?v=20261112z221" />
+<link rel="stylesheet" href="css/components.css?v=20261112z221" />
+<link rel="stylesheet" href="css/login.css?v=20261112z221" />
+<link rel="stylesheet" href="css/theme.css?v=20261112z221" />
+<link rel="stylesheet" href="css/check.css?v=20261112z221" />
 </head>
 <body class="booting">
 
@@ -108,7 +108,7 @@
       </nav>
 
       <!-- z209：侧栏圣诞帽 + 大雪人（参考图把节日主角铺到侧栏，不只放在横幅里）
-           z220：雪人从底部缓存卡上方移到侧栏中部空白带，水平居中，见 theme.css。 -->
+           z221：雪人水平居中、垂直落在侧栏中部偏下（不过分贴底），见 theme.css。 -->
       <svg class="xr-hat" viewBox="0 0 110 86" fill="none" aria-hidden="true">
         <defs><linearGradient id="xrHat" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f0524c"/><stop offset="1" stop-color="#b8212c"/></linearGradient></defs>
         <path d="M12 62C6 34 26 10 58 8c26-2 42 12 40 34-1 12-8 19-18 20z" fill="url(#xrHat)"/>
@@ -117,7 +117,7 @@
         <circle cx="94" cy="18" r="14" fill="#fff8f0"/>
         <circle cx="90" cy="14" r="4" fill="#ffffff" opacity=".8"/>
       </svg>
-      <img class="xr-side-snowman" src="assets/xmas/xmas-snowman.png?v=20261112z220" alt="" />
+      <img class="xr-side-snowman" src="assets/xmas/xmas-snowman.png?v=20261112z221" alt="" />
       <svg class="xr-side-flake s1" viewBox="0 0 24 24" aria-hidden="true"><g stroke="#bcd8f5" stroke-width="1.4" stroke-linecap="round"><path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7"/><path d="M12 2 9.5 4.6M12 2l2.5 2.6M12 22l-2.5-2.6M12 22l2.5-2.6"/></g><circle cx="12" cy="12" r="1.5" fill="#eaf6ff"/></svg>
       <svg class="xr-side-flake s2" viewBox="0 0 24 24" aria-hidden="true"><g stroke="#bcd8f5" stroke-width="1.4" stroke-linecap="round"><path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7"/></g><circle cx="12" cy="12" r="1.5" fill="#eaf6ff"/></svg>
 
@@ -202,7 +202,7 @@
      生成脚本 .workbuddy/make-z216-trunk.py，原图 xmas-tree-gifts.png 保留可回滚。 -->
 <!-- z219：整棵树（树尖 + 三层树冠 + 木棕树干 + 两个礼物盒 + 雪堆）完整收进视口，
      底部再留 12px 安全距。换新文件名 + 全站版本参数，绕开 CDN / 浏览器旧缓存。 -->
-<img class="xr-page-tree" src="assets/xmas/xmas-tree-gifts-full.png?v=20261112z220" alt="" aria-hidden="true" />
+<img class="xr-page-tree" src="assets/xmas/xmas-tree-gifts-full.png?v=20261112z221" alt="" aria-hidden="true" />
 
 <div class="xm-scene" aria-hidden="true">
   <!-- 右下角：一片大六角雪花 + 冬青叶与红果，贴着屏幕右 / 下两条边（和旧蜘蛛网一个锚点逻辑） -->
@@ -240,40 +240,40 @@
   <svg class="xm-flake gf5" viewBox="0 0 24 24" aria-hidden="true"><g stroke="#a8cbe6" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7"/><path d="M12 2 9.5 4.6M12 2l2.5 2.6M12 22l-2.5-2.6M12 22l2.5-2.6"/></g><circle cx="12" cy="12" r="1.6" fill="#eaf6ff"/></svg>
 </div>
 
-<script src="js/vendor/cloudbase-sdk.js?v=20261112z220"></script>
-<script src="js/utils.js?v=20261112z220"></script>
-<script src="js/constants.js?v=20261112z220"></script>
-<script src="js/cloud.js?v=20261112z220"></script>
-<script src="js/seed.js?v=20261112z220"></script>
-<script src="js/store.js?v=20261112z220"></script>
-<script src="js/charts.js?v=20261112z220"></script>
-<script src="js/ui.js?v=20261112z220"></script>
-<script src="js/login.js?v=20261112z220"></script>
-<script src="js/page-home.js?v=20261112z220"></script>
-<script src="js/page-stores.js?v=20261112z220"></script>
-<script src="js/page-ship.js?v=20261112z220"></script>
-<script src="js/page-tasks.js?v=20261112z220"></script>
-<script src="js/page-team.js?v=20261112z220"></script>
-<script src="js/page-alerts.js?v=20261112z220"></script>
-<script src="js/page-reports.js?v=20261112z220"></script>
-<script src="js/page-settings.js?v=20261112z220"></script>
+<script src="js/vendor/cloudbase-sdk.js?v=20261112z221"></script>
+<script src="js/utils.js?v=20261112z221"></script>
+<script src="js/constants.js?v=20261112z221"></script>
+<script src="js/cloud.js?v=20261112z221"></script>
+<script src="js/seed.js?v=20261112z221"></script>
+<script src="js/store.js?v=20261112z221"></script>
+<script src="js/charts.js?v=20261112z221"></script>
+<script src="js/ui.js?v=20261112z221"></script>
+<script src="js/login.js?v=20261112z221"></script>
+<script src="js/page-home.js?v=20261112z221"></script>
+<script src="js/page-stores.js?v=20261112z221"></script>
+<script src="js/page-ship.js?v=20261112z221"></script>
+<script src="js/page-tasks.js?v=20261112z221"></script>
+<script src="js/page-team.js?v=20261112z221"></script>
+<script src="js/page-alerts.js?v=20261112z221"></script>
+<script src="js/page-reports.js?v=20261112z221"></script>
+<script src="js/page-settings.js?v=20261112z221"></script>
 <!-- 双表核对模块（内嵌，非独立 check.html）：xlsx 解析 + check 子应用 + 宿主页 -->
-<script src="js/vendor/xlsx.full.min.js?v=20261112z220"></script>
-<script src="js/check/util.js?v=20261112z220"></script>
-<script src="js/check/db.js?v=20261112z220"></script>
-<script src="js/check/excel.js?v=20261112z220"></script>
-<script src="js/check/match.js?v=20261112z220"></script>
-<script src="js/check/recon.js?v=20261112z220"></script>
-<script src="js/check/export.js?v=20261112z220"></script>
-<script src="js/check/ui.js?v=20261112z220"></script>
-<script src="js/check/app.js?v=20261112z220"></script>
-<script src="js/check/view-home.js?v=20261112z220"></script>
-<script src="js/check/view-new.js?v=20261112z220"></script>
-<script src="js/check/view-result.js?v=20261112z220"></script>
-<script src="js/check/view-alias.js?v=20261112z220"></script>
-<script src="js/check/view-history.js?v=20261112z220"></script>
-<script src="js/check/view-rules.js?v=20261112z220"></script>
-<script src="js/page-check.js?v=20261112z220"></script>
-<script src="js/app.js?v=20261112z220"></script>
+<script src="js/vendor/xlsx.full.min.js?v=20261112z221"></script>
+<script src="js/check/util.js?v=20261112z221"></script>
+<script src="js/check/db.js?v=20261112z221"></script>
+<script src="js/check/excel.js?v=20261112z221"></script>
+<script src="js/check/match.js?v=20261112z221"></script>
+<script src="js/check/recon.js?v=20261112z221"></script>
+<script src="js/check/export.js?v=20261112z221"></script>
+<script src="js/check/ui.js?v=20261112z221"></script>
+<script src="js/check/app.js?v=20261112z221"></script>
+<script src="js/check/view-home.js?v=20261112z221"></script>
+<script src="js/check/view-new.js?v=20261112z221"></script>
+<script src="js/check/view-result.js?v=20261112z221"></script>
+<script src="js/check/view-alias.js?v=20261112z221"></script>
+<script src="js/check/view-history.js?v=20261112z221"></script>
+<script src="js/check/view-rules.js?v=20261112z221"></script>
+<script src="js/page-check.js?v=20261112z221"></script>
+<script src="js/app.js?v=20261112z221"></script>
 </body>
 </html>
