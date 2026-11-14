@@ -13,6 +13,8 @@ window.Pages.home = (function () {
   /* 当前阶段筛选（空 = 全部）。存在模块里，刷新数据后不会被重置 */
   var filterStage = '';
   /* 进度总览表格：z131 起不再截断，改卡内滚动显示全部门店 */
+  /* z227：首页右列改成中国分省门店分布图，缓一份聚合结果给 mount / paint 用 */
+  var mapAgg = null;
 
   function stageObjOf(key) {
     for (var i = 0; i < C.STAGES.length; i++) {
@@ -1197,6 +1199,10 @@ window.Pages.home = (function () {
     var set = s.settings;
     var t0 = U.today();
 
+    /* z227：按门店 province 聚合，给右列中国分省地图用。
+       口径 = 全部门店（不跟随左侧的阶段筛选），省份写法在 ChinaMap 里归一。 */
+    mapAgg = window.ChinaMap ? window.ChinaMap.aggregate(s.stores) : null;
+
     var doingStores = s.stores.filter(function (x) {
       return x.stage !== '已开业' && !riskOf(x);
     }).length;   /* 跟「进行中」小窗同一口径：没开业、也没标风险 */
@@ -1419,13 +1425,16 @@ window.Pages.home = (function () {
         '<div class="stage-foot" data-role="stageFoot">' + footHtml(s) + '</div>' +
       '</div>' +
 
-      '<div class="card accent-green">' +
+      /* z227：用户要求「主页团队工作台取消，那个位置插入一个中国地图，
+         每个省显示我们区域的门店数量」。团队功能仍在侧栏菜单 / 独立页。 */
+      '<div class="card cn-map-card">' +
         '<div class="card-head">' +
-          '<h3>团队工作台</h3><span class="card-sub">（' + st.team.length + '人）</span>' +
-          '<div class="card-tools"><span class="link-more" data-go="team">全部成员 →</span></div>' +
+          '<h3>全国门店分布</h3><span class="card-sub">（按省级行政区）</span>' +
+          '<div class="card-tools"><span class="link-more" data-go="stores">全部门店 →</span></div>' +
         '</div>' +
-        '<div class="team-list team-list-scroll">' + (teamHtml || UI.empty('还没有成员')) + '</div>' +
-        (st.team.length ? teamFootHtml : '') +
+        (mapAgg && window.ChinaMap
+          ? window.ChinaMap.cardHtml(mapAgg)
+          : '<div class="cn-map-missing">地图数据未加载</div>') +
       '</div>' +
     '</section>' +
 
@@ -1498,6 +1507,18 @@ window.Pages.home = (function () {
     root.querySelectorAll('[data-stage]').forEach(function (el) {
       el.classList.toggle('on', !!filterStage && el.getAttribute('data-stage') === filterStage);
     });
+
+    /* z227：门店数据变化时同步刷新分省地图（地图口径是全部门店，不跟随阶段筛选）。
+       只在该省的计数真的变了才换 DOM，避免把清单滚动位置刷掉。 */
+    if (window.ChinaMap && mapAgg) {
+      var nextAgg = window.ChinaMap.aggregate(s.stores);
+      var cnHost = root.querySelector('[data-cnmap]');
+      if (cnHost && JSON.stringify(nextAgg.counts) !== JSON.stringify(mapAgg.counts)) {
+        mapAgg = nextAgg;
+        cnHost.outerHTML = window.ChinaMap.cardHtml(nextAgg);
+        window.ChinaMap.mount(root, nextAgg);
+      }
+    }
     root.querySelectorAll('.stage-bar i').forEach(function (el) {
       el.classList.toggle('dim', !!filterStage && el.getAttribute('data-stage') !== filterStage);
     });
@@ -1533,6 +1554,9 @@ window.Pages.home = (function () {
   function mount(root) {
     /* 天气：先用手上的缓存/兜底值画出来，再异步换真实数据 */
     loadWeather(root);
+
+    /* z227：中国分省地图的悬浮提示 / 放大 / 省份下钻 / 底图切换 */
+    if (window.ChinaMap && mapAgg) window.ChinaMap.mount(root, mapAgg);
 
 
     /* 先按当前宽度把每个判断逻辑气泡定好位（2026-10-25 z105）。

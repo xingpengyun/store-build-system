@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>全国门店分布 · 线下预览（首页右列）</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Crect width='20' height='20' rx='4' fill='%232f56f0'/%3E%3Cpath d='M4 8l1-3h10l1 3v6.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V8z' fill='%23fff'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="css/base.css?v=20261112z227" />
+<link rel="stylesheet" href="css/components.css?v=20261112z227" />
+<!-- 腾讯地图 GL JS 代理模式（合规白名单，前端零密钥）：
+     serviceHost 占位符由 WorkBuddy 运行时替换；SDK 不预加载，
+     点「腾讯底图」时由 js/china-map.js 按需加载，SDK URL 不带 key。 -->
+<script type="text/javascript">
+  window._TMapSecurityConfig = {
+    serviceHost: 'http://127.0.0.1:__WB_HTTP_PORT__/_TMapService/_wbt/__WB_TMAP_SECRET__'
+  };
+</script>
+<style>
+  body { background: #f2f6fd; color: #24365f; margin: 0; padding: 0 0 40px; }
+  .wrap { max-width: 1260px; margin: 0 auto; padding: 22px; }
+  .top { background: #fff; border: 1px solid #e8eef7; border-radius: 14px; padding: 16px 20px; margin-bottom: 18px; box-shadow: 0 4px 16px rgba(30,60,120,.06); }
+  .top h1 { font-size: 17px; margin: 0 0 6px; font-weight: 650; }
+  .top p { font-size: 12px; color: #7b8db0; line-height: 1.75; margin: 0; }
+  .top b { color: #2f56c4; }
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .badge-i { font-size: 11px; background: #edf3ff; color: #3f6bd8; border-radius: 20px; padding: 4px 11px; }
+  .grid { display: grid; grid-template-columns: 460px minmax(0, 1fr); gap: 18px; align-items: start; }
+  .pane { background: #fff; border: 1px solid #e8eef7; border-radius: 14px; padding: 16px; box-shadow: 0 4px 16px rgba(30,60,120,.06); }
+  .pane h2 { font-size: 13px; margin: 0 0 12px; font-weight: 650; color: #4a5c85; }
+  .pane h2 span { font-weight: 400; color: #9aa5bd; font-size: 11.5px; margin-left: 6px; }
+  .card { box-shadow: none; }
+  .big-map { background: linear-gradient(180deg,#f7faff,#eef4fe); border: 1px solid #eaf0fa; border-radius: 12px; padding: 6px; }
+  .big-map svg { display: block; width: 100%; height: auto; max-height: 480px; }
+  .big-map .cn-map-legend { padding: 4px 10px 8px; }
+  .all-list { margin-top: 14px; max-height: 250px; overflow: auto; border: 1px solid #eef2fa; border-radius: 10px; }
+  .all-row { display: grid; grid-template-columns: 1fr 72px 34px; gap: 10px; align-items: center; padding: 6px 12px; font-size: 12px; border-bottom: 1px solid #f3f6fc; }
+  .all-row:last-child { border-bottom: 0; }
+  .all-row .n { color: #4a5c85; }
+  .all-row .v { text-align: right; font-weight: 650; color: #24428c; }
+  .all-row .u { color: #9aa5bd; font-size: 11px; }
+  .all-row.zero .n, .all-row.zero .v { color: #a4b5d2; font-weight: 400; }
+  .toast { position: fixed; left: 50%; top: 18px; transform: translateX(-50%); z-index: 400;
+    background: rgba(24,42,82,.94); color: #fff; font-size: 12.5px; padding: 9px 16px; border-radius: 9px;
+    box-shadow: 0 8px 24px rgba(20,40,90,.28); }
+  .toast[hidden] { display: none; }
+  .note { font-size: 11px; color: #9aa5bd; line-height: 1.8; margin-top: 14px; }
+  @media (max-width: 980px) { .grid { grid-template-columns: minmax(0,1fr); } .pane:first-child { max-width: 480px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>全国门店分布 · 线下预览</h1>
+    <p>首页中间那排右列（原「团队工作台」位置）换成的中国分省门店数量地图。
+       数据按 <b>门店档案里的省份字段实时聚合</b>，本页用 90 家演示门店还原效果；
+       <b>线下本地改动，未上线</b>。</p>
+    <div class="badges">
+      <span class="badge-i">34 个省级行政区</span>
+      <span class="badge-i">台湾省 · 香港 / 澳门特别行政区</span>
+      <span class="badge-i">南海诸岛九段线插图</span>
+      <span class="badge-i">纯内联 SVG · 零网络依赖</span>
+      <span class="badge-i">可切腾讯地图合规底图</span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="pane">
+      <h2>首页右列实际尺寸<span>460px 宽，与线上卡片一致</span></h2>
+      <div class="card cn-map-card">
+        <div class="card-head">
+          <h3>全国门店分布</h3><span class="card-sub">（按省级行政区）</span>
+          <div class="card-tools"><span class="link-more">全部门店 →</span></div>
+        </div>
+        <div id="cardBody"></div>
+      </div>
+      <div class="note">鼠标移到省份上看名称与数量，点省份看该省门店清单，
+        「⤢ 放大」看带省名的全屏图。「腾讯底图」需 WorkBuddy 预览环境的地图代理，
+        代理没就绪时会自动留在统计地图，不会白屏。</div>
+    </div>
+
+    <div class="pane">
+      <h2>放大视图<span>每个省都看得清名字和数量</span></h2>
+      <div class="big-map" id="bigMap"></div>
+      <h2 style="margin-top:16px">全部省级行政区明细<span>含 0 家的省份</span></h2>
+      <div class="all-list" id="allList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="js/china-map-data.js?v=20261112z227"></script>
+<script src="js/china-map.js?v=20261112z227"></script>
+<script>
+(function () {
+  'use strict';
+  /* 与主站 seed.js 完全相同的门店省份分布，循环到 90 家 */
+  var PLACES = [
+    ['广州天河店','广东'],['广州番禺店','广东'],['广州越秀店','广东'],
+    ['深圳南山店','广东'],['深圳福田店','广东'],['深圳龙华店','广东'],
+    ['东莞南城店','广东'],['佛山祖庙店','广东'],['珠海香洲店','广东'],['惠州惠城店','广东'],
+    ['杭州西湖店','浙江'],['杭州滨江店','浙江'],['杭州钱塘店','浙江'],
+    ['宁波鄞州店','浙江'],['温州鹿城店','浙江'],
+    ['南京新街口店','江苏'],['南京江宁店','江苏'],['苏州工业园店','江苏'],
+    ['无锡崇安店','江苏'],['常州天宁店','江苏'],
+    ['上海徐汇店','上海'],['上海静安店','上海'],['上海浦东店','上海'],
+    ['北京朝阳店','北京'],['北京海淀店','北京'],
+    ['天津和平店','天津'],['重庆江北店','重庆'],
+    ['成都春熙店','四川'],['成都高新店','四川'],['成都锦江店','四川'],
+    ['武汉光谷店','湖北'],['武汉汉口店','湖北'],
+    ['长沙五一店','湖南'],['郑州二七店','河南'],['西安高新店','陕西'],
+    ['合肥蜀山店','安徽'],['青岛崂山店','山东'],['济南历下店','山东'],
+    ['福州鼓楼店','福建'],['厦门中山店','福建'],['昆明五华店','云南'],
+    ['南宁青秀店','广西'],['沈阳中街店','辽宁'],['石家庄长安店','河北'],
+    ['太原迎泽店','山西'],['南昌红谷滩店','江西'],['贵阳观山湖店','贵州'],
+    ['海口龙华店','海南'],['哈尔滨南岗店','黑龙江'],['长春朝阳店','吉林']
+  ];
+  var stores = [];
+  for (var i = 0; i < 90; i++) {
+    var p = PLACES[i % PLACES.length];
+    stores.push({
+      id: 'demo' + i,
+      name: p[0] + (i >= PLACES.length ? '·' + (Math.floor(i / PLACES.length) + 1) : ''),
+      province: p[1], stage: '施工中'
+    });
+  }
+
+  /* 组件只用到这几个宿主能力，预览页给最小 mock */
+  window.Utils = window.Utils || {};
+  window.Store = { getState: function () { return { stores: stores }; } };
+  window.UI = {
+    toast: function (msg) {
+      var t = document.getElementById('toast');
+      t.textContent = msg; t.hidden = false;
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(function () { t.hidden = true; }, 2600);
+    }
+  };
+
+  var CM = window.ChinaMap;
+  var agg = CM.aggregate(stores);
+  document.getElementById('cardBody').innerHTML = CM.cardHtml(agg);
+
+  document.getElementById('bigMap').innerHTML =
+    CM.svgHtml(agg, { big: true }) + CM.legendHtml(agg);
+
+  var rows = window.ChinaMapData.provinces.map(function (p) {
+    return { name: p.name, count: agg.counts[p.short] || 0 };
+  }).sort(function (a, b) { return b.count - a.count || a.name.localeCompare(b.name, 'zh'); });
+  document.getElementById('allList').innerHTML = rows.map(function (r) {
+    return '<div class="all-row' + (r.count ? '' : ' zero') + '">' +
+      '<span class="n">' + r.name + '</span>' +
+      '<span class="v">' + r.count + '</span><span class="u">家</span></div>';
+  }).join('');
+
+  CM.mount(document, agg);
+})();
+</script>
+</body>
+</html>
