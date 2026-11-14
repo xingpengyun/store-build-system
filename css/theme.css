@@ -1199,6 +1199,22 @@ button:focus-visible,
 .xr-gifts { position: absolute; left: 32%; bottom: 2%; width: 88px; height: auto; z-index: 2; filter: drop-shadow(0 4px 6px rgba(10,30,80,.28)); }
 .xr-village { position: absolute; right: 0; bottom: 0; width: 27%; height: 100%; z-index: 1; }
 
+/* z226：用户反馈「房子月亮是不是往中间移动一下，都被盖住了」。
+   z225 恢复的 .hero-date 是 flex 靠右的固定 176px 卡，左缘恒在 hero 右缘 -199px。
+   实测（1181/1280/1366/1440/1536/1624/1920）：
+     · 小屋屋顶 100% 落在卡片底下，门被压 31%~55% —— 所有宽度都中招；
+     · 月亮在 1181/1280/1366/1440 被切 45%/31%/19%/8%，越窄越严重（right:16%
+       是百分比，视口一窄就往右挤进卡片；1536 以上才碰巧不切）。
+   日期卡显示时（>1180px）把月亮与小屋当作一组整体左移 170px：
+   屋顶右缘变成 hero 右缘 -221px，比卡片左缘再往左 22px；月亮用
+   right: calc(16% + 170px) 做完全相同的位移，「月亮照小屋」约 25px 的间距原样保留，
+   也不会撞到左侧两只主角。窄屏（<=1180px）日期卡本身隐藏，保持原位不必避让。
+   只调位置，不缩小也不隐藏任何装饰。 */
+@media (min-width: 1181px) {
+  .xr-moon { right: calc(16% + 170px); }
+  .xr-village { right: 170px; }
+}
+
 /* ---- 主角：两张透明 PNG 分开摆，底部压进雪丘 ---- */
 .xr-baby, .xr-deer { position: absolute; height: auto; z-index: 2; pointer-events: none; }
 .xr-baby { left: 34%; bottom: -13%; height: 105%; filter: drop-shadow(0 8px 14px rgba(6, 24, 70, .38)); }
