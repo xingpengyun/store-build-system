@@ -1138,8 +1138,27 @@ button:focus-visible,
 .hero-main p { color: #dcecff; text-shadow: 0 1px 8px rgba(8, 26, 70, .5); }
 .hero-main p b { color: #ffdd86; }
 .hero-main p b.warn { color: #ffb1a0; }
-/* 参考图横幅里没有像素小店 / 日期卡，位置让给主角和小屋 */
-.hero-art, .hero-date { display: none !important; }
+/* z225：用户反馈「之前时间天气的那个地方怎么没有了」。
+   z209 参考图改造时把 .hero-art（像素小店）和 .hero-date（日期/星期/天气）一起
+   !important 隐藏，注释写「位置让给主角和小屋」。其实 DOM、天气缓存和实时刷新
+   一直都在，只是整块看不见。现在只继续隐藏像素小店，恢复日期天气卡；
+   蓝色雪夜主题下改配深蓝玻璃卡、靠右并抬到 z-index:5，压在月亮/小屋/主角之上。
+   窄屏仍沿用 components.css 里 max-width:1180px 的隐藏断点。 */
+.hero-art { display: none !important; }
+/* 用 .hero > .hero-date 提高特异性：theme.css 更上面有一条
+   .hero > *:not(.hero-fx) { z-index:1 }（特异性 0,2,0），单写 .hero-date 会输给它，
+   日期卡就会掉到月亮/小屋/主角插画底下。 */
+.hero > .hero-date {
+  margin-left: auto;
+  position: relative;
+  z-index: 5;
+  background: rgba(9, 32, 84, .58);
+  border-color: rgba(190, 220, 255, .38);
+  box-shadow: 0 10px 26px rgba(4, 18, 60, .42), inset 0 1px 0 rgba(255, 255, 255, .14);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.hero-date .hd-weather { border-top-color: rgba(190, 220, 255, .30); }
 /* z205~z208 留在 DOM 里的旧装饰一律退场 */
 .xm-wreath, .xm-glow, .xm-hill, .xm-pine, .xm-tree, .xm-snowman, .xm-gift,
 .xm-cane, .xm-sleigh, .xm-snowbank, .xm-mist, .xm-cloud, .xm-sky-star,
@@ -1208,23 +1227,23 @@ button:focus-visible,
   transform: rotate(11deg);
   filter: drop-shadow(0 5px 10px rgba(6, 18, 60, .38));
 }
-/* z220：用户要「放到左侧导航栏中间的位置」。
-   原来 bottom:86px / left:2px 让雪人贴在底部「本机缓存」卡上方、还偏左；
-   侧栏菜单到 y≈460、缓存卡从 y≈890 起，中间是一整条空白带。
-   现在以侧栏自身为基准水平居中，既不压菜单文字也不碰缓存卡；尺寸保持 120px。
-   z221：用户补充「虽然在中间但是也要靠下」——垂直从 60% 下移到 72%，
-   落在空白带下半段（雪人底 ≈803 / 缓存卡顶 ≈902，仍留约 99px），
-   水平依旧居中；不是靠隐藏或取消回避，只是把落点往下挪。 */
+/* z220：用户要「放到左侧导航栏中间的位置」；z221：补充「虽然在中间但是也要靠下」。
+   z225：用户给了截图，红箭头指着「本机缓存」卡片上沿，要「继续靠下到这里」——
+   top:72% 时雪人底 ≈803、缓存卡顶 ≈902，还空 99px，不够贴。
+   改为按侧栏底部定位：.sidebar-foot 高 82px，雪人 bottom:96px 即雪人底 = 侧栏底-96，
+   与卡片上沿恒定留 14px，且随视口高度自动跟随（1000/980/900/800 高都成立），
+   不会再出现「矮视口压卡」或「高视口又飘回中间」。水平仍 left:50% 居中。 */
 .xr-side-snowman {
-  position: absolute; left: 50%; top: 72%;
-  transform: translate(-50%, -50%);
+  position: absolute; left: 50%; bottom: 96px;
+  transform: translateX(-50%);
   width: 120px; height: auto; z-index: 1; pointer-events: none;
   filter: drop-shadow(0 8px 18px rgba(8, 22, 66, .30));
 }
-/* 雪花跟着下移，仍分列雪人两侧外沿、上下错开，别叠在雪人身上 */
+/* 雪花同样改用 bottom 定位，分列雪人上下两侧外沿（雪人占侧栏底 96..243px），
+   水平左 10..28 / 右 174..186 都在雪人 38..158 之外，不会叠在身上 */
 .xr-side-flake { position: absolute; width: 18px; height: 18px; z-index: 2; opacity: .75; pointer-events: none; animation: xrDrift 8s ease-in-out infinite; }
-.xr-side-flake.s1 { left: 10px; top: 56%; }
-.xr-side-flake.s2 { right: 10px; top: 84%; width: 12px; animation-delay: -3s; }
+.xr-side-flake.s1 { left: 10px; bottom: 205px; }
+.xr-side-flake.s2 { right: 10px; bottom: 130px; width: 12px; animation-delay: -3s; }
 .sidebar-foot { position: relative; z-index: 3; }
 
 /* ---- 右下角：一棵完整的圣诞树 + 礼物 ---- */

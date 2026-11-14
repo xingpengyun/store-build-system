@@ -2029,17 +2029,21 @@
   gap: 14px;
 }
 /* 三卡铺满后，右下角固定圣诞树（z-index:6 / 90px / right:2px）会落在最后一列卡的
-   右上角。卡片外框保持等宽不动，只让真正会被树压住的三块内容右移 60px：
+   右上角。卡片外框保持等宽不动，只让真正会被树压住的内容右移 60px：
    内容右缘 1579 -> 1519，树左缘 1522，留 3px 余量。
-   card-head（含「明细 →」）在树顶 y=885 之上，不需要避让。 */
+   注意树是 fixed、按视口底部定位：视口 1000 高时树顶 y=885，但视口矮到 980/900 时
+   树顶会升到 865/785，正好扫过 card-head 的工具行（860..878）——
+   所以「明细 →」也必须一起避让，不能只让柱状图和底部统计。 */
 .home-grid-3 .card.accent-teal .bars,
 .home-grid-3 .card.accent-teal .arrival-foot,
 .home-grid-3 .card.accent-teal .arrival-stats { padding-right: 60px; }
+.home-grid-3 .card.accent-teal .card-tools { margin-right: 60px; }
 /* 单列布局时卡片变窄，避让量同步收小，别把柱状图和三格统计挤变形 */
 @media (max-width: 1100px) {
   .home-grid-3 .card.accent-teal .bars,
   .home-grid-3 .card.accent-teal .arrival-foot,
   .home-grid-3 .card.accent-teal .arrival-stats { padding-right: 40px; }
+  .home-grid-3 .card.accent-teal .card-tools { margin-right: 40px; }
 }
 
 @media (max-width: 1320px) {
