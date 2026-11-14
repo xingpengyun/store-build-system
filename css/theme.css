@@ -1208,26 +1208,37 @@ button:focus-visible,
   transform: rotate(11deg);
   filter: drop-shadow(0 5px 10px rgba(6, 18, 60, .38));
 }
-/* z215：再收一档（156 -> 120）并上移，别压住侧栏底部「本地缓存」那行状态文字 */
+/* z220：用户要「放到左侧导航栏中间的位置」。
+   原来 bottom:86px / left:2px 让雪人贴在底部「本机缓存」卡上方、还偏左；
+   侧栏菜单到 y≈460、缓存卡从 y≈890 起，中间是一整条空白带。
+   现在以侧栏自身为基准水平居中 + 垂直落在 60%（空白带正中），
+   既不压菜单文字也不碰缓存卡；尺寸保持 120px，不靠隐藏或取消回避。 */
 .xr-side-snowman {
-  position: absolute; left: 2px; bottom: 86px;
+  position: absolute; left: 50%; top: 60%;
+  transform: translate(-50%, -50%);
   width: 120px; height: auto; z-index: 1; pointer-events: none;
   filter: drop-shadow(0 8px 18px rgba(8, 22, 66, .30));
 }
+/* 雪花挪到雪人两侧外沿、上下错开，别叠在雪人身上 */
 .xr-side-flake { position: absolute; width: 18px; height: 18px; z-index: 2; opacity: .75; pointer-events: none; animation: xrDrift 8s ease-in-out infinite; }
-.xr-side-flake.s1 { left: 22px; top: 52%; }
-.xr-side-flake.s2 { right: 24px; top: 61%; width: 12px; animation-delay: -3s; }
+.xr-side-flake.s1 { left: 10px; top: 47%; }
+.xr-side-flake.s2 { right: 10px; top: 74%; width: 12px; animation-delay: -3s; }
 .sidebar-foot { position: relative; z-index: 3; }
 
-/* ---- 右下角：从屏幕边缘探进来的圣诞树 + 礼物 ---- */
+/* ---- 右下角：一棵完整的圣诞树 + 礼物 ---- */
 /* z218：用户要「完整的树，不能只是上半身」。
    旧值 right:-22 / bottom:-26 让树贴着视口边缘探进来，96px 宽对应 110px 高，
    底部 26px（雪堆 + 礼物盒 + 树干 + 树根）被视口整条裁掉，只露出 76.4% 的树冠；
    z217 补的树干位于树内 y=85..99，可见区只到 84，等于完全看不见 —— 这才是「补了没反应」的根因。
    现在把整棵树收进视口内（right/bottom 转正）、略缩到 90px 减少遮挡；
-   仍挂在 body 直属 z-index:6，卡片内容右侧留白避让（见 components.css）。 */
+   仍挂在 body 直属 z-index:6，卡片内容右侧留白避让（见 components.css）。
+   z219：z218 当时只 push 到 GitHub、CloudBase 漏部署，线上仍是 z217，用户看到「没有修改」。
+   这次除补部署外，再把树底抬离屏幕边缘 12px，并叠加 env(safe-area-inset-bottom)，
+   遇到浏览器底部工具栏 / 手机安全区 / 系统任务栏也不会再吃掉雪堆和树干；
+   素材同时换新文件名，避免 CDN 把旧图缓存住。 */
 .xr-page-tree {
-  position: fixed; right: 2px; bottom: 2px;
+  position: fixed; right: 2px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   width: 90px; height: auto; z-index: 6; pointer-events: none;
   filter: drop-shadow(0 10px 20px rgba(18, 40, 90, .22));
 }
@@ -1261,7 +1272,7 @@ button:focus-visible,
   .xr-baby { right: 2%; height: 86%; opacity: .94; }
   .xr-moon { display: none; }
   .xr-snowbank { height: 20px; }
-  .xr-page-tree { width: 76px; right: 2px; bottom: 2px; }
+  .xr-page-tree { width: 76px; right: 2px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
   .xr-side-snowman, .xr-hat { display: none; }
   .kpi::after { width: 32px; height: 22px; top: -8px; }
 }
