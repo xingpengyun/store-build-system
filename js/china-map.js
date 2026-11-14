@@ -4,9 +4,8 @@
    数据：js/china-map-data.js（标准行政区划边界，含台湾省、香港/澳门
          特别行政区、南海诸岛九段线；均为中国领土，不单独成国家）
    口径：Store.getState().stores[].province 按省聚合，不采集任何个人位置。
-   视图：默认「统计地图」纯内联 SVG、零网络依赖；
-         可切换到「腾讯地图」合规底图（GL JS 代理模式，见 index.html
-         的 _TMapSecurityConfig，SDK URL 不带 key、前端零密钥）。
+   视图：只有一张纯内联 SVG 统计地图，零网络依赖、无外部底图 / SDK / 密钥
+         （z228 移除原「腾讯底图」切换入口及其全部代理逻辑）。
    ========================================================== */
 window.ChinaMap = (function () {
   'use strict';
@@ -220,15 +219,11 @@ window.ChinaMap = (function () {
   function cardHtml(agg) {
     var s = '<div class="cn-map" data-cnmap>' +
       '<div class="cn-map-toolbar">' +
-        '<div class="cn-map-tabs" role="tablist">' +
-          '<button type="button" class="cn-map-tab is-on" data-view="stat" role="tab">统计地图</button>' +
-          '<button type="button" class="cn-map-tab" data-view="base" role="tab">腾讯底图</button>' +
-        '</div>' +
+        '<span class="cn-map-view-label">统计地图</span>' +
         '<button type="button" class="cn-map-zoom" data-zoom title="放大查看">⤢ 放大</button>' +
       '</div>' +
       '<div class="cn-map-stage">' +
         '<div class="cn-map-svgwrap" data-svgwrap>' + svgHtml(agg) + '</div>' +
-        '<div class="cn-map-base" data-basewrap hidden></div>' +
         '<div class="cn-map-tip" data-tip hidden></div>' +
       '</div>' +
       legendHtml(agg) +
@@ -324,113 +319,8 @@ window.ChinaMap = (function () {
     });
   }
 
-  /* 腾讯地图 GL JS 合规底图：SDK 由 index.html 的 _TMapSecurityConfig 走代理，
-     URL 不带 key、前端零密钥。代理未就绪时给提示并留在统计地图，不白屏。 */
-  var baseMap = null;
-  var baseMarkers = null;
-  var tmapState = 0;       /* 0 未加载 / 1 加载中 / 2 就绪 / 3 失败 */
-
-  /* serviceHost 里的 __WB_ 占位符由 WorkBuddy 运行时替换。
-     线下 / 静态托管上占位符还在，代理不通，直接告诉用户并留在统计地图，
-     不给一张灰白空底图。 */
-  function proxyReady() {
-    var c = window._TMapSecurityConfig;
-    return !!(c && c.serviceHost && c.serviceHost.indexOf('__WB_') < 0);
-  }
-
-  function ensureTMap(cb, fail) {
-    if (window.TMap) { tmapState = 2; cb(); return; }
-    if (tmapState === 3) { fail(); return; }
-    if (tmapState === 1) {
-      var wait = setInterval(function () {
-        if (tmapState === 2) { clearInterval(wait); cb(); }
-        else if (tmapState === 3) { clearInterval(wait); fail(); }
-      }, 120);
-      return;
-    }
-    tmapState = 1;
-    var sc = document.createElement('script');
-    sc.src = 'https://map.qq.com/api/gljs?v=1.exp';   /* 不带 key，代理模式 */
-    sc.onload = function () {
-      if (window.TMap) { tmapState = 2; cb(); }
-      else { tmapState = 3; fail(); }
-    };
-    sc.onerror = function () { tmapState = 3; fail(); };
-    document.head.appendChild(sc);
-  }
-
-  function toast(msg) {
-    if (window.UI && window.UI.toast) window.UI.toast(msg, 'info');
-  }
-
-  function svgIcon(count, max) {
-    var c = colorOf(count, max);
-    var dark = levelOf(count, max) >= 3;
-    var txt = dark ? '#ffffff' : '#1d3a86';
-    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">' +
-      '<circle cx="20" cy="20" r="16" fill="' + c + '" stroke="#ffffff" stroke-width="3"/>' +
-      '<text x="20" y="21" text-anchor="middle" dominant-baseline="middle" ' +
-      'font-family="Arial,sans-serif" font-size="15" font-weight="700" fill="' + txt + '">' +
-      count + '</text></svg>';
-    return 'data:image/svg+xml,' + encodeURIComponent(svg);
-  }
-
-  function switchView(host, view, agg) {
-    var stat = host.querySelector('[data-svgwrap]');
-    var base = host.querySelector('[data-basewrap]');
-    var tabs = host.querySelectorAll('.cn-map-tab');
-    [].forEach.call(tabs, function (t) {
-      t.classList.toggle('is-on', t.getAttribute('data-view') === view);
-    });
-    if (view === 'stat') {
-      stat.hidden = false; base.hidden = true; hideTip(host);
-      return;
-    }
-    if (!proxyReady()) {
-      toast('腾讯地图底图需在 WorkBuddy 预览环境打开，已保留统计地图');
-      switchView(host, 'stat', agg);
-      return;
-    }
-    ensureTMap(function () {
-      stat.hidden = true; base.hidden = false;
-      try {
-        if (!baseMap) {
-          baseMap = new window.TMap.Map(base, {
-            zoom: 3.6,
-            center: new window.TMap.LatLng(35.6, 104.2)
-          });
-        }
-        var styles = {}, geoms = [];
-        D.provinces.forEach(function (p) {
-          var c = agg.counts[p.short] || 0;
-          if (!c) return;
-          var sid = 'lv' + levelOf(c, agg.max);
-          if (!styles[sid]) {
-            styles[sid] = new window.TMap.MarkerStyle({
-              width: 34, height: 34, anchor: { x: 17, y: 17 }, src: svgIcon(c, agg.max)
-            });
-          }
-          geoms.push({
-            id: p.code, styleId: sid,
-            position: new window.TMap.LatLng(p.center[1], p.center[0]),
-            properties: { name: p.name, count: c }
-          });
-        });
-        if (baseMarkers) baseMarkers.setMap(null);
-        baseMarkers = new window.TMap.MultiMarker({ map: baseMap, styles: styles, geometries: geoms });
-        baseMarkers.on && baseMarkers.on('click', function (e) {
-          var pr = e && e.geometry && e.geometry.properties;
-          if (pr) toast(pr.name + '：' + pr.count + ' 家门店');
-        });
-      } catch (err) {
-        toast('底图初始化失败，已切回统计地图');
-        switchView(host, 'stat', agg);
-      }
-    }, function () {
-      toast('腾讯地图服务未就绪，已保留统计地图');
-      switchView(host, 'stat', agg);
-    });
-  }
+  /* z228：不再提供「腾讯底图」视图——纯内联 SVG 一张图到底，
+     无 SDK、无代理、无密钥，也就没有视图切换与底图资源需要管理。 */
 
   function mount(root, agg) {
     var host = root && root.querySelector('[data-cnmap]');
@@ -439,8 +329,6 @@ window.ChinaMap = (function () {
     host.setAttribute('data-bound', '1');
 
     host.addEventListener('click', function (e) {
-      var tab = e.target.closest && e.target.closest('[data-view]');
-      if (tab) { switchView(host, tab.getAttribute('data-view'), agg); return; }
       if (e.target.closest && e.target.closest('[data-zoom]')) { openFullscreen(host, agg); return; }
       var row = e.target.closest && e.target.closest('[data-p]');
       if (row) { openProvince(host, row.getAttribute('data-p'), agg); return; }
@@ -455,10 +343,8 @@ window.ChinaMap = (function () {
     host.addEventListener('mouseleave', function () { hideTip(host); });
   }
 
-  function destroy() {
-    if (baseMarkers) { try { baseMarkers.setMap(null); } catch (e) {} baseMarkers = null; }
-    if (baseMap) { try { baseMap.destroy(); } catch (e) {} baseMap = null; }
-  }
+  /* 无外部底图 / SDK / 定时器资源，销毁时无需清理；保留接口给 page-home.js 调用 */
+  function destroy() {}
 
   return {
     aggregate: aggregate,

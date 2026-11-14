@@ -4596,21 +4596,9 @@ body.sm-sorting * { cursor: grabbing !important; user-select: none !important; }
 }
 .cn-map { display: flex; flex-direction: column; gap: 9px; flex: 1 1 auto; min-height: 0; }
 
-.cn-map-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.cn-map-tabs {
-  display: inline-flex; gap: 2px; padding: 2px;
-  background: #f1f5fd; border: 1px solid #e8eef7; border-radius: 9px;
-}
-.cn-map-tab {
-  border: 0; background: transparent; cursor: pointer;
-  font-size: 11.5px; color: #7b8db0; padding: 4px 11px; border-radius: 7px;
-  transition: background .15s, color .15s;
-}
-.cn-map-tab:hover { color: var(--primary); }
-.cn-map-tab.is-on {
-  background: #fff; color: var(--primary); font-weight: 650;
-  box-shadow: 0 1px 4px rgba(40, 70, 140, .12);
-}
+.cn-map-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 27px; }
+/* z228：移除底图切换后左侧只留一个静态视图名，不再有可点的 tab */
+.cn-map-view-label { font-size: 11.5px; color: #7b8db0; padding-left: 2px; }
 .cn-map-zoom {
   border: 1px solid #e3ebf8; background: #fff; color: #5b73a8;
   border-radius: 8px; padding: 4px 10px; font-size: 11.5px; cursor: pointer;
@@ -4624,7 +4612,6 @@ body.sm-sorting * { cursor: grabbing !important; user-select: none !important; }
 }
 .cn-map-svgwrap { display: block; width: 100%; }
 .cn-map-svg { display: block; width: 100%; height: 330px; }
-.cn-map-base { width: 100%; height: 330px; }
 .cn-map-land {
   stroke: #fff; stroke-width: 1.6; stroke-linejoin: round;
   cursor: pointer; transition: fill .16s ease;
@@ -4744,23 +4731,16 @@ body.sm-sorting * { cursor: grabbing !important; user-select: none !important; }
 .cn-map-list.is-big .cn-map-row { grid-template-columns: 92px 1fr 34px 16px; font-size: 12px; padding: 7px 6px; }
 
 @media (max-width: 1320px) {
-  .cn-map-svg, .cn-map-base { height: 400px; }
+  .cn-map-svg { height: 400px; }
 }
 @media (max-width: 900px) {
   .cn-map-full-body { grid-template-columns: minmax(0, 1fr); }
-  .cn-map-svg, .cn-map-base { height: 300px; }
+  .cn-map-svg { height: 300px; }
   .cn-map-row { grid-template-columns: 76px 1fr 28px 16px; }
 }
 
 </style>
-<!-- 腾讯地图 GL JS 代理模式（合规白名单，前端零密钥）：
-     serviceHost 占位符由 WorkBuddy 运行时替换；SDK 不预加载，
-     点「腾讯底图」时由 js/china-map.js 按需加载，SDK URL 不带 key。 -->
-<script type="text/javascript">
-  window._TMapSecurityConfig = {
-    serviceHost: 'http://127.0.0.1:__WB_HTTP_PORT__/_TMapService/_wbt/__WB_TMAP_SECRET__'
-  };
-</script>
+<!-- z228：只有内联 SVG 统计地图，不加载任何外部底图 / SDK / 密钥。 -->
 <style>
   body { background: #f2f6fd; color: #24365f; margin: 0; padding: 0 0 40px; }
   .wrap { max-width: 1260px; margin: 0 auto; padding: 22px; }
@@ -4805,7 +4785,7 @@ body.sm-sorting * { cursor: grabbing !important; user-select: none !important; }
       <span class="badge-i">台湾省 · 香港 / 澳门特别行政区</span>
       <span class="badge-i">南海诸岛九段线插图</span>
       <span class="badge-i">纯内联 SVG · 零网络依赖</span>
-      <span class="badge-i">可切腾讯地图合规底图</span>
+      <span class="badge-i">无外部底图 / SDK / 密钥</span>
     </div>
   </div>
 
@@ -4820,8 +4800,8 @@ body.sm-sorting * { cursor: grabbing !important; user-select: none !important; }
         <div id="cardBody"></div>
       </div>
       <div class="note">鼠标移到省份上看名称与数量，点省份看该省门店清单，
-        「⤢ 放大」看带省名的全屏图。「腾讯底图」需 WorkBuddy 预览环境的地图代理，
-        代理没就绪时会自动留在统计地图，不会白屏。</div>
+        「⤢ 放大」看带省名的全屏图。整张图是内联 SVG，不依赖任何外部底图服务，
+        断网也能正常显示。</div>
     </div>
 
     <div class="pane">
@@ -4852,9 +4832,8 @@ window.ChinaMapData = {"meta":{"source":"阿里云 DataV 中国行政区划边�
    数据：js/china-map-data.js（标准行政区划边界，含台湾省、香港/澳门
          特别行政区、南海诸岛九段线；均为中国领土，不单独成国家）
    口径：Store.getState().stores[].province 按省聚合，不采集任何个人位置。
-   视图：默认「统计地图」纯内联 SVG、零网络依赖；
-         可切换到「腾讯地图」合规底图（GL JS 代理模式，见 index.html
-         的 _TMapSecurityConfig，SDK URL 不带 key、前端零密钥）。
+   视图：只有一张纯内联 SVG 统计地图，零网络依赖、无外部底图 / SDK / 密钥
+         （z228 移除原「腾讯底图」切换入口及其全部代理逻辑）。
    ========================================================== */
 window.ChinaMap = (function () {
   'use strict';
@@ -5068,15 +5047,11 @@ window.ChinaMap = (function () {
   function cardHtml(agg) {
     var s = '<div class="cn-map" data-cnmap>' +
       '<div class="cn-map-toolbar">' +
-        '<div class="cn-map-tabs" role="tablist">' +
-          '<button type="button" class="cn-map-tab is-on" data-view="stat" role="tab">统计地图</button>' +
-          '<button type="button" class="cn-map-tab" data-view="base" role="tab">腾讯底图</button>' +
-        '</div>' +
+        '<span class="cn-map-view-label">统计地图</span>' +
         '<button type="button" class="cn-map-zoom" data-zoom title="放大查看">⤢ 放大</button>' +
       '</div>' +
       '<div class="cn-map-stage">' +
         '<div class="cn-map-svgwrap" data-svgwrap>' + svgHtml(agg) + '</div>' +
-        '<div class="cn-map-base" data-basewrap hidden></div>' +
         '<div class="cn-map-tip" data-tip hidden></div>' +
       '</div>' +
       legendHtml(agg) +
@@ -5172,113 +5147,8 @@ window.ChinaMap = (function () {
     });
   }
 
-  /* 腾讯地图 GL JS 合规底图：SDK 由 index.html 的 _TMapSecurityConfig 走代理，
-     URL 不带 key、前端零密钥。代理未就绪时给提示并留在统计地图，不白屏。 */
-  var baseMap = null;
-  var baseMarkers = null;
-  var tmapState = 0;       /* 0 未加载 / 1 加载中 / 2 就绪 / 3 失败 */
-
-  /* serviceHost 里的 __WB_ 占位符由 WorkBuddy 运行时替换。
-     线下 / 静态托管上占位符还在，代理不通，直接告诉用户并留在统计地图，
-     不给一张灰白空底图。 */
-  function proxyReady() {
-    var c = window._TMapSecurityConfig;
-    return !!(c && c.serviceHost && c.serviceHost.indexOf('__WB_') < 0);
-  }
-
-  function ensureTMap(cb, fail) {
-    if (window.TMap) { tmapState = 2; cb(); return; }
-    if (tmapState === 3) { fail(); return; }
-    if (tmapState === 1) {
-      var wait = setInterval(function () {
-        if (tmapState === 2) { clearInterval(wait); cb(); }
-        else if (tmapState === 3) { clearInterval(wait); fail(); }
-      }, 120);
-      return;
-    }
-    tmapState = 1;
-    var sc = document.createElement('script');
-    sc.src = 'https://map.qq.com/api/gljs?v=1.exp';   /* 不带 key，代理模式 */
-    sc.onload = function () {
-      if (window.TMap) { tmapState = 2; cb(); }
-      else { tmapState = 3; fail(); }
-    };
-    sc.onerror = function () { tmapState = 3; fail(); };
-    document.head.appendChild(sc);
-  }
-
-  function toast(msg) {
-    if (window.UI && window.UI.toast) window.UI.toast(msg, 'info');
-  }
-
-  function svgIcon(count, max) {
-    var c = colorOf(count, max);
-    var dark = levelOf(count, max) >= 3;
-    var txt = dark ? '#ffffff' : '#1d3a86';
-    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">' +
-      '<circle cx="20" cy="20" r="16" fill="' + c + '" stroke="#ffffff" stroke-width="3"/>' +
-      '<text x="20" y="21" text-anchor="middle" dominant-baseline="middle" ' +
-      'font-family="Arial,sans-serif" font-size="15" font-weight="700" fill="' + txt + '">' +
-      count + '</text></svg>';
-    return 'data:image/svg+xml,' + encodeURIComponent(svg);
-  }
-
-  function switchView(host, view, agg) {
-    var stat = host.querySelector('[data-svgwrap]');
-    var base = host.querySelector('[data-basewrap]');
-    var tabs = host.querySelectorAll('.cn-map-tab');
-    [].forEach.call(tabs, function (t) {
-      t.classList.toggle('is-on', t.getAttribute('data-view') === view);
-    });
-    if (view === 'stat') {
-      stat.hidden = false; base.hidden = true; hideTip(host);
-      return;
-    }
-    if (!proxyReady()) {
-      toast('腾讯地图底图需在 WorkBuddy 预览环境打开，已保留统计地图');
-      switchView(host, 'stat', agg);
-      return;
-    }
-    ensureTMap(function () {
-      stat.hidden = true; base.hidden = false;
-      try {
-        if (!baseMap) {
-          baseMap = new window.TMap.Map(base, {
-            zoom: 3.6,
-            center: new window.TMap.LatLng(35.6, 104.2)
-          });
-        }
-        var styles = {}, geoms = [];
-        D.provinces.forEach(function (p) {
-          var c = agg.counts[p.short] || 0;
-          if (!c) return;
-          var sid = 'lv' + levelOf(c, agg.max);
-          if (!styles[sid]) {
-            styles[sid] = new window.TMap.MarkerStyle({
-              width: 34, height: 34, anchor: { x: 17, y: 17 }, src: svgIcon(c, agg.max)
-            });
-          }
-          geoms.push({
-            id: p.code, styleId: sid,
-            position: new window.TMap.LatLng(p.center[1], p.center[0]),
-            properties: { name: p.name, count: c }
-          });
-        });
-        if (baseMarkers) baseMarkers.setMap(null);
-        baseMarkers = new window.TMap.MultiMarker({ map: baseMap, styles: styles, geometries: geoms });
-        baseMarkers.on && baseMarkers.on('click', function (e) {
-          var pr = e && e.geometry && e.geometry.properties;
-          if (pr) toast(pr.name + '：' + pr.count + ' 家门店');
-        });
-      } catch (err) {
-        toast('底图初始化失败，已切回统计地图');
-        switchView(host, 'stat', agg);
-      }
-    }, function () {
-      toast('腾讯地图服务未就绪，已保留统计地图');
-      switchView(host, 'stat', agg);
-    });
-  }
+  /* z228：不再提供「腾讯底图」视图——纯内联 SVG 一张图到底，
+     无 SDK、无代理、无密钥，也就没有视图切换与底图资源需要管理。 */
 
   function mount(root, agg) {
     var host = root && root.querySelector('[data-cnmap]');
@@ -5287,8 +5157,6 @@ window.ChinaMap = (function () {
     host.setAttribute('data-bound', '1');
 
     host.addEventListener('click', function (e) {
-      var tab = e.target.closest && e.target.closest('[data-view]');
-      if (tab) { switchView(host, tab.getAttribute('data-view'), agg); return; }
       if (e.target.closest && e.target.closest('[data-zoom]')) { openFullscreen(host, agg); return; }
       var row = e.target.closest && e.target.closest('[data-p]');
       if (row) { openProvince(host, row.getAttribute('data-p'), agg); return; }
@@ -5303,10 +5171,8 @@ window.ChinaMap = (function () {
     host.addEventListener('mouseleave', function () { hideTip(host); });
   }
 
-  function destroy() {
-    if (baseMarkers) { try { baseMarkers.setMap(null); } catch (e) {} baseMarkers = null; }
-    if (baseMap) { try { baseMap.destroy(); } catch (e) {} baseMap = null; }
-  }
+  /* 无外部底图 / SDK / 定时器资源，销毁时无需清理；保留接口给 page-home.js 调用 */
+  function destroy() {}
 
   return {
     aggregate: aggregate,
