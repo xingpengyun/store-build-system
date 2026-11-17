@@ -3112,6 +3112,10 @@
 
 .sk-list { display: flex; flex-direction: column; gap: 8px; }
 
+/* z230：局部展开/收起时，滚动补偿由 toggleStoreRow 精确做一次。
+   关掉这个容器里的原生 scroll anchoring，免得浏览器再自动补一次造成双重位移。 */
+#storeListWrap { overflow-anchor: none; }
+
 .sk-row {
   border: 1px solid var(--line-2);
   border-radius: 10px;

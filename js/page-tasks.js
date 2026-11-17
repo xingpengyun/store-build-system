@@ -754,31 +754,72 @@ window.Pages.tasks = (function () {
     '</div>';
 
     if (!open) return '<div class="sk-row">' + head + '</div>';
+    return '<div class="sk-row open">' + head + '<div class="sk-body">' + rowBodyHtml(st.id) + '</div></div>';
+  }
 
-    var list = tasksForRow(st.id);
-    var body = list.length
+  /* 展开区单独抽出来：点门店时只换这一块，不必连左侧阶段栏、筛选栏、整张列表
+     一起 innerHTML 重建（z230 起）。整表重建时 storeRowHtml 也走这里，内容口径一致。 */
+  function rowBodyHtml(sid) {
+    var list = tasksForRow(sid);
+    return list.length
       ? taskTableHtml(list)
       : '<div class="sk-body-empty">这家门店在「' + U.esc(state.sub || state.stage || '当前条件') + '」下没有任务，' +
         '点右上「新增任务」给它添一条。</div>';
+  }
 
-    return '<div class="sk-row open">' + head + '<div class="sk-body">' + body + '</div></div>';
+  function collapseRow(rowEl) {
+    if (!rowEl) return;
+    var body = rowEl.querySelector('.sk-body');
+    if (body && body.parentNode === rowEl) rowEl.removeChild(body);
+    rowEl.classList.remove('open');
+    var head = rowEl.querySelector('.sk-head');
+    if (head) head.title = '展开这家门店的任务';
+  }
+
+  function expandRow(rowEl, sid) {
+    if (!rowEl) return;
+    var old = rowEl.querySelector('.sk-body');
+    if (old && old.parentNode === rowEl) rowEl.removeChild(old);
+    var body = document.createElement('div');
+    body.className = 'sk-body';
+    body.innerHTML = rowBodyHtml(sid);
+    rowEl.appendChild(body);
+    rowEl.classList.add('open');
+    var head = rowEl.querySelector('.sk-head');
+    if (head) head.title = '收起这家门店的任务';
   }
 
   /* 展开 / 收起一家门店：一次只开一家（点开 A，原来开着的 B 自动收回去）。
-     收起的那家如果在上面，列表会整体缩上去、刚点的这行会「跳」，所以先记下它的
-     屏幕位置，重绘后按差值把滚动条补回来，点哪儿就停在哪儿。 */
+     z230：只动这两行的 .sk-body / .open，不再调 updateList() 全量重绘 ——
+     以前一次点击要换掉 400+ 个节点，数据一多就卡，还会把浏览器的滚动锚定
+     一起清掉；补偿滚动又被全局 smooth 变成几百毫秒的动画，看起来就是「弹一下」。 */
   function toggleStoreRow(root, sid) {
-    var headBefore = root.querySelector('[data-srow="' + sid + '"]');
-    var topBefore = headBefore ? headBefore.getBoundingClientRect().top : null;
+    var head = root.querySelector('[data-srow="' + sid + '"]');
+    if (!head || !root.contains(head)) return;
+    var row = head.closest('.sk-row');
+    if (!row) return;
 
-    state.open = (state.open === sid) ? '' : sid;
-    updateList(root);
+    var wasOpen = state.open === sid;
+    var prev = wasOpen ? null : root.querySelector('.sk-row.open');
+    var topBefore = head.getBoundingClientRect().top;
+    var yBefore = window.pageYOffset || document.documentElement.scrollTop || 0;
 
-    if (topBefore == null) return;
-    var headAfter = root.querySelector('[data-srow="' + sid + '"]');
-    if (!headAfter) return;
-    var delta = headAfter.getBoundingClientRect().top - topBefore;
-    if (delta) window.scrollBy(0, delta);
+    if (prev && prev !== row) collapseRow(prev);
+    if (wasOpen) collapseRow(row);
+    else expandRow(row, sid);
+    state.open = wasOpen ? '' : sid;
+
+    /* 上方那家收起后内容缩短，按差值把被点这行补回原来的屏幕位置。
+       #storeListWrap 关掉了 scroll anchoring，这里就是唯一一次补偿，不会叠加；
+       scroll-behavior 已改 auto，这一步瞬时完成。页面本来就在最顶时浏览器
+       没法再往上滚，钳到 0 即可（那是内容自然缩短，不再有滚动动画）。 */
+    var delta = head.getBoundingClientRect().top - topBefore;
+    if (Math.abs(delta) > 0.5) {
+      var maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      var want = Math.min(maxY, Math.max(0, yBefore + delta));
+      var now = window.pageYOffset || document.documentElement.scrollTop || 0;
+      if (Math.abs(want - now) > 0.5) window.scrollTo(0, want);
+    }
   }
 
   function pagerHtml(total, pages) {

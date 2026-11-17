@@ -73,7 +73,11 @@ body {
   background-attachment: fixed;
 }
 
-html { scroll-behavior: smooth; }
+/* z230：不用全局平滑滚动。任务页展开门店、App.refresh({keep:true}) 的
+   「按差值补回原位置」都是程序化滚动，被 smooth 变成几百毫秒的动画后
+   看起来就是页面「弹一下 / 滑一下」。需要平滑的地方（系统设置里定位到
+   某块）本来就显式写了 behavior:'smooth'，不受这条影响。 */
+html { scroll-behavior: auto; }
 
 /* 细一点的滚动条，别用系统那根大白条 */
 * { scrollbar-width: thin; scrollbar-color: #c2cde4 transparent; }
