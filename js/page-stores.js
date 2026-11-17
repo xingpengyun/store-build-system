@@ -200,7 +200,11 @@ window.Pages.stores = (function () {
 
       /* ③ 时间：计划开业日期 + 建档提交时间。两格都带同样长度的一行说明，高度一致 */
       '<div class="field-row">' +
-        '<div class="field"><label>计划开业日期 <span class="field-sub">没定可以先空着</span></label>' +
+        '<div class="field"><label class="field-label-flex">计划开业日期 ' +
+            '<span class="field-sub">没定可以先空着</span>' +
+            '<button type="button" class="field-act" data-open-confirm ' +
+              'title="已经开业？点这里填最终开业时间，会同步到左边的计划开业日期">是否开业</button>' +
+          '</label>' +
           '<input class="input" type="date" name="openDate" value="' + (s.openDate || '') + '" />' +
           '<div class="field-hint">填了才能倒推任务日期；空着时只显示「开业前 N 天」，不判逾期。</div>' +
         '</div>' +
@@ -293,6 +297,27 @@ window.Pages.stores = (function () {
         if (frm) frm.addEventListener('submit', function (e) { e.preventDefault(); });
 
         rootEl.querySelector('[data-act="cancel"]').onclick = close;
+
+        /* 「是否开业」：先问最终开业时间，选完直接把日期填进本表单的
+           「计划开业日期」输入框 —— 用户能当场看到同步结果，点保存才真正落库，
+           表单里其它还没保存的改动也不会被覆盖。 */
+        var openBtn = rootEl.querySelector('[data-open-confirm]');
+        if (openBtn) {
+          openBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();      /* 别让外层 label 把焦点抢到日期框上 */
+            var dateEl = rootEl.querySelector('[name="openDate"]');
+            UI.askFinalOpenDate({
+              storeName: UI.formValue(rootEl, 'name'),
+              value: dateEl ? dateEl.value : '',
+              note: '这里只改表单里这一格，点下面「保存」后才写进门店铺档。',
+              onSave: function (date) {
+                if (dateEl) dateEl.value = date;
+                UI.toast('计划开业日期已同步为最终开业时间 ' + date, 'success');
+              }
+            });
+          });
+        }
 
         /* 换「当前阶段」时，旁边的阶段进度实时跟着变 */
         var stageSel = rootEl.querySelector('[name="stage"]');

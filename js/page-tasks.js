@@ -35,6 +35,18 @@ window.Pages.tasks = (function () {
     return S.tasksOf(storeId);
   }
 
+  /* 「是否开业？」这类开业确认任务：点完成前先问最终开业时间。
+     清单是用户自己维护的，标题可能写成「是否开业？」「确认开业」「最终开业时间」，
+     也可能直接把「完成后进到」挂在「已开业」这一格 —— 三种都认。
+     普通任务（开业活动、开业前巡检…）不含这些字样，照原流程走。 */
+  function isOpeningTask(task) {
+    if (!task) return false;
+    var title = String(task.title || '').replace(/[\s?？!！。、,，:：·]/g, '');
+    if (/是否开业|确认开业|开业确认|最终开业|正式开业|已开业|开业时间|开业日期/.test(title)) return true;
+    var base = C.stageSplit(task.stage || '').base || '';
+    return /已开业|正式开业/.test(base);
+  }
+
   function statOfTasks(list) {
     var open = 0, late = 0, done = 0;
     list.forEach(function (t) {
@@ -1449,7 +1461,24 @@ window.Pages.tasks = (function () {
       else if (act === 'tpl') openTemplates();
       else if (act === 'edit' && task) openForm(task);
       else if (act === 'push' && task) {
-        playComplete(el, task);
+        /* 开业确认类任务：先问「最终开业时间」，存进门店铺档的 openDate，
+           编辑门店里的「计划开业日期」就是同一个字段，打开就能看到同步结果。
+           取消 = 什么都不做（任务不置为已完成），不填日期也不许蒙混过关。 */
+        var openedStore = isOpeningTask(task) ? S.storeById(task.storeId) : null;
+        if (openedStore) {
+          UI.askFinalOpenDate({
+            storeName: openedStore.name,
+            value: openedStore.openDate || '',
+            note: '「' + task.title + '」会在保存这条日期后标记为已完成。',
+            onSave: function (date) {
+              S.updateStore(openedStore.id, { openDate: date });
+              UI.toast('最终开业时间 ' + date + ' 已同步到计划开业日期', 'success');
+              playComplete(el, task);
+            }
+          });
+        } else {
+          playComplete(el, task);
+        }
       } else if (act === 'snooze' && task) {
         playSnooze(el, task);
       } else if (act === 'unsnooze' && task) {

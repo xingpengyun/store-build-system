@@ -479,6 +479,50 @@ window.UI = (function () {
     });
   }
 
+  /* ---------------- 「是否开业」→ 填最终开业时间 ----------------
+     各处共用一个弹窗：任务页点「是否开业？」的完成、编辑门店里点「是否开业」
+     都走这里。UI 只负责收日期，写回哪儿由调用方的 onSave 决定
+     （任务页直接写 store.openDate；编辑表单里先填进 openDate 输入框，保存时才落库）。
+     stack:true —— 编辑门店弹窗还没关时也能叠在它上面，关掉后表单还在、别的字段不丢。 */
+  function askFinalOpenDate(opts) {
+    var o = opts || {};
+    var cur = o.value || U.today();
+    return modal({
+      stack: true,
+      title: '最终开业时间',
+      sub: o.storeName || '',
+      body:
+        '<div class="field">' +
+          '<label>最终开业日期 <span class="field-sub">开业当天</span></label>' +
+          '<input class="input" type="date" data-final-date value="' + U.esc(cur) + '" />' +
+        '</div>' +
+        '<div class="field-hint" style="margin-top:2px">' +
+          '保存后「编辑门店 → 计划开业日期」会同步成这一天，这家店的任务日期也按它重新倒推。' +
+        '</div>' +
+        (o.note
+          ? '<div class="field-hint" style="margin-top:8px">' + U.esc(o.note) + '</div>'
+          : ''),
+      footer:
+        '<button class="btn" data-final-cancel>取消</button>' +
+        '<button class="btn btn-primary" data-final-save>保存并同步</button>',
+      onMount: function (rootEl, close) {
+        var input = rootEl.querySelector('[data-final-date]');
+        rootEl.querySelector('[data-final-cancel]').onclick = close;
+        rootEl.querySelector('[data-final-save]').onclick = function () {
+          var v = input ? String(input.value || '').trim() : '';
+          if (!v) {
+            toast('请先选择最终开业日期', 'error');
+            if (input) input.focus();
+            return;
+          }
+          close();
+          if (o.onSave) o.onSave(v);
+        };
+        if (input) setTimeout(function () { try { input.focus(); } catch (e) {} }, 30);
+      }
+    });
+  }
+
   /* ---------------- 首次登录欢迎 ----------------
      首次登录（按姓名、本机）弹一次「欢迎加入」。
      opts: { name, admin } —— admin 决定提示管理员还是找管理员开权限。 */
@@ -1031,6 +1075,7 @@ window.UI = (function () {
     modal: modal,
     closeModal: closeModal,
     confirm: confirm,
+    askFinalOpenDate: askFinalOpenDate,
     welcome: welcome,
     pager: pager,
     formValue: formValue,

@@ -766,6 +766,22 @@
   font-size: 11px;
   color: var(--text-4);
 }
+/* 「计划开业日期」标签行右侧的「是否开业」入口：跟标签同一行，不额外占高度，
+   也不把两列表单撑得一高一矮。 */
+.field > label.field-label-flex { display: flex; align-items: center; gap: 6px; }
+.field-label-flex .field-act {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  padding: 0 2px;
+  color: var(--primary);
+  font-size: 11.5px;
+  font-weight: 650;
+  line-height: 1.2;
+  cursor: pointer;
+}
+.field-label-flex .field-act:hover { text-decoration: underline; }
+.field-label-flex .field-act:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
 .input, .select, .textarea {
   width: 100%;
