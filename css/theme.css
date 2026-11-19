@@ -1325,3 +1325,51 @@ button:focus-visible,
 @media (min-width: 1181px) {
   .kpi-grid { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
 }
+
+/* =====================================================================
+   z233 · 全屏落雪（从线下视觉稿 home-xmas-preview.html 搬过来）
+   用户：「还是按照我之前的吧，但是这个落的雪花不错，加入到我的里面」——
+   首页版式、配色、插画全部保持原样，只补这层会缓缓飘下来的 ❄。
+   为什么挂在 body 直属、z-index:7：视觉稿的 .bg 是 z-index:0 的背景层，
+   但主站 .hero 和卡片都是不透明实底，雪花放到底下会被整片盖住、一片都看不见。
+   所以这一层浮在内容之上（仍低于顶栏 60 / 弹窗 90），靠 pointer-events:none
+   与低透明度保证「看得见、点不到、不挡字」。
+   ===================================================================== */
+.xr-snowfall {
+  position: fixed;
+  inset: 0;
+  z-index: 7;
+  overflow: hidden;
+  pointer-events: none;
+}
+.xr-snowfall .xr-flk {
+  position: absolute;
+  top: -6%;
+  display: block;
+  line-height: 1;
+  color: rgba(158, 200, 250, .88);
+  text-shadow: 0 0 2px rgba(255, 255, 255, .95), 0 1px 3px rgba(36, 80, 150, .60);
+  user-select: none;
+  animation-name: xrSnowFall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+/* 和视觉稿同一条轨迹：从屏幕上方淡入，右飘 + 旋转，到屏幕下方淡出 */
+@keyframes xrSnowFall {
+  0%   { opacity: 0;   transform: translate(0, -10px) rotate(0deg); }
+  8%   { opacity: .92; }
+  90%  { opacity: .82; }
+  100% { opacity: 0;   transform: translate(38px, 112vh) rotate(220deg); }
+}
+/* 只在首页飘：门店 / 任务 / 双表核对这些表格页一律不叠装饰，免得压住表格文字。
+   body.route-home 由 app.js 的 render() 按当前路由切换；未登录（booting）时
+   没有这个类，登录页自然也不会飘。 */
+body:not(.route-home) .xr-snowfall { display: none; }
+/* 手机窄屏减半，避免小屏里雪花显得密 */
+@media (max-width: 680px) {
+  .xr-snowfall .xr-flk:nth-child(n+13) { display: none; }
+}
+/* 系统开了「减少动态效果」就整层退场，不留下静止的半片雪 */
+@media (prefers-reduced-motion: reduce) {
+  .xr-snowfall { display: none !important; }
+}

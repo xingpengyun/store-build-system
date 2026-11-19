@@ -79,6 +79,11 @@ window.App = (function () {
     }
 
     var page = window.Pages[route] || window.Pages.home;
+
+    /* z233：全屏落雪只在首页显示，用 body.route-home 控制（见 theme.css）。
+       render() 是路由切换 / 数据重画的唯一入口，放这里不会漏掉任何一次切页。 */
+    document.body.classList.toggle('route-home', route === 'home');
+
     var host = document.getElementById('view');
     if (!host) return;
 
