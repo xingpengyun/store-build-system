@@ -634,14 +634,20 @@ window.Store = (function () {
        各页面直接 UI.avatar(m.name, m.color, size, m.animal) 就行。 */
     var art = data.settings.memberArt;
     if (!art || typeof art !== 'object' || Array.isArray(art)) art = data.settings.memberArt = {};
-    var memberIds = {};
-    data.members.forEach(function (m) { memberIds[m.id] = 1; });
-    Object.keys(art).forEach(function (k) { if (!memberIds[k]) delete art[k]; });
-    /* 云端可能被别的版本写进一个不存在的动物 key：一起清掉，别让它传到页面上 */
+    /* z236：members 暂时为空时（云端刚拉取、别的版本写了空表）绝不清头像键。
+       以前这里会一次性删光所有 memberArt，再被回写云端 —— 就是「头像又没有了」的隐患。 */
+    if (data.members.length) {
+      var memberIds = {};
+      data.members.forEach(function (m) { memberIds[m.id] = 1; });
+      Object.keys(art).forEach(function (k) { if (!memberIds[k]) delete art[k]; });
+    }
+    /* 云端可能被别的版本写进一个不存在的动物 key：一起清掉，别让它传到页面上。
+       'none' 是 z236 起「主动不用头像」的标记，是合法值，不能当脏数据删掉。 */
     var known = (window.UI && UI.ANIMALS) || null;
+    var artNo = (window.UI && UI.ART_NO) || 'none';
     data.members.forEach(function (m) {
       var k = art[m.id];
-      if (k && known && !known[k]) { delete art[m.id]; k = ''; }
+      if (k && k !== artNo && known && !known[k]) { delete art[m.id]; k = ''; }
       m.animal = k || '';
     });
 
@@ -1914,16 +1920,20 @@ window.Store = (function () {
 
   function setMemberArt(id, key) {
     if (!id) return '';
-    /* 只收 UI 里真有的头像（22 个 3D + 老 key 兼容项）：别的版本写进来的怪 key
-       一律当「不用头像」，免得各页面各 fallback 一套，最后同一个人的头像四处长得不一样 */
-    if (key && !(window.UI && UI.ANIMALS && UI.ANIMALS[key])) key = '';
+    var artNo = (window.UI && UI.ART_NO) || 'none';
+    /* 只收 UI 里真有的头像（3D + 老 key 兼容项）：别的版本写进来的怪 key
+       一律当「没配过」，z236 起会兜底显示默认 3D 头像。 */
+    if (key && key !== artNo && !(window.UI && UI.ANIMALS && UI.ANIMALS[key])) key = '';
     var map = artMap();
-    if (key) map[id] = key; else delete map[id];
+    /* z236：把「主动选了不用头像」显式写成 'none'，跟「没配过」区分开 ——
+       没配过要兜底 3D 头像，'none' 才退回「颜色 + 姓氏首字」。
+       以前两者都是 delete，配置一被清空就全变首字，用户看到的就是「头像都没了」。 */
+    map[id] = key || artNo;
     state.settings.memberArt = map;
     pushSettings();
     cacheLocal();
     var m = memberById(id);
-    if (m) m.animal = key || '';
+    if (m) m.animal = key || artNo;
     /* 顶栏那颗头像跟着一起换：它在页面外壳里，不参与页面重绘，
        不主动通知就得等下一次整页刷新才更新（用户看到的就是「换了没生效」）。 */
     if (window.App && window.App.refreshChrome) window.App.refreshChrome();

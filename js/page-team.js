@@ -82,7 +82,10 @@ window.Pages.team = (function () {
     var isNew = !member;
     var m = member || {};
     var picked = m.color || COLORS[0];
-    var pickedArt = UI.normArt(m.animal);   /* 老 key（cat / dog…）落到对应的 3D 头像上 */
+    /* z236：没专门配过头像的人，选择器里也把他当前那张「默认 3D 头像」标成选中，
+       否则弹窗里勾的是「不用头像」、页面上却显示 3D 图，看着像没生效。
+       显式选了「不用头像」（ART_NO）才回到「颜色 + 姓氏首字」那一档。 */
+    var pickedArt = (m.animal === UI.ART_NO) ? '' : UI.artKeyFor(m.animal, m.name);
 
     var colorDots = COLORS.map(function (c) {
       return '<label class="color-opt" style="display:inline-flex;margin-right:6px;cursor:pointer">' +
@@ -105,9 +108,10 @@ window.Pages.team = (function () {
       return '<div class="art-group"><div class="art-group-head">' + g.title + '</div>' +
         '<div class="art-grid is-3d">' + g.keys.map(artOpt).join('') + '</div></div>';
     }).join('');
+    /* z236：这一档要真的显示「颜色 + 姓氏首字」，显式传 ART_NO 关掉默认头像兜底 */
     var noneDot = '<label class="art-opt is-none" title="不用动物，只用颜色 + 姓氏首字">' +
       '<input type="radio" name="art" value=""' + (pickedArt ? '' : ' checked') + ' />' +
-      UI.avatar(m.name || '新', picked, 'md') +
+      UI.avatar(m.name || '新', picked, 'md', UI.ART_NO) +
     '</label>';
 
     UI.modal({

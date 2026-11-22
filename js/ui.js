@@ -209,6 +209,33 @@ window.UI = (function () {
 
   var ART_KEYS = Object.keys(ART);
 
+  /* ---------------- z236 · 头像兜底 ----------------
+     「头像又没有了」的真实原因：云端 settings.memberArt 里只有少数几个人存了 key，
+     其余成员（常常包括当前登录人）键不存在 → 各页面统一降级成「纯色圆 + 姓氏首字」，
+     用户看到的就是「头像没了」。图片本身一张没丢（28 张线上全 200）。
+     这里给「没配过」的成员按姓名稳定分配一张默认 3D 头像，所有页面一起生效；
+     同时留一个显式标记，让人仍然可以主动选「不用头像」。 */
+  var ART_NO = 'none';
+  var DEFAULT_ART_KEYS = [];
+  ART_GROUPS.forEach(function (g) {
+    g.keys.forEach(function (k) { if (ART[k] && ART[k].img) DEFAULT_ART_KEYS.push(k); });
+  });
+  /* 稳定 hash：同一个名字永远同一张，换电脑 / 清缓存 / 成员重排都不会变，
+     也不会出现「全员一张脸」。 */
+  function defaultArt(name) {
+    var s = String(name || '?'), h = 0;
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+    h = h < 0 ? -h : h;
+    return DEFAULT_ART_KEYS[h % DEFAULT_ART_KEYS.length];
+  }
+  /* 页面统一走这个：合法值 / 老 key 原样用；没配过或值不合法 → 默认 3D；
+     显式 ART_NO → 返回 ''，保留「不用头像（颜色 + 姓氏首字）」那一档。
+     注意 artKey() 的语义不变（不合法仍返回 ''），别把校验和展示混在一起。 */
+  function artKeyFor(v, name) {
+    if (v === ART_NO) return '';
+    return artKey(v) || defaultArt(name);
+  }
+
   /* 换头像图片时改这个版本号，img 的 ?v= 跟着变，浏览器才会重新拉图。
      ⚠ 2026-11-04 z204 —— 这个值从 z168 起一直没动过，而 10-31 之前线上
      assets/avatars3d/ 一直没上传（全 404）。访问过旧站的浏览器 / CDN 会把
@@ -216,7 +243,8 @@ window.UI = (function () {
      表现就是「换台电脑登录，所有头像都没了」。
      换新版本号 = 所有图片 URL 一起换，旧缓存自然绕开。
      以后**补图、换图都必须改这里**，否则只有清缓存的人能看到新图。 */
-  var ART_VER = '20261112z210';
+  /* z236：升一版，绕开浏览器 / CDN 可能缓存下来的旧 404（注释里那个老坑） */
+  var ART_VER = '20261112z236';
 
   /* 图片加载失败时的兜底：把圆换成「品牌色 + 姓氏首字」。
      没有兜底的话，图挂了圆里就是空的（背景色是浅色底），用户看到的就是「头像消失」。
@@ -247,13 +275,15 @@ window.UI = (function () {
       ' onerror="UI.artFail(this)" />';
   }
 
-  /* 头像：传了动物 key 就画小动物，没传还是原来那颗「颜色 + 姓氏首字」 */
+  /* 头像：有配置就画对应 3D 图；没配过按姓名兜底一张；显式选了「不用头像」才退回
+     「颜色 + 姓氏首字」。z236 起所有页面（顶栏 / 团队 / 留言板 / 授权名单 / 任务卡）
+     都走这一套，不再出现「有的地方有头像、有的地方只有两个字」。 */
   function avatar(name, color, size, animal) {
-    animal = normArt(animal);           /* 老 key（cat / dog …）自动换成 3D 版 */
-    var d = animal && ART[animal];
-    if (d && d.img) {                   /* 有一点图才画圆头像，否则退回「颜色 + 姓氏首字」 */
+    var key = artKeyFor(animal, name);
+    var d = key && ART[key];
+    if (d && d.img) {
       return '<span class="avatar avatar-' + (size || 'md') + ' avatar-art" style="background:' + d.bg +
-        '" title="' + U.esc(d.name) + '">' + animalSvg(animal, name) + '</span>';
+        '" title="' + U.esc(d.name) + '">' + animalSvg(key, name) + '</span>';
     }
     var ch = (name || '?').slice(0, 1);
     return '<span class="avatar avatar-' + (size || 'md') + '" style="background:' + (color || '#3f6bf5') + '">' +
@@ -1066,6 +1096,9 @@ window.UI = (function () {
     ART_GROUPS: ART_GROUPS, /* 选择器用：按组 + 手调顺序铺，全是 3D 图 */
     normArt: normArt,       /* 老头像 key → 对应 3D key */
     artKey: artKey,         /* 历史值 → 真能画出来的 key（不合法就返回 ''） */
+    ART_NO: ART_NO,         /* 「不用头像」的显式持久化标记 */
+    defaultArt: defaultArt, /* 按姓名稳定分配一张默认 3D 头像 */
+    artKeyFor: artKeyFor,   /* 页面展示统一入口：配置 → 默认头像 → 首字 */
     progress: progress,
     empty: empty,
     toast: toast,

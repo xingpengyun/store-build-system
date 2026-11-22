@@ -582,8 +582,8 @@ window.Pages.stores = (function () {
       var m = S.memberById(t.assigneeId);
       var due = S.suggestDateOf(t);
       var ini = (m && m.name) ? m.name.charAt(0) : '?';
-      /* 负责人头像：成员配了小动物就画小动物（和首页 / 任务页一致），否则还是姓氏首字 */
-      var art = (m && UI.artKey(m.animal)) || '';
+      /* 负责人头像：z236 起没配过也按名字兜底一张 3D 图，和首页 / 任务页一致 */
+      var art = (m && UI.artKeyFor(m.animal, m.name)) || '';
       var whoAva = art
         ? '<i class="tcard-ava is-art" style="background:' + UI.ANIMALS[art].bg + '">' + UI.animalSvg(art, m && m.name) + '</i>'
         : '<i class="tcard-ava">' + U.esc(ini) + '</i>';

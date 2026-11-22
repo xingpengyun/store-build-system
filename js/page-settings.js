@@ -273,17 +273,17 @@ window.Pages.settings = (function () {
     }
 
     /* 这个人在团队里配了小动物没有：配了就画动物，和其他页面保持一致。
-       授权名单里可能是还没加进团队的人，查不到就退回首字。 */
+       z236：没配过按名字兜底一张默认 3D 头像；授权名单里还没进团队的人也一样，
+       不再出现「有的地方有头像、有的地方只有首字」。 */
     function artOf(name) {
       var list = (S.getState() || {}).members || [];
       var nm = String(name || '').trim();
       for (var i = 0; i < list.length; i++) {
         if (String(list[i].name || '').trim() === nm) {
-          var a = list[i].animal;
-          return (a && UI.artKey(a)) || '';
+          return UI.artKeyFor(list[i].animal, nm);
         }
       }
-      return '';
+      return UI.defaultArt(nm);
     }
 
     var chips = allow.length
