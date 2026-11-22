@@ -1373,3 +1373,16 @@ body:not(.route-home) .xr-snowfall { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .xr-snowfall { display: none !important; }
 }
+
+/* =====================================================================
+   z234 · 移除「系统功能介绍」类文字
+   用户：「系统功能介绍的文字（都删掉）」——只关掉解释「这个功能是干什么的 /
+   怎么用 / 数据怎么存 / 点哪里」的说明文字；字段标注（选填）、数字、文件名、
+   状态与错误提示一律保留。整块介绍卡已在各 page-*.js / view-*.js 里直接删掉。
+   ===================================================================== */
+.item-hint, .field-hint, .pm-hint, .acc-hint, .acc-sub, .fold-note,
+.tl-hint, .board-hint, .board-tip, .ship-foot, .login-hint,
+.welcome-text, .welcome-role, .kpi-help, .kpi-help-pop { display: none !important; }
+/* 设置页的卡片副标题与灰色说明段全部是功能介绍 */
+body[data-route="settings"] .card-sub,
+body[data-route="settings"] p.muted { display: none !important; }

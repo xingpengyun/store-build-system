@@ -17,11 +17,10 @@
     var list = DB.listHistory();
 
     if (!list.length) {
-      return '<div class="ck-card"><div class="ck-card-head"><h2>核对历史</h2>' +
-        '<span class="ck-hint">每次核对都会自动留档</span></div>' +
+      return '<div class="ck-card"><div class="ck-card-head"><h2>核对历史</h2></div>' +
         '<div class="ck-card-body">' + UI.empty({
           title: '还没有核对记录',
-          text: '完成一次核对后，这里会保存那次的统计、字段配置和需要跟进的明细，随时可以回来看。',
+          text: '',
           action: '<button class="ck-btn is-primary" data-act="new">' + UI.icon('plus') + '开始第一次核对</button>'
         }) + '</div></div>';
     }
@@ -79,10 +78,6 @@
     });
     h += '</div></div>';
 
-    h += '<div class="ck-inline-note" style="margin-top:16px">' + UI.icon('info') +
-      '<span>历史保存在这台电脑的浏览器里（不上云）。为了省空间，只保留统计和「非一致」的明细行，' +
-      '一致的行只记数量 —— 需要完整明细时导出 Excel 报告存档。</span></div>';
-
     return h;
   }
 
@@ -96,7 +91,7 @@
     title: function () { return '核对历史'; },
     subtitle: function () {
       var n = DB.listHistory().length;
-      return n ? ('共 ' + n + ' 次核对记录') : '每次核对都会自动留档';
+      return n ? ('共 ' + n + ' 次核对记录') : '';   /* z234：保留数据、删功能介绍 */
     },
     topActions: function () {
       return '<button class="ck-btn is-sm is-primary" data-top="new">' + UI.icon('plus') + '新建核对</button>';

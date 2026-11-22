@@ -236,7 +236,7 @@ window.Pages.stores = (function () {
           '</select>' +
           (isNew ? '' : '<div class="field-hint" data-owner-hint style="display:none"></div>') +
         '</div>' +
-        '<div class="field"><label>阶段进度 <span class="field-sub">按阶段自动算，不用填</span></label>' +
+        '<div class="field"><label>阶段进度</label>' +
           '<div data-prog-preview>' + progPreviewHtml(s.stage || (C.STAGES[0] || {}).key) + '</div>' +
         '</div>' +
       '</div>' +

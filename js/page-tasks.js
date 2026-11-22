@@ -250,9 +250,7 @@ window.Pages.tasks = (function () {
       '<div class="tl-all' + (!state.stage ? ' on' : '') + '" data-stage-all>' +
         '<span>全部阶段</span><span class="tl-num">' + stores.length + ' 家</span>' +
       '</div>' +
-      '<div class="tl-nodes">' + nodes + '</div>' +
-      '<p class="tl-hint">点阶段看门店，点门店展开清单；再点一次取消筛选。' +
-        '<br />阶段与二级阶段在这里只做筛选，增删改在「系统设置 → 阶段与子阶段」里维护。</p>';
+      '<div class="tl-nodes">' + nodes + '</div>';
   }
 
   /* ---------------- 当前筛选条件条 ---------------- */

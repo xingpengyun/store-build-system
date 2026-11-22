@@ -56,9 +56,6 @@
       '<div class="ck-hero-txt">' +
         '<span class="ck-hero-eyebrow">' + UI.icon('spark') + '包邮门店智能核验</span>' +
         '<h2>外部表里的门店，订够门槛</h2>' +
-        '<p>外部表是这次要核实包邮的门店，内部表是含包邮与不包邮的订货明细。系统自动读全部工作表、' +
-          '认出两边写法不同的同一家店，逐家算清楚订货金额够不够门槛，把未达标的挑出来。' +
-          '金额一律由程序计算，原始数据只读不改。</p>' +
         '<div class="ck-hero-acts">' +
           '<button class="ck-btn is-primary is-lg" data-act="new">' + UI.icon('plus') + '开始核对</button>' +
           (h ? '<button class="ck-btn is-line is-lg" data-act="last">' + UI.icon('eye') + '看上次结果</button>' : '') +
@@ -70,8 +67,7 @@
     if (!h) {
       /* ---------- 第一次使用 ---------- */
       html += '<div class="ck-card">' +
-        '<div class="ck-card-head"><h2>直接开始：拖两个文件进来</h2>' +
-          '<span class="ck-hint">支持 .xlsx / .xls / .csv，文件不离开这台电脑</span></div>' +
+        '<div class="ck-card-head"><h2>直接开始：拖两个文件进来</h2></div>' +
         '<div class="ck-card-body">' +
           '<div class="ck-uploads">' +
             '<label class="ck-drop" id="homeDropA">' +
@@ -87,23 +83,9 @@
               '<div class="ck-drop-sub">多张工作表会<b>自动全部读取</b></div>' +
             '</label>' +
           '</div>' +
-          '<div class="ck-inline-note" style="margin-top:14px">' + UI.icon('info') +
-            '<span>第一次用建议走「新建核对」：会带你确认工作表、逐张选字段，过程更清楚。' +
-            '这里上传只是图快。</span></div>' +
         '</div>' +
       '</div>';
 
-      html += '<div class="ck-card">' +
-        '<div class="ck-card-head"><h2>它是怎么对的</h2></div>' +
-        '<div class="ck-card-body">' +
-          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px">' +
-            stepCard('1', '读全表', '外部表里有多少张工作表就读多少张，自动分辨明细表、汇总表、空白表和说明页。') +
-            stepCard('2', '你定字段', '门店名称用哪一列、内部表的订货金额用哪一列，全部由你从真实列名里选，系统只做推荐。') +
-            stepCard('3', '认门店', '「上海环球港」和「上海 环球港店」会认成同一家；拿不准的绝不硬凑，交给你确认。') +
-            stepCard('4', '比门槛', '内部表这家店的订货金额合计 ≥ 门槛就算达标，欠多少由程序算；没进清单的门店按不包邮处理。') +
-          '</div>' +
-        '</div>' +
-      '</div>';
       html += '</div>';
       return html;
     }
@@ -227,19 +209,9 @@
     return html;
   }
 
-  function stepCard(no, title, text) {
-    return '<div>' +
-      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">' +
-        '<span style="width:22px;height:22px;border-radius:7px;background:var(--brand-l);color:var(--brand-d);font-size:11.5px;font-weight:700;display:grid;place-items:center">' + no + '</span>' +
-        '<span style="font-size:13px;font-weight:600">' + U.esc(title) + '</span>' +
-      '</div>' +
-      '<div class="ck-small ck-muted" style="line-height:1.65">' + U.esc(text) + '</div>' +
-    '</div>';
-  }
-
   window.CKPages.home = {
     title: function () { return '核对首页'; },
-    subtitle: function () { return '内部表 × 外部表 · 包邮门槛核验'; },
+    subtitle: function () { return ''; },
     topActions: function () {
       return '<button class="ck-btn is-primary" data-act="new">' + UI.icon('plus') + '新建核对</button>';
     },

@@ -959,3 +959,9 @@ a.ck-nav-item { color: #adb9d8; }
 /* 内容区：和主站内容一致，左右不留白，靠主站 .content 控制外边距 */
 .ck-host-body { min-width: 0; }
 
+/* z234 · 移除「系统功能介绍」类文字（双表核对页）。
+   只关空状态说明、拖放区说明、字段说明、页面副标题；
+   ck-inline-note 里的警告 / 错误 / 解析结果属于业务反馈，保留。 */
+.ck-empty-text, .ck-drop-sub, .ck-tip, .ck-page-sub,
+.ck-card-foot .ck-muted { display: none !important; }
+

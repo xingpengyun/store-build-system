@@ -77,8 +77,7 @@
   function uploadHtml() {
     var s = st();
     var h = '<div class="ck-card">' +
-      '<div class="ck-card-head"><h2>第一步：把两个文件放进来</h2>' +
-        '<span class="ck-hint">支持 .xlsx / .xls / .csv，文件只在这台电脑里解析</span></div>' +
+      '<div class="ck-card-head"><h2>第一步：把两个文件放进来</h2></div>' +
       '<div class="ck-card-body">' +
         '<div class="ck-uploads">';
 
@@ -415,7 +414,7 @@
     }
     if (!items.length) return '';
     return '<div class="ck-inline-note" style="margin-bottom:12px;align-items:center">' + UI.icon('wand') +
-      '<span style="flex:1">系统建议：' + U.esc(items.join('，')) + '（只是建议，需要你确认）</span>' +
+      '<span style="flex:1">系统建议：' + U.esc(items.join('，')) + '</span>' +
       '<button class="ck-btn is-xs is-soft" data-use-rec="' + scope + '" data-sheet="' + U.esc(sheetName || '') + '">采用</button></div>';
   }
 
@@ -432,7 +431,6 @@
     var thr = curThreshold();
     return '<div class="ck-card">' +
       '<div class="ck-card-head"><h2>核验门槛</h2>' +
-        '<span class="ck-hint">统一在「规则配置」里改</span>' +
         '<div class="ck-head-right">' +
           '<button class="ck-btn is-sm" data-act="goRules">' + UI.icon('settings') + '去改门槛</button>' +
         '</div></div>' +
@@ -510,7 +508,6 @@
 
     h += '<div class="ck-card" style="margin-top:16px">' +
       '<div class="ck-card-head"><h2>外部表字段</h2>' +
-        '<span class="ck-hint">每张工作表可以独立配置 · 不同 Sheet 可代表不同物流公司</span>' +
         '<div class="ck-head-right">' +
           '<button class="ck-btn is-sm" data-act="applyAll">' + UI.icon('copy') + '把这套配置应用到所有表</button>' +
         '</div></div>';
@@ -1146,7 +1143,7 @@
     title: function () { return '新建核对'; },
     subtitle: function () {
       var s = st();
-      if (!s.aFile || !s.bFile) return '上传内部表（订货明细）和外部表（这次要核实包邮的门店）';
+      if (!s.aFile || !s.bFile) return '';   /* z234：去掉「这个功能是什么」的介绍文字 */
       return '已读取 ' + (s.aFile.sheets.length + s.bFile.sheets.length) + ' 张工作表，正在配置核对规则';
     },
     topActions: function () {

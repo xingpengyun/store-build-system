@@ -191,7 +191,7 @@ window.Pages.home = (function () {
   }
 
   function subHtml(s) {
-    if (!filterStage) return '点击上方色块或图例，可直接筛出该阶段的门店';
+    if (!filterStage) return '';   /* z234：去掉「点击上方色块…」这类功能介绍文字 */
     var n = pickedStores(s).length;
     return '已筛选 <b style="color:var(--primary)">' + U.esc(filterStage) + '</b>' +
       ' · 共 <b>' + n + '</b> 家' + (n === 0 ? '（该阶段暂无门店）' : '');
@@ -1258,14 +1258,8 @@ window.Pages.home = (function () {
     ];
 
     var kpiHtml = kpis.map(function (k) {
-      /* 有 help 的卡片：标签旁加 ⓘ，hover / 键盘聚焦 / 点击都能看判断逻辑 */
-      var helpHtml = k.help
-        ? '<span class="kpi-help" tabindex="0" role="button" aria-label="查看「' + k.label + '」的判断逻辑"' +
-            ' style="color:' + k.color + '">' +
-            UI.icon('info') +
-            '<span class="kpi-help-pop">' + k.help + '</span>' +
-          '</span>'
-        : '';
+      /* z234：用户要求删掉全部「系统功能介绍」文字，KPI 的 ⓘ 判断逻辑浮层不再渲染 */
+      var helpHtml = '';
       return '<div class="kpi is-clickable" data-kpi="' + k.key + '" role="button" tabindex="0"' +
           ' title="' + U.esc(k.tip) + '">' +
         '<span class="kpi-icon" style="background:' + k.soft + ';color:' + k.color + '">' + UI.icon(k.icon) + '</span>' +
@@ -1436,7 +1430,7 @@ window.Pages.home = (function () {
          每个省显示我们区域的门店数量」。团队功能仍在侧栏菜单 / 独立页。 */
       '<div class="card cn-map-card">' +
         '<div class="card-head">' +
-          '<h3>全国门店分布</h3><span class="card-sub">（按省级行政区）</span>' +
+          '<h3>全国门店分布</h3>' +
           '<div class="card-tools"><span class="link-more" data-go="stores">全部门店 →</span></div>' +
         '</div>' +
         (mapAgg && window.ChinaMap
@@ -1573,16 +1567,6 @@ window.Pages.home = (function () {
     try {
       root.querySelectorAll('.kpi-help').forEach(placeTip);
     } catch (e) { /* 老浏览器没有 forEach 就算了，不影响功能 */ }
-
-    /* 首次进首页引导一次：ⓘ 在哪、怎么用（之后不再打扰） */
-    try {
-      if (!localStorage.getItem('sbs.kpiHelpTip')) {
-        localStorage.setItem('sbs.kpiHelpTip', '1');
-        setTimeout(function () {
-          UI.toast('提示：KPI 标签旁的 ⓘ 点一下（或鼠标放上去）能查看判断逻辑', 'info');
-        }, 900);
-      }
-    } catch (e) {}
 
     /* 统一用事件委托：表格行会被重新渲染，直接绑在行上会失效 */
     root.addEventListener('click', function (e) {

@@ -264,7 +264,6 @@ window.Pages.team = (function () {
 
     return '<div class="board-compose">' +
       '<div class="board-who">' + whoHtml +
-        '<span class="board-hint">这里留的东西，团队所有人都能看到</span>' +
       '</div>' +
       '<textarea class="textarea board-input" data-board-input maxlength="800"' +
         ' placeholder="说点什么…比如：深圳店明天验场地，物料先别发。">' + U.esc(bs.draft) + '</textarea>' +
@@ -318,12 +317,11 @@ window.Pages.team = (function () {
               (bs.open ? '收起' : '展开全部 ' + notes.length + ' 条') +
             '</button>'
           : '')
-      : UI.empty('还没有留言', '写第一句吧，同事打开就能看到');
+      : UI.empty('还没有留言', '');   /* z234：去掉「教怎么用」的引导文字 */
 
     return '<div class="card board-card" id="boardCard">' +
       '<div class="card-head"><h3>留言板</h3>' +
-        '<span class="card-sub">' + (notes.length ? '共 ' + notes.length + ' 条 · ' : '') +
-          '谁都能留，云端同步，团队都看得到</span></div>' +
+        (notes.length ? '<span class="card-sub">共 ' + notes.length + ' 条</span>' : '') + '</div>' +
       '<div class="board-body">' + boardComposerHtml() + listHtml + '</div>' +
     '</div>';
   }
@@ -419,12 +417,11 @@ window.Pages.team = (function () {
         '<div class="kpi-foot">需要跟进</div></div></div>' +
       '<div class="kpi"><span class="kpi-icon" style="background:#e6f8ef;color:#17b26a">' + UI.icon('target') + '</span>' +
         '<div class="kpi-body"><div class="kpi-label">平均完成率</div><div class="kpi-value">' + avg + '%</div>' +
-        '<div class="kpi-foot">按任务数计算</div></div></div>' +
+        '<div class="kpi-foot"></div></div></div>' +
     '</section>' +
 
     '<div class="card fade-up" style="animation-delay:.08s">' +
-      '<div class="card-head"><h3>成员概览</h3>' +
-        '<span class="card-sub">点击卡片查看该成员全部任务</span></div>' +
+      '<div class="card-head"><h3>成员概览</h3></div>' +
       (rows.length ? '<div class="team-grid">' + cards + '</div>' : UI.empty('还没有团队成员')) +
     '</div>' +
 

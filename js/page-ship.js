@@ -125,7 +125,7 @@ window.Pages.ship = (function () {
       if (all.length) {
         return '<span class="sm-none is-ok">物料都通知过了 · 共 ' + all.length + ' 项</span>';
       }
-      return '<span class="sm-none">还没录物料 · 点门店名进去录</span>';
+      return '<span class="sm-none">还没录物料</span>';   /* z234：去掉操作引导 */
     }
 
     var watch = Number(C.ARR_WATCH_DAYS || 7);
@@ -198,7 +198,7 @@ window.Pages.ship = (function () {
 
       '<td class="ship-note-cell">' +
         '<input class="ship-note" data-note value="' + U.esc(r.note) + '"' +
-          ' placeholder="点这里加备注" title="' + U.esc(r.note || '例如：等门店确认收货人') + '" />' +
+          ' placeholder="备注" title="' + U.esc(r.note) + '" />' +
       '</td>' +
 
       '<td class="ship-move">' +
@@ -268,7 +268,7 @@ window.Pages.ship = (function () {
 
   function kpiHtml(rows, s) {
     var items = [
-      { k: 'notify', label: '该通知供应商', v: s.notify, foot: '7 天内到，可以先通知', color: '#7a5af8', soft: '#f2eefe', icon: 'bell',
+      { k: 'notify', label: '该通知供应商', v: s.notify, foot: '7 天内到', color: '#7a5af8', soft: '#f2eefe', icon: 'bell',
         tip: '有物料 7 天内到（含今天）、还没通知供应商。已经过了到货日的不算在这里，算进「漏通知」' },
       { k: 'arrlate', label: '漏通知', v: s.arrLate, foot: '过了到货日还没通知', color: '#d92d20', soft: '#fdedeb', icon: 'box',
         tip: '有物料已经过了到货日还没通知供应商 —— 最急，先去处理这几家' }
@@ -424,8 +424,8 @@ window.Pages.ship = (function () {
       { k: 'pending', label: '待通知', v: s.pending, foot: '分布在 ' + s.pendingCount + ' 家店', color: '#3f6bf5', soft: '#edf2fe', icon: 'box' },
       { k: 'late', label: '漏通知', v: s.late, foot: '过了到货日还没通知', color: '#d92d20', soft: '#fdedeb', icon: 'alert' },
       { k: 'today', label: '今天到', v: s.today, foot: '今天该到的', color: '#f79009', soft: '#fef4e6', icon: 'clock' },
-      { k: 'soon', label: '7 天内到', v: s.soon, foot: '该通知供应商发货', color: '#7a5af8', soft: '#f2eefe', icon: 'bell' },
-      { k: 'notified', label: '已通知', v: s.notified, foot: '不用再催了', color: '#17b26a', soft: '#e6f8ef', icon: 'check' }
+      { k: 'soon', label: '7 天内到', v: s.soon, foot: '待通知', color: '#7a5af8', soft: '#f2eefe', icon: 'bell' },
+      { k: 'notified', label: '已通知', v: s.notified, foot: '已通知', color: '#17b26a', soft: '#e6f8ef', icon: 'check' }
     ];
 
     return '<section class="kpi-grid fade-up" style="grid-template-columns:repeat(5,minmax(0,1fr));animation-delay:.04s">' +
@@ -578,7 +578,7 @@ window.Pages.ship = (function () {
     UI.modal({
       size: 'lg',
       title: '门店物料',
-      sub: '选一家店，直接看它的物料到货',
+      sub: '',   /* z234：去掉「怎么使用本弹窗」的功能介绍文字 */
       body: body,
       footer: '<button class="btn" data-pick-close type="button">关闭</button>',
       onMount: function (box, close) {
@@ -626,7 +626,7 @@ window.Pages.ship = (function () {
       '<div class="page-head fade-up">' +
         '<div>' +
           '<h1>发货看板</h1>' +
-          '<p>' + U.cnDate(today) + ' · 共 <b>' + ds.storeCount + '</b> 家门店 · <b>' + ds.all + '</b> 条物料记录，按登记到货日排在下面' +
+          '<p>' + U.cnDate(today) + ' · 共 <b>' + ds.storeCount + '</b> 家门店 · <b>' + ds.all + '</b> 条物料记录' +
             (ds.late ? '，<b class="text-red">' + ds.late + ' 条漏通知</b>' : '') +
             (ds.today ? '，' + ds.today + ' 条今天就到' : '') + '</p>' +
         '</div>' +
@@ -689,10 +689,6 @@ window.Pages.ship = (function () {
         '</div>' +
       '</div>' +
       '<div id="shipTable">' + tableHtml(list) + '</div>' +
-      '<div class="ship-foot">' +
-        '<span>每行只铺还没通知供应商的物料，通知过的不再占地方；历史记录去「按到货日」视图的「已通知」</span>' +
-        '<span>「一件发出」点一下 = 整店物料都通知过供应商了，行沉到底；再点一下全部退回待通知</span>' +
-      '</div>' +
     '</div>';
   }
 

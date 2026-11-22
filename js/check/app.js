@@ -13,12 +13,13 @@ window.CKApp = (function () {
   var DB = window.CKDB;
 
   var ROUTES = {
-    home: { title: '核对首页', sub: '内部表 × 外部表' },
-    new: { title: '新建核对', sub: '上传两个文件，选择参与核对的工作表和字段' },
-    result: { title: '核对结果', sub: '逐行核对结果、异常处理与报告导出' },
-    alias: { title: '门店匹配库', sub: '人工确认过的门店对应关系，下次自动沿用' },
-    history: { title: '核对历史', sub: '每次核对的记录与结果' },
-    rules: { title: '规则配置', sub: '门槛金额、匹配阈值与数据管理' }
+    /* z234：用户要求删掉全部「系统功能介绍」文字，页面副标题一律留空 */
+    home: { title: '核对首页', sub: '' },
+    new: { title: '新建核对', sub: '' },
+    result: { title: '核对结果', sub: '' },
+    alias: { title: '门店匹配库', sub: '' },
+    history: { title: '核对历史', sub: '' },
+    rules: { title: '规则配置', sub: '' }
   };
 
   var state = {

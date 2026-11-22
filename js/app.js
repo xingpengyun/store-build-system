@@ -83,6 +83,8 @@ window.App = (function () {
     /* z233：全屏落雪只在首页显示，用 body.route-home 控制（见 theme.css）。
        render() 是路由切换 / 数据重画的唯一入口，放这里不会漏掉任何一次切页。 */
     document.body.classList.toggle('route-home', route === 'home');
+    /* z234：给 body 标当前路由，CSS 好精确关掉各页的「功能介绍」文字 */
+    document.body.setAttribute('data-route', route);
 
     var host = document.getElementById('view');
     if (!host) return;
@@ -614,13 +616,9 @@ window.App = (function () {
   }
 
   function maybeWelcome() {
-    var name = myName();
-    if (!name || hasWelcomed(name)) return;
-    markWelcomed(name);
-    /* 等主界面先露出来再弹，别盖在加载遮罩上 */
-    setTimeout(function () {
-      window.UI.welcome({ name: name, admin: S.canSettings(name) });
-    }, 500);
+    /* z234：用户要求删掉全部「系统功能介绍」文字 —— 首次登录欢迎弹窗整套停用。
+       下面几个 localStorage 辅助函数保留不动，老登录记录不受影响。 */
+    return;
   }
 
   function logout() {

@@ -32,12 +32,10 @@
 
     if (!all.length) {
       return '<div class="ck-card"><div class="ck-card-head"><h2>门店匹配库</h2>' +
-        '<span class="ck-hint">人工确认过的门店对应关系，核对时优先使用</span>' +
         '<div class="ck-head-right"><button class="ck-btn is-sm is-primary" data-act="add">' + UI.icon('plus') + '手动添加</button></div>' +
         '</div><div class="ck-card-body">' + UI.empty({
           title: '匹配库还是空的',
-          text: '在核对结果里遇到「上海 环球港店 = 上海环球港」这类对应关系时，点一下就能存进来。' +
-            '以后每次核对，相同写法会自动沿用，不用再确认。',
+          text: '',
           action: '<button class="ck-btn is-primary" data-act="goResult">' + UI.icon('arrowRight') + '去核对结果看看</button>'
         }) + '</div></div>';
     }
@@ -46,9 +44,9 @@
     var fromCheck = all.length - manual;
 
     h += '<div class="ck-kpis" style="margin-bottom:16px">' +
-      UI.kpi({ label: '匹配库条目', value: U.fmtInt(all.length), sub: '每种写法一条' }) +
-      UI.kpi({ label: '核对时确认', value: U.fmtInt(fromCheck), tone: 'ok', sub: '从结果页存进来' }) +
-      UI.kpi({ label: '手动添加', value: U.fmtInt(manual), tone: 'wait', sub: '直接录入' }) +
+      UI.kpi({ label: '匹配库条目', value: U.fmtInt(all.length) }) +
+      UI.kpi({ label: '核对时确认', value: U.fmtInt(fromCheck), tone: 'ok' }) +
+      UI.kpi({ label: '手动添加', value: U.fmtInt(manual), tone: 'wait' }) +
     '</div>';
 
     h += '<div class="ck-card">' +
@@ -97,10 +95,6 @@
     }
     h += '</div>';
 
-    h += '<div class="ck-inline-note" style="margin-top:16px">' + UI.icon('info') +
-      '<span>匹配库是「写法 → 标准门店」的对照。核对时如果 外部表的门店写法命中这里，会直接按你确认过的关系处理，' +
-      '不再走相似度判断，也不会再问一次。</span></div>';
-
     return h;
   }
 
@@ -145,7 +139,7 @@
       title: '修改对应的标准门店',
       label: '标准门店名',
       value: a.canonical,
-      hint: '改的是右边的标准名，左边的写法不变'
+      hint: ''
     }).then(function (v) {
       if (!v) return;
       DB.updateAlias(id, { canonical: v });
@@ -158,7 +152,7 @@
     title: function () { return '门店匹配库'; },
     subtitle: function () {
       var n = DB.listAliases().length;
-      return n ? ('已积累 ' + n + ' 条对应关系，核对时会自动沿用') : '人工确认过的门店对应关系';
+      return n ? ('已积累 ' + n + ' 条对应关系') : '';   /* z234：保留数据、删功能介绍 */
     },
     topActions: function () {
       return '<button class="ck-btn is-sm" data-top="add">' + UI.icon('plus') + '添加</button>';

@@ -89,7 +89,6 @@ window.Login = (function () {
           '<input class="input" id="lgName" type="text" maxlength="20"' +
           '       placeholder="请填写你的真实姓名" autocomplete="name"' +
           '       value="' + esc(lastName()) + '" />' +
-          '<p class="login-hint">填真实姓名 —— 页面上显示的就是这个名字。</p>' +
         '</div>' +
         '<div class="field">' +
           '<label>账号</label>' +

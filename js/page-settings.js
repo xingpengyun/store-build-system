@@ -37,7 +37,6 @@ window.Pages.settings = (function () {
     '<div class="page-head fade-up">' +
       '<div>' +
         '<h1>系统设置</h1>' +
-        '<p>数据存放在云端，团队共享同一份；本机只保留一份缓存</p>' +
       '</div>' +
     '</div>' +
 
@@ -135,18 +134,7 @@ window.Pages.settings = (function () {
 
     baseCard() +
 
-    fieldCard() +
-    '<div class="card fade-up" style="animation-delay:.1s">' +
-      '<div class="card-head"><h3>云端说明</h3><span class="card-sub">改代码时的参考</span></div>' +
-      '<div class="desc-list">' +
-        '<div class="d-item"><div class="d-label">数据存储</div><div class="d-val">云端数据库（5 张表）</div></div>' +
-        '<div class="d-item"><div class="d-label">共享范围</div><div class="d-val">所有登录成员共享同一份</div></div>' +
-        '<div class="d-item"><div class="d-label">自动刷新</div><div class="d-val">每 45 秒检查一次他人改动</div></div>' +
-        '<div class="d-item"><div class="d-label">云端接入代码</div><div class="d-val">js/cloud.js</div></div>' +
-        '<div class="d-item"><div class="d-label">登录逻辑</div><div class="d-val">js/login.js</div></div>' +
-        '<div class="d-item"><div class="d-label">数据读写</div><div class="d-val">js/store.js</div></div>' +
-      '</div>' +
-    '</div>';
+    fieldCard();
   }
 
   /* ================= 门店档案 · 固定项（z163） =================
@@ -1643,8 +1631,7 @@ window.Pages.settings = (function () {
       bar.className = 'fold-all';
       bar.innerHTML =
         '<button class="btn btn-sm" type="button" data-fold="expand">全部展开</button>' +
-        '<button class="btn btn-sm" type="button" data-fold="collapse">全部收起</button>' +
-        '<span class="fold-all-tip">点任意卡片的标题，也能收起 / 展开</span>';
+        '<button class="btn btn-sm" type="button" data-fold="collapse">全部收起</button>';
       pageHead.parentNode.insertBefore(bar, pageHead.nextSibling);
 
       bar.addEventListener('click', function (e) {

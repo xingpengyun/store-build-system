@@ -125,7 +125,6 @@ window.Pages.reports = (function () {
     '<div class="page-head fade-up">' +
       '<div>' +
         '<h1>数据报表</h1>' +
-        '<p>数据实时统计 · 覆盖云端全部门店与任务</p>' +
       '</div>' +
       '<button class="btn" data-act="export">' + UI.icon('download') + '导出数据</button>' +
     '</div>' +
