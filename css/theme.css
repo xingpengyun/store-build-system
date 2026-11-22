@@ -1113,18 +1113,20 @@ button:focus-visible,
 
 
 /* =====================================================================
-   z209 · 参考图版圣诞主题
-   参考图的做法是「大角色 + 深蓝雪夜 + 装饰铺满整页」，而不是在渐变条上
-   撒小图标。这里把 z205~z208 的旧装饰层全部关掉，改挂 4 张透明 PNG 插画。
+   z209 · 参考图版圣诞主题（大角色 + 装饰铺满整页，4 张透明 PNG 插画）
+   z235 · 用户「这里是红色的主题圣诞红」：把 z209 的深蓝雪夜横幅换回经典
+   圣诞红。装饰一个不动，只把当年跟着变蓝的底色 / 边框 / 阴影 / 文字 /
+   日期卡玻璃 / 投影一起换成暖红金系 —— 否则红底配蓝玻璃、蓝投影会发脏。
    ===================================================================== */
 .hero {
   min-height: 138px;
   padding: 20px 22px;
   background:
-    radial-gradient(360px 200px at 76% -34%, rgba(255, 226, 158, .30), transparent 72%),
-    linear-gradient(180deg, #123073 0%, #1a4292 38%, #2a61ab 70%, #84adda 100%);
-  border: 1px solid rgba(190, 220, 255, .48);
-  box-shadow: inset 0 1px 0 rgba(226, 240, 255, .18), 0 12px 28px -18px rgba(10, 30, 80, .85);
+    radial-gradient(360px 200px at 76% -34%, rgba(255, 226, 158, .34), transparent 72%),
+    radial-gradient(520px 300px at 10% -46%, rgba(72, 10, 18, .55), transparent 74%),
+    linear-gradient(180deg, #6b1119 0%, #93161f 32%, #b82029 64%, #cf3a3a 100%);
+  border: 1px solid rgba(255, 214, 158, .48);
+  box-shadow: inset 0 1px 0 rgba(255, 235, 210, .22), 0 12px 28px -18px rgba(80, 12, 18, .90);
 }
 .hero::after { display: none; }
 .hero::before { display: none; }               /* 关掉 z208 的包装纸反光 */
@@ -1132,22 +1134,23 @@ button:focus-visible,
 .hero-fx::before, .hero-fx::after { display: none !important; }
 .hero-icon {
   position: relative; z-index: 4;
-  background: linear-gradient(150deg, rgba(255,255,255,.20), rgba(255,255,255,.08));
-  border: 1px solid rgba(226, 240, 255, .55);
-  box-shadow: 0 8px 20px rgba(8, 30, 80, .32), inset 0 1px 0 rgba(255,255,255,.22);
+  background: linear-gradient(150deg, rgba(255,255,255,.22), rgba(255,255,255,.08));
+  border: 1px solid rgba(255, 228, 190, .58);
+  box-shadow: 0 8px 20px rgba(60, 8, 14, .34), inset 0 1px 0 rgba(255,255,255,.24);
 }
 .hero-icon svg { width: 34px; height: 34px; }
 .hero-main { z-index: 4; max-width: 280px; }
-.hero-main h2 { color: #fffaf0; text-shadow: 0 2px 12px rgba(8, 26, 70, .55); }
-.hero-main p { color: #dcecff; text-shadow: 0 1px 8px rgba(8, 26, 70, .5); }
+.hero-main h2 { color: #fff8ec; text-shadow: 0 2px 12px rgba(56, 6, 12, .60); }
+.hero-main p { color: rgba(255, 238, 224, .95); text-shadow: 0 1px 8px rgba(56, 6, 12, .55); }
 .hero-main p b { color: #ffdd86; }
-.hero-main p b.warn { color: #ffb1a0; }
+.hero-main p b.warn { color: #ffd2a0; }   /* 红底上亮金橙比粉红更醒目 */
 /* z225：用户反馈「之前时间天气的那个地方怎么没有了」。
    z209 参考图改造时把 .hero-art（像素小店）和 .hero-date（日期/星期/天气）一起
    !important 隐藏，注释写「位置让给主角和小屋」。其实 DOM、天气缓存和实时刷新
    一直都在，只是整块看不见。现在只继续隐藏像素小店，恢复日期天气卡；
-   蓝色雪夜主题下改配深蓝玻璃卡、靠右并抬到 z-index:5，压在月亮/小屋/主角之上。
-   窄屏仍沿用 components.css 里 max-width:1180px 的隐藏断点。 */
+   z209 蓝色雪夜主题下曾改配深蓝玻璃卡；z235 换回圣诞红后，玻璃卡同步改成
+   深酒红（与 components.css 基础层同一套），靠右并抬到 z-index:5，
+   压在月亮/小屋/主角之上。窄屏仍沿用 components.css 里 max-width:1180px 的隐藏断点。 */
 .hero-art { display: none !important; }
 /* 用 .hero > .hero-date 提高特异性：theme.css 更上面有一条
    .hero > *:not(.hero-fx) { z-index:1 }（特异性 0,2,0），单写 .hero-date 会输给它，
@@ -1156,13 +1159,13 @@ button:focus-visible,
   margin-left: auto;
   position: relative;
   z-index: 5;
-  background: rgba(9, 32, 84, .58);
-  border-color: rgba(190, 220, 255, .38);
-  box-shadow: 0 10px 26px rgba(4, 18, 60, .42), inset 0 1px 0 rgba(255, 255, 255, .14);
+  background: rgba(74, 12, 20, .62);
+  border-color: rgba(255, 214, 170, .40);
+  box-shadow: 0 10px 26px rgba(44, 6, 12, .48), inset 0 1px 0 rgba(255, 255, 255, .16);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
-.hero-date .hd-weather { border-top-color: rgba(190, 220, 255, .30); }
+.hero-date .hd-weather { border-top-color: rgba(255, 214, 170, .32); }
 /* z205~z208 留在 DOM 里的旧装饰一律退场 */
 .xm-wreath, .xm-glow, .xm-hill, .xm-pine, .xm-tree, .xm-snowman, .xm-gift,
 .xm-cane, .xm-sleigh, .xm-snowbank, .xm-mist, .xm-cloud, .xm-sky-star,
@@ -1200,7 +1203,7 @@ button:focus-visible,
 @keyframes xrDrift { 0%,100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(6px) rotate(28deg); } }
 
 /* ---- 中景：礼物堆 / 雪松暖光小屋 ---- */
-.xr-gifts { position: absolute; left: 32%; bottom: 2%; width: 88px; height: auto; z-index: 2; filter: drop-shadow(0 4px 6px rgba(10,30,80,.28)); }
+.xr-gifts { position: absolute; left: 32%; bottom: 2%; width: 88px; height: auto; z-index: 2; filter: drop-shadow(0 4px 6px rgba(60,8,14,.30)); }
 .xr-village { position: absolute; right: 0; bottom: 0; width: 27%; height: 100%; z-index: 1; }
 
 /* z226：用户反馈「房子月亮是不是往中间移动一下，都被盖住了」。
@@ -1221,8 +1224,8 @@ button:focus-visible,
 
 /* ---- 主角：两张透明 PNG 分开摆，底部压进雪丘 ---- */
 .xr-baby, .xr-deer { position: absolute; height: auto; z-index: 2; pointer-events: none; }
-.xr-baby { left: 34%; bottom: -13%; height: 105%; filter: drop-shadow(0 8px 14px rgba(6, 24, 70, .38)); }
-.xr-deer { left: 48%; bottom: -12%; height: 94%; filter: drop-shadow(0 8px 14px rgba(6, 24, 70, .38)); }
+.xr-baby { left: 34%; bottom: -13%; height: 105%; filter: drop-shadow(0 8px 14px rgba(60, 8, 14, .38)); }
+.xr-deer { left: 48%; bottom: -12%; height: 94%; filter: drop-shadow(0 8px 14px rgba(60, 8, 14, .38)); }
 .xr-snowbank { position: absolute; left: 0; bottom: -1px; width: 100%; height: 20px; z-index: 3; }
 
 /* ---- 指标卡：每张卡片上沿垂一小枝冬青红果 ---- */

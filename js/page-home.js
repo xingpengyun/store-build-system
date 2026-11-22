@@ -586,8 +586,9 @@ window.Pages.home = (function () {
     '</svg>';
 
     /* 两朵软云 + 六角雪花（CSS 定位） */
-    var clouds = '<svg class="xr-cloud c1" viewBox="0 0 80 34" aria-hidden="true"><path d="M12 26q-10 0-10-8 0-7 9-8 2-9 13-9 9 0 12 7 4-4 10-2 8 2 8 10 0 10-12 10z" fill="#dceaff" opacity=".72"/></svg>' +
-      '<svg class="xr-cloud c2" viewBox="0 0 80 34" aria-hidden="true"><path d="M12 26q-10 0-10-8 0-7 9-8 2-9 13-9 9 0 12 7 4-4 10-2 8 2 8 10 0 10-12 10z" fill="#dceaff" opacity=".55"/></svg>';
+    /* z235：横幅换回圣诞红，软云从冷蓝改暖白，免得红底上泛灰紫 */
+    var clouds = '<svg class="xr-cloud c1" viewBox="0 0 80 34" aria-hidden="true"><path d="M12 26q-10 0-10-8 0-7 9-8 2-9 13-9 9 0 12 7 4-4 10-2 8 2 8 10 0 10-12 10z" fill="#fff1e4" opacity=".72"/></svg>' +
+      '<svg class="xr-cloud c2" viewBox="0 0 80 34" aria-hidden="true"><path d="M12 26q-10 0-10-8 0-7 9-8 2-9 13-9 9 0 12 7 4-4 10-2 8 2 8 10 0 10-12 10z" fill="#fff1e4" opacity=".55"/></svg>';
 
     /* 底部雪丘：压在两个主角脚上，做出「从雪里探出来」的效果 */
     var snowbank = '<svg class="xr-snowbank" viewBox="0 0 600 30" preserveAspectRatio="none" aria-hidden="true">' +
