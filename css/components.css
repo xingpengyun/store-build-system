@@ -4306,6 +4306,41 @@ body.sm-sorting * { cursor: grabbing !important; user-select: none !important; }
 }
 .sk-card .sk-prio { margin-top: 0; }
 
+/* ---- 任务展开区顶部：这家店还没发出去的物料（z240）----
+   变更门店状态时一眼看到未发货物料，不用再切到「发货看板」。 */
+.sk-pend {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 10px 2px 2px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: #fff7e8;
+  border: 1px solid #f6dfb3;
+  flex-wrap: wrap;
+}
+.sk-pend-tag {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 700;
+  color: #b06f05;
+  background: #fde9c8;
+  border-radius: 6px;
+  padding: 2px 7px;
+}
+.sk-pend-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 12px;
+  color: #7a4d08;
+}
+.sk-pend-item i {
+  font-style: normal;
+  font-size: 11px;
+  color: #b06f05;
+}
+
 /* ---- 「门店物料」选店弹窗：搜索 + 筛选 + 自滚 ----
    门店一多就变成一长条，所以顶部有搜索（中文/拼音首字母/省份），
    列表超过一定高度自己滚，底部不再堆一长排。 */

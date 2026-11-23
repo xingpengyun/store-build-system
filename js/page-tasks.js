@@ -755,14 +755,37 @@ window.Pages.tasks = (function () {
     return '<div class="sk-row open">' + head + '<div class="sk-body">' + rowBodyHtml(st.id) + '</div></div>';
   }
 
+  /* 这家店还没发出去的物料（z240）：
+     「未发货」= 还有物料没通知供应商，跟发货看板同一口径、实时算。
+     变更门店状态时一眼看到，不用再切到「发货看板」去查物料发了没。 */
+  function shipPendingHtml(sid) {
+    var list = S.getState().arrivals.filter(function (a) {
+      return a.storeId === sid && !S.arrNotified(a);
+    });
+    if (!list.length) return '';
+    list.sort(function (a, b) {
+      if (!!a.etaDate !== !!b.etaDate) return a.etaDate ? -1 : 1;
+      return String(a.etaDate || '').localeCompare(String(b.etaDate || ''));
+    });
+    var chips = list.map(function (a) {
+      var name = String(a.item || '').trim() || '未命名物料';
+      var eta = a.etaDate ? U.monthDay(a.etaDate) : '未填日期';
+      return '<span class="sk-pend-item">' + U.esc(name) + '<i>' + U.esc(eta) + '</i></span>';
+    }).join('');
+    return '<div class="sk-pend" title="这些物料还没通知供应商发货，处理在「发货看板」或门店详情的「物料到货」">' +
+      '<span class="sk-pend-tag">未发货</span>' + chips + '</div>';
+  }
+
   /* 展开区单独抽出来：点门店时只换这一块，不必连左侧阶段栏、筛选栏、整张列表
      一起 innerHTML 重建（z230 起）。整表重建时 storeRowHtml 也走这里，内容口径一致。 */
   function rowBodyHtml(sid) {
+    var pend = shipPendingHtml(sid);
     var list = tasksForRow(sid);
-    return list.length
+    var body = list.length
       ? taskTableHtml(list)
       : '<div class="sk-body-empty">这家门店在「' + U.esc(state.sub || state.stage || '当前条件') + '」下没有任务，' +
         '点右上「新增任务」给它添一条。</div>';
+    return pend + body;
   }
 
   function collapseRow(rowEl) {
