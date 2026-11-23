@@ -61,7 +61,6 @@
           (h ? '<button class="ck-btn is-line is-lg" data-act="last">' + UI.icon('eye') + '看上次结果</button>' : '') +
         '</div>' +
       '</div>' +
-      '<div class="ck-hero-art">' + UI.mascot({ size: 148 }) + '</div>' +
     '</div>';
 
     if (!h) {
