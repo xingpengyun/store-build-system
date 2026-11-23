@@ -12,6 +12,7 @@ window.Login = (function () {
   var timer = null;
   var remain = 0;
   var onDone = null;
+  var trackerCleanup = null;   /* 登录页机器人的清理函数（hide 时调用，停掉 rAF 与监听） */
 
   function q(sel) { return layer ? layer.querySelector(sel) : null; }
 
@@ -43,9 +44,10 @@ window.Login = (function () {
     ].join('');
   }
 
-  /* 登录页的吉祥物（在卡片上方漂浮、眨眼、挥手） */
+  /* 登录页的机器人（z241：Bencho EyeTracker 移植，顶替原来的「小蛮」团子）。
+     只给一个空容器，真正的眼睛/身体由 window.EyeTracker.mount 在 show() 里挂上。 */
   function mascot() {
-    return '<div class="login-mascot">' + (window.UI.mascot('login-mascot-svg')) + '</div>';
+    return '<div class="login-mascot" id="lgMascot"></div>';
   }
 
   /* 登录页空场里飘的雪花（z205 顶替 z198 的蝙蝠）：和横幅、全局层同一套
@@ -137,12 +139,20 @@ window.Login = (function () {
     layer.innerHTML = mascot() + flakes() + (isSimple() ? tplSimple() : tplPhone());
     document.body.appendChild(layer);
 
+    /* z241：挂载机器人 —— 眼睛跟随鼠标、自己眨眼、点击会回一句话。
+       within 指定 .login-layer，鼠标只在登录页内才被它「看着」。 */
+    var m = layer.querySelector('#lgMascot');
+    if (m && window.EyeTracker) {
+      trackerCleanup = window.EyeTracker.mount(m, { size: 120, shape: 'Cube', within: '.login-layer' });
+    }
+
     if (isSimple()) bindSimple();
     else bindPhone();
   }
 
   function hide() {
     if (timer) { clearInterval(timer); timer = null; }
+    if (trackerCleanup) { trackerCleanup(); trackerCleanup = null; }
     if (layer) { layer.remove(); layer = null; }
     pending = null;
   }
