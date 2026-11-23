@@ -39,6 +39,8 @@ window.App = (function () {
      竖向侧栏用 translateY，窄屏底部横条用 translateX。
      instant=true 用于首次定位 / 窗口尺寸变化时——先定住位置，别播动画。 */
   var navGliderReady = false;
+  var renderedOnce = false;   /* 是否已上过屏：首次渲染不播「平移滑入」 */
+  var lastRoute = null;       /* 上一次渲染的路由：只有真正切换了才播平移 */
   function moveNavGlider(instant) {
     var glider = document.getElementById('navGlider');
     var nav = document.getElementById('nav');
@@ -135,7 +137,13 @@ window.App = (function () {
        每次数据变动整个页面都重新飘一遍，看起来就是抖。
        切页面（非 keep）要清掉这个类 —— 新容器是从旧容器 clone 来的，会带着。 */
     if (keep) view.classList.add('re-quiet');
-    else view.classList.remove('re-quiet');
+    else {
+      view.classList.remove('re-quiet');
+      /* z238：路由切换时，整个内容区作为一个整体从右侧平移滑入，
+         别再让页面里每个元素各自 fade-up（看着像「突然出现」）。
+         首次上屏（renderedOnce=false）或原地重画（route 没变）都不播。 */
+      if (renderedOnce && route !== lastRoute) view.classList.add('route-enter');
+    }
 
     if (!keep && page.onEnter) page.onEnter(params);
     params = {};
@@ -154,6 +162,8 @@ window.App = (function () {
     document.title = (page.title || '首页') + ' · ' + brand;
 
     updateChrome();
+    lastRoute = route;
+    renderedOnce = true;
 
     if (!keep) { window.scrollTo(0, 0); return; }
 
