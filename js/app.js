@@ -35,6 +35,38 @@ window.App = (function () {
     }
   }
 
+  /* 导航高亮滑块：让紫色高亮块随路由切换平滑平移，而不是生硬跳变。
+     竖向侧栏用 translateY，窄屏底部横条用 translateX。
+     instant=true 用于首次定位 / 窗口尺寸变化时——先定住位置，别播动画。 */
+  var navGliderReady = false;
+  function moveNavGlider(instant) {
+    var glider = document.getElementById('navGlider');
+    var nav = document.getElementById('nav');
+    if (!glider || !nav) return;
+    var active = nav.querySelector('.nav-item.active');
+    if (!active) { glider.style.height = '0px'; return; }
+
+    if (instant) glider.classList.add('no-anim');
+
+    var horizontal = getComputedStyle(nav).flexDirection === 'row';
+    var w = active.offsetWidth;
+    var h = active.offsetHeight;
+    if (horizontal) {
+      glider.style.width = w + 'px';
+      glider.style.height = h + 'px';
+      glider.style.transform = 'translateX(' + active.offsetLeft + 'px)';
+    } else {
+      glider.style.width = '100%';
+      glider.style.height = h + 'px';
+      glider.style.transform = 'translateY(' + active.offsetTop + 'px)';
+    }
+
+    if (instant) {
+      void glider.offsetWidth;   /* 强制重排，让上面的位置先生效 */
+      glider.classList.remove('no-anim');
+    }
+  }
+
   /* ---------------- 重画时的「锚点」：不让它跳 ----------------
      数据一变整页重画，行的位置会因为排序 / 增删而挪动，
      滚动条不动就会看到内容整体跳一下。这里在重画前挑一个
@@ -114,6 +146,9 @@ window.App = (function () {
     document.querySelectorAll('.nav-item').forEach(function (el) {
       el.classList.toggle('active', el.getAttribute('data-route') === route);
     });
+
+    moveNavGlider(!navGliderReady);
+    navGliderReady = true;
 
     var brand = S.getState().settings.brand || '门店筹建管理系统';
     document.title = (page.title || '首页') + ' · ' + brand;
@@ -402,6 +437,14 @@ window.App = (function () {
 
     bindSearch();
     window.addEventListener('hashchange', render);
+
+    /* 窗口宽度跨过断点（侧栏 ↔ 底部横条）时，滑块位置要跟着重算；
+       尺寸连续变化里只算最后一次，别跟着 resize 一路抖 */
+    var navGliderResize = null;
+    window.addEventListener('resize', function () {
+      clearTimeout(navGliderResize);
+      navGliderResize = setTimeout(function () { moveNavGlider(true); }, 120);
+    });
 
     /* 刚才因为在打字而推迟的重画，现在补上（他已经不编辑了） */
     document.addEventListener('focusout', function () {
