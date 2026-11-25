@@ -513,11 +513,11 @@ window.Pages.home = (function () {
     /* z277：右侧小屋改成水彩贺卡风姜饼屋（和雪人/鹿同一画风）——
        糖霜屋顶 + 暖黄窗 + 烟囱，屋前一堆拐杖糖/棒棒糖/糖豆，透明底 PNG。
        原来的矢量雪夜小屋 SVG 整段退役，定位沿用 .xr-village。 */
-    var village = '<img class="xr-village" src="assets/xmas/xmas-watercolor-gingerbread.png?v=20261112z283" alt="" />';
+    var village = '<img class="xr-village" src="assets/xmas/xmas-watercolor-gingerbread.png?v=20261112z284" alt="" />';
 
     /* z277：主角脚边的礼物堆也换成水彩贺卡风（和雪人/鹿/姜饼屋同一画风），
        原来的扁平红/绿/金 SVG 退役，定位沿用 .xr-gifts。 */
-    var gifts = '<img class="xr-gifts" src="assets/xmas/xmas-watercolor-gifts.png?v=20261112z283" alt="" />';
+    var gifts = '<img class="xr-gifts" src="assets/xmas/xmas-watercolor-gifts.png?v=20261112z284" alt="" />';
 
     /* z260：地面散落的小礼物盒（复用现有红/金/绿三色 + 蝴蝶结画法，
        缩小错落摆在雪人脚边与鹿右侧雪地，让场景更饱满；纯手工 SVG，不生成图片） */
@@ -556,8 +556,8 @@ window.Pages.home = (function () {
       clouds + flakes +
       village + gifts + miniGifts +
       /* z249：3D 雪人/鹿换成图1 温馨水彩贺卡风（用户确认满意）。素材竖版，定位见 theme.css。 */
-      '<img class="xr-baby" src="assets/xmas/xmas-watercolor-snowman.png?v=20261112z283" alt="" />' +
-      '<img class="xr-deer" src="assets/xmas/xmas-watercolor-deer.png?v=20261112z283" alt="" />' +
+      '<img class="xr-baby" src="assets/xmas/xmas-watercolor-snowman.png?v=20261112z284" alt="" />' +
+      '<img class="xr-deer" src="assets/xmas/xmas-watercolor-deer.png?v=20261112z284" alt="" />' +
       merry +
       snowbank +
     '</div>';

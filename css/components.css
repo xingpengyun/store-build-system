@@ -1008,6 +1008,11 @@
 .acc-chip-ava .art-img,
 .acc-ava .art-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
+/* z284：选择器里的 44px 大头像，3D 图片（a3d_*.webp）画得顶到圆边，
+   跟 SVG 那套自带浅色留白观感不一致 → 缩一点露出底色的浅色圈，不贴边。
+   只作用于选择器大图；顶栏/任务卡的小头像保持铺满，缩小反而看不清。 */
+.art-grid .art-opt .art-img[src*="a3d_"][src*=".webp"] { transform: scale(.84); }
+
 /* z237 像素风头像：放大时保持硬边，别被浏览器插值糊成一团 */
 .avatar-art .art-img[src*="px_"],
 .tcard-ava .art-img[src*="px_"],
