@@ -881,6 +881,21 @@ window.Pages.tasks = (function () {
     a.oncancel = function () { body._skAnim = null; };
   }
 
+  /* z263：用户一旦自己滚轮/触摸，立刻把滚动控制权交还给用户。
+       旧版展开滚动（尤其底部行）会一直按 rAF 调 scrollTo，用户滚一点就被拽回来，
+       表现就是「下面展开动不了」。 */
+  var skUserScrollAbort = function () {
+    if (!skScrollRAF) return;
+    cancelAnimationFrame(skScrollRAF);
+    skScrollRAF = 0;
+    skScrollToken++;
+    var d = skScrollDone;
+    skScrollDone = null;
+    if (d) d();   /* 收起途中的完成回调仍然落地，保证 state 与 DOM 一致 */
+  };
+  window.addEventListener('wheel', skUserScrollAbort, { passive: true });
+  window.addEventListener('touchstart', skUserScrollAbort, { passive: true });
+
   function skAnimateScroll(to, done) {
     /* 新滚动打断旧滚动时，旧的完成回调必须作废 —— 否则展开滚动跑完 finish()
        会执行上一次收起遗留的 doClose，把刚展开的行又收起来（列表底部门店尤其明显）。
@@ -888,6 +903,10 @@ window.Pages.tasks = (function () {
     if (skScrollRAF) cancelAnimationFrame(skScrollRAF);
     skScrollRAF = 0; skScrollDone = null;
     var myToken = ++skScrollToken;
+    /* z263 关键：to 来自 getBoundingClientRect()，带小数；下面 lastY 是 Math.round
+       的整数，若 to 不取整，末帧 lastY !== to 永远成立 → rAF 无限循环、每帧
+       把页面钉回展开位置，鼠标滚轮完全失效（顶部行不滚动所以看不出）。 */
+    to = Math.round(to);
     var from = window.pageYOffset || document.documentElement.scrollTop || 0;
     var delta = to - from;
     var finish = function () { skScrollRAF = 0; var d = skScrollDone; skScrollDone = null; if (d) d(); };
