@@ -240,7 +240,7 @@ body.booting .app { visibility: hidden; }
   gap: 10px;
   padding: 9.5px 11px;
   border-radius: 9px;
-  color: #a7b2cc;
+  color: #c8cec4;
   font-size: 13px;
   cursor: pointer;
   transition: background .16s, color .16s;
@@ -250,12 +250,12 @@ body.booting .app { visibility: hidden; }
 .nav-item svg { width: 16px; height: 16px; flex: 0 0 16px; opacity: .95; }
 .nav-item span:first-of-type { flex: 1; }
 
-.nav-item:hover { background: rgba(255, 255, 255, .06); color: #e8edf9; }
+.nav-item:hover { background: rgba(255, 246, 233, .08); color: #fff6e9; }
 
 .nav-item.active {
-  background: linear-gradient(96deg, #3b5bdb, #5578f5);
+  background: linear-gradient(96deg, #b04c45, #d17a68);
   color: #fff;
-  box-shadow: 0 6px 16px rgba(59, 91, 219, .35);
+  box-shadow: 0 6px 16px rgba(176, 76, 69, .35);
 }
 
 .nav-badge {

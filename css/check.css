@@ -59,7 +59,7 @@
   --side-2: #171b38;
   --side-3: #12152c;
   --side-glow: #2f3d7a;
-  --side-txt: #adb9d8;
+  --side-txt: #c8cec4;
 
   --r-card: 16px;
   --r-ctl: 10px;
@@ -144,24 +144,24 @@
 .ck-nav-item {
   display: flex; align-items: center; gap: 10px;
   padding: 9.5px 11px; border-radius: 9px;
-  color: #adb9d8; font-size: 13px; font-weight: 500;
+  color: #c8cec4; font-size: 13px; font-weight: 500;
   transition: background .16s, color .16s, transform .14s;
   position: relative;
 }
 /* 导航项是 <a>，会被上面 `.ck-body a` 的品牌蓝刷掉颜色（同优先级它声明得更晚）——
-   这里用同优先级但更晚的同权重选择器抢回来，保证未选中项是主站那个灰蓝 #adb9d8 */
-a.ck-nav-item { color: #adb9d8; }
+   这里用同优先级但更晚的同权重选择器抢回来，保证未选中项跟主站一致的暖奶白灰 */
+a.ck-nav-item { color: #c8cec4; }
 .ck-nav-item svg { width: 16px; height: 16px; flex: 0 0 16px; opacity: .95; transition: transform .16s; }
 .ck-nav-item:hover {
   background: rgba(255, 255, 255, .085); color: #f2f6ff;
   transform: translateX(2px);
 }
 .ck-nav-item:hover svg { transform: scale(1.08); }
-/* 激活项：主站 theme.css .nav-item.active 同款渐变胶囊（蓝→紫）与外发光 */
+/* 激活项：z252 跟主站一致改成圣诞砖红胶囊 */
 .ck-nav-item.active {
-  background: linear-gradient(96deg, #3159f0 0%, #7b4df6 100%);
+  background: linear-gradient(96deg, #b04c45 0%, #d17a68 100%);
   color: #fff; font-weight: 600;
-  box-shadow: 0 10px 22px -10px rgba(76, 88, 240, .95), inset 0 1px 0 rgba(255, 255, 255, .22);
+  box-shadow: 0 10px 22px -10px rgba(188, 80, 70, .9), inset 0 1px 0 rgba(255, 255, 255, .24);
 }
 .ck-nav-item.active svg { opacity: 1; transform: scale(1.06); }
 .ck-nav-badge {
@@ -942,10 +942,10 @@ a.ck-nav-item { color: #adb9d8; }
 .ck-subnav .ck-nav-item svg { width: 15px; height: 15px; }
 .ck-subnav .ck-nav-item:hover { color: var(--t1); background: var(--sunk); }
 .ck-subnav .ck-nav-item.active {
-  background: linear-gradient(96deg, #3159f0 0%, #7b4df6 100%);
+  background: linear-gradient(96deg, #b04c45 0%, #d17a68 100%);
   color: #fff;
   font-weight: 600;
-  box-shadow: 0 6px 16px -10px rgba(76, 88, 240, .95);
+  box-shadow: 0 6px 16px -10px rgba(188, 80, 70, .9);
 }
 .ck-subnav .ck-nav-badge { margin-left: 4px; }
 

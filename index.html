@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="OX4VHa6HFhk2sioE5Kps6G" />
 <title>门店筹建管理系统</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Crect width='20' height='20' rx='4' fill='%232f56f0'/%3E%3Cpath d='M4 8l1-3h10l1 3v6.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V8z' fill='%23fff'/%3E%3C/svg%3E" data-page-node-id="qRPzJGODj4LKnVJDsZTOKr" />
-<link rel="stylesheet" href="css/base.css?v=20261112z251" data-page-node-id="0XOTjCRz0h8dFHf89J7mUQ" />
-<link rel="stylesheet" href="css/layout.css?v=20261112z251" data-page-node-id="x1OO8ElLNxZeEdmi7Bs6oX" />
-<link rel="stylesheet" href="css/components.css?v=20261112z251" data-page-node-id="xYOnGwE3Aw6NliIYHaqrNl" />
-<link rel="stylesheet" href="css/login.css?v=20261112z251" data-page-node-id="i5ATM2N9E5dvE3nKiFgaep" />
-<link rel="stylesheet" href="css/theme.css?v=20261112z251" data-page-node-id="kOmZqu4u1R0IcfzBGTCSac" />
-<link rel="stylesheet" href="css/check.css?v=20261112z251" data-page-node-id="rPEFD1JWPulo9VlXcAQ6To" />
+<link rel="stylesheet" href="css/base.css?v=20261112z252" data-page-node-id="0XOTjCRz0h8dFHf89J7mUQ" />
+<link rel="stylesheet" href="css/layout.css?v=20261112z252" data-page-node-id="x1OO8ElLNxZeEdmi7Bs6oX" />
+<link rel="stylesheet" href="css/components.css?v=20261112z252" data-page-node-id="xYOnGwE3Aw6NliIYHaqrNl" />
+<link rel="stylesheet" href="css/login.css?v=20261112z252" data-page-node-id="i5ATM2N9E5dvE3nKiFgaep" />
+<link rel="stylesheet" href="css/theme.css?v=20261112z252" data-page-node-id="kOmZqu4u1R0IcfzBGTCSac" />
+<link rel="stylesheet" href="css/check.css?v=20261112z252" data-page-node-id="rPEFD1JWPulo9VlXcAQ6To" />
 <!-- z228：门店分布只用内联 SVG 统计地图，不加载任何外部底图 / SDK / 密钥。 -->
 </head>
 <body class="booting" data-page-node-id="jrygGbEZPZUaiKp6XeqRCr">
@@ -108,19 +108,51 @@
         </a>
       </nav>
 
-      <!-- z209：侧栏圣诞帽 + 大雪人（参考图把节日主角铺到侧栏，不只放在横幅里）
-           z221：雪人水平居中、垂直落在侧栏中部偏下（不过分贴底），见 theme.css。 -->
+      <!-- z252：用户指参考图说「雪人有点透视，整个导航栏都改成这个风格」。
+           侧栏整套装饰换成柔和水彩贺卡风：去掉 3D 透视鹿车，改用水彩雪人 + 小鹿，
+           松枝 / 雪堆 / 帽子 / 雪花统一成低饱和奶白 + 鼠尾草绿 + 砖红，重投影取消。 -->
       <svg class="xr-hat" viewBox="0 0 110 86" fill="none" aria-hidden="true" data-page-node-id="rsnyqsRitHEkQzOLjc4cM7">
-        <defs data-page-node-id="aApkvgwjKMAQ4Cu38SnjEE"><linearGradient id="xrHat" x1="0" y1="0" x2="1" y2="1" data-page-node-id="al3MZFtHYcy2Qs7lAzpAQA"><stop offset="0" stop-color="#f0524c" data-page-node-id="YhnfwZ5IFeLqRyMd468sFX"/><stop offset="1" stop-color="#b8212c" data-page-node-id="r5mpOBeYzN24AGGqR4SqPX"/></linearGradient></defs>
-        <path d="M12 62C6 34 26 10 58 8c26-2 42 12 40 34-1 12-8 19-18 20z" fill="url(#xrHat)" data-page-node-id="e6WYAHEdvjgau0DGU4yPzm"/>
-        <path d="M12 62q22 8 48 4t32-4q-2 14-16 18H26q-12-4-14-18z" fill="#fff8f0" data-page-node-id="l0FaOKKv1aewrTHw2BPcw2"/>
-        <path d="M12 62q22 8 48 4t32-4" stroke="#e5d6ca" stroke-width="1.4" fill="none" data-page-node-id="iuzFghGCCCWKvNpqU64Vqe"/>
-        <circle cx="94" cy="18" r="14" fill="#fff8f0" data-page-node-id="rTOU2I9FWBQqbhNzfi5efi"/>
-        <circle cx="90" cy="14" r="4" fill="#ffffff" opacity=".8" data-page-node-id="mrpMFdHgFQLtq8f9bJRd8t"/>
+        <path d="M12 62C6 34 26 10 58 8c26-2 42 12 40 34-1 12-8 19-18 20z" fill="#c4544a" data-page-node-id="e6WYAHEdvjgau0DGU4yPzm"/>
+        <path d="M23 24c9-11 21-14 33-13-13 3-24 9-30 22-3 6-4 13-3 19-5-3-8-7-9-12 1-6 4-12 9-16z" fill="#d97668" opacity=".55"/>
+        <path d="M12 62q22 8 48 4t32-4q-2 14-16 18H26q-12-4-14-18z" fill="#fff6e9" data-page-node-id="l0FaOKKv1aewrTHw2BPcw2"/>
+        <path d="M12 62q22 8 48 4t32-4" stroke="#e9dccb" stroke-width="1.2" fill="none" data-page-node-id="iuzFghGCCCWKvNpqU64Vqe"/>
+        <circle cx="94" cy="18" r="14" fill="#fff6e9" data-page-node-id="rTOU2I9FWBQqbhNzfi5efi"/>
+        <circle cx="90" cy="14" r="4" fill="#ffffff" opacity=".6" data-page-node-id="mrpMFdHgFQLtq8f9bJRd8t"/>
       </svg>
-      <img class="xr-side-snowman" src="assets/xmas/xmas-santa-deer-b.png?v=20261112z251" alt="" data-page-node-id="u09NzRTvg3KswHAD052R6d" />
-      <svg class="xr-side-flake s1" viewBox="0 0 24 24" aria-hidden="true" data-page-node-id="wiz3zrqiH3h2jBmcTMrkoD"><g stroke="#bcd8f5" stroke-width="1.4" stroke-linecap="round" data-page-node-id="hZLw2kAVuxRGQz3UAEsmjM"><path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7" data-page-node-id="G0yzjQV2JH8zUriEE4zq2D"/><path d="M12 2 9.5 4.6M12 2l2.5 2.6M12 22l-2.5-2.6M12 22l2.5-2.6" data-page-node-id="ujgjDwsxI3Z19G6yMeHxXm"/></g><circle cx="12" cy="12" r="1.5" fill="#eaf6ff" data-page-node-id="VCfeey7n0uhD654qPbaYDf"/></svg>
-      <svg class="xr-side-flake s2" viewBox="0 0 24 24" aria-hidden="true" data-page-node-id="n8WSDmQITJarJsmFAFvAQi"><g stroke="#bcd8f5" stroke-width="1.4" stroke-linecap="round" data-page-node-id="2mFMKoYRzF28UdMhCRu38g"><path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7" data-page-node-id="PVu9rqLKAIBeCUtmfnOaam"/></g><circle cx="12" cy="12" r="1.5" fill="#eaf6ff" data-page-node-id="iROy0bk9H8OI3qck7LDJyy"/></svg>
+
+      <div class="xr-side-scene" aria-hidden="true" data-page-node-id="u09NzRTvg3KswHAD052R6d">
+        <svg class="xr-side-branches" viewBox="0 0 196 176" fill="none">
+          <g fill="#77967a" opacity=".88">
+            <ellipse cx="30" cy="116" rx="4" ry="15" transform="rotate(-58 30 116)"/>
+            <ellipse cx="40" cy="126" rx="4" ry="15" transform="rotate(-78 40 126)"/>
+            <ellipse cx="50" cy="133" rx="4" ry="14" transform="rotate(-96 50 133)"/>
+            <ellipse cx="37" cy="107" rx="3.6" ry="12" transform="rotate(-38 37 107)"/>
+          </g>
+          <g fill="#99b39a" opacity=".82">
+            <ellipse cx="172" cy="108" rx="4" ry="15" transform="rotate(52 172 108)"/>
+            <ellipse cx="163" cy="119" rx="4" ry="15" transform="rotate(74 163 119)"/>
+            <ellipse cx="154" cy="129" rx="4" ry="14" transform="rotate(92 154 129)"/>
+            <ellipse cx="168" cy="100" rx="3.6" ry="12" transform="rotate(34 168 100)"/>
+          </g>
+          <g fill="#b8544d" opacity=".9">
+            <circle cx="53" cy="123" r="3.4"/><circle cx="59" cy="130" r="3"/><circle cx="46" cy="119" r="2.6"/>
+            <circle cx="150" cy="114" r="3.2"/><circle cx="144" cy="121" r="2.8"/><circle cx="157" cy="122" r="2.4"/>
+          </g>
+          <g fill="#fff7e8" opacity=".72">
+            <ellipse cx="30" cy="110" rx="3" ry="6" transform="rotate(-58 30 110)"/>
+            <ellipse cx="172" cy="102" rx="3" ry="6" transform="rotate(52 172 102)"/>
+          </g>
+        </svg>
+        <img class="xr-side-deer" src="assets/xmas/xmas-watercolor-deer.png?v=20261112z252" alt="" />
+        <img class="xr-side-snowman" src="assets/xmas/xmas-watercolor-snowman.png?v=20261112z252" alt="" />
+        <svg class="xr-side-snowbank" viewBox="0 0 196 30" preserveAspectRatio="none" fill="none">
+          <path d="M0 22q30-12 58-4t54-2 56 4 28-3v13H0z" fill="#f6f1e6" opacity=".95"/>
+          <path d="M0 26q34-7 62-2t62-1 72 1v6H0z" fill="#dfe9dc" opacity=".75"/>
+        </svg>
+      </div>
+
+      <svg class="xr-side-flake s1" viewBox="0 0 24 24" aria-hidden="true" data-page-node-id="wiz3zrqiH3h2jBmcTMrkoD"><g stroke="#e8dcc4" stroke-width="1.4" stroke-linecap="round" data-page-node-id="hZLw2kAVuxRGQz3UAEsmjM"><path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7" data-page-node-id="G0yzjQV2JH8zUriEE4zq2D"/><path d="M12 2 9.5 4.6M12 2l2.5 2.6M12 22l-2.5-2.6M12 22l2.5-2.6" data-page-node-id="ujgjDwsxI3Z19G6yMeHxXm"/></g><circle cx="12" cy="12" r="1.5" fill="#fff6e9" data-page-node-id="VCfeey7n0uhD654qPbaYDf"/></svg>
+      <svg class="xr-side-flake s2" viewBox="0 0 24 24" aria-hidden="true" data-page-node-id="n8WSDmQITJarJsmFAFvAQi"><g stroke="#cedfc9" stroke-width="1.4" stroke-linecap="round" data-page-node-id="2mFMKoYRzF28UdMhCRu38g"><path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7" data-page-node-id="PVu9rqLKAIBeCUtmfnOaam"/></g><circle cx="12" cy="12" r="1.5" fill="#fff6e9" data-page-node-id="iROy0bk9H8OI3qck7LDJyy"/></svg>
 
       <!-- 圣诞雪夜小村庄剪影（z205 顶替 z199 的万圣城堡）：位置还是导航与「本机缓存卡」
            之间那条空白带。viewBox 里松树从左边界框外延伸进来，右侧雪地一路下沉，
@@ -202,7 +234,7 @@
      生成脚本 .workbuddy/make-z216-trunk.py，原图 xmas-tree-gifts.png 保留可回滚。 -->
 <!-- z219：整棵树（树尖 + 三层树冠 + 木棕树干 + 两个礼物盒 + 雪堆）完整收进视口，
      底部再留 12px 安全距。换新文件名 + 全站版本参数，绕开 CDN / 浏览器旧缓存。 -->
-<img class="xr-page-tree" src="assets/xmas/xmas-tree-gifts-full.png?v=20261112z251" alt="" aria-hidden="true" data-page-node-id="HJPAqy4jySo3rY5wCcV0jT" />
+<img class="xr-page-tree" src="assets/xmas/xmas-tree-gifts-full.png?v=20261112z252" alt="" aria-hidden="true" data-page-node-id="HJPAqy4jySo3rY5wCcV0jT" />
 
 <!-- z233：把线下明亮卡通风视觉稿里那层「缓缓落下的 ❄」搬进原主站首页。
      用户明确「还是按照我之前的吧」—— 首页整体风格、三张卡、地图、树、雪人、
@@ -272,43 +304,43 @@
   <svg class="xm-flake gf5" viewBox="0 0 24 24" aria-hidden="true" data-page-node-id="e5W4lpqVRVrYEMnJOjP9BV"><g stroke="#a8cbe6" stroke-width="1.5" stroke-linecap="round" fill="none" data-page-node-id="03yiQ5GABNfod15uTkPwI4"><path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7" data-page-node-id="xLhpBxrbGeLvbDcFFoL23k"/><path d="M12 2 9.5 4.6M12 2l2.5 2.6M12 22l-2.5-2.6M12 22l2.5-2.6" data-page-node-id="nz74Y2rGPXiI7KVAEqSn23"/></g><circle cx="12" cy="12" r="1.6" fill="#eaf6ff" data-page-node-id="6erXqaAPPNCWW2UXblwJ0c"/></svg>
 </div>
 
-<script src="js/vendor/cloudbase-sdk.js?v=20261112z251"></script>
-<script src="js/utils.js?v=20261112z251"></script>
-<script src="js/constants.js?v=20261112z251"></script>
-<script src="js/cloud.js?v=20261112z251"></script>
-<script src="js/seed.js?v=20261112z251"></script>
-<script src="js/store.js?v=20261112z251"></script>
-<script src="js/charts.js?v=20261112z251"></script>
-<script src="js/china-map-data.js?v=20261112z251"></script>
-<script src="js/china-map.js?v=20261112z251"></script>
-<script src="js/ui.js?v=20261112z251"></script>
-<script src="js/eyetracker.js?v=20261112z251"></script>
-<script src="js/login.js?v=20261112z251"></script>
-<script src="js/page-home.js?v=20261112z251"></script>
-<script src="js/page-stores.js?v=20261112z251"></script>
-<script src="js/page-ship.js?v=20261112z251"></script>
-<script src="js/page-tasks.js?v=20261112z251"></script>
-<script src="js/page-team.js?v=20261112z251"></script>
-<script src="js/page-alerts.js?v=20261112z251"></script>
-<script src="js/page-reports.js?v=20261112z251"></script>
-<script src="js/page-settings.js?v=20261112z251"></script>
+<script src="js/vendor/cloudbase-sdk.js?v=20261112z252"></script>
+<script src="js/utils.js?v=20261112z252"></script>
+<script src="js/constants.js?v=20261112z252"></script>
+<script src="js/cloud.js?v=20261112z252"></script>
+<script src="js/seed.js?v=20261112z252"></script>
+<script src="js/store.js?v=20261112z252"></script>
+<script src="js/charts.js?v=20261112z252"></script>
+<script src="js/china-map-data.js?v=20261112z252"></script>
+<script src="js/china-map.js?v=20261112z252"></script>
+<script src="js/ui.js?v=20261112z252"></script>
+<script src="js/eyetracker.js?v=20261112z252"></script>
+<script src="js/login.js?v=20261112z252"></script>
+<script src="js/page-home.js?v=20261112z252"></script>
+<script src="js/page-stores.js?v=20261112z252"></script>
+<script src="js/page-ship.js?v=20261112z252"></script>
+<script src="js/page-tasks.js?v=20261112z252"></script>
+<script src="js/page-team.js?v=20261112z252"></script>
+<script src="js/page-alerts.js?v=20261112z252"></script>
+<script src="js/page-reports.js?v=20261112z252"></script>
+<script src="js/page-settings.js?v=20261112z252"></script>
 <!-- 双表核对模块（内嵌，非独立 check.html）：xlsx 解析 + check 子应用 + 宿主页 -->
-<script src="js/vendor/xlsx.full.min.js?v=20261112z251"></script>
-<script src="js/check/util.js?v=20261112z251"></script>
-<script src="js/check/db.js?v=20261112z251"></script>
-<script src="js/check/excel.js?v=20261112z251"></script>
-<script src="js/check/match.js?v=20261112z251"></script>
-<script src="js/check/recon.js?v=20261112z251"></script>
-<script src="js/check/export.js?v=20261112z251"></script>
-<script src="js/check/ui.js?v=20261112z251"></script>
-<script src="js/check/app.js?v=20261112z251"></script>
-<script src="js/check/view-home.js?v=20261112z251"></script>
-<script src="js/check/view-new.js?v=20261112z251"></script>
-<script src="js/check/view-result.js?v=20261112z251"></script>
-<script src="js/check/view-alias.js?v=20261112z251"></script>
-<script src="js/check/view-history.js?v=20261112z251"></script>
-<script src="js/check/view-rules.js?v=20261112z251"></script>
-<script src="js/page-check.js?v=20261112z251"></script>
-<script src="js/app.js?v=20261112z251"></script>
+<script src="js/vendor/xlsx.full.min.js?v=20261112z252"></script>
+<script src="js/check/util.js?v=20261112z252"></script>
+<script src="js/check/db.js?v=20261112z252"></script>
+<script src="js/check/excel.js?v=20261112z252"></script>
+<script src="js/check/match.js?v=20261112z252"></script>
+<script src="js/check/recon.js?v=20261112z252"></script>
+<script src="js/check/export.js?v=20261112z252"></script>
+<script src="js/check/ui.js?v=20261112z252"></script>
+<script src="js/check/app.js?v=20261112z252"></script>
+<script src="js/check/view-home.js?v=20261112z252"></script>
+<script src="js/check/view-new.js?v=20261112z252"></script>
+<script src="js/check/view-result.js?v=20261112z252"></script>
+<script src="js/check/view-alias.js?v=20261112z252"></script>
+<script src="js/check/view-history.js?v=20261112z252"></script>
+<script src="js/check/view-rules.js?v=20261112z252"></script>
+<script src="js/page-check.js?v=20261112z252"></script>
+<script src="js/app.js?v=20261112z252"></script>
 </body>
 </html>

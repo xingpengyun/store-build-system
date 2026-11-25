@@ -138,15 +138,16 @@ html { scroll-behavior: auto; }
 
 .nav { position: relative; }
 
+/* z252：导航文字改暖奶白灰、选中胶囊改砖红，和底部水彩贺卡同一色系 */
 .nav-item {
-  color: #adb9d8;
+  color: #c8cec4;
   transition: background .16s, color .16s, transform .14s;
   z-index: 1;
 }
 .nav-item svg { transition: transform .16s; }
 .nav-item:hover {
-  background: rgba(255, 255, 255, .085);
-  color: #f2f6ff;
+  background: rgba(255, 246, 233, .10);
+  color: #fff6e9;
   transform: translateX(2px);
 }
 .nav-item:hover svg { transform: scale(1.08); }
@@ -169,8 +170,8 @@ html { scroll-behavior: auto; }
   width: 100%;
   height: 0;
   border-radius: 9px;
-  background: linear-gradient(96deg, #3e63dd 0%, #7c4ee0 100%);
-  box-shadow: 0 10px 22px -10px rgba(62, 99, 221, .95), inset 0 1px 0 rgba(255, 255, 255, .22);
+  background: linear-gradient(96deg, #b04c45 0%, #d17a68 100%);
+  box-shadow: 0 10px 22px -10px rgba(188, 80, 70, .9), inset 0 1px 0 rgba(255, 255, 255, .24);
   transform: translateY(0);
   transition:
     transform .34s cubic-bezier(.22, .61, .36, 1),
@@ -560,9 +561,12 @@ button:focus-visible,
 .input:hover, .select:hover, .textarea:hover { border-color: #d3d5dd; }
 .input:focus, .select:focus, .textarea:focus { border-color: var(--primary); }
 
-/* 侧边栏：靛蓝 → 紫，一眼看出是同一个色系的深浅 */
+/* 侧边栏：z252 在靛蓝底上叠一层低饱和水彩晕染（松绿 + 砖红），
+   让整条导航和底部水彩贺卡同一色系；深色底保留，导航文字对比度不受影响。 */
 .sidebar {
   background:
+    radial-gradient(92% 34% at 18% 100%, rgba(151, 180, 148, .18) 0%, rgba(151, 180, 148, 0) 72%),
+    radial-gradient(72% 26% at 90% 86%, rgba(196, 84, 74, .14) 0%, rgba(196, 84, 74, 0) 74%),
     radial-gradient(140% 55% at 18% -6%, #2f3d7a 0%, rgba(47, 61, 122, 0) 62%),
     linear-gradient(180deg, #1b2143 0%, #171b38 52%, #12152c 100%);
 }
@@ -1279,7 +1283,7 @@ button:focus-visible,
   position: absolute; top: -6px; right: -6px;
   width: 70px; height: auto; z-index: 6; pointer-events: none;
   transform: rotate(11deg);
-  filter: drop-shadow(0 5px 10px rgba(6, 18, 60, .38));
+  filter: drop-shadow(0 2px 5px rgba(18, 20, 28, .18));
 }
 /* z220：用户要「放到左侧导航栏中间的位置」；z221：补充「虽然在中间但是也要靠下」。
    z225：用户给了截图，红箭头指着「本机缓存」卡片上沿，要「继续靠下到这里」——
@@ -1287,20 +1291,31 @@ button:focus-visible,
    改为按侧栏底部定位：.sidebar-foot 高 82px，雪人 bottom:96px 即雪人底 = 侧栏底-96，
    与卡片上沿恒定留 14px，且随视口高度自动跟随（1000/980/900/800 高都成立），
    不会再出现「矮视口压卡」或「高视口又飘回中间」。水平仍 left:50% 居中。 */
-/* z248：侧栏「惊悚雪人」换成圣诞老人鹿车（用户选 B：一只鹿、挥手、围巾飘扬）。
-   素材竖版画布，140px 宽时高约 166px，比原雪人略大；bottom 104px 让鹿蹄贴住侧栏底。 */
-.xr-side-snowman {
-  position: absolute; left: 50%; bottom: 104px;
+/* z252：侧栏整套装饰换成参考图的柔和水彩贺卡风。
+   旧 3D 鹿车有明显透视和重投影，与奶白 / 松绿 / 砖红的扁平水彩不搭；
+   现在用水彩雪人 + 小鹿 + SVG 松枝雪堆组成一张小贺卡，压在侧栏底部上方，
+   不挡导航和「本机缓存」卡。整组仍按 bottom 定位，矮视口会自动隐藏。 */
+.xr-side-scene {
+  position: absolute; left: 50%; bottom: 96px;
   transform: translateX(-50%);
-  width: 140px; height: auto; z-index: 1; pointer-events: none;
-  object-fit: contain;
-  filter: drop-shadow(0 8px 18px rgba(8, 22, 66, .30));
+  width: 196px; height: 176px; z-index: 1; pointer-events: none;
 }
-/* 雪花同样改用 bottom 定位，分列装饰上下两侧外沿（装饰占侧栏底 104..270px），
-   水平左 10..28 / 右 174..186 都在装饰 25..165 之外，不会叠在身上 */
-.xr-side-flake { position: absolute; width: 18px; height: 18px; z-index: 2; opacity: .75; pointer-events: none; animation: xrDrift 8s ease-in-out infinite; }
-.xr-side-flake.s1 { left: 10px; bottom: 205px; }
-.xr-side-flake.s2 { right: 10px; bottom: 130px; width: 12px; animation-delay: -3s; }
+.xr-side-branches { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
+.xr-side-snowman {
+  position: absolute; left: 42px; bottom: 16px;
+  width: 104px; height: auto; z-index: 3; pointer-events: none;
+  filter: drop-shadow(0 3px 6px rgba(24, 32, 42, .16));
+}
+.xr-side-deer {
+  position: absolute; right: 2px; bottom: 12px;
+  width: 72px; height: auto; z-index: 2; pointer-events: none;
+  filter: drop-shadow(0 3px 6px rgba(24, 32, 42, .14));
+}
+.xr-side-snowbank { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 30px; z-index: 4; }
+/* 雪花改用奶白 / 鼠尾草绿，分列贺卡两个上角，不再叠在角色身上 */
+.xr-side-flake { position: absolute; width: 16px; height: 16px; z-index: 2; opacity: .8; pointer-events: none; animation: xrDrift 8s ease-in-out infinite; }
+.xr-side-flake.s1 { left: 5px; bottom: 264px; }
+.xr-side-flake.s2 { right: 5px; bottom: 236px; width: 11px; animation-delay: -3s; }
 .sidebar-foot { position: relative; z-index: 3; }
 
 /* ---- 右下角：一棵完整的圣诞树 + 礼物 ---- */
@@ -1337,7 +1352,7 @@ button:focus-visible,
   .xr-moon { right: 16%; width: 76px; height: 76px; }
   .xr-village { width: 23%; opacity: .92; }
   /* 侧栏在 <=1180 收成图标栏，大插画会溢出到内容区压住表格 */
-  .xr-side-snowman, .xr-hat { display: none; }
+  .xr-side-scene, .xr-hat, .xr-side-flake { display: none; }
 }
 @media (max-width: 900px) {
   .xr-village, .xr-gifts, .xr-cloud, .xr-moon { display: none; }
@@ -1351,7 +1366,7 @@ button:focus-visible,
   .xr-moon { display: none; }
   .xr-snowbank { height: 20px; }
   .xr-page-tree { width: 76px; right: 2px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
-  .xr-side-snowman, .xr-hat { display: none; }
+  .xr-side-scene, .xr-hat, .xr-side-flake { display: none; }
   .kpi::after { width: 32px; height: 22px; top: -8px; }
 }
 @media (prefers-reduced-motion: reduce) {
