@@ -844,7 +844,7 @@ window.Pages.tasks = (function () {
     body.innerHTML = rowBodyHtml(state.open);
     /* 已完成显隐变了，之前预生成的其他行内容作废，打开时按新口径重建 */
     root.querySelectorAll('.sk-row:not(.open) .sk-body').forEach(function (b) { b.remove(); });
-    centerOpenRow(row);
+    /* z264：展开/收起一律不动页面滚动位置，点哪家都停在原处 */
   }
 
   /* z256：修 z253 展开/收起的「卡顿 + 往上弹一下」。
@@ -855,10 +855,10 @@ window.Pages.tasks = (function () {
      · 收起用 height/padding 平滑收缩到 0，文档高度渐变、scrollY 平滑跟随，不再瞬跳；
      · 只动这一行的属性，其余行 transition:none 不变；reduced-motion 下整段跳过。 */
   var skReduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  var skScrollRAF = 0;
-  var skScrollDone = null;
-  var skScrollToken = 0;   /* 每次滚动唯一 id：旧 step 即使漏网也能靠 id 校验自行退场，不误跑完成回调 */
 
+  /* z264：展开/收起只做淡入淡出，不再自动滚动页面。
+     展开 = opacity 0→1 淡入；收起 = 高度+opacity 渐变淡出（高度收缩让文档平滑变矮，
+     scrollY 不会被一帧钳制而弹一下）。点哪家门店页面都停在原处，滚动完全交给用户。 */
   function skAnimateBody(body, opening, done) {
     var finish = function () { body.classList.remove('sk-animating'); if (done) done(); };
     if (!body || skReduceMotion || typeof body.animate !== 'function') { finish(); return; }
@@ -881,67 +881,6 @@ window.Pages.tasks = (function () {
     a.oncancel = function () { body._skAnim = null; };
   }
 
-  /* z263：用户一旦自己滚轮/触摸，立刻把滚动控制权交还给用户。
-       旧版展开滚动（尤其底部行）会一直按 rAF 调 scrollTo，用户滚一点就被拽回来，
-       表现就是「下面展开动不了」。 */
-  var skUserScrollAbort = function () {
-    if (!skScrollRAF) return;
-    cancelAnimationFrame(skScrollRAF);
-    skScrollRAF = 0;
-    skScrollToken++;
-    var d = skScrollDone;
-    skScrollDone = null;
-    if (d) d();   /* 收起途中的完成回调仍然落地，保证 state 与 DOM 一致 */
-  };
-  window.addEventListener('wheel', skUserScrollAbort, { passive: true });
-  window.addEventListener('touchstart', skUserScrollAbort, { passive: true });
-
-  function skAnimateScroll(to, done) {
-    /* 新滚动打断旧滚动时，旧的完成回调必须作废 —— 否则展开滚动跑完 finish()
-       会执行上一次收起遗留的 doClose，把刚展开的行又收起来（列表底部门店尤其明显）。
-       token 是双保险：即使 cancel 漏掉一个在途 RAF，旧 step 也会因 id 不匹配立即退场。 */
-    if (skScrollRAF) cancelAnimationFrame(skScrollRAF);
-    skScrollRAF = 0; skScrollDone = null;
-    var myToken = ++skScrollToken;
-    /* z263 关键：to 来自 getBoundingClientRect()，带小数；下面 lastY 是 Math.round
-       的整数，若 to 不取整，末帧 lastY !== to 永远成立 → rAF 无限循环、每帧
-       把页面钉回展开位置，鼠标滚轮完全失效（顶部行不滚动所以看不出）。 */
-    to = Math.round(to);
-    var from = window.pageYOffset || document.documentElement.scrollTop || 0;
-    var delta = to - from;
-    var finish = function () { skScrollRAF = 0; var d = skScrollDone; skScrollDone = null; if (d) d(); };
-    if (Math.abs(delta) < 1 || skReduceMotion) { window.scrollTo(0, to); if (done) done(); return; }
-    skScrollDone = done || null;
-    var t0 = performance.now();
-    /* z261：底部门店离当前视口常常 600~800px，旧版固定 240ms 就算两端慢，
-       中段每帧仍冲 60~100px，肉眼看就是「刷一下跳过去」的卡顿感。
-       按距离拉长时长（>600px 约 560~620ms），并用 smoothstep（峰值仅 1.5×平均，
-       旧 ease-in-out quad 是 2×），再加 36px 单帧硬上限，掉帧也不会冲出去。 */
-    var dist = Math.abs(delta);
-    var dur = Math.min(620, Math.max(220, 180 + dist * 0.6));
-    var lastY = from;
-    var MAX_STEP = 36;   /* 单帧位移硬上限：主线程偶发长帧也不会「刷一下冲过去」 */
-    (function step(now) {
-      if (myToken !== skScrollToken) return;   /* 已被新滚动取代：连回调都不跑 */
-      var p = Math.min(1, (now - t0) / dur);
-      var nextY;
-      if (p < 1) {
-        var e = p * p * (3 - 2 * p);            /* smoothstep：两端速度为 0，中段峰值 1.5× */
-        var target = from + delta * e;
-        var diff = target - lastY;
-        /* 掉一帧也只走 36px，落后的距离由后续帧慢慢追回来 */
-        nextY = Math.abs(diff) > MAX_STEP ? lastY + (diff > 0 ? MAX_STEP : -MAX_STEP) : target;
-      } else {
-        var rest = to - lastY;                  /* 已到时点：按同样上限补齐剩余距离 */
-        nextY = Math.abs(rest) <= MAX_STEP ? to : lastY + (rest > 0 ? MAX_STEP : -MAX_STEP);
-      }
-      lastY = Math.round(nextY);
-      window.scrollTo(0, lastY);
-      if (p < 1 || lastY !== to) skScrollRAF = requestAnimationFrame(step);
-      else finish();
-    })(t0);
-  }
-
   /* z239：收起时保留已生成的任务卡，只是隐藏 —— 来回点同一家不再反复
      销毁/重建那几张卡（每次都要画一堆 SVG 头像和徽标，是掉帧的大头）。
      z256：自己收起时先播 180ms 高度收缩动画，文档高度渐变、scrollY 平滑跟随，
@@ -959,9 +898,8 @@ window.Pages.tasks = (function () {
     skAnimateBody(body, false, function () { body.hidden = true; });
   }
 
-  /* 返回展开后的「最终几何」，供 centerOpenRow 在动画还没跑完时就能算准滚动位置 */
   function expandRow(rowEl, sid) {
-    if (!rowEl) return null;
+    if (!rowEl) return;
     var body = rowEl.querySelector('.sk-body');
     if (!body) {
       body = document.createElement('div');
@@ -974,61 +912,7 @@ window.Pages.tasks = (function () {
     rowEl.classList.add('open');
     var head = rowEl.querySelector('.sk-head');
     if (head) head.title = '收起这家门店的任务';
-    /* z262：hidden→可见后强制同步一次布局，否则 getBoundingClientRect 偶尔读到
-       旧几何（body 还是 0 高），centerOpenRow 会把目标钳到收起态 maxY。 */
-    void body.offsetHeight;
-    var m = {
-      rect: rowEl.getBoundingClientRect(),
-      br: body.getBoundingClientRect(),
-      docH: document.documentElement.scrollHeight
-    };
-    skAnimateBody(body, true);
-    return m;
-  }
-
-  /* z238：展开后把展开区滚到视口中间。
-     点列表底下那几行时，展开内容整个在屏幕下方，以前要自己滚轮找；
-     现在展开完直接把整行居中（内容比一屏还长就让抬头靠上一点），
-     已经是完整可见的行不动，避免点上面的行画面也跟着上下跳。
-     scroll-behavior 保持 auto，这一步瞬时完成，不做动画。 */
-  function centerOpenRow(row, m) {
-    var vh = window.innerHeight || document.documentElement.clientHeight || 800;
-    var rect = m ? m.rect : row.getBoundingClientRect();
-    var body = row.querySelector('.sk-body');
-    var br = m ? m.br : (body ? body.getBoundingClientRect() : rect);
-    /* 窄屏时侧栏变成横向吸顶条（约 60px），抬头不能被它盖住：
-       按吸顶栏实际底边算上边界。
-       z249 修复：z240 给 .sidebar 加了全局 position:sticky，宽屏下它是贯穿
-       全高的竖侧栏（bottom≈视口底），旧判断只看 sticky 就拿它的 bottom 当
-       安全边界 → topSafe 被顶到 ~900，want 变负 → 底部行展开后完全不滚动。
-       现在只认「矮的、贴在视口顶部的横向条」才是吸顶导航，竖侧栏不算。 */
-    var topSafe = 12;
-    var bar = document.querySelector('.sidebar');
-    if (bar && getComputedStyle(bar).position === 'sticky') {
-      var bRect = bar.getBoundingClientRect();
-      var isTopStrip = bRect.height < vh * 0.3 && bRect.top < vh * 0.25;
-      if (isTopStrip && bRect.bottom > topSafe) topSafe = bRect.bottom + 8;
-    }
-    if (br.bottom <= vh - 12 && br.top >= topSafe) return;   /* 原本就看得全，不用滚 */
-
-    var y = window.pageYOffset || document.documentElement.scrollTop || 0;
-    var want;
-    if (rect.height <= vh - topSafe - 12) {
-      want = y + rect.top - Math.max(topSafe, (topSafe + vh - rect.height) / 2);
-    } else {
-      want = y + rect.top - topSafe;                    /* 比一屏长：抬头贴着吸顶栏下方，下面马上能看到任务 */
-    }
-    /* z261：body 刚从 hidden 翻出来时，documentElement.scrollHeight 在 Chrome 里
-       偶发还是旧值（底部行会只滚到收起态 maxY，看着像没展开居中）。用这次量到的
-       body 底边兜底推算展开后的文档高度，避免被缓存的旧高度钳死。 */
-    var docH = Math.max(document.documentElement.scrollHeight, y + br.bottom + 40);
-    var maxY = Math.max(0, docH - vh);
-    var to = Math.min(maxY, Math.max(0, want));
-    if (Math.abs(to - y) > 0.5) {
-      /* z253：展开时用 rAF 平滑滚到目标（只这一次，全局 scroll-behavior 仍是 auto）；
-         toggleDone 等本地重绘仍走瞬时滚动，保持原来的跟手感。 */
-      if (m) skAnimateScroll(to); else window.scrollTo(0, to);
-    }
+    skAnimateBody(body, true);   /* 淡入 */
   }
 
   /* 展开 / 收起一家门店：一次只开一家（点开 A，原来开着的 B 自动收回去）。
@@ -1037,54 +921,26 @@ window.Pages.tasks = (function () {
      一起清掉。
      z239：收起时原来的「量位置→补偿滚动」是死代码（自己收起不会挪动抬头），
      却每次都逼浏览器同步算两遍整页布局。直接删掉，收起只剩摘掉 body。 */
-  /* z258：展开前记住滚动位置。展开会居中跳走，用户合上时希望门店回到点开它之前
-     的位置（「位置不变动」）——收起时先把页面平滑滚回这个位置，滚到位后再收 body。
-     顺序很关键：body 还在时文档高、scrollY 合法；滚回后再收 body，文档缩水也钳
-     制不到这个位置（它就是 body 展开前的合法 scrollY）。若展开后用户自己滚过，
-     back 会钳制到收起态的 maxY，绝不会落到非法位置。 */
-  var skOpenFromY = null;
-
+  /* z264：展开/收起一律不碰页面滚动。
+     旧版展开会把门店滚到视口中间、收起再滚回原位，用户连点两家底部门店时
+     画面反复「下沉」，像鼠标没动页面自己滚，很不舒服。现在点哪家都停在原处，
+     展开淡入、收起淡出，滚动完全交给用户。 */
   function toggleStoreRow(root, sid) {
     var head = root.querySelector('[data-srow="' + sid + '"]');
     if (!head || !root.contains(head)) return;
     var row = head.closest('.sk-row');
     if (!row) return;
 
-    if (state.open === sid) {                 /* 自己收起：先滚回展开前位置，再收 body */
-      var y = window.pageYOffset || document.documentElement.scrollTop || 0;
-      var bodyEl = row.querySelector('.sk-body');
-      var bodyH = (bodyEl && !bodyEl.hidden) ? bodyEl.scrollHeight : 0;
-      var collapsedMax = Math.max(0, document.documentElement.scrollHeight - bodyH - window.innerHeight);
-      var back = skOpenFromY == null ? y : Math.min(skOpenFromY, collapsedMax);
+    if (state.open === sid) {                 /* 自己收起：淡出 */
       state.open = '';
-      skOpenFromY = null;
-      /* 收起滚动到位后才真正合 body。加状态校验：若期间用户又点开了这家（或别家
-         导致 state.open 变了），这次延迟收起必须作废 —— 否则会误合上刚展开的行。 */
-      var doClose = function () {
-        /* 延迟收起期间若用户又点开了任意行（含自己），这次收起必须作废：
-           否则会把刚展开的行误合上（列表底部门店展开后 0.7s 自己合上就是它）。 */
-        if (state.open) return;
-        /* z261：滚动已把页面送回展开前的合法 scrollY，此刻直接收 body 不会再
-           被钳制；省掉 z256 的 180ms 高度收缩（每帧重排一整页卡片），收起只剩
-           一段平滑滚动，底部门店不再「滚完又缩一下」。 */
-        collapseRow(row, true);
-      };
-      if (Math.abs(back - y) > 1) skAnimateScroll(back, doClose);
-      else doClose();
+      collapseRow(row);
       return;
     }
 
     var prev = root.querySelector('.sk-row.open');
     if (prev && prev !== row) collapseRow(prev, true);
-    skOpenFromY = window.pageYOffset || document.documentElement.scrollTop || 0;  /* 展开前记位 */
-    var m = expandRow(row, sid);
+    expandRow(row, sid);
     state.open = sid;
-    /* z258：展开前先清掉上一次收起遗留的滚动完成回调 —— centerOpenRow 内部
-       的 skAnimateScroll 会复用同一个 RAF，若遗留 doClose 没清，展开滚动跑完
-       finish() 会误执行「收起」，表现为列表底部的行展开后约 0.7s 自己又合上。 */
-    if (skScrollRAF) cancelAnimationFrame(skScrollRAF);
-    skScrollRAF = 0; skScrollDone = null; skScrollToken++;
-    centerOpenRow(row, m);                    /* 展开：内容居中（动画同步） */
   }
 
   function pagerHtml(total, pages) {
