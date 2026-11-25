@@ -1285,14 +1285,17 @@ button:focus-visible,
    改为按侧栏底部定位：.sidebar-foot 高 82px，雪人 bottom:96px 即雪人底 = 侧栏底-96，
    与卡片上沿恒定留 14px，且随视口高度自动跟随（1000/980/900/800 高都成立），
    不会再出现「矮视口压卡」或「高视口又飘回中间」。水平仍 left:50% 居中。 */
+/* z248：侧栏「惊悚雪人」换成圣诞老人鹿车（用户选 B：一只鹿、挥手、围巾飘扬）。
+   素材竖版画布，140px 宽时高约 166px，比原雪人略大；bottom 104px 让鹿蹄贴住侧栏底。 */
 .xr-side-snowman {
-  position: absolute; left: 50%; bottom: 96px;
+  position: absolute; left: 50%; bottom: 104px;
   transform: translateX(-50%);
-  width: 120px; height: auto; z-index: 1; pointer-events: none;
+  width: 140px; height: auto; z-index: 1; pointer-events: none;
+  object-fit: contain;
   filter: drop-shadow(0 8px 18px rgba(8, 22, 66, .30));
 }
-/* 雪花同样改用 bottom 定位，分列雪人上下两侧外沿（雪人占侧栏底 96..243px），
-   水平左 10..28 / 右 174..186 都在雪人 38..158 之外，不会叠在身上 */
+/* 雪花同样改用 bottom 定位，分列装饰上下两侧外沿（装饰占侧栏底 104..270px），
+   水平左 10..28 / 右 174..186 都在装饰 25..165 之外，不会叠在身上 */
 .xr-side-flake { position: absolute; width: 18px; height: 18px; z-index: 2; opacity: .75; pointer-events: none; animation: xrDrift 8s ease-in-out infinite; }
 .xr-side-flake.s1 { left: 10px; bottom: 205px; }
 .xr-side-flake.s2 { right: 10px; bottom: 130px; width: 12px; animation-delay: -3s; }
