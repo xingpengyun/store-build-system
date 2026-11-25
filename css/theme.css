@@ -136,9 +136,12 @@ html { scroll-behavior: auto; }
   box-shadow: 0 18px 44px -16px rgba(12, 20, 44, .62), inset 0 1px 0 rgba(255, 255, 255, .07);
 }
 
+.nav { position: relative; }
+
 .nav-item {
   color: #adb9d8;
   transition: background .16s, color .16s, transform .14s;
+  z-index: 1;
 }
 .nav-item svg { transition: transform .16s; }
 .nav-item:hover {
@@ -148,12 +151,36 @@ html { scroll-behavior: auto; }
 }
 .nav-item:hover svg { transform: scale(1.08); }
 
-.nav-item.active {
-  background: linear-gradient(96deg, #3159f0 0%, #7b4df6 100%);
+/* 高亮改成「滑块」：一块独立的胶囊跟着路由走，切页时平滑平移，
+   而不是每个菜单项各自生硬地变色。背景交给 .nav-glider，这里只留文字变色。 */
+.nav-item.active,
+.nav-item.active:hover {
+  background: transparent;
   color: #fff;
-  box-shadow: 0 10px 22px -10px rgba(76, 88, 240, .95), inset 0 1px 0 rgba(255, 255, 255, .22);
+  box-shadow: none;
+  transform: none;
 }
 .nav-item.active svg { transform: scale(1.06); }
+
+.nav-glider {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 0;
+  border-radius: 9px;
+  background: linear-gradient(96deg, #3e63dd 0%, #7c4ee0 100%);
+  box-shadow: 0 10px 22px -10px rgba(62, 99, 221, .95), inset 0 1px 0 rgba(255, 255, 255, .22);
+  transform: translateY(0);
+  transition:
+    transform .34s cubic-bezier(.22, .61, .36, 1),
+    height .34s cubic-bezier(.22, .61, .36, 1),
+    width .34s cubic-bezier(.22, .61, .36, 1);
+  z-index: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+.nav-glider.no-anim { transition: none; }
 
 .nav-badge {
   background: linear-gradient(180deg, #ff6b5e, #e83a2f);
@@ -540,8 +567,8 @@ button:focus-visible,
     linear-gradient(180deg, #1b2143 0%, #171b38 52%, #12152c 100%);
 }
 .nav-item.active {
-  background: linear-gradient(96deg, #3e63dd 0%, #7c4ee0 100%);
-  box-shadow: 0 10px 22px -10px rgba(62, 99, 221, .95), inset 0 1px 0 rgba(255, 255, 255, .22);
+  background: transparent;
+  box-shadow: none;
 }
 .btn-primary { background: var(--primary-grad); box-shadow: 0 10px 20px -12px rgba(62, 99, 221, .95); }
 .btn-primary:hover { background: linear-gradient(96deg, #3457cf 0%, #6d42d3 100%); }

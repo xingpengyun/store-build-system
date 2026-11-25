@@ -90,16 +90,94 @@
 }
 
 /* ==========================================================
-   吉祥物「小蛮」—— 登录页卡片上方漂浮的蓝色团子
+   登录页机器人（z241 · Bencho EyeTracker 移植，MIT · bencho.dev/licence）
+   —— 顶替原来戴圣诞帽的蓝色团子：一个立方体小机器人，眼睛跟着
+      鼠标转（球面透视）、自己眨眼、戳一下会回一句话。
    ========================================================== */
 .login-mascot {
+  /* Bencho 的 design tokens 映射到本项目已有变量（不新增全局变量）：
+     --bg / --card 直接复用 :root 同名变量；
+     --fill-slab 身体 = 表面色 --card（白）；
+     --fill-on  眼睛 = 主文字 ink --text（深）；
+     --font-ui  项目没有字体变量，直接继承 body 系统字体栈；
+     --ink     气泡文字 = 主文字色 --text。 */
+  --fill-slab: var(--card);
+  --fill-on: var(--text);
+  --font-ui: inherit;
+  --ink: var(--text);
+
   width: 124px;
-  height: 136px;
+  height: 124px;
   flex: 0 0 auto;
-  filter: drop-shadow(0 12px 22px rgba(31, 61, 90, .16));
-  animation: mascotBob 3.4s ease-in-out infinite;
+  display: grid;
+  place-items: center;
+  position: relative;
+  filter: drop-shadow(0 12px 22px rgba(31, 61, 90, .18));
+  animation: mascotBob 3.6s ease-in-out infinite;
 }
-.login-mascot svg { width: 100%; height: 100%; display: block; }
+.login-mascot .eyt-ball {
+  width: var(--eyt-size, 120px);
+  height: var(--eyt-size, 120px);
+  overflow: visible;
+  display: block;
+}
+
+/* 身体是表面色、眼睛是 ink 色：本项目是白卡（浅表面）+ 深字，
+   跟原组件「浅填充配深眼睛」的规则一致 */
+.login-mascot .eyt-body { fill: var(--fill-slab); }
+.login-mascot .eyt-eye  { fill: var(--fill-on); }
+
+/* 戳一下会轻轻凹下去再弹回来 */
+.login-mascot .eyt-ball[data-poke] {
+  cursor: pointer;
+  transform-origin: center;
+  transition: scale 420ms cubic-bezier(0.24, 1.34, 0.38, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+.login-mascot .eyt-ball[data-poke]:active {
+  scale: 0.96;
+  transition-duration: 160ms;
+  transition-timing-function: ease;
+}
+
+/* 戳出来的气泡：从右下角张开，宠物气泡、同样的形状和色调 */
+.login-mascot .eyt-say {
+  position: absolute;
+  left: calc(50% + var(--eyt-size, 120px) * 0.36);
+  top: calc(50% + var(--eyt-size, 120px) * 0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 34px;
+  padding: 0 16px;
+  border-radius: 6px 14px 14px 14px;
+  background: var(--tint, #3e63dd);
+  box-shadow: inset 0 -1.5px 0 rgba(0, 0, 0, 0.1);
+  color: #ffffff;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 400;
+  white-space: nowrap;
+  transform-origin: top left;
+  opacity: 0;
+  scale: 0.85;
+  pointer-events: none;
+  transition: opacity 160ms ease, scale 220ms cubic-bezier(0.24, 1.34, 0.38, 1), background-color 220ms ease;
+  letter-spacing: 0em;
+}
+.login-mascot .eyt-say[data-on] { opacity: 1; scale: 1; }
+
+/* 打字光标：跟身体同色，在彩色气泡上醒目 */
+.login-mascot .eyt-caret {
+  width: 1.5px;
+  height: 13px;
+  border-radius: 1px;
+  background: var(--fill-slab, var(--card));
+  animation: eytCaret 1s steps(1) infinite;
+}
+@keyframes eytCaret {
+  50% { opacity: 0; }
+}
 
 @keyframes mascotBob {
   0%, 100% { transform: translateY(0); }

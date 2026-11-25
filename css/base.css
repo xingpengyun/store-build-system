@@ -119,6 +119,20 @@ svg { display: block; }
 }
 .fade-up { animation: fadeUp .34s cubic-bezier(.22, .8, .3, 1) backwards; }
 
+/* z238→z239：路由切换时，整个内容区作为一个整体从右侧平移滑入。
+   跟 .fade-up 的区别：那是页面里每个元素各自淡入（切页看着像「突然出现」），
+   这是整块 #view 一起平移过来 —— 视觉上更连贯、不生硬。
+   切页时顺带关掉内部 .fade-up，避免「整体平移 + 元素各自淡入」两套动画打架。
+   首次渲染（renderedOnce=false）不加这个类，保持加载后的淡入层次感。
+   z239：位移从 26px 加大到 72px、几乎不做淡入（opacity .6→1），
+   让「平移」成为主导，切页时能明显看到整块内容从右往左滑进来。 */
+@keyframes routeSlide {
+  from { opacity: .6; transform: translateX(72px); }
+  to   { opacity: 1; transform: none; }
+}
+#view.route-enter { animation: routeSlide .38s cubic-bezier(.2, .7, .2, 1); }
+#view.route-enter .fade-up { animation: none; }
+
 /* 数据变动触发的「原地重画」（app.js 给 #view 挂 .re-quiet）：
    这时不重播入场动画 —— .fade-up 是向上挪 8px + 淡入，
    每改一条数据整页都重新飘一遍，看起来就是抖。切页面时才播。 */
