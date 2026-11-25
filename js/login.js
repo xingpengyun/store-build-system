@@ -55,14 +55,12 @@ window.Login = (function () {
      所以用淡蓝 #7ba9cf 压到 .22~.34，像"雾里透出来的一片"。
      z207：第三片换成冬青红果 + 金铃铛枝，登录页也带一点圣诞红绿。
      只放在四角空场，卡片和吉祥物由 DOM 顺序压在它们上面。 */
+  /* z273：和首页落雪统一成毛茸茸的枝晶雪花。原来是几根硬边细线的六角图标，
+     现在直接引同一张 assets/xmas/flake-fuzzy.svg，登录页的淡蓝低透明度照旧。 */
   function lgFlake(cls) {
-    return '<svg class="lg-flake ' + cls + '" viewBox="0 0 24 24" aria-hidden="true">' +
-      '<g stroke="#7ba9cf" stroke-width="1.6" stroke-linecap="round" fill="none">' +
-        '<path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7"/>' +
-        '<path d="M12 2 9.5 4.6M12 2l2.5 2.6M12 22l-2.5-2.6M12 22l2.5-2.6"/>' +
-        '<path d="M3.3 7l3.2.2M3.3 7l1-3M20.7 17l-3.2-.2M20.7 17l-1 3"/>' +
-        '<path d="M3.3 17l1-3M3.3 17l3.2-.2M20.7 7l-1 3M20.7 7l-3.2.2"/>' +
-      '</g><circle cx="12" cy="12" r="1.7" fill="#eaf6ff"/></svg>';
+    return '<svg class="lg-flake ' + cls + '" viewBox="0 0 100 100" aria-hidden="true">' +
+      '<image href="assets/xmas/flake-fuzzy.svg?v=20261112z273" width="100" height="100" />' +
+      '</svg>';
   }
   /* z207：冬青叶 + 红果 + 一枚金铃铛，替掉第三片纯雪花 */
   function lgHolly(cls) {
