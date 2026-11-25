@@ -3180,11 +3180,13 @@
   z-index: 1;
 }
 .sk-row.open .sk-head { position: relative; }
-/* 徽标压在行上沿，不占布局、不挤门店名 */
+/* z251：徽标从右上角挪到「日期 / 负责人」之间的空白区（用户红箭头指的位置）。
+   绝对定位不占布局、不挤任何列；right 按右侧固定列宽算出，垂直落在行内。 */
 .sk-row.open .sk-head::after {
   content: '展开中';
   position: absolute;
-  top: -9px; right: 14px;
+  top: 50%; right: 150px;
+  transform: translateY(-50%);
   z-index: 3;
   padding: 1px 8px;
   border-radius: 9px;
@@ -3346,12 +3348,16 @@
 @media (max-width: 1180px) {
   .sk-head { grid-template-columns: minmax(0, 1fr) 120px 100px 100px 16px; }
   .sk-owner { display: none; }
+  /* z251：负责人列隐藏后，徽标跟着日期列右移，仍落在日期与箭头之间的空白 */
+  .sk-row.open .sk-head::after { right: 44px; }
 }
 /* 手机窄屏：阶段时间线一行塞不下 5 列，收掉「逾期/无逾期」那列，
    剩下的店名/进度/日期/箭头按可用宽度分，箭头不再顶出视口 */
 @media (max-width: 560px) {
   .sk-head { grid-template-columns: minmax(0, 1fr) 88px 82px 14px; gap: 6px; padding: 10px 8px; }
   .sk-tasks { display: none; }
+  /* 560px 下只剩日期一列在右，徽标贴到日期左缘，不再压住店名 */
+  .sk-row.open .sk-head::after { right: 96px; top: 50%; font-size: 9px; padding: 1px 6px; }
   .sk-name-box { min-width: 0; }
   .sk-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sk-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
