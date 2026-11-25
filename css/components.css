@@ -4400,33 +4400,10 @@ body.sm-sorting * { cursor: grabbing !important; user-select: none !important; }
 .sk-card .sk-prio { margin-top: 0; }
 
 /* ==========================================================
-   z241 任务卡「活着」的轻量动效（用户：别像被拍照定格）：
-   只动左侧状态条的一道流光 + 状态徽标的呼吸，全部走 transform/opacity
-   合成层，不碰 layout / 文字 / hover 变形，数据一多也不掉帧。
+   z247 任务卡状态条去掉流光（用户：那道白光太丑）——状态条恢复静态纯色。
+   只留状态徽标 / 优先级标签的轻微呼吸，走 opacity 合成层，不掉帧。
    已完成任务定格不动（做完了就该停），reduced-motion 整体退场。
    ========================================================== */
-.sk-card-rail { position: relative; overflow: hidden; }
-.sk-card-rail::after {
-  content: '';
-  position: absolute;
-  left: 0; right: 0; top: 0;
-  height: 34%;
-  border-radius: 3px;
-  background: linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, .95) 52%, transparent 100%);
-  transform: translateY(-130%);
-  animation: skRailFlow 2.9s ease-in-out infinite;
-  will-change: transform;
-  pointer-events: none;
-}
-@keyframes skRailFlow {
-  0%   { transform: translateY(-130%); }
-  68%  { transform: translateY(410%); }
-  100% { transform: translateY(410%); }
-}
-/* 错峰启动，别让一屏卡片齐刷刷一起闪 */
-.sk-card:nth-child(3n + 2) .sk-card-rail::after { animation-delay: -.96s; }
-.sk-card:nth-child(3n + 3) .sk-card-rail::after { animation-delay: -1.92s; }
-
 .sk-card-state .badge {
   animation: skBadgeBreathe 3.1s ease-in-out infinite;
   will-change: opacity;
@@ -4443,16 +4420,12 @@ body.sm-sorting * { cursor: grabbing !important; user-select: none !important; }
 .sk-card .sk-prio { animation: skBadgeBreathe 2.4s ease-in-out infinite; }
 
 /* 已完成：定格，不再动 */
-.sk-card.is-done .sk-card-rail::after,
 .sk-card.is-done .sk-card-state .badge,
 .sk-card.is-done .sk-prio { animation: none; }
-.sk-card.is-done .sk-card-rail::after { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .sk-card-rail::after,
   .sk-card-state .badge,
   .sk-card .sk-prio { animation: none !important; }
-  .sk-card-rail::after { display: none; }
 }
 
 /* ---- 任务展开区顶部：这家店还没发出去的物料（z240）----
