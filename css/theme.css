@@ -1234,7 +1234,11 @@ button:focus-visible,
 @keyframes xrDrift { 0%,100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(6px) rotate(28deg); } }
 
 /* ---- 中景：礼物堆 / 雪松暖光小屋 ---- */
-.xr-gifts { position: absolute; left: 32%; bottom: 2%; width: 88px; height: auto; z-index: 2; filter: drop-shadow(0 4px 6px rgba(60,8,14,.30)); }
+/* z255：礼物从雪人脚边（原 left:32%，和雪人叠出透视感）挪到小鹿右侧、月亮左边的
+   空白雪地上（用户红箭头指的位置）。礼物盒是扁平 SVG，自己没有透视，但压在雪人
+   脚下显得乱；挪开后雪人干净、中间雪地也不空。宽屏 left:50% 正好落在小鹿右缘
+   (约 50%) 与小屋左缘 (约 58%) 之间。 */
+.xr-gifts { position: absolute; left: 50%; bottom: 2%; width: 78px; height: auto; z-index: 2; filter: drop-shadow(0 4px 6px rgba(60,8,14,.30)); }
 .xr-village { position: absolute; right: 0; bottom: 0; width: 27%; height: 100%; z-index: 1; }
 
 /* z226：用户反馈「房子月亮是不是往中间移动一下，都被盖住了」。
@@ -1341,10 +1345,13 @@ button:focus-visible,
 @media (max-width: 1400px) {
   .xr-baby { left: 33%; height: 102%; }
   .xr-deer { left: 47%; height: 90%; }
+  /* z255：鹿在 47% 且更宽，礼物跟着往右到 58% 才不压鹿后腿 */
+  .xr-gifts { left: 58%; }
   .xr-village { width: 25%; }
 }
 @media (max-width: 1180px) {
-  .xr-gifts { left: 29%; width: 76px; }
+  /* z255：礼物跟随挪到鹿右侧雪地（原 left:29% 在雪人脚边，会叠出透视感） */
+  .xr-gifts { left: 58%; width: 70px; }
   .xr-baby { left: 35%; height: 98%; }
   .xr-deer { left: 50%; height: 88%; }
   .xr-moon { right: 16%; width: 76px; height: 76px; }
