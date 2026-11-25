@@ -1242,7 +1242,9 @@ button:focus-visible,
 .kpi:nth-child(6)::after { right: 18px; transform: rotate(-9deg); }
 
 /* ---- 侧栏：圣诞帽搭在右上角、大雪人坐在导航下方 ---- */
-.sidebar { position: sticky; }
+/* z240：窄屏侧栏变成横向吸顶导航，任务页时间线卡片滚上来会盖住它。
+   明确给一个低于顶栏(60)、高于内容卡片的层级，滚动时导航始终可点。 */
+.sidebar { position: sticky; z-index: 40; }
 /* z214：帽子/雪人缩小一档，别再顶到侧栏 logo 和导航文字 */
 .xr-hat {
   position: absolute; top: -6px; right: -6px;
