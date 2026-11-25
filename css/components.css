@@ -1041,7 +1041,9 @@
 /* 头像分组铺开后弹窗会被拉得很长 → 这里限制高度滚动。
    z285 起选择器只剩圣诞节 / 像素 / 动漫 / 日漫角色四组，3D 人物动物已下架。
    分组标题右边拖一条细线，视觉上把组与组分开，但不用画一整条边框。 */
-.art-scroll { max-height: 400px; overflow-y: auto; padding-right: 6px; }
+/* z287：选中头像的蓝圈 box-shadow 向外扩 4px，首列贴着容器左边缘会被 overflow 裁掉
+   （截图里蓝圈左半边变成直线）→ 左右各留 6px 让框完整显示。 */
+.art-scroll { max-height: 400px; overflow-y: auto; padding-left: 6px; padding-right: 6px; }
 .art-group + .art-group { margin-top: 13px; }
 .art-group-head {
   display: flex; align-items: center; gap: 8px;
