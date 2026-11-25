@@ -856,14 +856,16 @@ window.Pages.tasks = (function () {
      · 只动这一行的属性，其余行 transition:none 不变；reduced-motion 下整段跳过。 */
   var skReduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
-  /* z266：展开/收起 = 任务卡「一条条依次淡入 / 依次收回」的纯淡入淡出。
-     只动 opacity（原地不动、无位移无旋转），不碰 height、不碰滚动。
-     展开：第 1 张立即淡入，后面每张延迟 55ms 依次进来；
-     收起：反着来，最后一张先淡出，第 1 张最后收，全部收完再真正隐藏 body。 */
+  /* z267：展开/收起 = 「发牌」——所有卡片先叠在第 1 张的位置（一摞牌），
+     再一张张飞到各自位置落定；收起反向飞回牌堆消失。间隔 75ms，
+     单张时长从长到短（第 1 张 320ms 逐张递减到 160ms），像发牌由慢到快。
+     只动 opacity + translateY（合成器属性，不重排、不掉帧），不碰 height、不碰滚动。 */
   function skClearCardAnims(cards) {
     cards.forEach(function (c) {
-      try { if (c._skStagger) c._skStagger.cancel(); } catch (e) {}
-      c._skStagger = null;
+      try { if (c._skDeal) c._skDeal.cancel(); } catch (e) {}
+      c._skDeal = null;
+      c.style.opacity = '';
+      c.style.transform = '';
     });
   }
 
@@ -873,24 +875,25 @@ window.Pages.tasks = (function () {
     if (!body || skReduceMotion || typeof body.animate !== 'function' || !cards.length) { finish(); return; }
     skClearCardAnims(cards);              /* 动画途中被再次点击：先清掉上一轮 */
     body.classList.add('sk-animating');
-    var STEP = opening ? 55 : 42;          /* 相邻两张的间隔 ms */
-    var DUR = opening ? 240 : 170;         /* 单张时长 ms */
+    var n = cards.length;
+    var pileTop = cards[0].getBoundingClientRect().top;   /* 牌堆 = 第 1 张的位置 */
+    var tops = cards.map(function (c) { return c.getBoundingClientRect().top; });
+    var STEP = 75;                        /* 相邻两张发出的间隔 ms */
     var last = null;
     cards.forEach(function (card, i) {
-      /* 展开从上到下（order=i），收起从下到上（order=n-1-i） */
-      var order = opening ? i : (cards.length - 1 - i);
-      /* 纯淡入淡出：只动 opacity，卡片原地不动，没有横向/纵向位移 */
+      var order = opening ? i : (n - 1 - i);              /* 展开从上往下发，收起从下往上收 */
+      var dy = Math.round(pileTop - tops[i]);            /* 牌堆相对这张的垂直偏移（负值=向上） */
+      var dur = 320 - Math.round(i * 160 / Math.max(1, n - 1));   /* 从长到短：320→160ms */
+      /* 起点一摞牌（都在 pileTop、略缩小、透明），落到各自位置；收起反向 */
       var kf = opening
-        ? [{ opacity: 0 }, { opacity: 1 }]
-        : [{ opacity: 1 }, { opacity: 0 }];
-      /* 展开用 backwards（结束后不残留动画状态，hover 放大仍生效）；
-         收起用 both（结束后停在透明，避免 done() 前闪回一帧不透明）。 */
+        ? [{ opacity: 0, transform: 'translateY(' + dy + 'px) scale(.94)' }, { opacity: 1, transform: 'none' }]
+        : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(' + dy + 'px) scale(.94)' }];
       var a = card.animate(kf, {
-        duration: DUR, delay: order * STEP, easing: 'ease-out',
+        duration: dur, delay: order * STEP, easing: 'cubic-bezier(.22, .8, .3, 1)',
         fill: opening ? 'backwards' : 'both'
       });
-      card._skStagger = a;
-      if (order === cards.length - 1) last = a;
+      card._skDeal = a;
+      if (order === n - 1) last = a;
     });
     var wrap = function () { skClearCardAnims(cards); finish(); };
     if (last) last.onfinish = wrap; else wrap();
