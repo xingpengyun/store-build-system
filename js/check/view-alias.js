@@ -197,8 +197,9 @@
 
       var ex = el.querySelector('[data-act="export"]');
       if (ex) ex.onclick = function () {
-        var name = window.CKExport.downloadAliasesCsv(DB.listAliases());
-        UI.toast('已导出：' + name, 'ok');
+        window.CKExport.busy(ex, function () {
+          return window.CKExport.downloadAliasesCsv(DB.listAliases());
+        });
       };
 
       var goResult = el.querySelector('[data-act="goResult"]');

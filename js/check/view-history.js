@@ -114,8 +114,8 @@
           e.stopPropagation();
           var h = DB.getHistory(b.getAttribute('data-exp'));
           if (!h) return;
-          try {
-            var name = window.CKExport.download(
+          window.CKExport.busy(b, function () {
+            return window.CKExport.download(
               { rows: h.rows || [], stats: h.stats || {}, mode: h.mode, threshold: h.threshold },
               {
                 title: h.title, aFileName: h.aFileName, bFileName: h.bFileName,
@@ -123,10 +123,7 @@
                 mode: h.mode, threshold: h.threshold
               }
             );
-            UI.toast('已导出：' + name, 'ok');
-          } catch (err) {
-            UI.toast('导出失败：' + (err && err.message || '未知错误'), 'bad');
-          }
+          });
         };
       });
 

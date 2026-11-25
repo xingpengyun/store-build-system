@@ -3157,3 +3157,39 @@ z206 只是把红补进「月夜圣诞」的骨架，用户仍觉得不够圣诞
 - 无头 Chrome 实测：注册 timer+interval+listener+cleanup 后切页，timer 停、cleanup 执行、
   listener 摘除；keep 重画 timer 继续跑；Store 常驻设施完好；tasks/settings 的 onLeave 已挂。
   版本号统一 **`20261112z280`**。
+
+### z281：XLSX 懒加载 + 24 个平面动漫头像（2026-11-25）
+
+- `js/check/util.js` 新增 `ensureXLSX()`：缓存 Promise，首次导入/导出时才动态插入
+  `js/vendor/xlsx.full.min.js`（约 930K），删掉两个 HTML 里的静态 `<script>`。
+  `excel.js` 解析前、`export.js` 写出前先 await。首屏不再下载 XLSX。
+- `js/ui.js` 新增 `ART_ANIME` 24 款扁平 2D 动漫头像（256×256 透明 WEBP，约 305KB，
+  红帽图右下 AI 水印已擦），加“动漫”分组并统一 `ART_VER`；图片加 `loading="lazy"`。
+- 版本号统一 `20261112z281`；提交 `b040cb2`（本地已提交，线上部署当时待授权）。
+
+### z282：卡顿操作加加载标志（2026-11-25，用户「比较卡的地方加个加载标志」）
+
+- **排查结论**：启动/上传解析/新建核对/设置页重操作已有 loading（全屏遮罩或常驻 toast），
+  真正缺的是三处：Excel 导出、结果页重算、登录异步按钮。
+- **Excel 导出**（`js/check/export.js`）：
+  · `download()` / `downloadAliasesCsv()` 改为返回 Promise（resolve 文件名），
+    不再同步返回名字 —— 旧写法让「已导出」比文件先弹，属于错误反馈。
+  · 新增 `CKExport.busy(btn, task)` 统一入口：按钮换 `<span class="ck-spin">导出中…` + disabled，
+    顶部常驻 `UI.toast('正在生成文件…','loading',0,'export')`；写完/失败后用同 key
+    替换成 `已导出：xxx` 或错误提示，按钮恢复。
+  · **关键**：`setTimeout(...,30)` 先让出一帧 —— XLSX 已缓存时 `writeFile` 是同步的，
+    不让帧就看不到转圈。另注意 export.js 先于 ui.js 加载，`UI` 必须在 busy() 内部
+    取 `window.CKUI`，不能在模块顶部缓存（顶部取是 undefined）。
+  · 三个调用点全改：`view-result.js` 结果页、`view-history.js` 历史记录、`view-alias.js` 匹配库。
+- **结果页重算**（`js/check/view-result.js`）：`rerun()` 拆成「弹常驻 `正在重算…` + 让帧」
+  和 `doRerun()`（原同步计算）；完成弹 `重算完成`，失败弹 `重算失败`，同用 `rerun` toast key。
+  触发点分散在抽屉选候选/不是同一家/合并跨表开关，用常驻 toast 统一覆盖，不依赖具体按钮。
+- **登录按钮**（`js/login.js` + `css/login.css`）：新增 `busyBtn()/idleBtn()`，三处云端异步
+  （memberGate / sendCode / verifyCode）把纯文本「校验中…」换成 `.btn-spinner` + 文案；
+  `.btn-spinner` 用 `currentColor` 描边，白字主按钮和蓝字验证码按钮都看得清。
+  失败统一走 `idleBtn` 还原，sendCode 成功后由原有倒计时 `refreshSendBtn` 自然恢复。
+- **验证**（无头 Chrome CDP，禁缓存）：`busy` 点击瞬间 spinner/disabled/toast 同时对，
+  350ms 后 spinner 消失、按钮文案还原、toast 变「已导出：测试.xlsx」；
+  `download()` 真实 resolve 出 `测试报告_20261125_2245.xlsx` 且 XLSX 加载成功；
+  rerun toast 的 loading→ok 同 key 替换只留一条；登录按钮 pending 时 `spinner:true, disabled:true`。
+  所有改动 JS `node --check` 通过。版本号统一 **`20261112z282`**。

@@ -476,6 +476,18 @@
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* z282：按钮内的小转圈。跟随 currentColor —— 登录主按钮是白字、
+   验证码按钮是蓝字，两种底色的按钮上都能看清。 */
+.btn-spinner {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  animation: spin .8s linear infinite;
+}
+
 /* 顶部同步状态条 */
 .sync-tip {
   position: fixed;

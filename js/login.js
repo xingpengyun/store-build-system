@@ -16,6 +16,20 @@ window.Login = (function () {
 
   function q(sel) { return layer ? layer.querySelector(sel) : null; }
 
+  /* z282：云端校验 / 发码 / 登录都是异步的，按钮里放个小转圈，
+     比原来干巴巴的「校验中…」更容易看出系统确实在处理。
+     失败恢复统一走 idleBtn，避免有的分支忘了还原成可点状态。 */
+  function busyBtn(btn, text) {
+    if (!btn) return;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-spinner"></span>' + text;
+  }
+  function idleBtn(btn, text) {
+    if (!btn) return;
+    btn.disabled = false;
+    btn.textContent = text;
+  }
+
   function esc(s) {
     if (window.Utils && window.Utils.esc) return window.Utils.esc(s);
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -59,7 +73,7 @@ window.Login = (function () {
      现在直接引同一张 assets/xmas/flake-fuzzy.svg，登录页的淡蓝低透明度照旧。 */
   function lgFlake(cls) {
     return '<svg class="lg-flake ' + cls + '" viewBox="0 0 100 100" aria-hidden="true">' +
-      '<image href="assets/xmas/flake-fuzzy.svg?v=20261112z281" width="100" height="100" />' +
+      '<image href="assets/xmas/flake-fuzzy.svg?v=20261112z282" width="100" height="100" />' +
       '</svg>';
   }
   /* z207：冬青叶 + 红果 + 一枚金铃铛，替掉第三片纯雪花 */
@@ -203,23 +217,20 @@ window.Login = (function () {
       if (!u || !p) { err('请输入账号和密码'); return; }
 
       var btn = q('#lgSubmit');
-      btn.disabled = true;
-      btn.textContent = '校验中…';
+      busyBtn(btn, '校验中…');
       err('');
 
       /* 先过姓名白名单（只有团队成员能进），再对账号密码。
          白名单要问云端，所以这里是异步：断网时退回本机镜像。 */
       window.Cloud.memberGate(chk.name).then(function (gate) {
         if (!gate || !gate.ok) {
-          btn.disabled = false;
-          btn.textContent = '登 录';
+          idleBtn(btn, '登 录');
           err(gate && gate.msg ? gate.msg : '请联系管理员开通账号');
           return;   /* 不说是密码错了，也不清空，让人照着提示去找管理员 */
         }
 
         if (!window.Cloud.simpleLogin(u, p, chk.name)) {
-          btn.disabled = false;
-          btn.textContent = '登 录';
+          idleBtn(btn, '登 录');
           err('账号或密码不正确');
           passEl.value = '';
           passEl.focus();
@@ -229,8 +240,7 @@ window.Login = (function () {
         hide();
         if (onDone) onDone({ name: chk.name, account: u });
       }).catch(function (ex) {
-        btn.disabled = false;
-        btn.textContent = '登 录';
+        idleBtn(btn, '登 录');
         err('登录检查失败：' + ((ex && ex.message) || '请稍后重试'));
       });
     });
@@ -292,8 +302,7 @@ window.Login = (function () {
       var val = phoneValue();
       if (!/^1\d{10}$/.test(val)) { err('请输入正确的 11 位手机号'); return; }
 
-      send.disabled = true;
-      send.textContent = '发送中…';
+      busyBtn(send, '发送中…');
       err('');
 
       window.Cloud.sendCode(val).then(function (data) {
@@ -324,8 +333,7 @@ window.Login = (function () {
       if (!/^\d{4,6}$/.test(c)) { err('请输入收到的验证码'); return; }
 
       var btn = q('#lgSubmit');
-      btn.disabled = true;
-      btn.textContent = '登录中…';
+      busyBtn(btn, '登录中…');
       err('');
 
       window.Cloud.verifyCode({
@@ -337,8 +345,7 @@ window.Login = (function () {
         hide();
         if (onDone) onDone(data && data.user);
       }).catch(function (e) {
-        btn.disabled = false;
-        btn.textContent = '登 录';
+        idleBtn(btn, '登 录');
         err(e.message || '登录失败，请检查验证码');
       });
     });

@@ -1500,7 +1500,9 @@
     }
   }
 
-  /* 用人工覆盖重新装配结果（不重新解析 Excel） */
+  /* 用人工覆盖重新装配结果（不重新解析 Excel）
+     z282：CKRecon.run 是同步 CPU 密集计算，数据多时页面会僵住。
+     先弹常驻「正在重算…」并让出一帧，浏览器画出转圈后再真正算。 */
   function rerun() {
     var s = st();
     if (s.historyView) { App.render(); return; }
@@ -1509,6 +1511,12 @@
       App.render();
       return;
     }
+    UI.toast('正在重算…', 'loading', 0, 'rerun');
+    setTimeout(function () { doRerun(); }, 30);
+  }
+
+  function doRerun() {
+    var s = st();
     try {
       var input = {
         aFile: s.aFile,
@@ -1551,9 +1559,10 @@
 
       App.render();
       App.refreshBadges();
+      UI.toast('重算完成', 'ok', 1800, 'rerun');
     } catch (e) {
       console.error('[rerun]', e);
-      UI.toast('重算失败：' + (e && e.message || '未知错误'), 'bad');
+      UI.toast('重算失败：' + (e && e.message || '未知错误'), 'bad', 3200, 'rerun');
     }
   }
 
@@ -1726,13 +1735,9 @@
         ex.onclick = function () {
           var a = active();
           if (!a) return;
-          try {
-            var name = window.CKExport.download(a, a.meta);
-            UI.toast('已导出：' + name, 'ok', 3200);
-          } catch (e) {
-            console.error(e);
-            UI.toast('导出失败：' + (e && e.message || '未知错误'), 'bad');
-          }
+          window.CKExport.busy(ex, function () {
+            return window.CKExport.download(a, a.meta);
+          });
         };
       }
       var nn = document.querySelector('[data-top="new"]');

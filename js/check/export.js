@@ -595,22 +595,22 @@ window.CKExport = (function () {
   }
 
   /* z281：文件名同步算好返回（调用点只拿它弹提示），真正的 Excel 写出
-     等 XLSX 组件按需加载完再做。组件没到位前不下载 930K。 */
+     等 XLSX 组件按需加载完再做。组件没到位前不下载 930K。
+     z282：改成返回 Promise —— 以前同步返回文件名、异步才写文件，
+     调用点立刻弹「已导出」，文件还没生成，既误导又没法显示加载中。 */
   function download(result, meta) {
     var name = fileName(meta);
-    U.ensureXLSX().then(function () {
+    return U.ensureXLSX().then(function () {
       var wb = build(result, meta);
       XLSX.writeFile(wb, name, { compression: true });
-    }, function (err) {
-      window.UI && window.UI.toast(err.message || '导出失败', 'error');
+      return name;
     });
-    return name;
   }
 
   /* 门店匹配库 / 方案 导出成 CSV，方便给同事看或存档 */
   function downloadAliasesCsv(aliases) {
     var name = '门店匹配库_' + U.todayStr() + '.csv';
-    U.ensureXLSX().then(function () {
+    return U.ensureXLSX().then(function () {
       var aoa = [['外部表/原始写法', '对应标准门店', '来源', '使用次数', '备注', '创建时间']];
       (aliases || []).forEach(function (a) {
         aoa.push([a.variant, a.canonical, a.source === 'history' ? '核对时确认' : '手动添加',
@@ -620,16 +620,51 @@ window.CKExport = (function () {
       var csv = XLSX.utils.sheet_to_csv(ws);
       var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
       U.downloadBlob(blob, name);
-    }, function (err) {
-      window.UI && window.UI.toast(err.message || '导出失败', 'error');
+      return name;
     });
-    return name;
+  }
+
+  /* z282：导出统一入口 —— 按钮转圈 + 顶部常驻「正在生成文件…」，
+     真正写完（或失败）后再换成结果提示，避免文件没出来就说「已导出」。
+     task 返回 Promise；三个导出按钮（结果页 / 历史 / 匹配库）都走这里。 */
+  function busy(btn, task) {
+    var UI = window.CKUI;   /* export.js 先于 ui.js 加载，调用时再取，别在顶部缓存 */
+    if (!btn || btn.getAttribute('data-busy')) return;
+    var html = btn.innerHTML;
+    btn.setAttribute('data-busy', '1');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="ck-spin"></span> 导出中…';
+    UI.toast('正在生成文件…', 'loading', 0, 'export');
+
+    /* XLSX 已缓存时整个写出是同步的，先让出一帧让浏览器把转圈画出来，
+       否则主线程被 writeFile 占满，用户看不到任何加载反馈。 */
+    setTimeout(function () {
+      var p;
+      try { p = task(); } catch (e) { fail(e); return; }
+      Promise.resolve(p).then(function (name) {
+        UI.toast('已导出：' + name, 'ok', 3200, 'export');
+        restore();
+      }, fail);
+
+      function fail(e) {
+        console.error('[export]', e);
+        UI.toast('导出失败：' + (e && e.message || '未知错误'), 'bad', 3200, 'export');
+        restore();
+      }
+      function restore() {
+        btn.removeAttribute('data-busy');
+        if (!document.contains(btn)) return;   /* 期间切页重绘了，按钮已失效 */
+        btn.disabled = false;
+        btn.innerHTML = html;
+      }
+    }, 30);
   }
 
   return {
     build: build,
     download: download,
     downloadAliasesCsv: downloadAliasesCsv,
+    busy: busy,
     STATUS_TEXT: STATUS_TEXT,
     statusText: statusText
   };
