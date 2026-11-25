@@ -860,7 +860,8 @@ window.Pages.tasks = (function () {
   /* z267：展开/收起 = 「发牌」——所有卡片先叠在第 1 张的位置（一摞牌），
      再一张张飞到各自位置落定；收起反向飞回牌堆消失。间隔 220ms，
      单张时长从长到短（第 1 张 900ms 逐张递减到 500ms），像发牌由慢到快。
-     z270：收起时格子高度跟着每张牌离场的时点一起收，不再「牌全走完格子才突然消失」。 */
+     z270：收起时格子高度跟着每张牌离场的时点一起收，不再「牌全走完格子才突然消失」。
+     z271：收起节奏稍微加快（间隔 220→180ms、单张 900→500 改 800→450ms），展开不变。 */
   function skClearBodyAnim(body) {
     if (!body || !body._skDealBody) return;
     try { body._skDealBody.cancel(); } catch (e) {}
@@ -920,16 +921,20 @@ window.Pages.tasks = (function () {
     var n = cards.length;
     var pileTop = cards[0].getBoundingClientRect().top;   /* 牌堆 = 第 1 张的位置 */
     var tops = cards.map(function (c) { return c.getBoundingClientRect().top; });
-    var STEP = 220;                       /* 相邻两张发出的间隔 ms（最慢，看得清一张张发） */
-    var durOf = function (i) { return 900 - Math.round(i * 400 / Math.max(1, n - 1)); };
-    var total = (n - 1) * STEP + durOf(0);
+    /* z269 定下的发牌节奏（展开）不动；z271 按用户反馈把收起稍微加快一点：
+       间隔 220→180ms，单张时长 900→500 改 800→450ms，仍看得清一张张飞回。 */
+    var step = opening ? 220 : 180;
+    var durOf = opening
+      ? function (i) { return 900 - Math.round(i * 400 / Math.max(1, n - 1)); }
+      : function (i) { return 800 - Math.round(i * 350 / Math.max(1, n - 1)); };
+    var total = (n - 1) * step + durOf(0);
     var last = null;
 
     /* z270：收起时高度与发牌同帧结束；展开不动，仍是一次性撑到全高再发牌。 */
     var bodyAnim = null;
     if (!opening) {
       bodyAnim = body.animate(
-        skBodyCollapseFrames(body, cards, STEP, durOf, total),
+        skBodyCollapseFrames(body, cards, step, durOf, total),
         { duration: total, easing: 'linear', fill: 'both' }
       );
       body._skDealBody = bodyAnim;
@@ -943,7 +948,7 @@ window.Pages.tasks = (function () {
         ? [{ opacity: 0, transform: 'translateY(' + dy + 'px) scale(.94)' }, { opacity: 1, transform: 'none' }]
         : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(' + dy + 'px) scale(.94)' }];
       var a = card.animate(kf, {
-        duration: durOf(i), delay: order * STEP, easing: 'cubic-bezier(.22, .8, .3, 1)',
+        duration: durOf(i), delay: order * step, easing: 'cubic-bezier(.22, .8, .3, 1)',
         fill: opening ? 'backwards' : 'both'
       });
       card._skDeal = a;

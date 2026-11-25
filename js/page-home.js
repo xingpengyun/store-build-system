@@ -622,8 +622,8 @@ window.Pages.home = (function () {
       clouds + flakes +
       village + gifts + miniGifts +
       /* z249：3D 雪人/鹿换成图1 温馨水彩贺卡风（用户确认满意）。素材竖版，定位见 theme.css。 */
-      '<img class="xr-baby" src="assets/xmas/xmas-watercolor-snowman.png?v=20261112z270" alt="" />' +
-      '<img class="xr-deer" src="assets/xmas/xmas-watercolor-deer.png?v=20261112z270" alt="" />' +
+      '<img class="xr-baby" src="assets/xmas/xmas-watercolor-snowman.png?v=20261112z271" alt="" />' +
+      '<img class="xr-deer" src="assets/xmas/xmas-watercolor-deer.png?v=20261112z271" alt="" />' +
       merry +
       snowbank +
     '</div>';
