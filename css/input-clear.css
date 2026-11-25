@@ -1,0 +1,51 @@
+/* input-clear · 全站输入框一键清除按钮（z257） */
+
+/* 独立输入框的包裹层：按钮 absolute 到右端内侧 */
+.ic-wrap { position: relative; display: inline-block; }
+.ic-wrap > input { padding-right: 26px; }
+.ic-abs {
+  position: absolute;
+  right: 7px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* 清除按钮本体：默认隐藏，有内容（is-on）才显示 */
+.ic-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #e4e9f2;
+  color: #7c889e;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: background .14s, color .14s, transform .14s;
+}
+.ic-btn.is-on { display: flex; }
+.ic-btn:hover { background: #5b7cfa; color: #fff; }
+.ic-btn:active { transform: scale(.88); }
+.ic-btn:focus-visible { outline: 2px solid #5b7cfa; outline-offset: 1px; }
+
+/* flex 容器内的兄弟按钮，和已有 mini-search-clear 同款尺寸 */
+.ic-inline { flex: 0 0 16px; }
+
+/* check 页深一点的底色上，按钮调淡 */
+.ck-search .ic-btn, .ck-input + .ic-btn { background: #eceff5; }
+.ck-input + .ic-btn:hover, .ck-search .ic-btn:hover { background: #3e63dd; }
+
+/* 窄屏不撑宽 */
+@media (max-width: 560px) {
+  .ic-btn { width: 15px; height: 15px; flex-basis: 15px; }
+}
