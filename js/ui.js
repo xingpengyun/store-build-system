@@ -275,13 +275,12 @@ window.UI = (function () {
     return (k && ART[k] && ART[k].img) ? k : '';
   }
 
-  /* 选择器的分组与顺序：全部是 3D 图，按人物 / 动物 / 圣诞节排，
-     组内顺序是手调的（先放最常用的），不跟 ART 的声明顺序走。
-     z205：第三组从万圣节换成圣诞节，6 张新 SVG 顶掉南瓜 / 幽灵 / 女巫 / 黑猫 / 蝙蝠 / 骷髅。 */
+  /* 选择器的分组与顺序，组内顺序手调（先放最常用的），不跟 ART 的声明顺序走。
+     z205：万圣节换成圣诞节，6 张新 SVG 顶掉南瓜 / 幽灵 / 女巫 / 黑猫 / 蝙蝠 / 骷髅。
+     z285：用户嫌 3D 人物 / 动物那 16 张丑，从选择器下架 —— 只从 ART_GROUPS 移除，
+     ART 表里的定义保留，已选这些头像的老成员照常显示（新成员也不会再默认分到）。
+     现在选择器剩：圣诞节 SVG / 像素 / 平面动漫 / 日漫角色。 */
   var ART_GROUPS = [
-    { title: '人物', keys: ['d_glasses', 'd_longhair', 'd_ponytail', 'd_beard'] },
-    { title: '动物', keys: ['d_cat', 'd_panda', 'd_shiba', 'd_fox', 'd_rabbit', 'd_bear',
-                            'd_pig', 'd_frog', 'd_chick', 'd_koala', 'd_tiger', 'd_penguin'] },
     { title: '圣诞节', keys: ['d_x_tree', 'd_x_snowman', 'd_x_santa', 'd_x_reindeer', 'd_x_gift', 'd_x_bell'] },
     { title: '像素风', keys: ['p_glasses', 'p_longhair', 'p_cat', 'p_shiba', 'p_panda', 'p_santa', 'p_snowman', 'p_tree'] },
     { title: '动漫', keys: Object.keys(ART_ANIME) },
@@ -325,7 +324,7 @@ window.UI = (function () {
      换新版本号 = 所有图片 URL 一起换，旧缓存自然绕开。
      以后**补图、换图都必须改这里**，否则只有清缓存的人能看到新图。 */
   /* z236：升一版，绕开浏览器 / CDN 可能缓存下来的旧 404（注释里那个老坑） */
-  var ART_VER = '20261112z284';
+  var ART_VER = '20261112z285';
 
   /* 图片加载失败时的兜底：把圆换成「品牌色 + 姓氏首字」。
      没有兜底的话，图挂了圆里就是空的（背景色是浅色底），用户看到的就是「头像消失」。

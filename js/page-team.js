@@ -96,8 +96,8 @@ window.Pages.team = (function () {
       '</label>';
     }).join('');
 
-    /* 头像按 UI.ART_GROUPS 分组铺（3D / 像素 / z281 平面动漫 / z283 日漫角色），
-       都是 name="art" 的 radio，跨组互斥，选中的那颗描蓝边。 */
+    /* 头像按 UI.ART_GROUPS 分组铺（z285 起：圣诞节 / 像素 / 平面动漫 / 日漫角色，
+       3D 人物动物已下架），都是 name="art" 的 radio，跨组互斥，选中的那颗描蓝边。 */
     function artOpt(k) {
       return '<label class="art-opt" title="' + U.esc(UI.ANIMALS[k].name) + '">' +
         '<input type="radio" name="art" value="' + k + '"' + (k === pickedArt ? ' checked' : '') + ' />' +
@@ -127,7 +127,7 @@ window.Pages.team = (function () {
               '<div class="field-hint">任务一律派给门店负责人，这里填什么都不改变谁拿到活。</div>' +
             '</div>' +
           '</div>' +
-          '<div class="field"><label>头像 <span class="field-sub">人物 / 动物 / 圣诞节，或者用颜色 + 姓氏首字</span></label>' +
+          '<div class="field"><label>头像 <span class="field-sub">圣诞节 / 像素 / 动漫 / 日漫角色，或者用颜色 + 姓氏首字</span></label>' +
             '<div id="artPicker" class="art-scroll">' +
               groupsHtml +
               /* 「不用头像」单独一组：它跟 3D 头像排一起时，老被当成某个头像点 */

@@ -73,7 +73,7 @@ window.Login = (function () {
      现在直接引同一张 assets/xmas/flake-fuzzy.svg，登录页的淡蓝低透明度照旧。 */
   function lgFlake(cls) {
     return '<svg class="lg-flake ' + cls + '" viewBox="0 0 100 100" aria-hidden="true">' +
-      '<image href="assets/xmas/flake-fuzzy.svg?v=20261112z284" width="100" height="100" />' +
+      '<image href="assets/xmas/flake-fuzzy.svg?v=20261112z285" width="100" height="100" />' +
       '</svg>';
   }
   /* z207：冬青叶 + 红果 + 一枚金铃铛，替掉第三片纯雪花 */
