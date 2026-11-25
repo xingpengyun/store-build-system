@@ -226,6 +226,17 @@ window.Store = (function () {
           if (s && s.settings) data.settings = s.settings;
           if (s && s.alertsRead) data.alertsRead = s.alertsRead;
         } catch (e) { /* 脏数据就跳过 */ }
+        return;
+      }
+      /* z237：断网期间改的头像，拉取后贴回独立行那份，别等补发成功才显示 */
+      if (op.k === 'member_art') {
+        try {
+          var art = JSON.parse(op.value);
+          if (art && typeof art === 'object' && !Array.isArray(art)) {
+            data.settings = data.settings || {};
+            data.settings.memberArt = art;
+          }
+        } catch (e) { /* 脏数据就跳过 */ }
       }
     });
 
@@ -669,8 +680,13 @@ window.Store = (function () {
 
   function wqSize() { return Object.keys(wq).length; }
 
-  /* 有改动还没发出去 —— 自动同步据此避让，别一边上传一边拉回来打架 */
-  function wqBusy() { return wqSending > 0 || wqTimer !== null || wqSize() > 0; }
+  /* 有改动还没发出去 —— 自动同步据此避让，别一边上传一边拉回来打架。
+     z237：以前只挡业务表队列，设置的 160ms 合并窗口和异步写飞行期间同步照样拉，
+     拉回来的旧配置（含旧头像）就把刚改的盖掉了。现在设置 / 头像的待写也算进去。 */
+  function wqBusy() {
+    return wqSending > 0 || wqTimer !== null || wqSize() > 0 ||
+      !!settingsTimer || settingsSending > 0 || artSending > 0;
+  }
 
   function scheduleWrites() {
     if (wqTimer) return;
@@ -793,6 +809,8 @@ window.Store = (function () {
      以前改 3 个键就整包发 3 次；现在 160ms 内合并成一次，内容没变就不发。 */
   var settingsTimer = null;
   var settingsSent = '';
+  var settingsSending = 0;   /* 配置整包正在写云端（同步避让用） */
+  var artSending = 0;        /* 头像独立行正在写云端（同步避让用） */
 
   function settingsPayload() {
     return JSON.stringify({ settings: state.settings, alertsRead: state.alertsRead || [] });
@@ -811,7 +829,9 @@ window.Store = (function () {
     var value = settingsPayload();
     if (value === settingsSent) return Promise.resolve(false);   /* 内容没变，省一次整包写 */
 
+    settingsSending++;
     return window.Cloud.saveSettings(state.settings, state.alertsRead).then(function () {
+      settingsSending--;
       settingsSent = value;
       bumpRev();                  /* 配置也是数据，同样换票据 */
       if (!online) {
@@ -820,12 +840,56 @@ window.Store = (function () {
       }
       return true;
     }).catch(function (e) {
+      settingsSending--;
       online = false;
       console.error('[cloud] 设置保存失败', e);
       enqueue({ k: 'set', table: 'app_settings', id: 'main', value: value });
       /* 同上：设置保存失败也静默进队列，不再弹红色错误条 */
       return false;
     });
+  }
+
+  /* z237：头像单独写一行，跟整包配置互不干扰。
+     写成功就换票据，别的电脑下一轮同步能立刻拿到；失败进队列，联网后补发。 */
+  function saveArtMap(map) {
+    if (!window.Cloud || !window.Cloud.saveMemberArt) return Promise.resolve(false);
+    var value = JSON.stringify(map || {});
+    artSending++;
+    return window.Cloud.saveMemberArt(map).then(function () {
+      artSending--;
+      bumpRev();
+      if (!online) {
+        online = true;
+        if (window.UI) UI.toast('已恢复云端连接', 'success');
+      }
+      return true;
+    }).catch(function (e) {
+      artSending--;
+      online = false;
+      console.error('[cloud] 头像保存失败', e);
+      enqueue({ k: 'member_art', value: value });
+      return false;
+    });
+  }
+
+  /* z237：没配过头像的成员，第一次展示就把按名字算出来的默认头像写进配置并上云。
+     这样「默认」变成一份稳定数据：同一张脸在所有电脑、所有会话里都不再变，
+     除非本人再次手动换。显式选过「不用头像」（'none'）和已经配过 key 的一律不动。 */
+  function ensureArtPersisted() {
+    if (!state || !state.members || !state.members.length) return;
+    if (!window.UI || !UI.artKeyFor || !window.Cloud || !window.Cloud.saveMemberArt) return;
+    var map = artMap();
+    var changed = false;
+    state.members.forEach(function (m) {
+      if (map[m.id]) return;                    /* 配过（含 'none'）就别动 */
+      var def = UI.artKeyFor('', m.name);
+      if (def) { map[m.id] = def; m.animal = def; changed = true; }
+    });
+    if (!changed) return;
+    state.settings.memberArt = map;
+    cacheLocal();
+    saveArtMap(map);      /* 权威来源：独立行 */
+    pushSettings();       /* 兼容镜像：旧版本仍读 main 里的 memberArt */
   }
 
   /* 标记「这套系统已经初始化过」，清空后不会再自动塞演示数据 */
@@ -881,12 +945,29 @@ window.Store = (function () {
       pullP = Promise.reject(e);
     }
 
-    return Promise.all([pullP, revP.catch(function () { return null; })])
+    /* z237：头像单独那一行也一起读。它优先于整包 main 里的 memberArt —— 整包那份
+       只给还没升级的客户端当兼容镜像，谁改了头像以独立行为准。 */
+    var artP = null;
+    try {
+      artP = window.Cloud.pullMemberArt ? window.Cloud.pullMemberArt() : null;
+    } catch (e) { artP = null; }
+    if (!artP || !artP.then) artP = Promise.resolve(null);
+
+    return Promise.all([pullP, revP.catch(function () { return null; }),
+                        artP.catch(function () { return null; })])
       .then(function (both) {
       var data = both[0];
       var revAtStart = both[1];
+      var remoteArt = both[2];
       online = true;
       bindOnline();
+      data.settings = data.settings || {};
+      if (remoteArt && typeof remoteArt === 'object' && !Array.isArray(remoteArt)) {
+        data.settings.memberArt = remoteArt;
+      } else if (data.settings.memberArt && Object.keys(data.settings.memberArt).length) {
+        /* 老数据迁移：独立行还没有，把整包里的头像补写一份过去（表结构不变） */
+        try { window.Cloud.saveMemberArt(data.settings.memberArt).catch(function () {}); } catch (e) {}
+      }
       /* 先把待发送队列里的改动贴回云端数据上，再判断"是不是空系统"：
          否则断网时新建的门店，会因为云端还没收到而被当成空系统处理掉。 */
       applyPending(data);
@@ -911,6 +992,7 @@ window.Store = (function () {
           return window.Cloud.importAll(local, onProgress).then(function () {
             state = normalized(JSON.parse(JSON.stringify(local)));
             alignTaskOwners();      /* 搬上来的老数据也按门店负责人收敛一次 */
+            ensureArtPersisted();   /* z237：迁移上来的成员也要把默认头像固定下来 */
             markInitialized();
             cacheLocal();
             return { imported: local.stores.length, seeded: false };
@@ -925,6 +1007,7 @@ window.Store = (function () {
       }
 
       state = normalized(data);
+      ensureArtPersisted();        /* z237：默认头像当场落库，之后不再随代码 / 电脑变 */
       lastFullAt = Date.now();     /* 这一轮刚全量拉过，增量同步从这一刻算起 */
       syncRev = revAtStart || '';  /* 基线票据：这轮拉的就是「这个票据」对应的数据 */
       /* 任务负责人一律跟门店负责人：老数据是按「售前 / 售后 / 接单」派出去的，
@@ -1015,7 +1098,20 @@ window.Store = (function () {
     needPull().then(function (yes) {
       if (!yes) { syncSkipped += 1; return null; }          /* 票据没变：这一轮不拉 */
       var p;
-      try { p = window.Cloud.pullAll(); }
+      try {
+        p = window.Cloud.pullAll();
+        /* z237：同步时也读头像独立行 —— 另一台电脑换了头像，这台下一轮就能看到。
+           独立行是权威，直接覆盖整包 main 里的兼容镜像。 */
+        if (p && p.then && window.Cloud.pullMemberArt) {
+          p = Promise.all([p, window.Cloud.pullMemberArt()]).then(function (r) {
+            if (r[1] && typeof r[1] === 'object' && !Array.isArray(r[1])) {
+              r[0].settings = r[0].settings || {};
+              r[0].settings.memberArt = r[1];
+            }
+            return r[0];
+          });
+        }
+      }
       catch (e) { return null; }                            /* 发起就抛错：别卡死 */
       if (!p || !p.then) return null;
       return p.then(function (data) {
@@ -1027,6 +1123,7 @@ window.Store = (function () {
         if (nextStamp === syncLastStamp) return;
         syncLastStamp = nextStamp;
         state = next;
+        ensureArtPersisted();        /* 新来的成员也要把默认头像固定下来（幂等） */
         alignTaskOwners();           /* 别人还用旧版按角色派活时，拉回来也对齐一次 */
         cacheLocal();
         if (syncOnChange) syncOnChange();
@@ -1930,6 +2027,9 @@ window.Store = (function () {
        以前两者都是 delete，配置一被清空就全变首字，用户看到的就是「头像都没了」。 */
     map[id] = key || artNo;
     state.settings.memberArt = map;
+    /* z237：先立刻写独立行（权威，改完就上云），再异步同步整包镜像给旧版本。
+       只靠 pushSettings 的 160ms 窗口会被自动同步撞上，出现「换完又变回去」。 */
+    saveArtMap(map);
     pushSettings();
     cacheLocal();
     var m = memberById(id);

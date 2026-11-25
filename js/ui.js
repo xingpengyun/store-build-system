@@ -171,6 +171,24 @@ window.UI = (function () {
     ART[k] = { name: ART_3D[k].name, bg: ART_3D[k].bg, img: ART_3D[k].file };
   });
 
+  /* z237 像素风头像：16×16 手绘 SVG，硬边缘、透明底，跟 3D 那套共用同一套展示入口。
+     文件在 assets/avatars3d/px_*.svg，key 统一 p_ 前缀（不会跟老 key / 3D key 撞）。
+     SVG 里已经写了 shape-rendering="crispEdges"，CSS 再补一条 image-rendering:pixelated，
+     保证 44px 圆里放大也不会被浏览器插值糊掉。 */
+  var ART_PIXEL = {
+    p_glasses:  { name: '像素眼镜男', file: 'px_glasses.svg',  bg: '#EEF3FF' },
+    p_longhair: { name: '像素长发女', file: 'px_longhair.svg', bg: '#FFF0F6' },
+    p_cat:      { name: '像素橘猫',   file: 'px_cat.svg',      bg: '#FFF3E4' },
+    p_shiba:    { name: '像素柴犬',   file: 'px_shiba.svg',    bg: '#FFF5EC' },
+    p_panda:    { name: '像素熊猫',   file: 'px_panda.svg',    bg: '#F3F6FB' },
+    p_santa:    { name: '像素圣诞老人', file: 'px_santa.svg',  bg: '#FFF0EE' },
+    p_snowman:  { name: '像素雪人',   file: 'px_snowman.svg',  bg: '#EAF4FF' },
+    p_tree:     { name: '像素圣诞树', file: 'px_tree.svg',     bg: '#E7F6EE' }
+  };
+  Object.keys(ART_PIXEL).forEach(function (k) {
+    ART[k] = { name: ART_PIXEL[k].name, bg: ART_PIXEL[k].bg, img: ART_PIXEL[k].file };
+  });
+
   /* 老头像升级（2026-10-30 z168）：原来那 12 只扁平 SVG 小动物 + 6 个 SVG 节日角色
      全部换成上面这套 3D。已经选过 cat / dog 这类老 key 的成员**不用重选**——
      显示时先过一道别名，自动换成对应的 3D 图；老 key 仍留在 ART 里做兜底，
@@ -204,7 +222,8 @@ window.UI = (function () {
     { title: '人物', keys: ['d_glasses', 'd_longhair', 'd_ponytail', 'd_beard'] },
     { title: '动物', keys: ['d_cat', 'd_panda', 'd_shiba', 'd_fox', 'd_rabbit', 'd_bear',
                             'd_pig', 'd_frog', 'd_chick', 'd_koala', 'd_tiger', 'd_penguin'] },
-    { title: '圣诞节', keys: ['d_x_tree', 'd_x_snowman', 'd_x_santa', 'd_x_reindeer', 'd_x_gift', 'd_x_bell'] }
+    { title: '圣诞节', keys: ['d_x_tree', 'd_x_snowman', 'd_x_santa', 'd_x_reindeer', 'd_x_gift', 'd_x_bell'] },
+    { title: '像素风', keys: ['p_glasses', 'p_longhair', 'p_cat', 'p_shiba', 'p_panda', 'p_santa', 'p_snowman', 'p_tree'] }
   ];
 
   var ART_KEYS = Object.keys(ART);
@@ -244,7 +263,7 @@ window.UI = (function () {
      换新版本号 = 所有图片 URL 一起换，旧缓存自然绕开。
      以后**补图、换图都必须改这里**，否则只有清缓存的人能看到新图。 */
   /* z236：升一版，绕开浏览器 / CDN 可能缓存下来的旧 404（注释里那个老坑） */
-  var ART_VER = '20261112z236';
+  var ART_VER = '20261112z237';
 
   /* 图片加载失败时的兜底：把圆换成「品牌色 + 姓氏首字」。
      没有兜底的话，图挂了圆里就是空的（背景色是浅色底），用户看到的就是「头像消失」。

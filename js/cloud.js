@@ -560,6 +560,38 @@ window.Cloud = (function () {
       });
   }
 
+  /* ---------------- z237 · 成员头像独立行 ----------------
+     头像原来跟阶段、任务清单、留言板挤在 key='main' 的整包 JSON 里。
+     任何一端整包写回（旧标签页 / 另一台电脑的旧版本）都会把刚换的头像冲掉，
+     表现就是「换完过一阵又变回去」。
+     现在头像单独占 app_settings 的一行 key='member_art'（表结构不变，key 本来就是自由值）：
+       · 改头像只写这一行，body 只有几百字节
+       · 谁读都以这一行为准，整包 main 里的 memberArt 只作为老版本兼容镜像
+     ---------------------------------------------------------------- */
+  function saveMemberArt(map) {
+    var payload = JSON.stringify(map || {});
+    return api().database.from('app_settings')
+      .upsert({ key: 'member_art', value: payload, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+      .then(function (r) {
+        if (r.error) throw new Error(r.error.message || '头像保存失败');
+        return true;
+      });
+  }
+
+  function pullMemberArt() {
+    var db;
+    try { db = api().database; } catch (e) { return Promise.resolve(null); }
+    return db.from('app_settings').select('value').eq('key', 'member_art').then(function (r) {
+      if (r.error) return null;
+      var row = (r.data || [])[0];
+      if (!row || !row.value) return null;
+      try {
+        var v = JSON.parse(row.value);
+        return (v && typeof v === 'object' && !Array.isArray(v)) ? v : null;
+      } catch (e) { return null; }
+    }).catch(function () { return null; });
+  }
+
   /* 只读一次配置（不碰门店 / 任务 / 成员）：
      留言板发帖前用它拿云端最新的一份，合并后再整包写回，
      两个人同时留言就不会互相覆盖。 */
@@ -758,6 +790,15 @@ window.Cloud = (function () {
           return true;
         });
     }
+    /* z237：断网期间改的头像，补发时写独立行，不碰整包 main */
+    if (op.k === 'member_art') {
+      return db.from('app_settings')
+        .upsert({ key: 'member_art', value: op.value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+        .then(function (r) {
+          if (r.error) throw new Error(r.error.message || '头像保存失败');
+          return true;
+        });
+    }
     return Promise.resolve(true);
   }
 
@@ -804,6 +845,8 @@ window.Cloud = (function () {
     remove: remove,
     saveSettings: saveSettings,
     pullSettings: pullSettings,
+    saveMemberArt: saveMemberArt,
+    pullMemberArt: pullMemberArt,
     importAll: importAll,
     importBusiness: importBusiness,
     wipeBusiness: wipeBusiness,
