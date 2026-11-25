@@ -841,6 +841,7 @@ window.Pages.tasks = (function () {
     var row = head && head.closest('.sk-row');
     var body = row && row.querySelector('.sk-body');
     if (!body) return;
+    skClearBodyAnim(body);                  /* z270：若上一次收起动画还在跑，先撤掉 */
     body.innerHTML = rowBodyHtml(state.open);
     /* 已完成显隐变了，之前预生成的其他行内容作废，打开时按新口径重建 */
     root.querySelectorAll('.sk-row:not(.open) .sk-body').forEach(function (b) { b.remove(); });
@@ -857,9 +858,15 @@ window.Pages.tasks = (function () {
   var skReduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
   /* z267：展开/收起 = 「发牌」——所有卡片先叠在第 1 张的位置（一摞牌），
-     再一张张飞到各自位置落定；收起反向飞回牌堆消失。间隔 75ms，
-     单张时长从长到短（第 1 张 320ms 逐张递减到 160ms），像发牌由慢到快。
-     只动 opacity + translateY（合成器属性，不重排、不掉帧），不碰 height、不碰滚动。 */
+     再一张张飞到各自位置落定；收起反向飞回牌堆消失。间隔 220ms，
+     单张时长从长到短（第 1 张 900ms 逐张递减到 500ms），像发牌由慢到快。
+     z270：收起时格子高度跟着每张牌离场的时点一起收，不再「牌全走完格子才突然消失」。 */
+  function skClearBodyAnim(body) {
+    if (!body || !body._skDealBody) return;
+    try { body._skDealBody.cancel(); } catch (e) {}
+    body._skDealBody = null;
+  }
+
   function skClearCardAnims(cards) {
     cards.forEach(function (c) {
       try { if (c._skDeal) c._skDeal.cancel(); } catch (e) {}
@@ -869,33 +876,87 @@ window.Pages.tasks = (function () {
     });
   }
 
+  /* 按「第 i 张牌基本飞走」的时刻，生成格子高度的分段关键帧。
+     从下往上收：第 n-1 张先走，格子底部跟着抬到第 n-2 张下沿；最后一张走时收到 0。 */
+  function skBodyCollapseFrames(body, cards, step, durOf, total) {
+    var cs = getComputedStyle(body);
+    var rect = body.getBoundingClientRect();
+    var fullH = rect.height;
+    var pad = parseFloat(cs.paddingBottom) || 0;
+    var bw = parseFloat(cs.borderTopWidth) || 0;
+    var lineColor = cs.borderTopColor || 'transparent';
+    var bottomOf = cards.map(function (c) { return c.getBoundingClientRect().bottom - rect.top; });
+    var gap = 8;                          /* .sk-cards 的行间距 */
+    var frames = [{
+      offset: 0, height: fullH + 'px', paddingBottom: pad + 'px',
+      borderTopWidth: bw + 'px', borderTopColor: lineColor
+    }];
+    var n = cards.length;
+    for (var i = n - 1; i >= 0; i--) {
+      var t = (n - 1 - i) * step + durOf(i) * 0.7;    /* 该张牌淡到基本看不见的时刻 */
+      var remain = i === 0 ? 0 : Math.min(fullH, Math.round(bottomOf[i - 1] + gap + pad + 3));
+      frames.push({
+        offset: Math.min(0.999, t / total),
+        height: remain + 'px',
+        paddingBottom: (i === 0 ? 0 : pad) + 'px',
+        borderTopWidth: (i === 0 ? 0 : bw) + 'px',
+        borderTopColor: (i === 0 ? 'transparent' : lineColor)
+      });
+    }
+    frames.push({
+      offset: 1, height: '0px', paddingBottom: '0px',
+      borderTopWidth: '0px', borderTopColor: 'transparent'
+    });
+    return frames;
+  }
+
   function skAnimateBody(body, opening, done) {
     var cards = body ? [].slice.call(body.querySelectorAll('.sk-card')) : [];
     var finish = function () { body.classList.remove('sk-animating'); if (done) done(); };
     if (!body || skReduceMotion || typeof body.animate !== 'function' || !cards.length) { finish(); return; }
     skClearCardAnims(cards);              /* 动画途中被再次点击：先清掉上一轮 */
+    skClearBodyAnim(body);
     body.classList.add('sk-animating');
     var n = cards.length;
     var pileTop = cards[0].getBoundingClientRect().top;   /* 牌堆 = 第 1 张的位置 */
     var tops = cards.map(function (c) { return c.getBoundingClientRect().top; });
     var STEP = 220;                       /* 相邻两张发出的间隔 ms（最慢，看得清一张张发） */
+    var durOf = function (i) { return 900 - Math.round(i * 400 / Math.max(1, n - 1)); };
+    var total = (n - 1) * STEP + durOf(0);
     var last = null;
+
+    /* z270：收起时高度与发牌同帧结束；展开不动，仍是一次性撑到全高再发牌。 */
+    var bodyAnim = null;
+    if (!opening) {
+      bodyAnim = body.animate(
+        skBodyCollapseFrames(body, cards, STEP, durOf, total),
+        { duration: total, easing: 'linear', fill: 'both' }
+      );
+      body._skDealBody = bodyAnim;
+    }
+
     cards.forEach(function (card, i) {
       var order = opening ? i : (n - 1 - i);              /* 展开从上往下发，收起从下往上收 */
       var dy = Math.round(pileTop - tops[i]);            /* 牌堆相对这张的垂直偏移（负值=向上） */
-      var dur = 900 - Math.round(i * 400 / Math.max(1, n - 1));   /* 从长到短：900→500ms */
       /* 起点一摞牌（都在 pileTop、略缩小、透明），落到各自位置；收起反向 */
       var kf = opening
         ? [{ opacity: 0, transform: 'translateY(' + dy + 'px) scale(.94)' }, { opacity: 1, transform: 'none' }]
         : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(' + dy + 'px) scale(.94)' }];
       var a = card.animate(kf, {
-        duration: dur, delay: order * STEP, easing: 'cubic-bezier(.22, .8, .3, 1)',
+        duration: durOf(i), delay: order * STEP, easing: 'cubic-bezier(.22, .8, .3, 1)',
         fill: opening ? 'backwards' : 'both'
       });
       card._skDeal = a;
       if (order === n - 1) last = a;
     });
-    var wrap = function () { skClearCardAnims(cards); finish(); };
+    var wrap = function () {
+      skClearCardAnims(cards);
+      finish();                           /* 先 hidden，再撤掉 0 高度的动画，避免闪一帧 */
+      if (bodyAnim) {
+        try { bodyAnim.cancel(); } catch (e) {}
+        if (body._skDealBody === bodyAnim) body._skDealBody = null;
+      }
+    };
     if (last) last.onfinish = wrap; else wrap();
   }
 
@@ -910,7 +971,12 @@ window.Pages.tasks = (function () {
     var head = rowEl.querySelector('.sk-head');
     if (head) head.title = '展开这家门店的任务';
     if (!body || body.hidden) return;
-    if (immediate || skReduceMotion) { body.hidden = true; body.classList.remove('sk-animating'); return; }
+    if (immediate || skReduceMotion) {
+      skClearBodyAnim(body);              /* z270：切到别家时旧行的收起动画可能还在跑 */
+      body.hidden = true;
+      body.classList.remove('sk-animating');
+      return;
+    }
     skAnimateBody(body, false, function () { body.hidden = true; });
   }
 
@@ -923,6 +989,7 @@ window.Pages.tasks = (function () {
       body.innerHTML = rowBodyHtml(sid);
       rowEl.appendChild(body);
     } else {
+      skClearBodyAnim(body);              /* z270：收起动画途中又点开，先撤掉 0 高度 */
       body.hidden = false;
     }
     rowEl.classList.add('open');
