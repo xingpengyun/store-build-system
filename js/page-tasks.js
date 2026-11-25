@@ -856,12 +856,23 @@ window.Pages.tasks = (function () {
     var rect = row.getBoundingClientRect();
     var body = row.querySelector('.sk-body');
     var br = body ? body.getBoundingClientRect() : rect;
-    if (br.bottom <= vh - 12 && br.top >= 12) return;   /* 原本就看得全，不用滚 */
+    /* 窄屏时侧栏变成横向吸顶条（约 60px），抬头不能被它盖住：
+       按吸顶栏实际底边算上边界；宽屏侧栏不吸顶，退回原来的 12px。 */
+    var topSafe = 12;
+    var bar = document.querySelector('.sidebar');
+    if (bar && getComputedStyle(bar).position === 'sticky') {
+      var bRect = bar.getBoundingClientRect();
+      if (bRect.bottom > topSafe) topSafe = bRect.bottom + 8;
+    }
+    if (br.bottom <= vh - 12 && br.top >= topSafe) return;   /* 原本就看得全，不用滚 */
 
     var y = window.pageYOffset || document.documentElement.scrollTop || 0;
     var want;
-    if (rect.height <= vh - 24) want = y + rect.top - Math.max(0, (vh - rect.height) / 2);
-    else want = y + rect.top - 48;                      /* 比一屏长：抬头靠上，下面马上能看到任务 */
+    if (rect.height <= vh - topSafe - 12) {
+      want = y + rect.top - Math.max(topSafe, (topSafe + vh - rect.height) / 2);
+    } else {
+      want = y + rect.top - topSafe;                    /* 比一屏长：抬头贴着吸顶栏下方，下面马上能看到任务 */
+    }
     var maxY = Math.max(0, document.documentElement.scrollHeight - vh);
     var to = Math.min(maxY, Math.max(0, want));
     if (Math.abs(to - y) > 0.5) window.scrollTo(0, to);

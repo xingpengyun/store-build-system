@@ -365,8 +365,16 @@ body.booting .app { visibility: hidden; }
   .topbar { padding: 0 14px; }
   .brand-slogan { display: none; }
   .topbar-user-name { display: none; }
-  .search-box { width: 150px; }
-  .shell { flex-direction: column; }
+  /* 窄屏给标题留够地方：搜索框收成图标宽，标题不再被挤掉字 */
+  .topbar-brand { flex: 0 1 auto; }
+  .brand-name { font-size: 14px; overflow: hidden; text-overflow: ellipsis; }
+  .search-box { width: 116px; flex: 0 0 116px; }
+  .topbar-right { gap: 8px; }
+  .shell { flex-direction: column; align-items: stretch; }
+  /* 关键：纵向 flex 下 content 必须显式占满视口宽，否则会按内部 min-width:780
+     的表格取内容宽，把整页撑到 800+px，手机浏览器就把整页缩小（看着像缩放了）。
+     锁定宽度后，.table-wrap 的 overflow-x:auto 才生效，表格自己内部横滚。 */
+  .content { width: 100%; min-width: 0; overflow-x: hidden; }
   .sidebar {
     width: 100%;
     flex: none;
