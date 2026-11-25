@@ -1435,8 +1435,15 @@ window.Pages.tasks = (function () {
         var dragRow = null;
 
         function endDrag() {
-          document.removeEventListener('pointerup', endDrag, true);
-          document.removeEventListener('pointercancel', endDrag, true);
+          /* z280：这两个监听挂在 document 上，拖拽中途切页时统一由 App.scope 摘掉；
+             正常松手则在这里主动摘除（走 scope.off，连托管记录一起清掉）。 */
+          if (window.App && window.App.scope) {
+            window.App.scope.off(document, 'pointerup', endDrag, true);
+            window.App.scope.off(document, 'pointercancel', endDrag, true);
+          } else {
+            document.removeEventListener('pointerup', endDrag, true);
+            document.removeEventListener('pointercancel', endDrag, true);
+          }
           document.body.classList.remove('tpl-drag');
           if (!dragRow) return;
           dragRow.classList.remove('dragging');
@@ -1452,9 +1459,15 @@ window.Pages.tasks = (function () {
           dragRow = row;
           row.classList.add('dragging');
           document.body.classList.add('tpl-drag');
-          /* 松手可能发生在弹窗外面，所以挂在 document 上（capture，保证一定收到） */
-          document.addEventListener('pointerup', endDrag, true);
-          document.addEventListener('pointercancel', endDrag, true);
+          /* 松手可能发生在弹窗外面，所以挂在 document 上（capture，保证一定收到）。
+             z280：经 App.scope 注册，拖拽中切页也能被统一清理，不留悬空监听。 */
+          if (window.App && window.App.scope) {
+            window.App.scope.on(document, 'pointerup', endDrag, true);
+            window.App.scope.on(document, 'pointercancel', endDrag, true);
+          } else {
+            document.addEventListener('pointerup', endDrag, true);
+            document.addEventListener('pointercancel', endDrag, true);
+          }
           try { grip.setPointerCapture(e.pointerId); } catch (err) {}
         });
 
@@ -1833,5 +1846,13 @@ window.Pages.tasks = (function () {
     }
   }
 
-  return { title: '任务管理', render: render, mount: mount, onEnter: onEnter };
+  /* z280：拖拽模板行排到一半切页，document 监听由 App.scope 统一摘掉，
+     但 body/行上的拖拽 class 需要这里兜底清除，避免回到页面后还停在拖拽态。 */
+  function onLeave() {
+    document.body.classList.remove('tpl-drag');
+    var rows = document.querySelectorAll('.tpl-row.dragging');
+    for (var i = 0; i < rows.length; i++) rows[i].classList.remove('dragging');
+  }
+
+  return { title: '任务管理', render: render, mount: mount, onEnter: onEnter, onLeave: onLeave };
 })();

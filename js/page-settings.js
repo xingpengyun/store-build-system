@@ -1322,8 +1322,14 @@ window.Pages.settings = (function () {
         if (!drag) return;
         var d = drag;
         drag = null;
-        document.removeEventListener('pointerup', onDocUp, true);
-        document.removeEventListener('pointercancel', onDocUp, true);
+        /* z280：经 App.scope 注册/摘除，拖拽中切页也能统一清理 */
+        if (window.App && window.App.scope) {
+          window.App.scope.off(document, 'pointerup', onDocUp, true);
+          window.App.scope.off(document, 'pointercancel', onDocUp, true);
+        } else {
+          document.removeEventListener('pointerup', onDocUp, true);
+          document.removeEventListener('pointercancel', onDocUp, true);
+        }
 
         d.node.classList.remove('sm-dragging');
         document.body.classList.remove('sm-sorting');
@@ -1352,9 +1358,15 @@ window.Pages.settings = (function () {
           startY: e.clientY,
           moved: false
         };
-        /* 松手可能发生在列表外，所以挂 document（capture 保证收到），拖完即摘 */
-        document.addEventListener('pointerup', onDocUp, true);
-        document.addEventListener('pointercancel', onDocUp, true);
+        /* 松手可能发生在列表外，所以挂 document（capture 保证收到），拖完即摘。
+           z280：经 App.scope 注册，拖拽中切页也能统一清理 */
+        if (window.App && window.App.scope) {
+          window.App.scope.on(document, 'pointerup', onDocUp, true);
+          window.App.scope.on(document, 'pointercancel', onDocUp, true);
+        } else {
+          document.addEventListener('pointerup', onDocUp, true);
+          document.addEventListener('pointercancel', onDocUp, true);
+        }
       });
 
       smBox.addEventListener('pointermove', function (e) {
@@ -1649,5 +1661,12 @@ window.Pages.settings = (function () {
     }
   }
 
-  return { title: '系统设置', render: render, mount: mount };
+  /* z280：拖拽阶段排序到一半切页时兜底清除拖拽态（监听由 App.scope 摘） */
+  function onLeave() {
+    document.body.classList.remove('sm-sorting');
+    var rows = document.querySelectorAll('.sm-row.sm-dragging');
+    for (var i = 0; i < rows.length; i++) rows[i].classList.remove('sm-dragging');
+  }
+
+  return { title: '系统设置', render: render, mount: mount, onLeave: onLeave };
 })();

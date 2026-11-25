@@ -69,6 +69,78 @@ window.App = (function () {
     }
   }
 
+  /* ---------------- 页面级资源托管（z280）----------------
+     页面若有自己的定时器 / 轮询 / 临时全局监听，用 App.scope 注册；
+     切页时 render() 统一调 scope.clear()，把它们全部清掉，避免残留。
+     注意：应用级常驻设施（Store 的同步轮询、input-clear 的扫描、登录倒计时、
+     视线追踪 rAF）不走这里 —— 它们本来就跨页面存在，清了会丢数据 / 失效。
+     用法：
+       App.scope.timeout(fn, ms) / .interval(fn, ms) / .raf(fn)
+       App.scope.on(target, type, fn, opts)  —— 全局监听（document/window）
+       App.scope.cleanup(fn)                 —— 自定义清理（如移除 body class）
+     注册是「本页私有」的：切到别的页即失效；同一页原地重画（keep）不清。 */
+  var pageScope = null;
+
+  function newScope() {
+    return { timers: [], intervals: [], rafs: [], listeners: [], cleanups: [] };
+  }
+  function ensureScope() { if (!pageScope) pageScope = newScope(); return pageScope; }
+
+  var scope = {
+    timeout: function (fn, ms) {
+      var s = ensureScope();
+      var id = setTimeout(function () {
+        var i = s.timers.indexOf(id); if (i >= 0) s.timers.splice(i, 1);
+        fn();
+      }, ms);
+      s.timers.push(id);
+      return id;
+    },
+    interval: function (fn, ms) {
+      var s = ensureScope();
+      var id = setInterval(fn, ms);
+      s.intervals.push(id);
+      return id;
+    },
+    raf: function (fn) {
+      var s = ensureScope();
+      var id = requestAnimationFrame(function (t) {
+        var i = s.rafs.indexOf(id); if (i >= 0) s.rafs.splice(i, 1);
+        fn(t);
+      });
+      s.rafs.push(id);
+      return id;
+    },
+    on: function (target, type, fn, opts) {
+      var s = ensureScope();
+      if (!target || !target.addEventListener) return fn;
+      target.addEventListener(type, fn, opts);
+      s.listeners.push({ target: target, type: type, fn: fn, opts: opts });
+      return fn;
+    },
+    off: function (target, type, fn, opts) {
+      if (target && target.removeEventListener) target.removeEventListener(type, fn, opts);
+      var s = pageScope;
+      if (s) for (var i = s.listeners.length - 1; i >= 0; i--) {
+        var l = s.listeners[i];
+        if (l.target === target && l.type === type && l.fn === fn) { s.listeners.splice(i, 1); break; }
+      }
+    },
+    cleanup: function (fn) { ensureScope().cleanups.push(fn); },
+    clear: function () {
+      var s = pageScope;
+      pageScope = null;
+      if (!s) return;
+      s.timers.forEach(clearTimeout);
+      s.intervals.forEach(clearInterval);
+      s.rafs.forEach(cancelAnimationFrame);
+      s.listeners.forEach(function (l) {
+        try { l.target.removeEventListener(l.type, l.fn, l.opts); } catch (e) {}
+      });
+      s.cleanups.forEach(function (fn) { try { fn(); } catch (e) { console.error('[scope cleanup]', e); } });
+    }
+  };
+
   /* ---------------- 重画时的「锚点」：不让它跳 ----------------
      数据一变整页重画，行的位置会因为排序 / 增删而挪动，
      滚动条不动就会看到内容整体跳一下。这里在重画前挑一个
@@ -113,6 +185,16 @@ window.App = (function () {
     }
 
     var page = window.Pages[route] || window.Pages.home;
+
+    /* z280：真正切页（非原地重画）时，先让上一页收尾、再清掉它注册的资源。
+       keep=true 是同一页的数据重画，页面没变，不能清（否则轮询/监听被误杀）。 */
+    if (!keep && lastRoute && lastRoute !== route) {
+      var prev = window.Pages[lastRoute];
+      if (prev && typeof prev.onLeave === 'function') {
+        try { prev.onLeave(); } catch (e) { console.error('[onLeave]', lastRoute, e); }
+      }
+      scope.clear();
+    }
 
     /* z233：全屏落雪只在首页显示，用 body.route-home 控制（见 theme.css）。
        render() 是路由切换 / 数据重画的唯一入口，放这里不会漏掉任何一次切页。 */
@@ -823,6 +905,7 @@ window.App = (function () {
     init: init,
     logout: logout,
     refreshChrome: updateChrome,
+    scope: scope,
     get user() { return currentUser; }
   };
 })();

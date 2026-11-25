@@ -3141,3 +3141,19 @@ z206 只是把红补进「月夜圣诞」的骨架，用户仍觉得不够圣诞
   并加 `drop-shadow(0 5px 8px rgba(60,8,14,.22))` 接地阴影。屋顶烟囱完整没被裁。
 - 无头 Chrome 实测：屋前糖果雪堆与雪丘之间的红缝消失，屋子坐实在雪地上，
   控制台 0 报错。版本号统一 **`20261112z279`**。
+
+### z280：页面级资源托管（切页清理定时器 / 轮询 / 全局监听）
+
+- 排查结论：各业务页面本来就没有自己的常驻定时器 / 轮询。现有 4 个定时器全是应用级
+  设施（Store 数据同步轮询、input-clear 输入框扫描、登录倒计时、视线追踪 rAF），
+  **刻意跨页常驻，不能切页清**（清了数据不再更新）。
+- 真实缺口：任务页 / 系统设置页在拖拽排序时把 `pointerup`/`pointercancel` 挂到 document，
+  拖拽中途切页会残留监听 + body/行的拖拽 class。
+- 实现：`js/app.js` 新增 `App.scope` 页面级资源托管（timeout/interval/raf/on/off/cleanup/clear），
+  `render()` 真正切页（非 keep、路由不同）时先跑上一页 `onLeave()` 再 `scope.clear()`；
+  keep 原地重画不清（页面没变）。两处拖拽监听改走 `scope.on/off`，两页加 `onLeave` 兜底清拖拽 class。
+- 沿用的页面钩子契约：`{ title, render, mount, onEnter, onLeave }`。以后页面若有自己的
+  定时器 / 轮询 / 全局监听，一律用 `App.scope.*` 注册即可自动随切页清理。
+- 无头 Chrome 实测：注册 timer+interval+listener+cleanup 后切页，timer 停、cleanup 执行、
+  listener 摘除；keep 重画 timer 继续跑；Store 常驻设施完好；tasks/settings 的 onLeave 已挂。
+  版本号统一 **`20261112z280`**。
