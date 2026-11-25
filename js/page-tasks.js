@@ -894,16 +894,31 @@ window.Pages.tasks = (function () {
     if (Math.abs(delta) < 1 || skReduceMotion) { window.scrollTo(0, to); if (done) done(); return; }
     skScrollDone = done || null;
     var t0 = performance.now();
-    var dur = 240;
+    /* z261：底部门店离当前视口常常 600~800px，旧版固定 240ms 就算两端慢，
+       中段每帧仍冲 60~100px，肉眼看就是「刷一下跳过去」的卡顿感。
+       按距离拉长时长（>600px 约 560~620ms），并用 smoothstep（峰值仅 1.5×平均，
+       旧 ease-in-out quad 是 2×），再加 36px 单帧硬上限，掉帧也不会冲出去。 */
+    var dist = Math.abs(delta);
+    var dur = Math.min(620, Math.max(220, 180 + dist * 0.6));
+    var lastY = from;
+    var MAX_STEP = 36;   /* 单帧位移硬上限：主线程偶发长帧也不会「刷一下冲过去」 */
     (function step(now) {
       if (myToken !== skScrollToken) return;   /* 已被新滚动取代：连回调都不跑 */
       var p = Math.min(1, (now - t0) / dur);
-      /* z256：ease-in-out（两端慢中间快）替代 z253 的 ease-out cubic。
-         ease-out 第一帧就冲出 ~25% 位移，展开那帧又要布局几十张卡偶发长帧，
-         一叠加就是「猛地弹一下」。两端慢的曲线开头只走不到 1%，开头不冲。 */
-      var e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
-      window.scrollTo(0, Math.round(from + delta * e));
-      if (p < 1) skScrollRAF = requestAnimationFrame(step);
+      var nextY;
+      if (p < 1) {
+        var e = p * p * (3 - 2 * p);            /* smoothstep：两端速度为 0，中段峰值 1.5× */
+        var target = from + delta * e;
+        var diff = target - lastY;
+        /* 掉一帧也只走 36px，落后的距离由后续帧慢慢追回来 */
+        nextY = Math.abs(diff) > MAX_STEP ? lastY + (diff > 0 ? MAX_STEP : -MAX_STEP) : target;
+      } else {
+        var rest = to - lastY;                  /* 已到时点：按同样上限补齐剩余距离 */
+        nextY = Math.abs(rest) <= MAX_STEP ? to : lastY + (rest > 0 ? MAX_STEP : -MAX_STEP);
+      }
+      lastY = Math.round(nextY);
+      window.scrollTo(0, lastY);
+      if (p < 1 || lastY !== to) skScrollRAF = requestAnimationFrame(step);
       else finish();
     })(t0);
   }
@@ -981,7 +996,11 @@ window.Pages.tasks = (function () {
     } else {
       want = y + rect.top - topSafe;                    /* 比一屏长：抬头贴着吸顶栏下方，下面马上能看到任务 */
     }
-    var maxY = Math.max(0, document.documentElement.scrollHeight - vh);
+    /* z261：body 刚从 hidden 翻出来时，documentElement.scrollHeight 在 Chrome 里
+       偶发还是旧值（底部行会只滚到收起态 maxY，看着像没展开居中）。用这次量到的
+       body 底边兜底推算展开后的文档高度，避免被缓存的旧高度钳死。 */
+    var docH = Math.max(document.documentElement.scrollHeight, y + br.bottom + 40);
+    var maxY = Math.max(0, docH - vh);
     var to = Math.min(maxY, Math.max(0, want));
     if (Math.abs(to - y) > 0.5) {
       /* z253：展开时用 rAF 平滑滚到目标（只这一次，全局 scroll-behavior 仍是 auto）；
@@ -1023,7 +1042,10 @@ window.Pages.tasks = (function () {
         /* 延迟收起期间若用户又点开了任意行（含自己），这次收起必须作废：
            否则会把刚展开的行误合上（列表底部门店展开后 0.7s 自己合上就是它）。 */
         if (state.open) return;
-        collapseRow(row);
+        /* z261：滚动已把页面送回展开前的合法 scrollY，此刻直接收 body 不会再
+           被钳制；省掉 z256 的 180ms 高度收缩（每帧重排一整页卡片），收起只剩
+           一段平滑滚动，底部门店不再「滚完又缩一下」。 */
+        collapseRow(row, true);
       };
       if (Math.abs(back - y) > 1) skAnimateScroll(back, doClose);
       else doClose();
