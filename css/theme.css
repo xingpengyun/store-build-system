@@ -1222,7 +1222,7 @@ button:focus-visible,
 .xr-flake {
   position: absolute; width: 15px; height: 15px; z-index: 4;
   /* z273：和全屏落雪统一成毛茸茸的枝晶，不再是硬边六角线 */
-  background-image: url("../assets/xmas/flake-fuzzy.svg?v=20261112z273");
+  background-image: url("../assets/xmas/flake-fuzzy.svg?v=20261112z274");
   background-size: contain; background-repeat: no-repeat;
   opacity: .8; animation: xrDrift 7s ease-in-out infinite;
 }
@@ -1450,14 +1450,14 @@ button:focus-visible,
   position: absolute;
   top: -6%;
   display: block;
-  /* z273：丢掉 ❄ 字符，改用毛茸茸的六角枝晶 SVG —— 虚焦柔光 + 末端绒毛，
-     近看是一朵雪花，小尺寸下是一团软软的白絮，比硬边图标真实得多。 */
-  width: 1.55em;
-  height: 1.55em;
+  /* z273：丢掉 ❄ 字符，改用毛茸茸的六角枝晶 SVG —— 虚焦柔光 + 末端绒毛。
+     z274：造型保持原样，只把尺寸/不透明度/蓝边阴影调明显一点 —— 之前白絮在白卡片上太隐形。 */
+  width: 1.75em;
+  height: 1.75em;
   line-height: 1;
-  background: url("../assets/xmas/flake-fuzzy.svg?v=20261112z273") center / contain no-repeat;
-  filter: drop-shadow(0 0 2px rgba(255, 255, 255, .9))
-          drop-shadow(0 1px 2px rgba(96, 146, 206, .45));
+  background: url("../assets/xmas/flake-fuzzy.svg?v=20261112z274") center / contain no-repeat;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 1))
+          drop-shadow(0 1px 2px rgba(62, 116, 190, .85));
   user-select: none;
   animation-name: xrSnowFall;
   animation-timing-function: linear;
@@ -1467,11 +1467,11 @@ button:focus-visible,
    z273：中间加几个左右摆动的 stops —— 真雪花不是走直线，会随气流打旋。 */
 @keyframes xrSnowFall {
   0%   { opacity: 0;   transform: translate(0, -10px) rotate(0deg); }
-  8%   { opacity: .92; }
+  8%   { opacity: 1; }
   25%  { transform: translate(-9px, 25vh) rotate(52deg); }
   50%  { transform: translate(13px, 50vh) rotate(108deg); }
   75%  { transform: translate(-6px, 75vh) rotate(164deg); }
-  90%  { opacity: .82; }
+  90%  { opacity: .95; }
   100% { opacity: 0;   transform: translate(38px, 112vh) rotate(220deg); }
 }
 /* 只在首页飘：门店 / 任务 / 双表核对这些表格页一律不叠装饰，免得压住表格文字。

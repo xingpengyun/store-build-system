@@ -517,8 +517,9 @@
   height: auto;
   animation: lgFlakeDrift 9.4s ease-in-out infinite;
 }
-.lg-flake.lf1 { left: 8%;  top: 13%;    width: 42px; opacity: .34; }
-.lg-flake.lf2 { right: 9%; top: 21%;    width: 30px; opacity: .28; animation-delay: -3.1s; animation-duration: 11.6s; }
+/* z274：造型不变，把淡蓝雪花提亮一点，之前压到 .28~.34 在浅背景上几乎看不见 */
+.lg-flake.lf1 { left: 8%;  top: 13%;    width: 42px; opacity: .5; }
+.lg-flake.lf2 { right: 9%; top: 21%;    width: 30px; opacity: .42; animation-delay: -3.1s; animation-duration: 11.6s; }
 .lg-flake.lf3 { left: 15%; bottom: 16%; width: 42px; opacity: .62; animation-delay: -5.4s; animation-duration: 12.8s; }
 @keyframes lgFlakeDrift {
   0%, 100% { transform: translate(0, 0) rotate(0deg); }
