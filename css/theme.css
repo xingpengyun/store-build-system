@@ -1251,8 +1251,10 @@ button:focus-visible,
 
 /* ---- 主角：两张透明 PNG 分开摆，底部压进雪丘 ---- */
 .xr-baby, .xr-deer { position: absolute; height: auto; z-index: 2; pointer-events: none; }
-.xr-baby { left: 34%; bottom: -13%; height: 105%; filter: drop-shadow(0 8px 14px rgba(60, 8, 14, .38)); }
-.xr-deer { left: 48%; bottom: -12%; height: 94%; filter: drop-shadow(0 8px 14px rgba(60, 8, 14, .38)); }
+/* z249：换成图1 温馨水彩贺卡风雪人/鹿（竖版素材，宽高比 ~0.62）。
+   按高度铺满横幅、底边埋进雪堆；之前的 3D 素材是接近正方形，尺寸参数已不适用。 */
+.xr-baby { left: 34%; bottom: -11%; height: 110%; filter: drop-shadow(0 8px 12px rgba(60, 8, 14, .30)); }
+.xr-deer { left: 42%; bottom: -10%; height: 98%; filter: drop-shadow(0 8px 12px rgba(60, 8, 14, .30)); }
 .xr-snowbank { position: absolute; left: 0; bottom: -1px; width: 100%; height: 20px; z-index: 3; }
 
 /* ---- 指标卡：每张卡片上沿垂一小枝冬青红果 ---- */

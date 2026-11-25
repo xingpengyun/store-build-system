@@ -600,8 +600,9 @@ window.Pages.home = (function () {
       '<i class="xr-moon"></i>' +
       clouds + flakes +
       village + gifts +
-      '<img class="xr-baby" src="assets/xmas/xmas-baby.png?v=20261112z210" alt="" />' +
-      '<img class="xr-deer" src="assets/xmas/xmas-deer.png?v=20261112z210" alt="" />' +
+      /* z249：3D 雪人/鹿换成图1 温馨水彩贺卡风（用户确认满意）。素材竖版，定位见 theme.css。 */
+      '<img class="xr-baby" src="assets/xmas/xmas-watercolor-snowman.png?v=20261112z249" alt="" />' +
+      '<img class="xr-deer" src="assets/xmas/xmas-watercolor-deer.png?v=20261112z249" alt="" />' +
       snowbank +
     '</div>';
   }

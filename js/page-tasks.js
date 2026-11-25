@@ -880,12 +880,17 @@ window.Pages.tasks = (function () {
     var body = row.querySelector('.sk-body');
     var br = body ? body.getBoundingClientRect() : rect;
     /* 窄屏时侧栏变成横向吸顶条（约 60px），抬头不能被它盖住：
-       按吸顶栏实际底边算上边界；宽屏侧栏不吸顶，退回原来的 12px。 */
+       按吸顶栏实际底边算上边界。
+       z249 修复：z240 给 .sidebar 加了全局 position:sticky，宽屏下它是贯穿
+       全高的竖侧栏（bottom≈视口底），旧判断只看 sticky 就拿它的 bottom 当
+       安全边界 → topSafe 被顶到 ~900，want 变负 → 底部行展开后完全不滚动。
+       现在只认「矮的、贴在视口顶部的横向条」才是吸顶导航，竖侧栏不算。 */
     var topSafe = 12;
     var bar = document.querySelector('.sidebar');
     if (bar && getComputedStyle(bar).position === 'sticky') {
       var bRect = bar.getBoundingClientRect();
-      if (bRect.bottom > topSafe) topSafe = bRect.bottom + 8;
+      var isTopStrip = bRect.height < vh * 0.3 && bRect.top < vh * 0.25;
+      if (isTopStrip && bRect.bottom > topSafe) topSafe = bRect.bottom + 8;
     }
     if (br.bottom <= vh - 12 && br.top >= topSafe) return;   /* 原本就看得全，不用滚 */
 
