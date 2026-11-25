@@ -3161,13 +3161,23 @@
   transition: none;
 }
 .sk-row:hover { border-color: #d5e1f8; }
-/* z244：展开的这家不再单独给抬头描边/圆角——那会和整行外框错开，
-   在右上角形成锯齿状「断层」。现在只保留整行一层淡淡的底色 + 顶部「展开中」徽标。 */
+/* z245：展开的这家不再单独给抬头描边/圆角——那会和整行外框错开，
+   在右上角形成锯齿状「断层」。保留整行淡底色 + 左侧主色竖线 + 顶部「展开中」徽标。 */
 .sk-row { position: relative; }
 .sk-row.open {
   border-color: var(--line-2);
   background: #f8faff;
   box-shadow: 0 6px 18px rgba(23, 43, 77, .06);
+}
+/* 左侧竖线照旧：只留这一条主色条，不再给抬头套一圈蓝边 */
+.sk-row.open::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, var(--primary), #7a5af8);
+  border-radius: 10px 0 0 10px;
+  z-index: 1;
 }
 .sk-row.open .sk-head { position: relative; }
 /* 徽标压在行上沿，不占布局、不挤门店名 */
