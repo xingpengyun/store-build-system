@@ -955,6 +955,9 @@ window.Pages.tasks = (function () {
     rowEl.classList.add('open');
     var head = rowEl.querySelector('.sk-head');
     if (head) head.title = '收起这家门店的任务';
+    /* z262：hidden→可见后强制同步一次布局，否则 getBoundingClientRect 偶尔读到
+       旧几何（body 还是 0 高），centerOpenRow 会把目标钳到收起态 maxY。 */
+    void body.offsetHeight;
     var m = {
       rect: rowEl.getBoundingClientRect(),
       br: body.getBoundingClientRect(),
