@@ -675,9 +675,13 @@ window.Pages.tasks = (function () {
          原来是一张六列表格，列一多就只剩一堆横线；改成卡片后
          标题在最上面，下面一行放阶段 / 负责人 / 建议完成 / 状态，
          操作固定在右边。鼠标移上去整张卡会微微放大、抬起来。 */
+      /* z250：左侧竖条颜色跟着这张卡的阶段徽标走（用户：竖线颜色和任务颜色对应）。
+         逾期仍是红色强提醒；没有阶段定义时退回原来的语义色。 */
+      var stageDef = C.stageDef(t.stage);
       var railColor = late ? 'var(--red)'
+        : (stageDef && stageDef.color ? stageDef.color
         : (cls === 'done' ? 'var(--green)'
-        : (cls === 'risk' ? 'var(--orange)' : 'var(--slate)'));
+        : (cls === 'risk' ? 'var(--orange)' : 'var(--slate)')));
 
       return '<div class="sk-card' + (late ? ' is-late' : '') +
           (cls === 'done' ? ' is-done' : '') + '" data-tid="' + t.id + '">' +
