@@ -1222,7 +1222,7 @@ button:focus-visible,
 .xr-flake {
   position: absolute; width: 15px; height: 15px; z-index: 4;
   /* z273：和全屏落雪统一成毛茸茸的枝晶，不再是硬边六角线 */
-  background-image: url("../assets/xmas/flake-fuzzy.svg?v=20261112z276");
+  background-image: url("../assets/xmas/flake-fuzzy.svg?v=20261112z277");
   background-size: contain; background-repeat: no-repeat;
   opacity: .8; animation: xrDrift 7s ease-in-out infinite;
 }
@@ -1243,8 +1243,11 @@ button:focus-visible,
    空白雪地上（用户红箭头指的位置）。礼物盒是扁平 SVG，自己没有透视，但压在雪人
    脚下显得乱；挪开后雪人干净、中间雪地也不空。宽屏 left:50% 正好落在小鹿右缘
    (约 50%) 与小屋左缘 (约 58%) 之间。 */
-.xr-gifts { position: absolute; left: 50%; bottom: 2%; width: 78px; height: auto; z-index: 2; filter: drop-shadow(0 4px 6px rgba(60,8,14,.30)); }
-.xr-village { position: absolute; right: 0; bottom: 0; width: 27%; height: 100%; z-index: 1; }
+/* z277：礼物堆换成水彩 PNG（1024x640），比原矢量图略宽一点更显眼 */
+.xr-gifts { position: absolute; left: 50%; bottom: 2%; width: 88px; height: auto; z-index: 2; filter: drop-shadow(0 4px 6px rgba(60,8,14,.30)); }
+/* z277：雪夜小屋矢量图换成水彩姜饼屋 PNG（3:2 横版）——
+   object-fit:contain 让它保持完整比例，右下角贴着雪地，不被拉变形。 */
+.xr-village { position: absolute; right: 0; bottom: 0; width: 27%; height: 100%; z-index: 1; object-fit: contain; object-position: right bottom; }
 
 /* z260：雪人小鹿右侧天空的手写风祝福（不生成图片，系统楷体 + 暖金描边）。
    放在主角右上方空白处，不挡左侧问候文字与右侧日期卡。 */
@@ -1455,7 +1458,7 @@ button:focus-visible,
   width: 1.75em;
   height: 1.75em;
   line-height: 1;
-  background: url("../assets/xmas/flake-fuzzy.svg?v=20261112z276") center / contain no-repeat;
+  background: url("../assets/xmas/flake-fuzzy.svg?v=20261112z277") center / contain no-repeat;
   /* z276：SVG 主色调回中间值——比纯白看得清、比 z275 淡；柔光稍回来一点 */
   filter: drop-shadow(0 0 2.5px rgba(255, 255, 255, .85))
           drop-shadow(0 1px 2px rgba(70, 125, 190, .6));

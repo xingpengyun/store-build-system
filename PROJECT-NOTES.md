@@ -3102,3 +3102,24 @@ z206 只是把红补进「月夜圣诞」的骨架，用户仍觉得不够圣诞
 - `.xr-flk` 白柔光回到 2.5px/.85，蓝边减到 rgba(70,125,190,.6)。造型依旧没动。
 - 无头 Chrome 截图复核：白卡片上仍能认出淡蓝六角雪花，但比 z275 柔和很多。
   版本号统一 **`20261112z276`**。
+
+### z277：横幅插画整体换成水彩贺卡风 + 右下角树（2026-11-25）
+
+- 用户给姜饼屋参考图：「整个改成和雪人一样风格的姜饼屋，旁边一堆糖果」，
+  追加「横幅都改成水彩风格，还有右下角的树」。
+- 用 ImageGen 以水彩雪人 PNG 为风格参考生成三张图，再用抠图服务去背成透明 PNG
+  （生成图默认是浅米白底，不抠会在红色横幅上留白块）：
+  · `assets/xmas/xmas-watercolor-gingerbread.png`：糖霜屋顶 + 暖黄窗 + 烟囱冒烟的
+    姜饼屋，屋前屋侧一堆拐杖糖/棒棒糖/糖豆；
+  · `assets/xmas/xmas-watercolor-gifts.png`：红/绿/金三只礼物 + 丝带 + 糖果；
+  · `assets/xmas/xmas-watercolor-tree.png`：积雪圣诞树 + 金星 + 彩灯 + 树下礼物糖果。
+- `js/page-home.js`：`xmRefScene()` 里 57 行的矢量雪夜小屋 SVG 整段退役，换成
+  `<img class="xr-village">`；矢量礼物堆换成 `<img class="xr-gifts">`；
+  三枚扁平散落小礼物 `miniGifts` 置空（函数保留便于回滚）。
+- `index.html`：右下角 `.xr-page-tree` 换成水彩树（宽高比变 2:3，90px 宽→135px 高，
+  完整树身 + 礼物都在视口内）。
+- `css/theme.css`：`.xr-village` 加 `object-fit:contain; object-position:right bottom`
+  保持 3:2 比例不被拉变形；`.xr-gifts` 78→88px。月亮、云、雪花、雪丘是氛围层，
+  保留矢量（水彩化会让横幅变糊，用户说的「水彩」指插画主体）。
+- 无头 Chrome 截图复核：三处水彩素材完整显示，礼物堆在鹿脚边不压左侧问候文字，
+  右下角树完整，控制台 0 报错。版本号统一 **`20261112z277`**。

@@ -510,80 +510,14 @@ window.Pages.home = (function () {
     var flakes = '';
     for (var i = 1; i <= 10; i++) flakes += '<i class="xr-flake f' + i + '"></i>';
 
-    /* 右侧雪夜小屋：雪松林 + 积雪木屋 + 暖窗 + 屋前挂彩灯的圣诞树 */
-    var village = '<svg class="xr-village" viewBox="0 0 260 140" preserveAspectRatio="xMaxYMax meet" fill="none" aria-hidden="true">' +
-      '<defs>' +
-        '<radialGradient id="xrWin"><stop offset="0" stop-color="#ffe9ae" stop-opacity=".95"/><stop offset="1" stop-color="#ffb85c" stop-opacity="0"/></radialGradient>' +
-        '<linearGradient id="xrWall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8c5a3c"/><stop offset="1" stop-color="#5b3a28"/></linearGradient>' +
-      '</defs>' +
-      /* 远处雪松 */
-      '<g opacity=".92">' +
-        '<path d="M14 96 2 120h6l-6 10h24l-6-10h6z" fill="#12473f"/>' +
-        '<path d="M14 96 9 106h10z" fill="#eaf6ff"/>' +
-        '<path d="M42 88 30 114h6l-6 10h26l-7-10h6z" fill="#17564a"/>' +
-        '<path d="M42 88 36 100h12z" fill="#eaf6ff"/>' +
-        '<path d="M236 90 224 116h6l-6 10h26l-7-10h6z" fill="#17564a"/>' +
-        '<path d="M236 90 230 102h12z" fill="#eaf6ff"/>' +
-      '</g>' +
-      /* 木屋主体 */
-      '<ellipse cx="146" cy="112" rx="72" ry="34" fill="url(#xrWin)" opacity=".45"/>' +
-      '<path d="M100 74h92v56h-92z" fill="url(#xrWall)"/>' +
-      '<path d="M100 74h92v4h-92z" fill="#a97148" opacity=".7"/>' +
-      /* 积雪屋顶（两片斜坡 + 厚雪檐） */
-      '<path d="M88 76 146 34l58 42-8 6-50-36-50 36z" fill="#f2f9ff"/>' +
-      '<path d="M92 74 146 32l54 42q-12-2-22 4-16-10-32 0-18-8-32 0-10-6-22-4z" fill="#ffffff"/>' +
-      '<path d="M146 32 204 74q-10-1-16 3l-42-32-42 32q-7-4-16-3z" fill="#dcecff" opacity=".8"/>' +
-      /* 烟囱 + 一缕暖烟 */
-      '<rect x="176" y="40" width="13" height="20" rx="2" fill="#7a4a34"/>' +
-      '<path d="M176 40h13v4h-13z" fill="#f2f9ff"/>' +
-      '<path d="M183 36q-5-6 1-10t-1-8" stroke="#dbe9ff" stroke-opacity=".45" stroke-width="3" stroke-linecap="round"/>' +
-      /* 暖窗（带光晕）+ 红门 */
-      '<g fill="#ffd887">' +
-        '<rect x="112" y="88" width="20" height="18" rx="2"/>' +
-        '<rect x="160" y="88" width="20" height="18" rx="2"/>' +
-        '<rect x="140" y="112" width="14" height="18" rx="1.5"/>' +
-      '</g>' +
-      '<g stroke="#8a5a38" stroke-width="1.6">' +
-        '<path d="M122 88v18M112 97h20M170 88v18M160 97h20"/>' +
-      '</g>' +
-      '<path d="M138 112h18v18h-18z" fill="#c8323c"/>' +
-      '<circle cx="152" cy="121" r="1.4" fill="#ffd76a"/>' +
-      '<path d="M138 112h18v3h-18z" fill="#e44a48"/>' +
-      /* 屋前挂彩灯的小圣诞树 */
-      /* z231：这条路径以前把宽边画在上面、尖端朝下（倒三角插在树干上），
-         看着像整棵树倒过来了。改成顶点在上、三层逐层外扩、底边最宽，
-         并和下面三条雪檐 / 彩灯圆点 / 木棕树干的位置对齐。 */
-      '<path d="M52 84 36 106h6L32 118h6L30 128h44l-8-10h6L62 106h6z" fill="#0f5a45"/>' +
-      /* z232：这条以前是给「倒三角树」的宽顶边(y=84, 宽28)盖的雪檐；树改回
-         正三角后，树尖在 y=84 只有一个点，雪檐两端全悬在夜空里，看着像凭空
-         多了一块白雪。改成贴合树尖的小雪帽（与远处三棵雪松同一画法），
-         底边 y=94 宽12，落在树冠 x=44.7~59.3 之内，不再有悬空白边。 */
-      '<path d="M52 84 46 94h12z" fill="#eaf6ff" opacity=".9"/>' +
-      '<path d="M34 106q14 5 36 0l-5-4q-13 4-26 0z" fill="#eaf6ff" opacity=".8"/>' +
-      '<path d="M30 124q16 5 44 0l-5-4q-17 4-34 0z" fill="#eaf6ff" opacity=".75"/>' +
-      '<g><circle cx="40" cy="100" r="2.2" fill="#ff4f45"/><circle cx="56" cy="98" r="2" fill="#ffd46a"/>' +
-      '<circle cx="48" cy="112" r="2.2" fill="#8fd0ff"/><circle cx="62" cy="116" r="2" fill="#ff4f45"/>' +
-      '<circle cx="36" cy="118" r="2" fill="#ffd46a"/></g>' +
-      '<path d="M52 128v6h8v-6" fill="#6b412a"/>' +
-      /* 门前雪地 */
-      '<path d="M0 128Q50 120 100 128T200 126T260 130V140H0Z" fill="#f4fbff"/>' +
-    '</svg>';
+    /* z277：右侧小屋改成水彩贺卡风姜饼屋（和雪人/鹿同一画风）——
+       糖霜屋顶 + 暖黄窗 + 烟囱，屋前一堆拐杖糖/棒棒糖/糖豆，透明底 PNG。
+       原来的矢量雪夜小屋 SVG 整段退役，定位沿用 .xr-village。 */
+    var village = '<img class="xr-village" src="assets/xmas/xmas-watercolor-gingerbread.png?v=20261112z277" alt="" />';
 
-    /* 主角左边的一堆礼物：红 / 松绿 / 金，尺寸错开 */
-    var gifts = '<svg class="xr-gifts" viewBox="0 0 110 60" fill="none" aria-hidden="true">' +
-      '<rect x="2" y="28" width="30" height="30" rx="3" fill="#c9303a"/>' +
-      '<rect x="2" y="24" width="30" height="7" rx="2" fill="#e04a48"/>' +
-      '<path d="M17 24v34M2 40h30" stroke="#ffd46a" stroke-width="4"/>' +
-      '<path d="M17 24c-8-10-14-2-6 0 4 1 6-2 6 0zM17 24c8-10 14-2 6 0-4 1-6-2-6 0z" fill="#ffd46a"/>' +
-      '<rect x="36" y="34" width="26" height="24" rx="3" fill="#1c7a58"/>' +
-      '<rect x="36" y="30" width="26" height="6" rx="2" fill="#2a9469"/>' +
-      '<path d="M49 30v28M36 44h26" stroke="#fff0c9" stroke-width="3.4"/>' +
-      '<path d="M49 30c-7-9-12-2-5 0 3 1 5-2 5 0zM49 30c7-9 12-2 5 0-3 1-5-2-5 0z" fill="#fff0c9"/>' +
-      '<rect x="68" y="22" width="34" height="36" rx="3" fill="#e8b74e"/>' +
-      '<rect x="68" y="18" width="34" height="7" rx="2" fill="#ffd674"/>' +
-      '<path d="M85 18v40M68 38h34" stroke="#c9303a" stroke-width="4"/>' +
-      '<path d="M85 18c-9-11-15-2-6 0 4 1 6-2 6 0zM85 18c9-11 15-2 6 0-4 1-6-2-6 0z" fill="#c9303a"/>' +
-    '</svg>';
+    /* z277：主角脚边的礼物堆也换成水彩贺卡风（和雪人/鹿/姜饼屋同一画风），
+       原来的扁平红/绿/金 SVG 退役，定位沿用 .xr-gifts。 */
+    var gifts = '<img class="xr-gifts" src="assets/xmas/xmas-watercolor-gifts.png?v=20261112z277" alt="" />';
 
     /* z260：地面散落的小礼物盒（复用现有红/金/绿三色 + 蝴蝶结画法，
        缩小错落摆在雪人脚边与鹿右侧雪地，让场景更饱满；纯手工 SVG，不生成图片） */
@@ -595,9 +529,9 @@ window.Pages.home = (function () {
         '<path d="M17 9c-6-8-11-2-5 0 2 .5 5-1 5 0zM17 9c6-8 11-2 5 0-2 .5-5-1-5 0z" fill="' + ribbon + '"/>' +
       '</svg>';
     }
-    var miniGifts = miniGift('mg1', '#c9303a', '#e04a48', '#ffd46a') +
-      miniGift('mg2', '#e8b74e', '#ffd674', '#c9303a') +
-      miniGift('mg3', '#1c7a58', '#2a9469', '#fff0c9');
+    /* z277：三枚散落的扁平小礼物和水彩风不搭，退役；礼物堆水彩图已带糖果。
+       miniGift() 函数保留便于回滚。 */
+    var miniGifts = '';
 
     /* z260：雪人小鹿右侧天空的「圣诞快乐 / Merry Christmas」手写风祝福。
        用文字元素 + 系统楷体实现，不生成图片；位置见 theme.css .xr-merry。 */
@@ -622,8 +556,8 @@ window.Pages.home = (function () {
       clouds + flakes +
       village + gifts + miniGifts +
       /* z249：3D 雪人/鹿换成图1 温馨水彩贺卡风（用户确认满意）。素材竖版，定位见 theme.css。 */
-      '<img class="xr-baby" src="assets/xmas/xmas-watercolor-snowman.png?v=20261112z276" alt="" />' +
-      '<img class="xr-deer" src="assets/xmas/xmas-watercolor-deer.png?v=20261112z276" alt="" />' +
+      '<img class="xr-baby" src="assets/xmas/xmas-watercolor-snowman.png?v=20261112z277" alt="" />' +
+      '<img class="xr-deer" src="assets/xmas/xmas-watercolor-deer.png?v=20261112z277" alt="" />' +
       merry +
       snowbank +
     '</div>';
