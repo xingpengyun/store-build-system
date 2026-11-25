@@ -936,6 +936,36 @@
   font-size: 12px;
 }
 .mini-search input::placeholder { color: #b6c0d2; }
+/* z238：搜索框自带的一键清除，只清搜索词，不动阶段/负责人筛选 */
+.mini-search-clear {
+  display: none;
+  flex: 0 0 auto;
+  width: 15px; height: 15px;
+  align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: #eef2f8;
+  color: var(--text-3);
+  font-size: 10px; line-height: 1;
+  cursor: pointer;
+  transition: .14s;
+}
+.mini-search input:not(:placeholder-shown) + .mini-search-clear { display: flex; }
+.mini-search-clear:hover { background: var(--primary); color: #fff; }
+/* 展开区里已完成任务的显隐开关 */
+.mini-toggle {
+  height: 31px;
+  padding: 0 10px;
+  border: 1px solid #e2e9f5;
+  border-radius: 8px;
+  background: #fbfcfe;
+  color: var(--text-2);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: .14s;
+}
+.mini-toggle:hover { border-color: #cfdcfa; color: var(--primary); }
+.mini-toggle.on { background: var(--primary-soft); border-color: #cfdcfa; color: var(--primary); }
 
 /* ---------------- 团队工作台 ---------------- */
 .team-list { display: flex; flex-direction: column; gap: 2px; }
@@ -3239,6 +3269,28 @@
 .sk-row.open .sk-arrow svg { transform: rotate(-90deg); color: var(--primary); }
 
 .sk-body { padding: 0 12px 10px; border-top: 1px dashed var(--line-2); }
+/* z238：已完成的任务默认收起，展开区底部留一个显隐开关 */
+.sk-done-bar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 10px;
+  padding: 8px 2px 2px;
+  border-top: 1px dashed var(--line-2);
+}
+.sk-done-toggle {
+  height: 24px;
+  padding: 0 9px;
+  border: 1px solid #d9e4f7;
+  border-radius: 6px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: .14s;
+}
+.sk-done-toggle:hover { border-color: var(--primary); }
+.sk-done-note { font-size: 11px; color: var(--text-3); }
 
 .sk-task-title { font-size: 12.5px; color: var(--text); }
 

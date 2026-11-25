@@ -15,7 +15,10 @@ window.Pages.tasks = (function () {
             只允许开一家：默认全收着，点开一家自动把别家收回去，页面不会被撑得很长 */
   var state = {
     tab: 'all', q: '', owner: '', stage: '', sub: '',
-    page: 1, per: 12, open: ''
+    page: 1, per: 12, open: '',
+    /* z238：门店展开区里已完成的任务默认收起来，避免把还没做的活挤到下面去。
+       工具栏和展开区各有一个开关，改一次所有门店都跟着变。 */
+    hideDone: true
   };
 
 
@@ -598,10 +601,11 @@ window.Pages.tasks = (function () {
   /* 这家店要展开的任务：受二级 / 负责人筛选影响，未完成的排前面
      门店本身就是靠「自己推到了这一支」命中二级时，就不再按任务的二级过滤，
      否则点了「未做首批」这家店展开会显示 0 条任务，看着像空的。 */
-  function tasksForRow(storeId) {
+  function tasksForRow(storeId, includeDone) {
     var store = S.storeById(storeId);
     var byStoreSub = !!(store && state.sub && S.storeSub(store) === state.sub);
     return tasksOf(storeId).filter(function (t) {
+      if (state.hideDone && !includeDone && t.status === 'done') return false;
       if (state.sub && !byStoreSub && C.stageSplit(t.stage).sub !== state.sub) return false;
       if (state.owner && t.assigneeId !== state.owner) return false;
       return true;
@@ -758,11 +762,50 @@ window.Pages.tasks = (function () {
   /* 展开区单独抽出来：点门店时只换这一块，不必连左侧阶段栏、筛选栏、整张列表
      一起 innerHTML 重建（z230 起）。整表重建时 storeRowHtml 也走这里，内容口径一致。 */
   function rowBodyHtml(sid) {
+    var full = tasksForRow(sid, true);
     var list = tasksForRow(sid);
-    return list.length
+    var doneCount = full.filter(function (t) { return t.status === 'done'; }).length;
+    var html = list.length
       ? taskTableHtml(list)
-      : '<div class="sk-body-empty">这家门店在「' + U.esc(state.sub || state.stage || '当前条件') + '」下没有任务，' +
-        '点右上「新增任务」给它添一条。</div>';
+      : (doneCount
+          ? '<div class="sk-body-empty">这家门店的 ' + doneCount + ' 条任务都已完成，收起来了。</div>'
+          : '<div class="sk-body-empty">这家门店在「' + U.esc(state.sub || state.stage || '当前条件') + '」下没有任务，' +
+            '点右上「新增任务」给它添一条。</div>');
+    if (doneCount) {
+      html += '<div class="sk-done-bar">' +
+        '<button type="button" class="sk-done-toggle" data-act="toggle-done" data-sid="' + U.esc(sid) + '">' +
+          (state.hideDone ? '显示已完成 ' + doneCount + ' 条' : '隐藏已完成 ' + doneCount + ' 条') +
+        '</button>' +
+        '<span class="sk-done-note">' +
+          (state.hideDone ? '已完成的任务默认不占地方' : '已完成的任务已一起展开') +
+        '</span>' +
+      '</div>';
+    }
+    return html;
+  }
+
+  /* 工具栏那颗「显示 / 隐藏已完成」跟着状态走 */
+  function syncDoneToggle(root) {
+    var btn = root.querySelector('#tkDoneToggle');
+    if (!btn) return;
+    btn.textContent = state.hideDone ? '显示已完成' : '隐藏已完成';
+    btn.classList.toggle('on', !state.hideDone);
+    btn.title = state.hideDone
+      ? '展开门店时已完成的任务默认收起；点这里显示'
+      : '点这里把已完成的任务重新收起来';
+  }
+
+  /* 只换当前展开门店的任务区，整张列表和左侧时间线都不动 */
+  function toggleDone(root) {
+    state.hideDone = !state.hideDone;
+    syncDoneToggle(root);
+    if (!state.open) return;
+    var head = root.querySelector('[data-srow="' + state.open + '"]');
+    var row = head && head.closest('.sk-row');
+    var body = row && row.querySelector('.sk-body');
+    if (!body) return;
+    body.innerHTML = rowBodyHtml(state.open);
+    centerOpenRow(row);
   }
 
   function collapseRow(rowEl) {
@@ -787,6 +830,27 @@ window.Pages.tasks = (function () {
     if (head) head.title = '收起这家门店的任务';
   }
 
+  /* z238：展开后把展开区滚到视口中间。
+     点列表底下那几行时，展开内容整个在屏幕下方，以前要自己滚轮找；
+     现在展开完直接把整行居中（内容比一屏还长就让抬头靠上一点），
+     已经是完整可见的行不动，避免点上面的行画面也跟着上下跳。
+     scroll-behavior 保持 auto，这一步瞬时完成，不做动画。 */
+  function centerOpenRow(row) {
+    var vh = window.innerHeight || document.documentElement.clientHeight || 800;
+    var rect = row.getBoundingClientRect();
+    var body = row.querySelector('.sk-body');
+    var br = body ? body.getBoundingClientRect() : rect;
+    if (br.bottom <= vh - 12 && br.top >= 12) return;   /* 原本就看得全，不用滚 */
+
+    var y = window.pageYOffset || document.documentElement.scrollTop || 0;
+    var want;
+    if (rect.height <= vh - 24) want = y + rect.top - Math.max(0, (vh - rect.height) / 2);
+    else want = y + rect.top - 48;                      /* 比一屏长：抬头靠上，下面马上能看到任务 */
+    var maxY = Math.max(0, document.documentElement.scrollHeight - vh);
+    var to = Math.min(maxY, Math.max(0, want));
+    if (Math.abs(to - y) > 0.5) window.scrollTo(0, to);
+  }
+
   /* 展开 / 收起一家门店：一次只开一家（点开 A，原来开着的 B 自动收回去）。
      z230：只动这两行的 .sk-body / .open，不再调 updateList() 全量重绘 ——
      以前一次点击要换掉 400+ 个节点，数据一多就卡，还会把浏览器的滚动锚定
@@ -807,7 +871,9 @@ window.Pages.tasks = (function () {
     else expandRow(row, sid);
     state.open = wasOpen ? '' : sid;
 
-    /* 上方那家收起后内容缩短，按差值把被点这行补回原来的屏幕位置。
+    if (!wasOpen) { centerOpenRow(row); return; }        /* 展开：内容居中 */
+
+    /* 收起：上方那家收起后内容缩短，按差值把被点这行补回原来的屏幕位置。
        #storeListWrap 关掉了 scroll anchoring，这里就是唯一一次补偿，不会叠加；
        scroll-behavior 已改 auto，这一步瞬时完成。页面本来就在最顶时浏览器
        没法再往上滚，钳到 0 即可（那是内容自然缩短，不再有滚动动画）。 */
@@ -1384,7 +1450,11 @@ window.Pages.tasks = (function () {
           '<span class="spacer" style="margin-left:auto"></span>' +
           '<label class="mini-search">' + UI.icon('search') +
             '<input id="tkSearch" placeholder="搜索门店 / 省份" value="' + U.esc(state.q) + '" />' +
+            '<span class="mini-search-clear" data-clear="q" title="只清空搜索，不影响阶段筛选">✕</span>' +
           '</label>' +
+          '<button type="button" class="mini-toggle' + (state.hideDone ? '' : ' on') +
+            '" id="tkDoneToggle" data-act="toggle-done" title="展开门店时已完成的任务默认收起；点这里显示">' +
+            (state.hideDone ? '显示已完成' : '隐藏已完成') + '</button>' +
           '<select class="select" id="tkOwner" style="width:auto;height:31px;font-size:12px">' +
             '<option value="">全部负责人</option>' + UI.options(S.getState().members, state.owner, 'id', 'name') +
           '</select>' +
@@ -1414,6 +1484,7 @@ window.Pages.tasks = (function () {
 
     var ow = root.querySelector('#tkOwner');
     if (ow) ow.value = state.owner;
+    syncDoneToggle(root);
   }
 
   var debouncedSearch = U.debounce(function (root, val) {
@@ -1496,7 +1567,8 @@ window.Pages.tasks = (function () {
       var id = el.getAttribute('data-id');
       var task = id ? S.taskById(id) : null;
 
-      if (act === 'add') openForm(null);
+      if (act === 'toggle-done') toggleDone(root);
+      else if (act === 'add') openForm(null);
       else if (act === 'tpl') openTemplates();
       else if (act === 'edit' && task) openForm(task);
       else if (act === 'push' && task) {
