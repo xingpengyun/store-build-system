@@ -51,10 +51,11 @@
 
     h += '<div class="ck-card">' +
       '<div class="ck-toolbar">' +
-        '<div class="ck-search" style="width:280px">' + UI.icon('search') +
-          '<input class="ck-input" type="text" placeholder="搜索写法或标准门店名" data-q value="' + U.esc(q) + '" /></div>' +
         '<span class="ck-small ck-muted">共 ' + list.length + ' 条</span>' +
         '<div class="ck-toolbar-right">' +
+          /* z272：搜索统一靠右，和主站任务管理 / 发货看板保持同一使用习惯 */
+          '<div class="ck-search" style="width:280px">' + UI.icon('search') +
+            '<input class="ck-input" type="text" placeholder="搜索写法或标准门店名" data-q value="' + U.esc(q) + '" /></div>' +
           '<button class="ck-btn is-sm" data-act="export">' + UI.icon('download') + '导出 CSV</button>' +
           '<button class="ck-btn is-sm is-primary" data-act="add">' + UI.icon('plus') + '手动添加</button>' +
         '</div>' +

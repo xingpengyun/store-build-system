@@ -1069,9 +1069,6 @@ window.Pages.stores = (function () {
 
     '<div class="card fade-up" style="animation-delay:.05s">' +
       '<div class="filter-bar">' +
-        '<label class="mini-search">' + UI.icon('search') +
-          '<input id="stSearch" placeholder="搜索门店 / 负责人" value="' + U.esc(state.q) + '" />' +
-        '</label>' +
         UI.comboHtml({
           id: 'stProvince',
           value: state.province,
@@ -1096,6 +1093,10 @@ window.Pages.stores = (function () {
         '</select>' +
         '<span class="spacer"></span>' +
         '<span class="dim" style="font-size:11.5px" id="stCount"></span>' +
+        /* z272：搜索统一放右侧（跟任务管理 / 发货看板一致），筛选条件留在左侧 */
+        '<label class="mini-search">' + UI.icon('search') +
+          '<input id="stSearch" placeholder="搜索门店 / 负责人" value="' + U.esc(state.q) + '" />' +
+        '</label>' +
       '</div>' +
       facetBarHtml() +
       '<div id="storeListWrap">' + listHtml() + '</div>' +
