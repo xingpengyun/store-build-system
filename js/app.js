@@ -850,7 +850,7 @@ window.App = (function () {
 
   function init() {
     if (!window.Cloud) {
-      window.UI.toast('云服务组件未加载，请检查 js/vendor/cloud-sdk.js', 'error');
+      window.UI.toast('云服务组件未加载，请检查 js/vendor/cloudbase-sdk.js', 'error');
       return;
     }
 

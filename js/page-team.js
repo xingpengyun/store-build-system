@@ -96,7 +96,7 @@ window.Pages.team = (function () {
       '</label>';
     }).join('');
 
-    /* 头像全是 3D 图，按 UI.ART_GROUPS 分三组：人物 / 动物 / 圣诞节。
+    /* 头像按 UI.ART_GROUPS 分组铺（3D / 像素 / z281 新增的 24 张平面动漫），
        都是 name="art" 的 radio，跨组互斥，选中的那颗描蓝边。 */
     function artOpt(k) {
       return '<label class="art-opt" title="' + U.esc(UI.ANIMALS[k].name) + '">' +

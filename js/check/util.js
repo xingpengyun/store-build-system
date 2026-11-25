@@ -260,6 +260,30 @@ window.CKUtil = (function () {
     }, 800);
   }
 
+  /* z281：XLSX（930K）按需加载 —— 只有真正导入 / 导出 Excel 时才下载。
+     两个页面（主站 #/check、独立 check.html）都先加载本文件，所以加载器放这里共用。
+     版本号跟主站资源一致，避免改版后浏览器拿旧缓存。 */
+  var xlsxPromise = null;
+  function ensureXLSX() {
+    if (window.XLSX) return Promise.resolve(window.XLSX);
+    if (xlsxPromise) return xlsxPromise;
+    xlsxPromise = new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = 'js/vendor/xlsx.full.min.js?v=20261112z281';
+      s.onload = function () {
+        if (window.XLSX) resolve(window.XLSX);
+        else { xlsxPromise = null; reject(new Error('Excel 组件加载失败（未初始化）')); }
+      };
+      s.onerror = function () {
+        xlsxPromise = null;
+        s.parentNode && s.parentNode.removeChild(s);
+        reject(new Error('Excel 组件加载失败，请检查网络后重试'));
+      };
+      document.head.appendChild(s);
+    });
+    return xlsxPromise;
+  }
+
   /* 深比较两个值在业务上是否「一样」（金额按时分位容差） */
   function sameMoney(a, b, tol) {
     if (a === null || a === undefined || b === null || b === undefined) return false;
@@ -274,6 +298,7 @@ window.CKUtil = (function () {
     fmtDateTime: fmtDateTime, fmtRelTime: fmtRelTime,
     normText: normText, truncate: truncate,
     uid: uid, debounce: debounce, clone: clone, bytes: bytes,
-    downloadBlob: downloadBlob
+    downloadBlob: downloadBlob,
+    ensureXLSX: ensureXLSX
   };
 })();

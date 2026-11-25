@@ -386,51 +386,57 @@ window.CKExcel = (function () {
       var reader = new FileReader();
       reader.onerror = function () { reject(new Error('文件读取失败，可能文件已损坏或被占用')); };
       reader.onload = function () {
-        try {
-          if (onProgress) onProgress('正在解析 ' + file.name + ' …');
-          var wb = readWorkbook(reader.result, file.name);
+        /* z281：XLSX 按需加载 —— 用户选了文件才下载 Excel 组件（约 930K）。
+           FileReader 已把文件读成 ArrayBuffer，这里等组件就绪再解析。 */
+        U.ensureXLSX().then(function () {
+          try {
+            if (onProgress) onProgress('正在解析 ' + file.name + ' …');
+            var wb = readWorkbook(reader.result, file.name);
 
-          if (!wb.SheetNames || !wb.SheetNames.length) {
-            return reject(new Error('这个文件里没有任何工作表'));
-          }
-
-          var sheets = [];
-          for (var i = 0; i < wb.SheetNames.length; i++) {
-            var nm = wb.SheetNames[i];
-            var ws = wb.Sheets[nm];
-            var s;
-            try {
-              s = analyzeSheet(nm, ws, i);
-            } catch (e) {
-              /* 单张表解析失败不该让整个文件失败 */
-              s = {
-                name: nm, index: i, headerRow: -1, headers: [], rows: [], rowNumbers: [],
-                colTypes: [], kind: 'blank', kindReason: '解析失败：' + (e && e.message || '未知错误'),
-                dataRowCount: 0, nonEmptyCells: 0, width: 0, warnings: ['这张表解析失败，已跳过']
-              };
+            if (!wb.SheetNames || !wb.SheetNames.length) {
+              return reject(new Error('这个文件里没有任何工作表'));
             }
-            sheets.push(s);
-            if (onProgress) onProgress('已读取 ' + (i + 1) + '/' + wb.SheetNames.length + ' 张工作表');
+
+            var sheets = [];
+            for (var i = 0; i < wb.SheetNames.length; i++) {
+              var nm = wb.SheetNames[i];
+              var ws = wb.Sheets[nm];
+              var s;
+              try {
+                s = analyzeSheet(nm, ws, i);
+              } catch (e) {
+                /* 单张表解析失败不该让整个文件失败 */
+                s = {
+                  name: nm, index: i, headerRow: -1, headers: [], rows: [], rowNumbers: [],
+                  colTypes: [], kind: 'blank', kindReason: '解析失败：' + (e && e.message || '未知错误'),
+                  dataRowCount: 0, nonEmptyCells: 0, width: 0, warnings: ['这张表解析失败，已跳过']
+                };
+              }
+              sheets.push(s);
+              if (onProgress) onProgress('已读取 ' + (i + 1) + '/' + wb.SheetNames.length + ' 张工作表');
+            }
+
+            var warnings = [];
+            var isCsv = /\.(csv|txt)$/i.test(file.name);
+            if (isCsv) warnings.push('CSV 文件只有一个工作表；如果你的 外部表是多 Sheet 的 Excel，请上传原文件');
+
+            resolve({
+              fileName: file.name,
+              fileSize: file.size,
+              ext: (file.name.split('.').pop() || '').toLowerCase(),
+              isCsv: isCsv,
+              sheets: sheets,
+              warnings: warnings
+            });
+          } catch (e) {
+            var msg = (e && e.message) || '解析失败';
+            if (/password|encrypted/i.test(msg)) msg = '这个文件有密码保护，请先取消密码再上传';
+            else if (/Unsupported|corrupt|Bad|not a zip/i.test(msg)) msg = '文件格式无法识别，请确认是有效的 Excel 文件（不是改了后缀的其它文件）';
+            reject(new Error(msg));
           }
-
-          var warnings = [];
-          var isCsv = /\.(csv|txt)$/i.test(file.name);
-          if (isCsv) warnings.push('CSV 文件只有一个工作表；如果你的 外部表是多 Sheet 的 Excel，请上传原文件');
-
-          resolve({
-            fileName: file.name,
-            fileSize: file.size,
-            ext: (file.name.split('.').pop() || '').toLowerCase(),
-            isCsv: isCsv,
-            sheets: sheets,
-            warnings: warnings
-          });
-        } catch (e) {
-          var msg = (e && e.message) || '解析失败';
-          if (/password|encrypted/i.test(msg)) msg = '这个文件有密码保护，请先取消密码再上传';
-          else if (/Unsupported|corrupt|Bad|not a zip/i.test(msg)) msg = '文件格式无法识别，请确认是有效的 Excel 文件（不是改了后缀的其它文件）';
-          reject(new Error(msg));
-        }
+        }, function (err) {
+          reject(err);
+        });
       };
       reader.readAsArrayBuffer(file);
     });

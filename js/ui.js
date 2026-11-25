@@ -189,6 +189,39 @@ window.UI = (function () {
     ART[k] = { name: ART_PIXEL[k].name, bg: ART_PIXEL[k].bg, img: ART_PIXEL[k].file };
   });
 
+  /* z281 平面动漫头像：24 张 chibi 角色（4×6 网格图切分 + 白底抠透明），
+     文件在 assets/avatars3d/anime_*.webp，key 统一 a_ 前缀（和 d_/p_ 不撞）。
+     扁平 2D 画风、清爽线条，和 3D / 像素两套并存，由选择器分组切换。 */
+  var ART_ANIME = {
+    a_pinkbob:    { name: '粉发少女', file: 'anime_pinkbob.webp',    bg: '#FFF0F4' },
+    a_bluecap:    { name: '棒球帽男生', file: 'anime_bluecap.webp',  bg: '#EEF3FF' },
+    a_bluepony:   { name: '蓝发马尾', file: 'anime_bluepony.webp',   bg: '#E9F7FF' },
+    a_catgirl:    { name: '猫耳少女', file: 'anime_catgirl.webp',    bg: '#F3EEFF' },
+    a_redspiky:   { name: '红发刺头', file: 'anime_redspiky.webp',   bg: '#FFF0E8' },
+    a_glassboy:   { name: '眼镜少年', file: 'anime_glassboy.webp',   bg: '#F0F2F5' },
+    a_blondetwin: { name: '金发双马尾', file: 'anime_blondetwin.webp', bg: '#FFF7E4' },
+    a_purpletip:  { name: '紫发挑染', file: 'anime_purpletip.webp',  bg: '#F2EEFF' },
+    a_pinklong:   { name: '粉发长发', file: 'anime_pinklong.webp',   bg: '#FFF0F4' },
+    a_tealbuns:   { name: '青发双丸子', file: 'anime_tealbuns.webp', bg: '#E8FAF6' },
+    a_browntwin:  { name: '棕发双马尾', file: 'anime_browntwin.webp', bg: '#FFF3E8' },
+    a_bigglasses: { name: '圆框眼镜', file: 'anime_bigglasses.webp', bg: '#F5F0EA' },
+    a_mintcap:    { name: '薄荷绿帽', file: 'anime_mintcap.webp',    bg: '#E9FAF2' },
+    a_blondshort: { name: '金发短发', file: 'anime_blondshort.webp', bg: '#FFF8E6' },
+    a_redribbon:  { name: '红结少女', file: 'anime_redribbon.webp',  bg: '#FFF0F2' },
+    a_blacklong:  { name: '黑长直',   file: 'anime_blacklong.webp',  bg: '#F0F1F5' },
+    a_blackspiky: { name: '黑发刺头', file: 'anime_blackspiky.webp', bg: '#F0F0F2' },
+    a_navycap:    { name: '藏青帽男生', file: 'anime_navycap.webp',  bg: '#EEF2FC' },
+    a_greencap:   { name: '绿帽少年', file: 'anime_greencap.webp',   bg: '#ECF8EE' },
+    a_redtwin:    { name: '红发双马尾', file: 'anime_redtwin.webp',  bg: '#FFF0EE' },
+    a_purplecap:  { name: '紫帽少女', file: 'anime_purplecap.webp',  bg: '#F4EEFF' },
+    a_redlong:    { name: '红发长发', file: 'anime_redlong.webp',    bg: '#FFF0EE' },
+    a_headband:   { name: '运动头带', file: 'anime_headband.webp',   bg: '#FFF4EA' },
+    a_redcap:     { name: '红帽少女', file: 'anime_redcap.webp',     bg: '#FFF0EE' }
+  };
+  Object.keys(ART_ANIME).forEach(function (k) {
+    ART[k] = { name: ART_ANIME[k].name, bg: ART_ANIME[k].bg, img: ART_ANIME[k].file };
+  });
+
   /* 老头像升级（2026-10-30 z168）：原来那 12 只扁平 SVG 小动物 + 6 个 SVG 节日角色
      全部换成上面这套 3D。已经选过 cat / dog 这类老 key 的成员**不用重选**——
      显示时先过一道别名，自动换成对应的 3D 图；老 key 仍留在 ART 里做兜底，
@@ -223,7 +256,8 @@ window.UI = (function () {
     { title: '动物', keys: ['d_cat', 'd_panda', 'd_shiba', 'd_fox', 'd_rabbit', 'd_bear',
                             'd_pig', 'd_frog', 'd_chick', 'd_koala', 'd_tiger', 'd_penguin'] },
     { title: '圣诞节', keys: ['d_x_tree', 'd_x_snowman', 'd_x_santa', 'd_x_reindeer', 'd_x_gift', 'd_x_bell'] },
-    { title: '像素风', keys: ['p_glasses', 'p_longhair', 'p_cat', 'p_shiba', 'p_panda', 'p_santa', 'p_snowman', 'p_tree'] }
+    { title: '像素风', keys: ['p_glasses', 'p_longhair', 'p_cat', 'p_shiba', 'p_panda', 'p_santa', 'p_snowman', 'p_tree'] },
+    { title: '动漫', keys: Object.keys(ART_ANIME) }
   ];
 
   var ART_KEYS = Object.keys(ART);
@@ -263,7 +297,7 @@ window.UI = (function () {
      换新版本号 = 所有图片 URL 一起换，旧缓存自然绕开。
      以后**补图、换图都必须改这里**，否则只有清缓存的人能看到新图。 */
   /* z236：升一版，绕开浏览器 / CDN 可能缓存下来的旧 404（注释里那个老坑） */
-  var ART_VER = '20261112z280';
+  var ART_VER = '20261112z281';
 
   /* 图片加载失败时的兜底：把圆换成「品牌色 + 姓氏首字」。
      没有兜底的话，图挂了圆里就是空的（背景色是浅色底），用户看到的就是「头像消失」。
@@ -289,7 +323,7 @@ window.UI = (function () {
     if (!d || !d.img) return '';       /* 只有老 key 的兼容项没有图，那里显示「颜色 + 首字」 */
     var base = (typeof window !== 'undefined' && window.__ASSET_BASE) || '';
     return '<img class="art-img" src="' + base + 'assets/avatars3d/' + d.img + '?v=' + ART_VER + '" alt="' +
-      U.esc(d.name) + '" draggable="false" decoding="async"' +
+      U.esc(d.name) + '" draggable="false" decoding="async" loading="lazy"' +
       ' data-ch="' + U.esc((name || '?').slice(0, 1)) + '"' +
       ' onerror="UI.artFail(this)" />';
   }

@@ -594,25 +594,35 @@ window.CKExport = (function () {
     return base + '_' + stamp + '.xlsx';
   }
 
+  /* z281：文件名同步算好返回（调用点只拿它弹提示），真正的 Excel 写出
+     等 XLSX 组件按需加载完再做。组件没到位前不下载 930K。 */
   function download(result, meta) {
-    var wb = build(result, meta);
     var name = fileName(meta);
-    XLSX.writeFile(wb, name, { compression: true });
+    U.ensureXLSX().then(function () {
+      var wb = build(result, meta);
+      XLSX.writeFile(wb, name, { compression: true });
+    }, function (err) {
+      window.UI && window.UI.toast(err.message || '导出失败', 'error');
+    });
     return name;
   }
 
   /* 门店匹配库 / 方案 导出成 CSV，方便给同事看或存档 */
   function downloadAliasesCsv(aliases) {
-    var aoa = [['外部表/原始写法', '对应标准门店', '来源', '使用次数', '备注', '创建时间']];
-    (aliases || []).forEach(function (a) {
-      aoa.push([a.variant, a.canonical, a.source === 'history' ? '核对时确认' : '手动添加',
-        a.hits || 1, a.note || '', U.fmtDateTime(a.createdAt)]);
-    });
-    var ws = XLSX.utils.aoa_to_sheet(aoa);
-    var csv = XLSX.utils.sheet_to_csv(ws);
-    var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
     var name = '门店匹配库_' + U.todayStr() + '.csv';
-    U.downloadBlob(blob, name);
+    U.ensureXLSX().then(function () {
+      var aoa = [['外部表/原始写法', '对应标准门店', '来源', '使用次数', '备注', '创建时间']];
+      (aliases || []).forEach(function (a) {
+        aoa.push([a.variant, a.canonical, a.source === 'history' ? '核对时确认' : '手动添加',
+          a.hits || 1, a.note || '', U.fmtDateTime(a.createdAt)]);
+      });
+      var ws = XLSX.utils.aoa_to_sheet(aoa);
+      var csv = XLSX.utils.sheet_to_csv(ws);
+      var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+      U.downloadBlob(blob, name);
+    }, function (err) {
+      window.UI && window.UI.toast(err.message || '导出失败', 'error');
+    });
     return name;
   }
 
