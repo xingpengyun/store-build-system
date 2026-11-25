@@ -1443,3 +1443,24 @@ body:not(.route-home) .xr-snowfall { display: none; }
 /* 设置页的卡片副标题与灰色说明段全部是功能介绍 */
 body[data-route="settings"] .card-sub,
 body[data-route="settings"] p.muted { display: none !important; }
+
+/* =====================================================================
+   z259 · KPI 卡片窄屏竖排修复
+   报表 / 预警 / 团队 / 发货页把列数写死在内联 style（repeat(5/4/2)），
+   内联优先级压过 components.css 的响应式断点，窄屏（如 474px）仍挤成
+   5 列、每卡仅 78px，label 被挤成竖排一字一行。
+   这里用 !important 把「带内联列数」的 kpi-grid 拉回响应式，断点与首页
+   （components.css 的 3/2 列 + theme.css 的 ≥1181 六列）完全对齐：
+     ≤1180px 3 列 / ≤860px 2 列 / ≤560px 1 列。
+   ≥1181px 不介入，仍走 theme 的 6 列规则（报表 5 张卡占前 5 格，保持现状）。
+   首页 kpi-grid 不写内联列数，本选择器不匹配，全程不受影响。
+   ===================================================================== */
+@media (max-width: 1180px) {
+  .kpi-grid[style*="grid-template-columns"] { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 860px) {
+  .kpi-grid[style*="grid-template-columns"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 560px) {
+  .kpi-grid[style*="grid-template-columns"] { grid-template-columns: minmax(0, 1fr) !important; }
+}
