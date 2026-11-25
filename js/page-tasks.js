@@ -847,9 +847,13 @@ window.Pages.tasks = (function () {
     centerOpenRow(row);
   }
 
-  /* z253：点击展开/收起加过渡，不再「直接跳出」。
-     只对 .sk-body 的 height / opacity 做 WAAPI 动画，.sk-row 仍保持 z239 的
-     transition:none（那是为了避免收起后掉帧）；reduced-motion 下整段跳过。 */
+  /* z256：修 z253 展开/收起的「卡顿 + 往上弹一下」。
+     根因（逐帧实测）：收起时 body.hidden=true 让文档高度瞬间缩掉一整行，
+     scrollY 被浏览器一帧钳制（实测 654→179，dy=-475），就是肉眼看到的「弹」；
+     展开时的 translateY(-8px)→0 位移又放大了这个错觉。改为：
+     · 展开只做 opacity 淡入，不位移、不动 height（内容一次布局到位，不逐帧算高度）；
+     · 收起用 height/padding 平滑收缩到 0，文档高度渐变、scrollY 平滑跟随，不再瞬跳；
+     · 只动这一行的属性，其余行 transition:none 不变；reduced-motion 下整段跳过。 */
   var skReduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   var skScrollRAF = 0;
 
@@ -860,13 +864,16 @@ window.Pages.tasks = (function () {
     if (h < 2) { finish(); return; }
     if (body._skAnim) { try { body._skAnim.cancel(); } catch (e) {} }
     body.classList.add('sk-animating');
-    /* 只动 opacity / transform（合成层），不动 height —— 展开区里有几十张 SVG
-       头像，逐帧算高度会让前几帧卡住，反而「直接跳出」。布局瞬间到位，
-       视觉上用淡入 + 轻微上滑接住，配合中心滚动动画就顺了。 */
-    var a = body.animate([
-      { opacity: opening ? 0 : 1, transform: opening ? 'translateY(-8px)' : 'translateY(0)' },
-      { opacity: opening ? 1 : 0, transform: opening ? 'translateY(0)' : 'translateY(-8px)' }
-    ], { duration: 220, easing: 'cubic-bezier(.22,.61,.36,1)' });
+    var a;
+    if (opening) {
+      a = body.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: 'ease-out' });
+    } else {
+      var cs = getComputedStyle(body);
+      a = body.animate([
+        { height: h + 'px', paddingBottom: cs.paddingBottom, borderTopWidth: cs.borderTopWidth, opacity: 1 },
+        { height: '0px', paddingBottom: '0px', borderTopWidth: '0px', opacity: 0 }
+      ], { duration: 180, easing: 'ease-in' });
+    }
     body._skAnim = a;
     a.onfinish = function () { body._skAnim = null; finish(); };
     a.oncancel = function () { body._skAnim = null; };
@@ -878,10 +885,13 @@ window.Pages.tasks = (function () {
     var delta = to - from;
     if (Math.abs(delta) < 1 || skReduceMotion) { window.scrollTo(0, to); return; }
     var t0 = performance.now();
-    var dur = 180;
+    var dur = 240;
     (function step(now) {
       var p = Math.min(1, (now - t0) / dur);
-      var e = 1 - Math.pow(1 - p, 3);
+      /* z256：ease-in-out（两端慢中间快）替代 z253 的 ease-out cubic。
+         ease-out 第一帧就冲出 ~25% 位移，展开那帧又要布局几十张卡偶发长帧，
+         一叠加就是「猛地弹一下」。两端慢的曲线开头只走不到 1%，开头不冲。 */
+      var e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
       window.scrollTo(0, Math.round(from + delta * e));
       if (p < 1) skScrollRAF = requestAnimationFrame(step);
       else skScrollRAF = 0;
@@ -890,7 +900,10 @@ window.Pages.tasks = (function () {
 
   /* z239：收起时保留已生成的任务卡，只是隐藏 —— 来回点同一家不再反复
      销毁/重建那几张卡（每次都要画一堆 SVG 头像和徽标，是掉帧的大头）。
-     z253：隐藏前先播 240ms 收起动画。 */
+     z256：自己收起时先播 180ms 高度收缩动画，文档高度渐变、scrollY 平滑跟随，
+     不再像 z253 那样瞬时 hidden 让 scrollY 被钳制一帧跳 475px（「往上弹」）。
+     切到别家时 immediate：旧行当帧隐藏，新行当帧展开，文档高度净变化≈0
+     （一减一加同步完成），既不会被钳制，新行的居中计算也不受渐变中的旧行干扰。 */
   function collapseRow(rowEl, immediate) {
     if (!rowEl) return;
     var body = rowEl.querySelector('.sk-body');
@@ -898,7 +911,6 @@ window.Pages.tasks = (function () {
     var head = rowEl.querySelector('.sk-head');
     if (head) head.title = '展开这家门店的任务';
     if (!body || body.hidden) return;
-    /* 切到别家时立刻收起旧行：布局当场稳定，新行的居中计算才不会被 220ms 后的位移打乱 */
     if (immediate || skReduceMotion) { body.hidden = true; body.classList.remove('sk-animating'); return; }
     skAnimateBody(body, false, function () { body.hidden = true; });
   }
