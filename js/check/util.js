@@ -269,7 +269,7 @@ window.CKUtil = (function () {
     if (xlsxPromise) return xlsxPromise;
     xlsxPromise = new Promise(function (resolve, reject) {
       var s = document.createElement('script');
-      s.src = 'js/vendor/xlsx.full.min.js?v=20261112z285';
+      s.src = 'js/vendor/xlsx.full.min.js?v=20261112z286';
       s.onload = function () {
         if (window.XLSX) resolve(window.XLSX);
         else { xlsxPromise = null; reject(new Error('Excel 组件加载失败（未初始化）')); }

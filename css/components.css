@@ -1008,10 +1008,11 @@
 .acc-chip-ava .art-img,
 .acc-ava .art-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-/* z284：44px 大头像里 3D 图片顶圆边时缩一点露浅色底。
-   z285 起 3D 人物/动物已从选择器下架，选择器里只剩圣诞 SVG / 像素 / 动漫 / 日漫角色，
-   这条规则自然不再命中；保留给万一以后重新上架 3D 头像时用。 */
-.art-grid .art-opt .art-img[src*="a3d_"][src*=".webp"] { transform: scale(.84); }
+/* z284→z286：选择器里的 44px 大头像，图片类（webp：3D / 平面动漫 / 日漫角色）画得顶到圆边，
+   缩一点露出底色的浅色圈，跟圣诞 / 像素那套 SVG 自带留白的观感统一。
+   只匹配 .webp —— SVG（a3d_x_* 圣诞 / px_* 像素）本身已留白，不命中。
+   只作用于选择器 .art-grid 内；顶栏 / 任务卡的小头像保持铺满，缩小反而看不清。 */
+.art-grid .art-opt .art-img[src*=".webp"] { transform: scale(.84); }
 
 /* z237 像素风头像：放大时保持硬边，别被浏览器插值糊成一团 */
 .avatar-art .art-img[src*="px_"],
