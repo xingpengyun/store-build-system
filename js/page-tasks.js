@@ -856,6 +856,8 @@ window.Pages.tasks = (function () {
      · 只动这一行的属性，其余行 transition:none 不变；reduced-motion 下整段跳过。 */
   var skReduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   var skScrollRAF = 0;
+  var skScrollDone = null;
+  var skScrollToken = 0;   /* 每次滚动唯一 id：旧 step 即使漏网也能靠 id 校验自行退场，不误跑完成回调 */
 
   function skAnimateBody(body, opening, done) {
     var finish = function () { body.classList.remove('sk-animating'); if (done) done(); };
@@ -879,14 +881,22 @@ window.Pages.tasks = (function () {
     a.oncancel = function () { body._skAnim = null; };
   }
 
-  function skAnimateScroll(to) {
-    if (skScrollRAF) { cancelAnimationFrame(skScrollRAF); skScrollRAF = 0; }
+  function skAnimateScroll(to, done) {
+    /* 新滚动打断旧滚动时，旧的完成回调必须作废 —— 否则展开滚动跑完 finish()
+       会执行上一次收起遗留的 doClose，把刚展开的行又收起来（列表底部门店尤其明显）。
+       token 是双保险：即使 cancel 漏掉一个在途 RAF，旧 step 也会因 id 不匹配立即退场。 */
+    if (skScrollRAF) cancelAnimationFrame(skScrollRAF);
+    skScrollRAF = 0; skScrollDone = null;
+    var myToken = ++skScrollToken;
     var from = window.pageYOffset || document.documentElement.scrollTop || 0;
     var delta = to - from;
-    if (Math.abs(delta) < 1 || skReduceMotion) { window.scrollTo(0, to); return; }
+    var finish = function () { skScrollRAF = 0; var d = skScrollDone; skScrollDone = null; if (d) d(); };
+    if (Math.abs(delta) < 1 || skReduceMotion) { window.scrollTo(0, to); if (done) done(); return; }
+    skScrollDone = done || null;
     var t0 = performance.now();
     var dur = 240;
     (function step(now) {
+      if (myToken !== skScrollToken) return;   /* 已被新滚动取代：连回调都不跑 */
       var p = Math.min(1, (now - t0) / dur);
       /* z256：ease-in-out（两端慢中间快）替代 z253 的 ease-out cubic。
          ease-out 第一帧就冲出 ~25% 位移，展开那帧又要布局几十张卡偶发长帧，
@@ -894,7 +904,7 @@ window.Pages.tasks = (function () {
       var e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
       window.scrollTo(0, Math.round(from + delta * e));
       if (p < 1) skScrollRAF = requestAnimationFrame(step);
-      else skScrollRAF = 0;
+      else finish();
     })(t0);
   }
 
@@ -986,22 +996,50 @@ window.Pages.tasks = (function () {
      一起清掉。
      z239：收起时原来的「量位置→补偿滚动」是死代码（自己收起不会挪动抬头），
      却每次都逼浏览器同步算两遍整页布局。直接删掉，收起只剩摘掉 body。 */
+  /* z258：展开前记住滚动位置。展开会居中跳走，用户合上时希望门店回到点开它之前
+     的位置（「位置不变动」）——收起时先把页面平滑滚回这个位置，滚到位后再收 body。
+     顺序很关键：body 还在时文档高、scrollY 合法；滚回后再收 body，文档缩水也钳
+     制不到这个位置（它就是 body 展开前的合法 scrollY）。若展开后用户自己滚过，
+     back 会钳制到收起态的 maxY，绝不会落到非法位置。 */
+  var skOpenFromY = null;
+
   function toggleStoreRow(root, sid) {
     var head = root.querySelector('[data-srow="' + sid + '"]');
     if (!head || !root.contains(head)) return;
     var row = head.closest('.sk-row');
     if (!row) return;
 
-    if (state.open === sid) {                 /* 自己收起：抬头不会动，不用量也不用滚 */
-      collapseRow(row);
+    if (state.open === sid) {                 /* 自己收起：先滚回展开前位置，再收 body */
+      var y = window.pageYOffset || document.documentElement.scrollTop || 0;
+      var bodyEl = row.querySelector('.sk-body');
+      var bodyH = (bodyEl && !bodyEl.hidden) ? bodyEl.scrollHeight : 0;
+      var collapsedMax = Math.max(0, document.documentElement.scrollHeight - bodyH - window.innerHeight);
+      var back = skOpenFromY == null ? y : Math.min(skOpenFromY, collapsedMax);
       state.open = '';
+      skOpenFromY = null;
+      /* 收起滚动到位后才真正合 body。加状态校验：若期间用户又点开了这家（或别家
+         导致 state.open 变了），这次延迟收起必须作废 —— 否则会误合上刚展开的行。 */
+      var doClose = function () {
+        /* 延迟收起期间若用户又点开了任意行（含自己），这次收起必须作废：
+           否则会把刚展开的行误合上（列表底部门店展开后 0.7s 自己合上就是它）。 */
+        if (state.open) return;
+        collapseRow(row);
+      };
+      if (Math.abs(back - y) > 1) skAnimateScroll(back, doClose);
+      else doClose();
       return;
     }
 
     var prev = root.querySelector('.sk-row.open');
     if (prev && prev !== row) collapseRow(prev, true);
+    skOpenFromY = window.pageYOffset || document.documentElement.scrollTop || 0;  /* 展开前记位 */
     var m = expandRow(row, sid);
     state.open = sid;
+    /* z258：展开前先清掉上一次收起遗留的滚动完成回调 —— centerOpenRow 内部
+       的 skAnimateScroll 会复用同一个 RAF，若遗留 doClose 没清，展开滚动跑完
+       finish() 会误执行「收起」，表现为列表底部的行展开后约 0.7s 自己又合上。 */
+    if (skScrollRAF) cancelAnimationFrame(skScrollRAF);
+    skScrollRAF = 0; skScrollDone = null; skScrollToken++;
     centerOpenRow(row, m);                    /* 展开：内容居中（动画同步） */
   }
 
