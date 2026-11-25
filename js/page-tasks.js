@@ -856,8 +856,8 @@ window.Pages.tasks = (function () {
      · 只动这一行的属性，其余行 transition:none 不变；reduced-motion 下整段跳过。 */
   var skReduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
-  /* z265：展开/收起 = 任务卡「一张张依次淡入 / 依次收回」的交错动画。
-     只动 opacity + 轻微 translateY（合成器属性，不重排、不掉帧），不碰 height、不碰滚动。
+  /* z266：展开/收起 = 任务卡「一条条依次淡入 / 依次收回」的纯淡入淡出。
+     只动 opacity（原地不动、无位移无旋转），不碰 height、不碰滚动。
      展开：第 1 张立即淡入，后面每张延迟 55ms 依次进来；
      收起：反着来，最后一张先淡出，第 1 张最后收，全部收完再真正隐藏 body。 */
   function skClearCardAnims(cards) {
@@ -879,10 +879,11 @@ window.Pages.tasks = (function () {
     cards.forEach(function (card, i) {
       /* 展开从上到下（order=i），收起从下到上（order=n-1-i） */
       var order = opening ? i : (cards.length - 1 - i);
+      /* 纯淡入淡出：只动 opacity，卡片原地不动，没有横向/纵向位移 */
       var kf = opening
-        ? [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }]
-        : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(6px)' }];
-      /* 展开用 backwards（结束后不锁 transform，hover 放大仍生效）；
+        ? [{ opacity: 0 }, { opacity: 1 }]
+        : [{ opacity: 1 }, { opacity: 0 }];
+      /* 展开用 backwards（结束后不残留动画状态，hover 放大仍生效）；
          收起用 both（结束后停在透明，避免 done() 前闪回一帧不透明）。 */
       var a = card.animate(kf, {
         duration: DUR, delay: order * STEP, easing: 'ease-out',

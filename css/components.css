@@ -4196,7 +4196,7 @@ body.sm-sorting * { cursor: grabbing !important; user-select: none !important; }
   background: #fff;
   border: 1px solid var(--line);
   box-shadow: 0 1px 2px rgba(19, 28, 49, .05);
-  animation: tcardIn .42s cubic-bezier(.22, .8, .3, 1) backwards;
+  animation: tcardIn .34s ease-out backwards;   /* z266：纯淡入，无横向位移/旋转 */
   transition: transform .2s cubic-bezier(.22, .8, .3, 1),
               box-shadow .2s, border-color .2s;
 }
@@ -4207,8 +4207,8 @@ body.sm-sorting * { cursor: grabbing !important; user-select: none !important; }
   z-index: 6;
 }
 @keyframes tcardIn {
-  from { opacity: 0; transform: translateX(30px) rotate(.8deg); }
-  to   { opacity: 1; transform: none; }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 .tcard-rail {
   flex: 0 0 auto;
