@@ -3161,34 +3161,20 @@
   transition: none;
 }
 .sk-row:hover { border-color: #d5e1f8; }
-/* 展开的这家：整行描边 + 顶部「展开中」徽标 + 深色抬头 + 左侧主色条。
-   z239：原来只换了一点底色，实际看不出到底展开没有；现在给一个明确标识。 */
+/* z244：展开的这家不再单独给抬头描边/圆角——那会和整行外框错开，
+   在右上角形成锯齿状「断层」。现在只保留整行一层淡淡的底色 + 顶部「展开中」徽标。 */
 .sk-row { position: relative; }
 .sk-row.open {
-  border-color: var(--primary);
-  background: linear-gradient(180deg, #f1f6ff 0%, #fbfdff 46%, #fff 100%);
-  box-shadow: 0 0 0 3px rgba(63, 107, 245, .11), 0 14px 32px rgba(23, 43, 77, .11);
+  border-color: var(--line-2);
+  background: #f8faff;
+  box-shadow: 0 6px 18px rgba(23, 43, 77, .06);
 }
-.sk-row.open::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 4px;
-  background: linear-gradient(180deg, var(--primary), #7a5af8);
-  border-radius: 10px 0 0 10px;
-  z-index: 1;
-}
-.sk-row.open .sk-head {
-  position: relative;
-  background: linear-gradient(90deg, #d9e6ff 0%, #eaf1ff 100%);
-  border-bottom: 1px solid #c5d7fa;
-  border-radius: 9px 9px 0 0;
-}
+.sk-row.open .sk-head { position: relative; }
 /* 徽标压在行上沿，不占布局、不挤门店名 */
 .sk-row.open .sk-head::after {
   content: '展开中';
   position: absolute;
-  top: -10px; right: 14px;
+  top: -9px; right: 14px;
   z-index: 3;
   padding: 1px 8px;
   border-radius: 9px;
@@ -3199,8 +3185,8 @@
   letter-spacing: .2px;
   box-shadow: 0 2px 7px rgba(63, 107, 245, .3);
 }
-.sk-row.open .sk-body { background: rgba(245, 249, 255, .74); }
-.sk-row.open:hover { border-color: var(--primary); }
+.sk-row.open .sk-body { background: transparent; }
+.sk-row.open:hover { border-color: var(--line-2); }
 
 .sk-head {
   display: grid;
