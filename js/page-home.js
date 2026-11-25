@@ -585,6 +585,27 @@ window.Pages.home = (function () {
       '<path d="M85 18c-9-11-15-2-6 0 4 1 6-2 6 0zM85 18c9-11 15-2 6 0-4 1-6-2-6 0z" fill="#c9303a"/>' +
     '</svg>';
 
+    /* z260：地面散落的小礼物盒（复用现有红/金/绿三色 + 蝴蝶结画法，
+       缩小错落摆在雪人脚边与鹿右侧雪地，让场景更饱满；纯手工 SVG，不生成图片） */
+    function miniGift(cls, body, lid, ribbon) {
+      return '<svg class="xr-mini-gift ' + cls + '" viewBox="0 0 34 32" fill="none" aria-hidden="true">' +
+        '<rect x="3" y="12" width="28" height="18" rx="2.5" fill="' + body + '"/>' +
+        '<rect x="2" y="9" width="30" height="6" rx="2" fill="' + lid + '"/>' +
+        '<path d="M17 9v21M2 19h30" stroke="' + ribbon + '" stroke-width="3"/>' +
+        '<path d="M17 9c-6-8-11-2-5 0 2 .5 5-1 5 0zM17 9c6-8 11-2 5 0-2 .5-5-1-5 0z" fill="' + ribbon + '"/>' +
+      '</svg>';
+    }
+    var miniGifts = miniGift('mg1', '#c9303a', '#e04a48', '#ffd46a') +
+      miniGift('mg2', '#e8b74e', '#ffd674', '#c9303a') +
+      miniGift('mg3', '#1c7a58', '#2a9469', '#fff0c9');
+
+    /* z260：雪人小鹿右侧天空的「圣诞快乐 / Merry Christmas」手写风祝福。
+       用文字元素 + 系统楷体实现，不生成图片；位置见 theme.css .xr-merry。 */
+    var merry = '<div class="xr-merry" aria-hidden="true">' +
+      '<span class="xr-merry-cn">圣诞快乐</span>' +
+      '<span class="xr-merry-en">Merry Christmas</span>' +
+    '</div>';
+
     /* 两朵软云 + 六角雪花（CSS 定位） */
     /* z235：横幅换回圣诞红，软云从冷蓝改暖白，免得红底上泛灰紫 */
     var clouds = '<svg class="xr-cloud c1" viewBox="0 0 80 34" aria-hidden="true"><path d="M12 26q-10 0-10-8 0-7 9-8 2-9 13-9 9 0 12 7 4-4 10-2 8 2 8 10 0 10-12 10z" fill="#fff1e4" opacity=".72"/></svg>' +
@@ -599,10 +620,11 @@ window.Pages.home = (function () {
     return '<div class="hero-fx" aria-hidden="true">' +
       '<i class="xr-moon"></i>' +
       clouds + flakes +
-      village + gifts +
+      village + gifts + miniGifts +
       /* z249：3D 雪人/鹿换成图1 温馨水彩贺卡风（用户确认满意）。素材竖版，定位见 theme.css。 */
       '<img class="xr-baby" src="assets/xmas/xmas-watercolor-snowman.png?v=20261112z249" alt="" />' +
       '<img class="xr-deer" src="assets/xmas/xmas-watercolor-deer.png?v=20261112z249" alt="" />' +
+      merry +
       snowbank +
     '</div>';
   }
