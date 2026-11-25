@@ -878,12 +878,12 @@ window.Pages.tasks = (function () {
     var n = cards.length;
     var pileTop = cards[0].getBoundingClientRect().top;   /* 牌堆 = 第 1 张的位置 */
     var tops = cards.map(function (c) { return c.getBoundingClientRect().top; });
-    var STEP = 75;                        /* 相邻两张发出的间隔 ms */
+    var STEP = 120;                       /* 相邻两张发出的间隔 ms（放慢，看得清一张张发） */
     var last = null;
     cards.forEach(function (card, i) {
       var order = opening ? i : (n - 1 - i);              /* 展开从上往下发，收起从下往上收 */
       var dy = Math.round(pileTop - tops[i]);            /* 牌堆相对这张的垂直偏移（负值=向上） */
-      var dur = 320 - Math.round(i * 160 / Math.max(1, n - 1));   /* 从长到短：320→160ms */
+      var dur = 520 - Math.round(i * 240 / Math.max(1, n - 1));   /* 从长到短：520→280ms */
       /* 起点一摞牌（都在 pileTop、略缩小、透明），落到各自位置；收起反向 */
       var kf = opening
         ? [{ opacity: 0, transform: 'translateY(' + dy + 'px) scale(.94)' }, { opacity: 1, transform: 'none' }]
