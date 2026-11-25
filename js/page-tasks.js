@@ -856,37 +856,49 @@ window.Pages.tasks = (function () {
      · 只动这一行的属性，其余行 transition:none 不变；reduced-motion 下整段跳过。 */
   var skReduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
-  /* z264：展开/收起只做淡入淡出，不再自动滚动页面。
-     展开 = opacity 0→1 淡入；收起 = 高度+opacity 渐变淡出（高度收缩让文档平滑变矮，
-     scrollY 不会被一帧钳制而弹一下）。点哪家门店页面都停在原处，滚动完全交给用户。 */
+  /* z265：展开/收起 = 任务卡「一张张依次淡入 / 依次收回」的交错动画。
+     只动 opacity + 轻微 translateY（合成器属性，不重排、不掉帧），不碰 height、不碰滚动。
+     展开：第 1 张立即淡入，后面每张延迟 55ms 依次进来；
+     收起：反着来，最后一张先淡出，第 1 张最后收，全部收完再真正隐藏 body。 */
+  function skClearCardAnims(cards) {
+    cards.forEach(function (c) {
+      try { if (c._skStagger) c._skStagger.cancel(); } catch (e) {}
+      c._skStagger = null;
+    });
+  }
+
   function skAnimateBody(body, opening, done) {
+    var cards = body ? [].slice.call(body.querySelectorAll('.sk-card')) : [];
     var finish = function () { body.classList.remove('sk-animating'); if (done) done(); };
-    if (!body || skReduceMotion || typeof body.animate !== 'function') { finish(); return; }
-    var h = body.scrollHeight;
-    if (h < 2) { finish(); return; }
-    if (body._skAnim) { try { body._skAnim.cancel(); } catch (e) {} }
+    if (!body || skReduceMotion || typeof body.animate !== 'function' || !cards.length) { finish(); return; }
+    skClearCardAnims(cards);              /* 动画途中被再次点击：先清掉上一轮 */
     body.classList.add('sk-animating');
-    var a;
-    if (opening) {
-      a = body.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: 'ease-out' });
-    } else {
-      var cs = getComputedStyle(body);
-      a = body.animate([
-        { height: h + 'px', paddingBottom: cs.paddingBottom, borderTopWidth: cs.borderTopWidth, opacity: 1 },
-        { height: '0px', paddingBottom: '0px', borderTopWidth: '0px', opacity: 0 }
-      ], { duration: 180, easing: 'ease-in' });
-    }
-    body._skAnim = a;
-    a.onfinish = function () { body._skAnim = null; finish(); };
-    a.oncancel = function () { body._skAnim = null; };
+    var STEP = opening ? 55 : 42;          /* 相邻两张的间隔 ms */
+    var DUR = opening ? 240 : 170;         /* 单张时长 ms */
+    var last = null;
+    cards.forEach(function (card, i) {
+      /* 展开从上到下（order=i），收起从下到上（order=n-1-i） */
+      var order = opening ? i : (cards.length - 1 - i);
+      var kf = opening
+        ? [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }]
+        : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(6px)' }];
+      /* 展开用 backwards（结束后不锁 transform，hover 放大仍生效）；
+         收起用 both（结束后停在透明，避免 done() 前闪回一帧不透明）。 */
+      var a = card.animate(kf, {
+        duration: DUR, delay: order * STEP, easing: 'ease-out',
+        fill: opening ? 'backwards' : 'both'
+      });
+      card._skStagger = a;
+      if (order === cards.length - 1) last = a;
+    });
+    var wrap = function () { skClearCardAnims(cards); finish(); };
+    if (last) last.onfinish = wrap; else wrap();
   }
 
   /* z239：收起时保留已生成的任务卡，只是隐藏 —— 来回点同一家不再反复
      销毁/重建那几张卡（每次都要画一堆 SVG 头像和徽标，是掉帧的大头）。
-     z256：自己收起时先播 180ms 高度收缩动画，文档高度渐变、scrollY 平滑跟随，
-     不再像 z253 那样瞬时 hidden 让 scrollY 被钳制一帧跳 475px（「往上弹」）。
-     切到别家时 immediate：旧行当帧隐藏，新行当帧展开，文档高度净变化≈0
-     （一减一加同步完成），既不会被钳制，新行的居中计算也不受渐变中的旧行干扰。 */
+     z265：自己收起时播任务卡「依次收回」动画（从下到上逐张淡出），播完再 hidden；
+     切到别家时 immediate：旧行当帧隐藏、新行当帧展开并依次淡入，不拖沓。 */
   function collapseRow(rowEl, immediate) {
     if (!rowEl) return;
     var body = rowEl.querySelector('.sk-body');
