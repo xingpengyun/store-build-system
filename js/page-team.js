@@ -96,7 +96,7 @@ window.Pages.team = (function () {
       '</label>';
     }).join('');
 
-    /* 头像按 UI.ART_GROUPS 分组铺（3D / 像素 / z281 新增的 24 张平面动漫），
+    /* 头像按 UI.ART_GROUPS 分组铺（3D / 像素 / z281 平面动漫 / z283 日漫角色），
        都是 name="art" 的 radio，跨组互斥，选中的那颗描蓝边。 */
     function artOpt(k) {
       return '<label class="art-opt" title="' + U.esc(UI.ANIMALS[k].name) + '">' +

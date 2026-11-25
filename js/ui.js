@@ -222,6 +222,33 @@ window.UI = (function () {
     ART[k] = { name: ART_ANIME[k].name, bg: ART_ANIME[k].bg, img: ART_ANIME[k].file };
   });
 
+  /* z283 日漫角色头像：市面上真实存在的知名角色（火影/海贼/龙珠/柯南/鬼灭等），
+     扁平 2D chibi 画风、256×256 透明 WebP，文件在 assets/avatars3d/ch_*.webp。
+     key 统一 ch_ 前缀（和 d_ / p_ / a_ 都不撞）。AI 生成的形似形象，内部使用。 */
+  var ART_CHARA = {
+    ch_naruto:   { name: '鸣人',     file: 'ch_naruto.webp',   bg: '#FFF3DC' },
+    ch_sasuke:   { name: '佐助',     file: 'ch_sasuke.webp',   bg: '#EAF0FA' },
+    ch_kakashi:  { name: '卡卡西',   file: 'ch_kakashi.webp',  bg: '#EDF1F6' },
+    ch_luffy:    { name: '路飞',     file: 'ch_luffy.webp',    bg: '#FFF0E8' },
+    ch_zoro:     { name: '索隆',     file: 'ch_zoro.webp',     bg: '#EAF6EC' },
+    ch_nami:     { name: '娜美',     file: 'ch_nami.webp',     bg: '#FFF1E4' },
+    ch_goku:     { name: '孙悟空',   file: 'ch_goku.webp',     bg: '#FFF4E4' },
+    ch_vegeta:   { name: '贝吉塔',   file: 'ch_vegeta.webp',   bg: '#EDF0FA' },
+    ch_conan:    { name: '柯南',     file: 'ch_conan.webp',    bg: '#EAF1FB' },
+    ch_shinchan: { name: '蜡笔小新', file: 'ch_shinchan.webp', bg: '#FFF3E4' },
+    ch_miku:     { name: '初音未来', file: 'ch_miku.webp',     bg: '#E6F7F4' },
+    ch_sakuragi: { name: '樱木花道', file: 'ch_sakuragi.webp', bg: '#FFF0EC' },
+    ch_gintoki:  { name: '银时',     file: 'ch_gintoki.webp',  bg: '#F3F4F7' },
+    ch_tanjiro:  { name: '炭治郎',   file: 'ch_tanjiro.webp',  bg: '#EAF5EF' },
+    ch_nezuko:   { name: '祢豆子',   file: 'ch_nezuko.webp',   bg: '#FFF0F3' },
+    ch_anya:     { name: '阿尼亚',   file: 'ch_anya.webp',     bg: '#F3EEFF' },
+    ch_gojo:     { name: '五条悟',   file: 'ch_gojo.webp',     bg: '#EAF0FA' },
+    ch_ichigo:   { name: '黑崎一护', file: 'ch_ichigo.webp',   bg: '#FFF0E6' }
+  };
+  Object.keys(ART_CHARA).forEach(function (k) {
+    ART[k] = { name: ART_CHARA[k].name, bg: ART_CHARA[k].bg, img: ART_CHARA[k].file };
+  });
+
   /* 老头像升级（2026-10-30 z168）：原来那 12 只扁平 SVG 小动物 + 6 个 SVG 节日角色
      全部换成上面这套 3D。已经选过 cat / dog 这类老 key 的成员**不用重选**——
      显示时先过一道别名，自动换成对应的 3D 图；老 key 仍留在 ART 里做兜底，
@@ -257,7 +284,8 @@ window.UI = (function () {
                             'd_pig', 'd_frog', 'd_chick', 'd_koala', 'd_tiger', 'd_penguin'] },
     { title: '圣诞节', keys: ['d_x_tree', 'd_x_snowman', 'd_x_santa', 'd_x_reindeer', 'd_x_gift', 'd_x_bell'] },
     { title: '像素风', keys: ['p_glasses', 'p_longhair', 'p_cat', 'p_shiba', 'p_panda', 'p_santa', 'p_snowman', 'p_tree'] },
-    { title: '动漫', keys: Object.keys(ART_ANIME) }
+    { title: '动漫', keys: Object.keys(ART_ANIME) },
+    { title: '日漫角色', keys: Object.keys(ART_CHARA) }
   ];
 
   var ART_KEYS = Object.keys(ART);
@@ -297,7 +325,7 @@ window.UI = (function () {
      换新版本号 = 所有图片 URL 一起换，旧缓存自然绕开。
      以后**补图、换图都必须改这里**，否则只有清缓存的人能看到新图。 */
   /* z236：升一版，绕开浏览器 / CDN 可能缓存下来的旧 404（注释里那个老坑） */
-  var ART_VER = '20261112z282';
+  var ART_VER = '20261112z283';
 
   /* 图片加载失败时的兜底：把圆换成「品牌色 + 姓氏首字」。
      没有兜底的话，图挂了圆里就是空的（背景色是浅色底），用户看到的就是「头像消失」。
