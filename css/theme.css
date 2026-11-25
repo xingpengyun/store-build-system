@@ -1222,7 +1222,7 @@ button:focus-visible,
 .xr-flake {
   position: absolute; width: 15px; height: 15px; z-index: 4;
   /* z273：和全屏落雪统一成毛茸茸的枝晶，不再是硬边六角线 */
-  background-image: url("../assets/xmas/flake-fuzzy.svg?v=20261112z274");
+  background-image: url("../assets/xmas/flake-fuzzy.svg?v=20261112z275");
   background-size: contain; background-repeat: no-repeat;
   opacity: .8; animation: xrDrift 7s ease-in-out infinite;
 }
@@ -1455,9 +1455,10 @@ button:focus-visible,
   width: 1.75em;
   height: 1.75em;
   line-height: 1;
-  background: url("../assets/xmas/flake-fuzzy.svg?v=20261112z274") center / contain no-repeat;
-  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 1))
-          drop-shadow(0 1px 2px rgba(62, 116, 190, .85));
+  background: url("../assets/xmas/flake-fuzzy.svg?v=20261112z275") center / contain no-repeat;
+  /* z275：SVG 主色从纯白压成淡蓝灰，白底上才有轮廓；白柔光收弱免得把颜色洗掉 */
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, .7))
+          drop-shadow(0 1px 2px rgba(46, 96, 166, .8));
   user-select: none;
   animation-name: xrSnowFall;
   animation-timing-function: linear;

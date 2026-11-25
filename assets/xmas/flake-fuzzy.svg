@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <defs>
     <radialGradient id="fzGlow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity=".95"/>
-      <stop offset="45%" stop-color="#eaf5ff" stop-opacity=".55"/>
-      <stop offset="100%" stop-color="#bcd8f5" stop-opacity="0"/>
+      <stop offset="0%" stop-color="#e3f0ff" stop-opacity=".92"/>
+      <stop offset="45%" stop-color="#a9c9ef" stop-opacity=".58"/>
+      <stop offset="100%" stop-color="#7ca9de" stop-opacity="0"/>
     </radialGradient>
     <filter id="fzSoft" x="-30%" y="-30%" width="160%" height="160%">
       <feGaussianBlur stdDeviation="1.15"/>
@@ -17,7 +17,7 @@
   <circle cx="50" cy="50" r="31" fill="url(#fzGlow)"/>
 
   <!-- 六条主枝 + 每侧的细小分枝，整体轻微模糊，末端小圆点做出绒毛感 -->
-  <g filter="url(#fzHalo)" opacity=".55" fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round">
+  <g filter="url(#fzHalo)" opacity=".62" fill="none" stroke="#7ba4d8" stroke-width="4.5" stroke-linecap="round">
     <g transform="rotate(0 50 50)"><path d="M50 50V10M50 21 40 11M50 21 60 11M50 31 43 24M50 31 57 24M50 41 46 37M50 41 54 37"/></g>
     <g transform="rotate(60 50 50)"><path d="M50 50V10M50 21 40 11M50 21 60 11M50 31 43 24M50 31 57 24M50 41 46 37M50 41 54 37"/></g>
     <g transform="rotate(120 50 50)"><path d="M50 50V10M50 21 40 11M50 21 60 11M50 31 43 24M50 31 57 24M50 41 46 37M50 41 54 37"/></g>
@@ -26,7 +26,7 @@
     <g transform="rotate(300 50 50)"><path d="M50 50V10M50 21 40 11M50 21 60 11M50 31 43 24M50 31 57 24M50 41 46 37M50 41 54 37"/></g>
   </g>
 
-  <g filter="url(#fzSoft)" fill="#ffffff" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round">
+  <g filter="url(#fzSoft)" fill="#d6e9ff" stroke="#6f98d2" stroke-width="2.8" stroke-linecap="round">
     <g transform="rotate(0 50 50)">
       <path d="M50 50V10M50 21 40 11M50 21 60 11M50 31 43 24M50 31 57 24M50 41 46 37M50 41 54 37"/>
       <circle cx="40" cy="11" r="1.8"/><circle cx="60" cy="11" r="1.8"/>
