@@ -842,23 +842,70 @@ window.Pages.tasks = (function () {
     var body = row && row.querySelector('.sk-body');
     if (!body) return;
     body.innerHTML = rowBodyHtml(state.open);
+    /* 已完成显隐变了，之前预生成的其他行内容作废，打开时按新口径重建 */
+    root.querySelectorAll('.sk-row:not(.open) .sk-body').forEach(function (b) { b.remove(); });
     centerOpenRow(row);
+  }
+
+  /* z253：点击展开/收起加过渡，不再「直接跳出」。
+     只对 .sk-body 的 height / opacity 做 WAAPI 动画，.sk-row 仍保持 z239 的
+     transition:none（那是为了避免收起后掉帧）；reduced-motion 下整段跳过。 */
+  var skReduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  var skScrollRAF = 0;
+
+  function skAnimateBody(body, opening, done) {
+    var finish = function () { body.classList.remove('sk-animating'); if (done) done(); };
+    if (!body || skReduceMotion || typeof body.animate !== 'function') { finish(); return; }
+    var h = body.scrollHeight;
+    if (h < 2) { finish(); return; }
+    if (body._skAnim) { try { body._skAnim.cancel(); } catch (e) {} }
+    body.classList.add('sk-animating');
+    /* 只动 opacity / transform（合成层），不动 height —— 展开区里有几十张 SVG
+       头像，逐帧算高度会让前几帧卡住，反而「直接跳出」。布局瞬间到位，
+       视觉上用淡入 + 轻微上滑接住，配合中心滚动动画就顺了。 */
+    var a = body.animate([
+      { opacity: opening ? 0 : 1, transform: opening ? 'translateY(-8px)' : 'translateY(0)' },
+      { opacity: opening ? 1 : 0, transform: opening ? 'translateY(0)' : 'translateY(-8px)' }
+    ], { duration: 220, easing: 'cubic-bezier(.22,.61,.36,1)' });
+    body._skAnim = a;
+    a.onfinish = function () { body._skAnim = null; finish(); };
+    a.oncancel = function () { body._skAnim = null; };
+  }
+
+  function skAnimateScroll(to) {
+    if (skScrollRAF) { cancelAnimationFrame(skScrollRAF); skScrollRAF = 0; }
+    var from = window.pageYOffset || document.documentElement.scrollTop || 0;
+    var delta = to - from;
+    if (Math.abs(delta) < 1 || skReduceMotion) { window.scrollTo(0, to); return; }
+    var t0 = performance.now();
+    var dur = 180;
+    (function step(now) {
+      var p = Math.min(1, (now - t0) / dur);
+      var e = 1 - Math.pow(1 - p, 3);
+      window.scrollTo(0, Math.round(from + delta * e));
+      if (p < 1) skScrollRAF = requestAnimationFrame(step);
+      else skScrollRAF = 0;
+    })(t0);
   }
 
   /* z239：收起时保留已生成的任务卡，只是隐藏 —— 来回点同一家不再反复
      销毁/重建那几张卡（每次都要画一堆 SVG 头像和徽标，是掉帧的大头）。
-     数据一变 App 会整页重画，所以留着的旧内容不会过期。 */
-  function collapseRow(rowEl) {
+     z253：隐藏前先播 240ms 收起动画。 */
+  function collapseRow(rowEl, immediate) {
     if (!rowEl) return;
     var body = rowEl.querySelector('.sk-body');
-    if (body) body.hidden = true;
     rowEl.classList.remove('open');
     var head = rowEl.querySelector('.sk-head');
     if (head) head.title = '展开这家门店的任务';
+    if (!body || body.hidden) return;
+    /* 切到别家时立刻收起旧行：布局当场稳定，新行的居中计算才不会被 220ms 后的位移打乱 */
+    if (immediate || skReduceMotion) { body.hidden = true; body.classList.remove('sk-animating'); return; }
+    skAnimateBody(body, false, function () { body.hidden = true; });
   }
 
+  /* 返回展开后的「最终几何」，供 centerOpenRow 在动画还没跑完时就能算准滚动位置 */
   function expandRow(rowEl, sid) {
-    if (!rowEl) return;
+    if (!rowEl) return null;
     var body = rowEl.querySelector('.sk-body');
     if (!body) {
       body = document.createElement('div');
@@ -871,6 +918,13 @@ window.Pages.tasks = (function () {
     rowEl.classList.add('open');
     var head = rowEl.querySelector('.sk-head');
     if (head) head.title = '收起这家门店的任务';
+    var m = {
+      rect: rowEl.getBoundingClientRect(),
+      br: body.getBoundingClientRect(),
+      docH: document.documentElement.scrollHeight
+    };
+    skAnimateBody(body, true);
+    return m;
   }
 
   /* z238：展开后把展开区滚到视口中间。
@@ -878,11 +932,11 @@ window.Pages.tasks = (function () {
      现在展开完直接把整行居中（内容比一屏还长就让抬头靠上一点），
      已经是完整可见的行不动，避免点上面的行画面也跟着上下跳。
      scroll-behavior 保持 auto，这一步瞬时完成，不做动画。 */
-  function centerOpenRow(row) {
+  function centerOpenRow(row, m) {
     var vh = window.innerHeight || document.documentElement.clientHeight || 800;
-    var rect = row.getBoundingClientRect();
+    var rect = m ? m.rect : row.getBoundingClientRect();
     var body = row.querySelector('.sk-body');
-    var br = body ? body.getBoundingClientRect() : rect;
+    var br = m ? m.br : (body ? body.getBoundingClientRect() : rect);
     /* 窄屏时侧栏变成横向吸顶条（约 60px），抬头不能被它盖住：
        按吸顶栏实际底边算上边界。
        z249 修复：z240 给 .sidebar 加了全局 position:sticky，宽屏下它是贯穿
@@ -907,7 +961,11 @@ window.Pages.tasks = (function () {
     }
     var maxY = Math.max(0, document.documentElement.scrollHeight - vh);
     var to = Math.min(maxY, Math.max(0, want));
-    if (Math.abs(to - y) > 0.5) window.scrollTo(0, to);
+    if (Math.abs(to - y) > 0.5) {
+      /* z253：展开时用 rAF 平滑滚到目标（只这一次，全局 scroll-behavior 仍是 auto）；
+         toggleDone 等本地重绘仍走瞬时滚动，保持原来的跟手感。 */
+      if (m) skAnimateScroll(to); else window.scrollTo(0, to);
+    }
   }
 
   /* 展开 / 收起一家门店：一次只开一家（点开 A，原来开着的 B 自动收回去）。
@@ -929,10 +987,10 @@ window.Pages.tasks = (function () {
     }
 
     var prev = root.querySelector('.sk-row.open');
-    if (prev && prev !== row) collapseRow(prev);
-    expandRow(row, sid);
+    if (prev && prev !== row) collapseRow(prev, true);
+    var m = expandRow(row, sid);
     state.open = sid;
-    centerOpenRow(row);                       /* 展开：内容居中 */
+    centerOpenRow(row, m);                    /* 展开：内容居中（动画同步） */
   }
 
   function pagerHtml(total, pages) {
@@ -1537,6 +1595,32 @@ window.Pages.tasks = (function () {
     var ow = root.querySelector('#tkOwner');
     if (ow) ow.value = state.owner;
     syncDoneToggle(root);
+    prewarmBodies(root);
+  }
+
+  /* z253：点击时才生成展开区（几十张卡 + SVG 头像）会堵住主线程半秒，
+     淡入和滚动动画都会卡住。列表画好后趁空闲逐行预生成，每行之间让出主线程；
+     用户点到哪行都能立刻开合，动画才顺。 */
+  var prewarmSeq = 0;
+  function prewarmBodies(root) {
+    var seq = ++prewarmSeq;
+    var rows = Array.prototype.slice.call(root.querySelectorAll('#storeListWrap .sk-row'))
+      .filter(function (r) { return !r.classList.contains('open') && !r.querySelector('.sk-body'); });
+    var i = 0;
+    function step() {
+      if (seq !== prewarmSeq || i >= rows.length) return;
+      var row = rows[i++];
+      var key = row.querySelector('[data-srow]');
+      if (key) {
+        var body = document.createElement('div');
+        body.className = 'sk-body';
+        body.hidden = true;
+        body.innerHTML = rowBodyHtml(key.getAttribute('data-srow'));
+        row.appendChild(body);
+      }
+      setTimeout(step, 40);
+    }
+    if (rows.length) setTimeout(step, 80);
   }
 
   /* z239：180ms 防抖 —— 打字不会每敲一下重画整张列表，
