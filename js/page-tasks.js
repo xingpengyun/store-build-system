@@ -189,7 +189,15 @@ window.Pages.tasks = (function () {
     return { open: open, late: late };
   }
 
+  /* z239：左侧时间线只跟「数据版本 + 选中的阶段/二级」有关。
+     搜门店、切状态页签、换负责人时它压根没变，没必要每次重建：
+     一次要扫 9 个阶段 × 全量任务，搜索连打几个字就白算好几次。 */
+  var railMemo = { key: '', html: '' };
+
   function railHtml() {
+    var key = [S.rev(), state.stage, state.sub].join('\u0001');
+    if (railMemo.key === key) return railMemo.html;
+
     var stores = S.getState().stores;
     var subs = S.stageSubsWithUsed();
 
@@ -247,13 +255,15 @@ window.Pages.tasks = (function () {
       return html;
     }).join('');
 
-    return '<div class="card-head">' +
+    var html = '<div class="card-head">' +
         '<h3>阶段时间线</h3>' +
       '</div>' +
       '<div class="tl-all' + (!state.stage ? ' on' : '') + '" data-stage-all>' +
         '<span>全部阶段</span><span class="tl-num">' + stores.length + ' 家</span>' +
       '</div>' +
       '<div class="tl-nodes">' + nodes + '</div>';
+    railMemo = { key: key, html: html };
+    return html;
   }
 
   /* ---------------- 当前筛选条件条 ---------------- */
@@ -808,10 +818,13 @@ window.Pages.tasks = (function () {
     centerOpenRow(row);
   }
 
+  /* z239：收起时保留已生成的任务卡，只是隐藏 —— 来回点同一家不再反复
+     销毁/重建那几张卡（每次都要画一堆 SVG 头像和徽标，是掉帧的大头）。
+     数据一变 App 会整页重画，所以留着的旧内容不会过期。 */
   function collapseRow(rowEl) {
     if (!rowEl) return;
     var body = rowEl.querySelector('.sk-body');
-    if (body && body.parentNode === rowEl) rowEl.removeChild(body);
+    if (body) body.hidden = true;
     rowEl.classList.remove('open');
     var head = rowEl.querySelector('.sk-head');
     if (head) head.title = '展开这家门店的任务';
@@ -819,12 +832,15 @@ window.Pages.tasks = (function () {
 
   function expandRow(rowEl, sid) {
     if (!rowEl) return;
-    var old = rowEl.querySelector('.sk-body');
-    if (old && old.parentNode === rowEl) rowEl.removeChild(old);
-    var body = document.createElement('div');
-    body.className = 'sk-body';
-    body.innerHTML = rowBodyHtml(sid);
-    rowEl.appendChild(body);
+    var body = rowEl.querySelector('.sk-body');
+    if (!body) {
+      body = document.createElement('div');
+      body.className = 'sk-body';
+      body.innerHTML = rowBodyHtml(sid);
+      rowEl.appendChild(body);
+    } else {
+      body.hidden = false;
+    }
     rowEl.classList.add('open');
     var head = rowEl.querySelector('.sk-head');
     if (head) head.title = '收起这家门店的任务';
@@ -854,36 +870,26 @@ window.Pages.tasks = (function () {
   /* 展开 / 收起一家门店：一次只开一家（点开 A，原来开着的 B 自动收回去）。
      z230：只动这两行的 .sk-body / .open，不再调 updateList() 全量重绘 ——
      以前一次点击要换掉 400+ 个节点，数据一多就卡，还会把浏览器的滚动锚定
-     一起清掉；补偿滚动又被全局 smooth 变成几百毫秒的动画，看起来就是「弹一下」。 */
+     一起清掉。
+     z239：收起时原来的「量位置→补偿滚动」是死代码（自己收起不会挪动抬头），
+     却每次都逼浏览器同步算两遍整页布局。直接删掉，收起只剩摘掉 body。 */
   function toggleStoreRow(root, sid) {
     var head = root.querySelector('[data-srow="' + sid + '"]');
     if (!head || !root.contains(head)) return;
     var row = head.closest('.sk-row');
     if (!row) return;
 
-    var wasOpen = state.open === sid;
-    var prev = wasOpen ? null : root.querySelector('.sk-row.open');
-    var topBefore = head.getBoundingClientRect().top;
-    var yBefore = window.pageYOffset || document.documentElement.scrollTop || 0;
-
-    if (prev && prev !== row) collapseRow(prev);
-    if (wasOpen) collapseRow(row);
-    else expandRow(row, sid);
-    state.open = wasOpen ? '' : sid;
-
-    if (!wasOpen) { centerOpenRow(row); return; }        /* 展开：内容居中 */
-
-    /* 收起：上方那家收起后内容缩短，按差值把被点这行补回原来的屏幕位置。
-       #storeListWrap 关掉了 scroll anchoring，这里就是唯一一次补偿，不会叠加；
-       scroll-behavior 已改 auto，这一步瞬时完成。页面本来就在最顶时浏览器
-       没法再往上滚，钳到 0 即可（那是内容自然缩短，不再有滚动动画）。 */
-    var delta = head.getBoundingClientRect().top - topBefore;
-    if (Math.abs(delta) > 0.5) {
-      var maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-      var want = Math.min(maxY, Math.max(0, yBefore + delta));
-      var now = window.pageYOffset || document.documentElement.scrollTop || 0;
-      if (Math.abs(want - now) > 0.5) window.scrollTo(0, want);
+    if (state.open === sid) {                 /* 自己收起：抬头不会动，不用量也不用滚 */
+      collapseRow(row);
+      state.open = '';
+      return;
     }
+
+    var prev = root.querySelector('.sk-row.open');
+    if (prev && prev !== row) collapseRow(prev);
+    expandRow(row, sid);
+    state.open = sid;
+    centerOpenRow(row);                       /* 展开：内容居中 */
   }
 
   function pagerHtml(total, pages) {
@@ -1465,9 +1471,12 @@ window.Pages.tasks = (function () {
     '</div>';
   }
 
-  function updateList(root) {
-    var rail = root.querySelector('#tkRail');
-    if (rail) rail.innerHTML = railHtml();
+  function updateList(root, opts) {
+    /* 搜索 / 状态页签 / 负责人 / 翻页都不改左侧时间线，别顺手重建它 */
+    if (!(opts && opts.keepRail)) {
+      var rail = root.querySelector('#tkRail');
+      if (rail) rail.innerHTML = railHtml();
+    }
 
     var bar = root.querySelector('#tkFilterBar');
     if (bar) bar.innerHTML = filterBarHtml();
@@ -1487,11 +1496,13 @@ window.Pages.tasks = (function () {
     syncDoneToggle(root);
   }
 
+  /* z239：180ms 防抖 —— 打字不会每敲一下重画整张列表，
+     又比原来的 240ms 跟手一点；左侧时间线靠 railMemo 直接复用。 */
   var debouncedSearch = U.debounce(function (root, val) {
     state.q = val;
     state.page = 1;
-    updateList(root);
-  }, 240);
+    updateList(root, { keepRail: true });
+  }, 180);
 
   function mount(root) {
     root.addEventListener('click', function (e) {
@@ -1542,7 +1553,7 @@ window.Pages.tasks = (function () {
           if (si) si.value = '';
         }
         state.page = 1;
-        updateList(root);
+        updateList(root, { keepRail: what === 'q' || what === 'owner' });
         return;
       }
 
@@ -1550,7 +1561,7 @@ window.Pages.tasks = (function () {
       if (tab && root.contains(tab)) {
         state.tab = tab.getAttribute('data-tab');
         state.page = 1;
-        updateList(root);
+        updateList(root, { keepRail: true });
         return;
       }
 
@@ -1559,7 +1570,7 @@ window.Pages.tasks = (function () {
 
       if (el.hasAttribute('data-page')) {
         state.page = Number(el.getAttribute('data-page'));
-        updateList(root);
+        updateList(root, { keepRail: true });
         return;
       }
 
@@ -1621,7 +1632,7 @@ window.Pages.tasks = (function () {
       if (e.target.id === 'tkOwner') {
         state.owner = e.target.value;
         state.page = 1;
-        updateList(root);
+        updateList(root, { keepRail: true });
       }
     });
   }

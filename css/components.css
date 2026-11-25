@@ -3156,30 +3156,51 @@
   border: 1px solid var(--line-2);
   border-radius: 10px;
   background: #fff;
-  transition: border-color .14s, box-shadow .14s;
+  /* z239：展开/收起时别去动画大块 box-shadow —— 那会在收起后连着掉好几帧。
+     状态切换要的就是「立刻看得见」，直接生效比渐变更清楚。 */
+  transition: none;
 }
 .sk-row:hover { border-color: #d5e1f8; }
-/* 展开的这家：抬头整条压深一档蓝底 + 左边一道主色条，一眼看得出点的是哪家 */
+/* 展开的这家：整行描边 + 顶部「展开中」徽标 + 深色抬头 + 左侧主色条。
+   z239：原来只换了一点底色，实际看不出到底展开没有；现在给一个明确标识。 */
 .sk-row { position: relative; }
 .sk-row.open {
-  border-color: #c2d4f9;
-  background: #fafcff;
-  box-shadow: 0 8px 22px rgba(23, 43, 77, .07);
+  border-color: var(--primary);
+  background: linear-gradient(180deg, #f1f6ff 0%, #fbfdff 46%, #fff 100%);
+  box-shadow: 0 0 0 3px rgba(63, 107, 245, .11), 0 14px 32px rgba(23, 43, 77, .11);
 }
 .sk-row.open::before {
   content: '';
   position: absolute;
   left: 0; top: 0; bottom: 0;
-  width: 3px;
-  background: var(--primary);
+  width: 4px;
+  background: linear-gradient(180deg, var(--primary), #7a5af8);
   border-radius: 10px 0 0 10px;
   z-index: 1;
 }
 .sk-row.open .sk-head {
-  background: #dfe9fd;
+  position: relative;
+  background: linear-gradient(90deg, #d9e6ff 0%, #eaf1ff 100%);
+  border-bottom: 1px solid #c5d7fa;
   border-radius: 9px 9px 0 0;
 }
-.sk-row.open:hover { border-color: #b5c9f8; }
+/* 徽标压在行上沿，不占布局、不挤门店名 */
+.sk-row.open .sk-head::after {
+  content: '展开中';
+  position: absolute;
+  top: -10px; right: 14px;
+  z-index: 3;
+  padding: 1px 8px;
+  border-radius: 9px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 10px;
+  line-height: 15px;
+  letter-spacing: .2px;
+  box-shadow: 0 2px 7px rgba(63, 107, 245, .3);
+}
+.sk-row.open .sk-body { background: rgba(245, 249, 255, .74); }
+.sk-row.open:hover { border-color: var(--primary); }
 
 .sk-head {
   display: grid;
@@ -3189,7 +3210,7 @@
   padding: 10px 12px;
   border-radius: 9px;
   cursor: pointer;
-  transition: background .14s;
+  transition: none;
 }
 .sk-row:not(.open) .sk-head:hover { background: #f7faff; }
 .sk-row.open .sk-head { padding-bottom: 9px; }
@@ -3269,6 +3290,7 @@
 .sk-row.open .sk-arrow svg { transform: rotate(-90deg); color: var(--primary); }
 
 .sk-body { padding: 0 12px 10px; border-top: 1px dashed var(--line-2); }
+.sk-body[hidden] { display: none !important; }
 /* z238：已完成的任务默认收起，展开区底部留一个显隐开关 */
 .sk-done-bar {
   display: flex;
