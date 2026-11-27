@@ -39,8 +39,8 @@ window.App = (function () {
      竖向侧栏用 translateY，窄屏底部横条用 translateX。
      instant=true 用于首次定位 / 窗口尺寸变化时——先定住位置，别播动画。 */
   var navGliderReady = false;
-  var renderedOnce = false;   /* 是否已上过屏：首次渲染不播「平移滑入」 */
-  var lastRoute = null;       /* 上一次渲染的路由：只有真正切换了才播平移 */
+  var renderedOnce = false;   /* 是否已上过屏：首次渲染保留 .fade-up 层次感，之后静默 */
+  var lastRoute = null;       /* z280：切页时给上一页跑 onLeave / 清资源作用域 */
   function moveNavGlider(instant) {
     var glider = document.getElementById('navGlider');
     var nav = document.getElementById('nav');
@@ -215,17 +215,11 @@ window.App = (function () {
     var view = host.cloneNode(false);
     host.parentNode.replaceChild(view, host);
 
-    /* 原地重画时别再播一遍入场动画：.fade-up 是「向上挪 8px + 淡入」，
-       每次数据变动整个页面都重新飘一遍，看起来就是抖。
-       切页面（非 keep）要清掉这个类 —— 新容器是从旧容器 clone 来的，会带着。 */
-    if (keep) view.classList.add('re-quiet');
-    else {
-      view.classList.remove('re-quiet');
-      /* z238：路由切换时，整个内容区作为一个整体从右侧平移滑入，
-         别再让页面里每个元素各自 fade-up（看着像「突然出现」）。
-         首次上屏（renderedOnce=false）或原地重画（route 没变）都不播。 */
-      if (renderedOnce && route !== lastRoute) view.classList.add('route-enter');
-    }
+    /* z270：点导航栏切页不再播整块滑入/淡入动画（用户觉得卡顿），内容直接显示。
+       首次上屏（renderedOnce=false）仍保留 .fade-up 的层次感；
+       之后切页与原地重画都静默，避免整页重新飘一遍。 */
+    if (renderedOnce || keep) view.classList.add('re-quiet');
+    else view.classList.remove('re-quiet');
 
     if (!keep && page.onEnter) page.onEnter(params);
     params = {};
